@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.StudyPlanMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.StudyPlan">
+		<!--学习计划ID-->
+		<result column="plan_id" property="planId"  />
+		<!--课程ID-->
+		<result column="course_id" property="courseId"  />
+		<!--学生ID-->
+		<result column="student_id" property="studentId"  />
+		<!--0未开始 1进行中 2完成-->
+		<result column="status" property="status"  />
+		<!--计划说明-->
+		<result column="description" property="description"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 s.plan_id,s.course_id,s.student_id,s.status,s.description
+		 
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.planId != null and query.planId!=''">
+				 and  s.plan_id = #{query.planId}
+			</if>
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  s.course_id = #{query.courseId}
+			</if>
+			<if test="query.studentId != null">
+				 and  s.student_id = #{query.studentId}
+			</if>
+			<if test="query.status != null">
+				 and  s.status = #{query.status}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  s.description = #{query.description}
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.planIdFuzzy!= null  and query.planIdFuzzy!=''">
+				 and  s.plan_id like concat('%', #{query.planIdFuzzy}, '%')
+			</if>
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  s.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  s.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM study_plan s <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM study_plan s <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.StudyPlan">
+		 INSERT INTO study_plan
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.planId != null">
+				 plan_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.studentId != null">
+				 student_id,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.planId!=null">
+				 #{bean.planId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.studentId!=null">
+				 #{bean.studentId},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.StudyPlan">
+		 INSERT INTO study_plan
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.planId != null">
+				 plan_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.studentId != null">
+				 student_id,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.planId!=null">
+				 #{bean.planId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.studentId!=null">
+				 #{bean.studentId},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.planId!=null">
+				 plan_id = VALUES(plan_id),
+			</if>
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.studentId!=null">
+				 student_id = VALUES(student_id),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.StudyPlan">
+		 INSERT INTO study_plan(
+			 plan_id,
+			 course_id,
+			 student_id,
+			 status,
+			 description
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.planId},
+				 #{item.courseId},
+				 #{item.studentId},
+				 #{item.status},
+				 #{item.description}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.StudyPlan">
+		 INSERT INTO study_plan(
+			 plan_id,
+			 course_id,
+			 student_id,
+			 status,
+			 description
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.planId},
+				 #{item.courseId},
+				 #{item.studentId},
+				 #{item.status},
+				 #{item.description}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			plan_id = VALUES(plan_id),
+			course_id = VALUES(course_id),
+			student_id = VALUES(student_id),
+			status = VALUES(status),
+			description = VALUES(description)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.StudyPlanQuery">
+		 UPDATE study_plan s
+ 		 <set> 
+			<if test="bean.planId != null">
+				 plan_id = #{bean.planId},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.studentId != null">
+				 student_id = #{bean.studentId},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete s from study_plan s
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据PlanId修改-->
+	<update id="updateByPlanId" parameterType="com.smart.campus.entity.po.StudyPlan">
+		 UPDATE study_plan
+ 		 <set> 
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.studentId != null">
+				 student_id = #{bean.studentId},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+ 		 </set>
+ 		 where plan_id=#{planId}
+	</update>
+
+	<!-- 根据PlanId删除-->
+	<delete id="deleteByPlanId">
+		delete from study_plan where plan_id=#{planId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByPlanId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from study_plan s where plan_id=#{planId}
+	</select>
+
+</mapper>

@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.ClassInfoMapper">
+
+    <resultMap id="base_result_map" type="com.smart.campus.entity.po.ClassInfo">
+        <id column="class_id" property="classId"/>
+        <result column="department_id" property="departmentId"/>
+        <result column="major_id" property="majorId"/>
+        <result column="class_name" property="className"/>
+        <result column="counselor_name" property="counselorName"/>
+        <result column="head_teacher_name" property="headTeacherName"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="sort_order" property="sortOrder"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        c.class_id,c.department_id,c.major_id,c.class_name,c.counselor_name,
+        c.head_teacher_name,c.description,c.status,c.sort_order
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.classId != null">
+            and c.class_id = #{query.classId}
+        </if>
+        <if test="query.departmentId != null">
+            and c.department_id = #{query.departmentId}
+        </if>
+        <if test="query.majorId != null">
+            and c.major_id = #{query.majorId}
+        </if>
+        <if test="query.className != null and query.className!=''">
+            and c.class_name = #{query.className}
+        </if>
+        <if test="query.counselorName != null and query.counselorName!=''">
+            and c.counselor_name = #{query.counselorName}
+        </if>
+        <if test="query.headTeacherName != null and query.headTeacherName!=''">
+            and c.head_teacher_name = #{query.headTeacherName}
+        </if>
+        <if test="query.description != null and query.description!=''">
+            and c.description = #{query.description}
+        </if>
+        <if test="query.status != null">
+            and c.status = #{query.status}
+        </if>
+        <if test="query.sortOrder != null">
+            and c.sort_order = #{query.sortOrder}
+        </if>
+    </sql>
+
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.classNameFuzzy!= null and query.classNameFuzzy!=''">
+                and c.class_name like concat('%', #{query.classNameFuzzy}, '%')
+            </if>
+            <if test="query.counselorNameFuzzy!= null and query.counselorNameFuzzy!=''">
+                and c.counselor_name like concat('%', #{query.counselorNameFuzzy}, '%')
+            </if>
+            <if test="query.headTeacherNameFuzzy!= null and query.headTeacherNameFuzzy!=''">
+                and c.head_teacher_name like concat('%', #{query.headTeacherNameFuzzy}, '%')
+            </if>
+            <if test="query.descriptionFuzzy!= null and query.descriptionFuzzy!=''">
+                and c.description like concat('%', #{query.descriptionFuzzy}, '%')
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultMap="base_result_map">
+        select <include refid="base_column_list"/> from class_info c
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Integer">
+        select count(1) from class_info c
+        <include refid="query_condition"/>
+    </select>
+
+    <insert id="insert" parameterType="com.smart.campus.entity.po.ClassInfo">
+        <selectKey keyProperty="bean.classId" resultType="Integer" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        insert into class_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.departmentId != null">department_id,</if>
+            <if test="bean.majorId != null">major_id,</if>
+            <if test="bean.className != null">class_name,</if>
+            <if test="bean.counselorName != null">counselor_name,</if>
+            <if test="bean.headTeacherName != null">head_teacher_name,</if>
+            <if test="bean.description != null">description,</if>
+            <if test="bean.status != null">status,</if>
+            <if test="bean.sortOrder != null">sort_order,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.departmentId!=null">#{bean.departmentId},</if>
+            <if test="bean.majorId!=null">#{bean.majorId},</if>
+            <if test="bean.className!=null">#{bean.className},</if>
+            <if test="bean.counselorName!=null">#{bean.counselorName},</if>
+            <if test="bean.headTeacherName!=null">#{bean.headTeacherName},</if>
+            <if test="bean.description!=null">#{bean.description},</if>
+            <if test="bean.status!=null">#{bean.status},</if>
+            <if test="bean.sortOrder!=null">#{bean.sortOrder},</if>
+        </trim>
+    </insert>
+
+    <insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.ClassInfo">
+        insert into class_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.classId != null">class_id,</if>
+            <if test="bean.departmentId != null">department_id,</if>
+            <if test="bean.majorId != null">major_id,</if>
+            <if test="bean.className != null">class_name,</if>
+            <if test="bean.counselorName != null">counselor_name,</if>
+            <if test="bean.headTeacherName != null">head_teacher_name,</if>
+            <if test="bean.description != null">description,</if>
+            <if test="bean.status != null">status,</if>
+            <if test="bean.sortOrder != null">sort_order,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.classId!=null">#{bean.classId},</if>
+            <if test="bean.departmentId!=null">#{bean.departmentId},</if>
+            <if test="bean.majorId!=null">#{bean.majorId},</if>
+            <if test="bean.className!=null">#{bean.className},</if>
+            <if test="bean.counselorName!=null">#{bean.counselorName},</if>
+            <if test="bean.headTeacherName!=null">#{bean.headTeacherName},</if>
+            <if test="bean.description!=null">#{bean.description},</if>
+            <if test="bean.status!=null">#{bean.status},</if>
+            <if test="bean.sortOrder!=null">#{bean.sortOrder},</if>
+        </trim>
+        on duplicate key update
+        <trim suffixOverrides=",">
+            <if test="bean.departmentId!=null">department_id = values(department_id),</if>
+            <if test="bean.majorId!=null">major_id = values(major_id),</if>
+            <if test="bean.className!=null">class_name = values(class_name),</if>
+            <if test="bean.counselorName!=null">counselor_name = values(counselor_name),</if>
+            <if test="bean.headTeacherName!=null">head_teacher_name = values(head_teacher_name),</if>
+            <if test="bean.description!=null">description = values(description),</if>
+            <if test="bean.status!=null">status = values(status),</if>
+            <if test="bean.sortOrder!=null">sort_order = values(sort_order),</if>
+        </trim>
+    </insert>
+
+    <insert id="insertBatch" parameterType="com.smart.campus.entity.po.ClassInfo" useGeneratedKeys="true" keyProperty="classId">
+        insert into class_info(
+            department_id,
+            major_id,
+            class_name,
+            counselor_name,
+            head_teacher_name,
+            description,
+            status,
+            sort_order
+        ) values
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.departmentId},
+                #{item.majorId},
+                #{item.className},
+                #{item.counselorName},
+                #{item.headTeacherName},
+                #{item.description},
+                #{item.status},
+                #{item.sortOrder}
+            )
+        </foreach>
+    </insert>
+
+    <insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.ClassInfo">
+        insert into class_info(
+            department_id,
+            major_id,
+            class_name,
+            counselor_name,
+            head_teacher_name,
+            description,
+            status,
+            sort_order
+        ) values
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.departmentId},
+                #{item.majorId},
+                #{item.className},
+                #{item.counselorName},
+                #{item.headTeacherName},
+                #{item.description},
+                #{item.status},
+                #{item.sortOrder}
+            )
+        </foreach>
+        on duplicate key update
+        department_id = values(department_id),
+        major_id = values(major_id),
+        class_name = values(class_name),
+        counselor_name = values(counselor_name),
+        head_teacher_name = values(head_teacher_name),
+        description = values(description),
+        status = values(status),
+        sort_order = values(sort_order)
+    </insert>
+
+    <update id="updateByParam" parameterType="com.smart.campus.entity.query.ClassInfoQuery">
+        update class_info c
+        <set>
+            <if test="bean.departmentId != null">department_id = #{bean.departmentId},</if>
+            <if test="bean.majorId != null">major_id = #{bean.majorId},</if>
+            <if test="bean.className != null">class_name = #{bean.className},</if>
+            <if test="bean.counselorName != null">counselor_name = #{bean.counselorName},</if>
+            <if test="bean.headTeacherName != null">head_teacher_name = #{bean.headTeacherName},</if>
+            <if test="bean.description != null">description = #{bean.description},</if>
+            <if test="bean.status != null">status = #{bean.status},</if>
+            <if test="bean.sortOrder != null">sort_order = #{bean.sortOrder},</if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <delete id="deleteByParam">
+        delete c from class_info c
+        <include refid="query_condition"/>
+    </delete>
+
+    <update id="updateByClassId" parameterType="com.smart.campus.entity.po.ClassInfo">
+        update class_info
+        <set>
+            <if test="bean.departmentId != null">department_id = #{bean.departmentId},</if>
+            <if test="bean.majorId != null">major_id = #{bean.majorId},</if>
+            <if test="bean.className != null">class_name = #{bean.className},</if>
+            <if test="bean.counselorName != null">counselor_name = #{bean.counselorName},</if>
+            <if test="bean.headTeacherName != null">head_teacher_name = #{bean.headTeacherName},</if>
+            <if test="bean.description != null">description = #{bean.description},</if>
+            <if test="bean.status != null">status = #{bean.status},</if>
+            <if test="bean.sortOrder != null">sort_order = #{bean.sortOrder},</if>
+        </set>
+        where class_id = #{classId}
+    </update>
+
+    <delete id="deleteByClassId">
+        delete from class_info where class_id = #{classId}
+    </delete>
+
+    <delete id="deleteBatchByClassIdList">
+        delete from class_info
+        where class_id in
+        <foreach collection="classIdList" item="classId" open="(" separator="," close=")">
+            #{classId}
+        </foreach>
+    </delete>
+
+    <select id="selectByClassId" resultMap="base_result_map">
+        select <include refid="base_column_list"/> from class_info c where class_id = #{classId}
+    </select>
+
+    <select id="selectByClassIdList" resultMap="base_result_map">
+        select <include refid="base_column_list"/> from class_info c
+        where class_id in
+        <foreach collection="classIdList" item="classId" open="(" separator="," close=")">
+            #{classId}
+        </foreach>
+    </select>
+
+    <update id="updateSortOrderBatch">
+        update class_info
+        set sort_order = case class_id
+        <foreach collection="list" item="item">
+            when #{item.classId} then #{item.sortOrder}
+        </foreach>
+        end
+        where class_id in
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.classId}
+        </foreach>
+    </update>
+
+</mapper>

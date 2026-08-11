@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.ExamInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.ExamInfo">
+		<!--考试ID-->
+		<result column="exam_id" property="examId"  />
+		<!--考试名称-->
+		<result column="exam_name" property="examName"  />
+		<!--课程ID-->
+		<result column="course_id" property="courseId"  />
+		<!--试卷ID-->
+		<result column="paper_id" property="paperId"  />
+		<!--教师ID-->
+		<result column="teacher_id" property="teacherId"  />
+		<!--开始时间-->
+		<result column="start_time" property="startTime"  />
+		<!--结束时间-->
+		<result column="end_time" property="endTime"  />
+		<!--0草稿 1已发布-->
+		<result column="status" property="status"  />
+		<!--考试说明-->
+		<result column="description" property="description"  />
+		<!---->
+		<result column="create_time" property="createTime"  />
+		<!---->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 e.exam_id,e.exam_name,e.course_id,e.paper_id,e.teacher_id,
+		 e.start_time,e.end_time,e.status,e.description,
+		 e.create_time,e.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.examId != null and query.examId!=''">
+				 and  e.exam_id = #{query.examId}
+			</if>
+			<if test="query.examName != null and query.examName!=''">
+				 and  e.exam_name = #{query.examName}
+			</if>
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  e.course_id = #{query.courseId}
+			</if>
+			<if test="query.paperId != null and query.paperId!=''">
+				 and  e.paper_id = #{query.paperId}
+			</if>
+			<if test="query.teacherId != null">
+				 and  e.teacher_id = #{query.teacherId}
+			</if>
+			<if test="query.startTime != null and query.startTime!=''">
+				 <![CDATA[ and  e.start_time=str_to_date(#{query.startTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.endTime != null and query.endTime!=''">
+				 <![CDATA[ and  e.end_time=str_to_date(#{query.endTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.status != null">
+				 and  e.status = #{query.status}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  e.description = #{query.description}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  e.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  e.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.examIdFuzzy!= null  and query.examIdFuzzy!=''">
+				 and  e.exam_id like concat('%', #{query.examIdFuzzy}, '%')
+			</if>
+			<if test="query.examNameFuzzy!= null  and query.examNameFuzzy!=''">
+				 and  e.exam_name like concat('%', #{query.examNameFuzzy}, '%')
+			</if>
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  e.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.paperIdFuzzy!= null  and query.paperIdFuzzy!=''">
+				 and  e.paper_id like concat('%', #{query.paperIdFuzzy}, '%')
+			</if>
+			<if test="query.startTimeStart!= null and query.startTimeStart!=''">
+				 <![CDATA[ and  e.start_time>=str_to_date(#{query.startTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.startTimeEnd!= null and query.startTimeEnd!=''">
+				 <![CDATA[ and  e.start_time< date_sub(str_to_date(#{query.startTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.endTimeStart!= null and query.endTimeStart!=''">
+				 <![CDATA[ and  e.end_time>=str_to_date(#{query.endTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.endTimeEnd!= null and query.endTimeEnd!=''">
+				 <![CDATA[ and  e.end_time< date_sub(str_to_date(#{query.endTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  e.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  e.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  e.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  e.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  e.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM exam_info e <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM exam_info e <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.ExamInfo">
+		 INSERT INTO exam_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.examId != null">
+				 exam_id,
+			</if>
+			<if test="bean.examName != null">
+				 exam_name,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.paperId != null">
+				 paper_id,
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id,
+			</if>
+			<if test="bean.startTime != null">
+				 start_time,
+			</if>
+			<if test="bean.endTime != null">
+				 end_time,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.examId!=null">
+				 #{bean.examId},
+			</if>
+			<if test="bean.examName!=null">
+				 #{bean.examName},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.paperId!=null">
+				 #{bean.paperId},
+			</if>
+			<if test="bean.teacherId!=null">
+				 #{bean.teacherId},
+			</if>
+			<if test="bean.startTime!=null">
+				 #{bean.startTime},
+			</if>
+			<if test="bean.endTime!=null">
+				 #{bean.endTime},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.ExamInfo">
+		 INSERT INTO exam_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.examId != null">
+				 exam_id,
+			</if>
+			<if test="bean.examName != null">
+				 exam_name,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.paperId != null">
+				 paper_id,
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id,
+			</if>
+			<if test="bean.startTime != null">
+				 start_time,
+			</if>
+			<if test="bean.endTime != null">
+				 end_time,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.examId!=null">
+				 #{bean.examId},
+			</if>
+			<if test="bean.examName!=null">
+				 #{bean.examName},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.paperId!=null">
+				 #{bean.paperId},
+			</if>
+			<if test="bean.teacherId!=null">
+				 #{bean.teacherId},
+			</if>
+			<if test="bean.startTime!=null">
+				 #{bean.startTime},
+			</if>
+			<if test="bean.endTime!=null">
+				 #{bean.endTime},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.examId!=null">
+				 exam_id = VALUES(exam_id),
+			</if>
+			<if test="bean.examName!=null">
+				 exam_name = VALUES(exam_name),
+			</if>
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.paperId!=null">
+				 paper_id = VALUES(paper_id),
+			</if>
+			<if test="bean.teacherId!=null">
+				 teacher_id = VALUES(teacher_id),
+			</if>
+			<if test="bean.startTime!=null">
+				 start_time = VALUES(start_time),
+			</if>
+			<if test="bean.endTime!=null">
+				 end_time = VALUES(end_time),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.ExamInfo">
+		 INSERT INTO exam_info(
+			 exam_id,
+			 exam_name,
+			 course_id,
+			 paper_id,
+			 teacher_id,
+			 start_time,
+			 end_time,
+			 status,
+			 description,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.examId},
+				 #{item.examName},
+				 #{item.courseId},
+				 #{item.paperId},
+				 #{item.teacherId},
+				 #{item.startTime},
+				 #{item.endTime},
+				 #{item.status},
+				 #{item.description},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.ExamInfo">
+		 INSERT INTO exam_info(
+			 exam_id,
+			 exam_name,
+			 course_id,
+			 paper_id,
+			 teacher_id,
+			 start_time,
+			 end_time,
+			 status,
+			 description,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.examId},
+				 #{item.examName},
+				 #{item.courseId},
+				 #{item.paperId},
+				 #{item.teacherId},
+				 #{item.startTime},
+				 #{item.endTime},
+				 #{item.status},
+				 #{item.description},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			exam_id = VALUES(exam_id),
+			exam_name = VALUES(exam_name),
+			course_id = VALUES(course_id),
+			paper_id = VALUES(paper_id),
+			teacher_id = VALUES(teacher_id),
+			start_time = VALUES(start_time),
+			end_time = VALUES(end_time),
+			status = VALUES(status),
+			description = VALUES(description),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.ExamInfoQuery">
+		 UPDATE exam_info e
+ 		 <set> 
+			<if test="bean.examId != null">
+				 exam_id = #{bean.examId},
+			</if>
+			<if test="bean.examName != null">
+				 exam_name = #{bean.examName},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.paperId != null">
+				 paper_id = #{bean.paperId},
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id = #{bean.teacherId},
+			</if>
+			<if test="bean.startTime != null">
+				 start_time = #{bean.startTime},
+			</if>
+			<if test="bean.endTime != null">
+				 end_time = #{bean.endTime},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete e from exam_info e
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据ExamId修改-->
+	<update id="updateByExamId" parameterType="com.smart.campus.entity.po.ExamInfo">
+		 UPDATE exam_info
+ 		 <set> 
+			<if test="bean.examName != null">
+				 exam_name = #{bean.examName},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.paperId != null">
+				 paper_id = #{bean.paperId},
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id = #{bean.teacherId},
+			</if>
+			<if test="bean.startTime != null">
+				 start_time = #{bean.startTime},
+			</if>
+			<if test="bean.endTime != null">
+				 end_time = #{bean.endTime},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where exam_id=#{examId}
+	</update>
+
+	<!-- 根据ExamId删除-->
+	<delete id="deleteByExamId">
+		delete from exam_info where exam_id=#{examId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByExamId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from exam_info e where exam_id=#{examId}
+	</select>
+
+</mapper>

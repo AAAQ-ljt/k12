@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.SystemNoticeMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.SystemNotice">
+		<!--通知ID-->
+		<result column="notice_id" property="noticeId"  />
+		<!--通知标题-->
+		<result column="notice_title" property="noticeTitle"  />
+		<!--通知内容-->
+		<result column="notice_content" property="noticeContent"  />
+		<!--发布范围: 1全部学生 2指定班级 3指定专业-->
+		<result column="target_type" property="targetType"  />
+		<!--发布目标ID，多个用英文逗号分隔-->
+		<result column="target_ids" property="targetIds"  />
+		<!--状态: 0草稿 1已发布 2已下线-->
+		<result column="status" property="status"  />
+		<!--是否置顶: 0否 1是-->
+		<result column="is_top" property="isTop"  />
+		<!--发布时间-->
+		<result column="publish_time" property="publishTime"  />
+		<!--浏览次数-->
+		<result column="view_count" property="viewCount"  />
+		<!--创建人ID-->
+		<result column="create_user_id" property="createUserId"  />
+		<!--创建人姓名-->
+		<result column="create_user_name" property="createUserName"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--最后更新时间-->
+		<result column="last_update_time" property="lastUpdateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 s.notice_id,s.notice_title,s.notice_content,s.target_type,s.target_ids,s.status,
+		 s.is_top,s.publish_time,s.view_count,s.create_user_id,s.create_user_name,
+		 s.create_time,s.last_update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.noticeId != null and query.noticeId!=''">
+				 and  s.notice_id = #{query.noticeId}
+			</if>
+			<if test="query.noticeTitle != null and query.noticeTitle!=''">
+				 and  s.notice_title = #{query.noticeTitle}
+			</if>
+			<if test="query.noticeContent != null and query.noticeContent!=''">
+				 and  s.notice_content = #{query.noticeContent}
+			</if>
+			<if test="query.targetType != null">
+				 and  s.target_type = #{query.targetType}
+			</if>
+			<if test="query.targetIds != null and query.targetIds!=''">
+				 and  s.target_ids = #{query.targetIds}
+			</if>
+			<if test="query.status != null">
+				 and  s.status = #{query.status}
+			</if>
+			<if test="query.isTop != null">
+				 and  s.is_top = #{query.isTop}
+			</if>
+			<if test="query.publishTime != null and query.publishTime!=''">
+				 <![CDATA[ and  s.publish_time=str_to_date(#{query.publishTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.viewCount != null">
+				 and  s.view_count = #{query.viewCount}
+			</if>
+			<if test="query.createUserId != null">
+				 and  s.create_user_id = #{query.createUserId}
+			</if>
+			<if test="query.createUserName != null and query.createUserName!=''">
+				 and  s.create_user_name = #{query.createUserName}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  s.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastUpdateTime != null and query.lastUpdateTime!=''">
+				 <![CDATA[ and  s.last_update_time=str_to_date(#{query.lastUpdateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.noticeIdFuzzy!= null  and query.noticeIdFuzzy!=''">
+				 and  s.notice_id like concat('%', #{query.noticeIdFuzzy}, '%')
+			</if>
+			<if test="query.noticeTitleFuzzy!= null  and query.noticeTitleFuzzy!=''">
+				 and  s.notice_title like concat('%', #{query.noticeTitleFuzzy}, '%')
+			</if>
+			<if test="query.noticeContentFuzzy!= null  and query.noticeContentFuzzy!=''">
+				 and  s.notice_content like concat('%', #{query.noticeContentFuzzy}, '%')
+			</if>
+			<if test="query.targetIdsFuzzy!= null  and query.targetIdsFuzzy!=''">
+				 and  s.target_ids like concat('%', #{query.targetIdsFuzzy}, '%')
+			</if>
+			<if test="query.publishTimeStart!= null and query.publishTimeStart!=''">
+				 <![CDATA[ and  s.publish_time>=str_to_date(#{query.publishTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.publishTimeEnd!= null and query.publishTimeEnd!=''">
+				 <![CDATA[ and  s.publish_time< date_sub(str_to_date(#{query.publishTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createUserNameFuzzy!= null  and query.createUserNameFuzzy!=''">
+				 and  s.create_user_name like concat('%', #{query.createUserNameFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  s.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  s.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.lastUpdateTimeStart!= null and query.lastUpdateTimeStart!=''">
+				 <![CDATA[ and  s.last_update_time>=str_to_date(#{query.lastUpdateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastUpdateTimeEnd!= null and query.lastUpdateTimeEnd!=''">
+				 <![CDATA[ and  s.last_update_time< date_sub(str_to_date(#{query.lastUpdateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM system_notice s <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM system_notice s <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.SystemNotice">
+		 INSERT INTO system_notice
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.noticeId != null">
+				 notice_id,
+			</if>
+			<if test="bean.noticeTitle != null">
+				 notice_title,
+			</if>
+			<if test="bean.noticeContent != null">
+				 notice_content,
+			</if>
+			<if test="bean.targetType != null">
+				 target_type,
+			</if>
+			<if test="bean.targetIds != null">
+				 target_ids,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.isTop != null">
+				 is_top,
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time,
+			</if>
+			<if test="bean.viewCount != null">
+				 view_count,
+			</if>
+			<if test="bean.createUserId != null">
+				 create_user_id,
+			</if>
+			<if test="bean.createUserName != null">
+				 create_user_name,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.lastUpdateTime != null">
+				 last_update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.noticeId!=null">
+				 #{bean.noticeId},
+			</if>
+			<if test="bean.noticeTitle!=null">
+				 #{bean.noticeTitle},
+			</if>
+			<if test="bean.noticeContent!=null">
+				 #{bean.noticeContent},
+			</if>
+			<if test="bean.targetType!=null">
+				 #{bean.targetType},
+			</if>
+			<if test="bean.targetIds!=null">
+				 #{bean.targetIds},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.isTop!=null">
+				 #{bean.isTop},
+			</if>
+			<if test="bean.publishTime!=null">
+				 #{bean.publishTime},
+			</if>
+			<if test="bean.viewCount!=null">
+				 #{bean.viewCount},
+			</if>
+			<if test="bean.createUserId!=null">
+				 #{bean.createUserId},
+			</if>
+			<if test="bean.createUserName!=null">
+				 #{bean.createUserName},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.lastUpdateTime!=null">
+				 #{bean.lastUpdateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.SystemNotice">
+		 INSERT INTO system_notice
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.noticeId != null">
+				 notice_id,
+			</if>
+			<if test="bean.noticeTitle != null">
+				 notice_title,
+			</if>
+			<if test="bean.noticeContent != null">
+				 notice_content,
+			</if>
+			<if test="bean.targetType != null">
+				 target_type,
+			</if>
+			<if test="bean.targetIds != null">
+				 target_ids,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.isTop != null">
+				 is_top,
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time,
+			</if>
+			<if test="bean.viewCount != null">
+				 view_count,
+			</if>
+			<if test="bean.createUserId != null">
+				 create_user_id,
+			</if>
+			<if test="bean.createUserName != null">
+				 create_user_name,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.lastUpdateTime != null">
+				 last_update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.noticeId!=null">
+				 #{bean.noticeId},
+			</if>
+			<if test="bean.noticeTitle!=null">
+				 #{bean.noticeTitle},
+			</if>
+			<if test="bean.noticeContent!=null">
+				 #{bean.noticeContent},
+			</if>
+			<if test="bean.targetType!=null">
+				 #{bean.targetType},
+			</if>
+			<if test="bean.targetIds!=null">
+				 #{bean.targetIds},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.isTop!=null">
+				 #{bean.isTop},
+			</if>
+			<if test="bean.publishTime!=null">
+				 #{bean.publishTime},
+			</if>
+			<if test="bean.viewCount!=null">
+				 #{bean.viewCount},
+			</if>
+			<if test="bean.createUserId!=null">
+				 #{bean.createUserId},
+			</if>
+			<if test="bean.createUserName!=null">
+				 #{bean.createUserName},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.lastUpdateTime!=null">
+				 #{bean.lastUpdateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.noticeId!=null">
+				 notice_id = VALUES(notice_id),
+			</if>
+			<if test="bean.noticeTitle!=null">
+				 notice_title = VALUES(notice_title),
+			</if>
+			<if test="bean.noticeContent!=null">
+				 notice_content = VALUES(notice_content),
+			</if>
+			<if test="bean.targetType!=null">
+				 target_type = VALUES(target_type),
+			</if>
+			<if test="bean.targetIds!=null">
+				 target_ids = VALUES(target_ids),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.isTop!=null">
+				 is_top = VALUES(is_top),
+			</if>
+			<if test="bean.publishTime!=null">
+				 publish_time = VALUES(publish_time),
+			</if>
+			<if test="bean.viewCount!=null">
+				 view_count = VALUES(view_count),
+			</if>
+			<if test="bean.createUserId!=null">
+				 create_user_id = VALUES(create_user_id),
+			</if>
+			<if test="bean.createUserName!=null">
+				 create_user_name = VALUES(create_user_name),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.lastUpdateTime!=null">
+				 last_update_time = VALUES(last_update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.SystemNotice">
+		 INSERT INTO system_notice(
+			 notice_id,
+			 notice_title,
+			 notice_content,
+			 target_type,
+			 target_ids,
+				 status,
+			 is_top,
+			 publish_time,
+			 view_count,
+			 create_user_id,
+			 create_user_name,
+			 create_time,
+			 last_update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.noticeId},
+				 #{item.noticeTitle},
+				 #{item.noticeContent},
+				 #{item.targetType},
+				 #{item.targetIds},
+					 #{item.status},
+				 #{item.isTop},
+				 #{item.publishTime},
+				 #{item.viewCount},
+				 #{item.createUserId},
+				 #{item.createUserName},
+				 #{item.createTime},
+				 #{item.lastUpdateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.SystemNotice">
+		 INSERT INTO system_notice(
+			 notice_id,
+			 notice_title,
+			 notice_content,
+			 target_type,
+			 target_ids,
+				 status,
+			 is_top,
+			 publish_time,
+			 view_count,
+			 create_user_id,
+			 create_user_name,
+			 create_time,
+			 last_update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.noticeId},
+				 #{item.noticeTitle},
+				 #{item.noticeContent},
+				 #{item.targetType},
+				 #{item.targetIds},
+					 #{item.status},
+				 #{item.isTop},
+				 #{item.publishTime},
+				 #{item.viewCount},
+				 #{item.createUserId},
+				 #{item.createUserName},
+				 #{item.createTime},
+				 #{item.lastUpdateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			notice_id = VALUES(notice_id),
+			notice_title = VALUES(notice_title),
+			notice_content = VALUES(notice_content),
+			target_type = VALUES(target_type),
+			target_ids = VALUES(target_ids),
+			status = VALUES(status),
+			is_top = VALUES(is_top),
+			publish_time = VALUES(publish_time),
+			view_count = VALUES(view_count),
+			create_user_id = VALUES(create_user_id),
+			create_user_name = VALUES(create_user_name),
+			create_time = VALUES(create_time),
+			last_update_time = VALUES(last_update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.SystemNoticeQuery">
+		 UPDATE system_notice s
+ 		 <set> 
+			<if test="bean.noticeId != null">
+				 notice_id = #{bean.noticeId},
+			</if>
+			<if test="bean.noticeTitle != null">
+				 notice_title = #{bean.noticeTitle},
+			</if>
+			<if test="bean.noticeContent != null">
+				 notice_content = #{bean.noticeContent},
+			</if>
+			<if test="bean.targetType != null">
+				 target_type = #{bean.targetType},
+			</if>
+			<if test="bean.targetIds != null">
+				 target_ids = #{bean.targetIds},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.isTop != null">
+				 is_top = #{bean.isTop},
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time = #{bean.publishTime},
+			</if>
+			<if test="bean.viewCount != null">
+				 view_count = #{bean.viewCount},
+			</if>
+			<if test="bean.createUserId != null">
+				 create_user_id = #{bean.createUserId},
+			</if>
+			<if test="bean.createUserName != null">
+				 create_user_name = #{bean.createUserName},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.lastUpdateTime != null">
+				 last_update_time = #{bean.lastUpdateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete s from system_notice s
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据NoticeId修改-->
+	<update id="updateByNoticeId" parameterType="com.smart.campus.entity.po.SystemNotice">
+		 UPDATE system_notice
+ 		 <set> 
+			<if test="bean.noticeTitle != null">
+				 notice_title = #{bean.noticeTitle},
+			</if>
+			<if test="bean.noticeContent != null">
+				 notice_content = #{bean.noticeContent},
+			</if>
+			<if test="bean.targetType != null">
+				 target_type = #{bean.targetType},
+			</if>
+			<if test="bean.targetIds != null">
+				 target_ids = #{bean.targetIds},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.isTop != null">
+				 is_top = #{bean.isTop},
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time = #{bean.publishTime},
+			</if>
+			<if test="bean.viewCount != null">
+				 view_count = #{bean.viewCount},
+			</if>
+			<if test="bean.createUserId != null">
+				 create_user_id = #{bean.createUserId},
+			</if>
+			<if test="bean.createUserName != null">
+				 create_user_name = #{bean.createUserName},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.lastUpdateTime != null">
+				 last_update_time = #{bean.lastUpdateTime},
+			</if>
+ 		 </set>
+ 		 where notice_id=#{noticeId}
+	</update>
+
+	<!-- 根据NoticeId删除-->
+	<delete id="deleteByNoticeId">
+		delete from system_notice where notice_id=#{noticeId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByNoticeId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from system_notice s where notice_id=#{noticeId}
+	</select>
+
+</mapper>

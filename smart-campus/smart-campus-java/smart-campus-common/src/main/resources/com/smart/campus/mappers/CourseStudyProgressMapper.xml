@@ -1,0 +1,477 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.CourseStudyProgressMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.CourseStudyProgress">
+		<!--主键ID-->
+		<id column="id" property="id"  />
+		<!--学生ID，对应 user_info.user_id-->
+		<result column="user_id" property="userId"  />
+		<!--课程ID，对应 course_info.course_id-->
+		<result column="course_id" property="courseId"  />
+		<!--当前学习章节ID，对应 course_chapter.chapter_id-->
+		<result column="current_chapter_id" property="currentChapterId"  />
+		<!--当前学习课时ID，对应 course_chapter_lesson.lesson_id-->
+		<result column="current_lesson_id" property="currentLessonId"  />
+		<!--累计学习时长，单位秒，重复观看可累计-->
+		<result column="study_seconds" property="studySeconds"  />
+		<!--最后学习时间-->
+		<result column="last_study_time" property="lastStudyTime"  />
+		<!--学习状态: 0未开始 1学习中 2已完成-->
+		<result column="status" property="status"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 c.id,c.user_id,c.course_id,c.current_chapter_id,c.current_lesson_id,
+		 c.study_seconds,c.last_study_time,c.status,c.create_time,c.update_time
+		 
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.id != null">
+				 and  c.id = #{query.id}
+			</if>
+			<if test="query.userId != null">
+				 and  c.user_id = #{query.userId}
+			</if>
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  c.course_id = #{query.courseId}
+			</if>
+			<if test="query.currentChapterId != null and query.currentChapterId!=''">
+				 and  c.current_chapter_id = #{query.currentChapterId}
+			</if>
+			<if test="query.currentLessonId != null and query.currentLessonId!=''">
+				 and  c.current_lesson_id = #{query.currentLessonId}
+			</if>
+			<if test="query.studySeconds != null">
+				 and  c.study_seconds = #{query.studySeconds}
+			</if>
+			<if test="query.lastStudyTime != null and query.lastStudyTime!=''">
+				 <![CDATA[ and  c.last_study_time=str_to_date(#{query.lastStudyTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.status != null">
+				 and  c.status = #{query.status}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  c.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  c.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.currentChapterIdFuzzy!= null  and query.currentChapterIdFuzzy!=''">
+				 and  c.current_chapter_id like concat('%', #{query.currentChapterIdFuzzy}, '%')
+			</if>
+			<if test="query.currentLessonIdFuzzy!= null  and query.currentLessonIdFuzzy!=''">
+				 and  c.current_lesson_id like concat('%', #{query.currentLessonIdFuzzy}, '%')
+			</if>
+			<if test="query.lastStudyTimeStart!= null and query.lastStudyTimeStart!=''">
+				 <![CDATA[ and  c.last_study_time>=str_to_date(#{query.lastStudyTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastStudyTimeEnd!= null and query.lastStudyTimeEnd!=''">
+				 <![CDATA[ and  c.last_study_time< date_sub(str_to_date(#{query.lastStudyTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  c.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  c.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  c.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  c.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM course_study_progress c <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM course_study_progress c <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.CourseStudyProgress">
+		<selectKey keyProperty="bean.id" resultType="Long" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO course_study_progress
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.currentChapterId != null">
+				 current_chapter_id,
+			</if>
+			<if test="bean.currentLessonId != null">
+				 current_lesson_id,
+			</if>
+			<if test="bean.studySeconds != null">
+				 study_seconds,
+			</if>
+			<if test="bean.lastStudyTime != null">
+				 last_study_time,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.currentChapterId!=null">
+				 #{bean.currentChapterId},
+			</if>
+			<if test="bean.currentLessonId!=null">
+				 #{bean.currentLessonId},
+			</if>
+			<if test="bean.studySeconds!=null">
+				 #{bean.studySeconds},
+			</if>
+			<if test="bean.lastStudyTime!=null">
+				 #{bean.lastStudyTime},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.CourseStudyProgress">
+		 INSERT INTO course_study_progress
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.id != null">
+				 id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.currentChapterId != null">
+				 current_chapter_id,
+			</if>
+			<if test="bean.currentLessonId != null">
+				 current_lesson_id,
+			</if>
+			<if test="bean.studySeconds != null">
+				 study_seconds,
+			</if>
+			<if test="bean.lastStudyTime != null">
+				 last_study_time,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.id!=null">
+				 #{bean.id},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.currentChapterId!=null">
+				 #{bean.currentChapterId},
+			</if>
+			<if test="bean.currentLessonId!=null">
+				 #{bean.currentLessonId},
+			</if>
+			<if test="bean.studySeconds!=null">
+				 #{bean.studySeconds},
+			</if>
+			<if test="bean.lastStudyTime!=null">
+				 #{bean.lastStudyTime},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.currentChapterId!=null">
+				 current_chapter_id = VALUES(current_chapter_id),
+			</if>
+			<if test="bean.currentLessonId!=null">
+				 current_lesson_id = VALUES(current_lesson_id),
+			</if>
+			<if test="bean.studySeconds!=null">
+				 study_seconds = VALUES(study_seconds),
+			</if>
+			<if test="bean.lastStudyTime!=null">
+				 last_study_time = VALUES(last_study_time),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.CourseStudyProgress" useGeneratedKeys="true" keyProperty="id">
+		 INSERT INTO course_study_progress(
+			 user_id,
+			 course_id,
+			 current_chapter_id,
+			 current_lesson_id,
+			 study_seconds,
+			 last_study_time,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.courseId},
+				 #{item.currentChapterId},
+				 #{item.currentLessonId},
+				 #{item.studySeconds},
+				 #{item.lastStudyTime},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.CourseStudyProgress">
+		 INSERT INTO course_study_progress(
+			 user_id,
+			 course_id,
+			 current_chapter_id,
+			 current_lesson_id,
+			 study_seconds,
+			 last_study_time,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.courseId},
+				 #{item.currentChapterId},
+				 #{item.currentLessonId},
+				 #{item.studySeconds},
+				 #{item.lastStudyTime},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			user_id = VALUES(user_id),
+			course_id = VALUES(course_id),
+			current_chapter_id = VALUES(current_chapter_id),
+			current_lesson_id = VALUES(current_lesson_id),
+			study_seconds = VALUES(study_seconds),
+			last_study_time = VALUES(last_study_time),
+			status = VALUES(status),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.CourseStudyProgressQuery">
+		 UPDATE course_study_progress c
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.currentChapterId != null">
+				 current_chapter_id = #{bean.currentChapterId},
+			</if>
+			<if test="bean.currentLessonId != null">
+				 current_lesson_id = #{bean.currentLessonId},
+			</if>
+			<if test="bean.studySeconds != null">
+				 study_seconds = #{bean.studySeconds},
+			</if>
+			<if test="bean.lastStudyTime != null">
+				 last_study_time = #{bean.lastStudyTime},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete c from course_study_progress c
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据Id修改-->
+	<update id="updateById" parameterType="com.smart.campus.entity.po.CourseStudyProgress">
+		 UPDATE course_study_progress
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.currentChapterId != null">
+				 current_chapter_id = #{bean.currentChapterId},
+			</if>
+			<if test="bean.currentLessonId != null">
+				 current_lesson_id = #{bean.currentLessonId},
+			</if>
+			<if test="bean.studySeconds != null">
+				 study_seconds = #{bean.studySeconds},
+			</if>
+			<if test="bean.lastStudyTime != null">
+				 last_study_time = #{bean.lastStudyTime},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where id=#{id}
+	</update>
+
+	<!-- 根据Id删除-->
+	<delete id="deleteById">
+		delete from course_study_progress where id=#{id}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectById" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from course_study_progress c where id=#{id}
+	</select>
+
+	<!-- 根据UserIdAndCourseId修改-->
+	<update id="updateByUserIdAndCourseId" parameterType="com.smart.campus.entity.po.CourseStudyProgress">
+		 UPDATE course_study_progress
+ 		 <set> 
+			<if test="bean.currentChapterId != null">
+				 current_chapter_id = #{bean.currentChapterId},
+			</if>
+			<if test="bean.currentLessonId != null">
+				 current_lesson_id = #{bean.currentLessonId},
+			</if>
+			<if test="bean.studySeconds != null">
+				 study_seconds = #{bean.studySeconds},
+			</if>
+			<if test="bean.lastStudyTime != null">
+				 last_study_time = #{bean.lastStudyTime},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where user_id=#{userId} and course_id=#{courseId}
+	</update>
+
+	<!-- 根据UserIdAndCourseId删除-->
+	<delete id="deleteByUserIdAndCourseId">
+		delete from course_study_progress where user_id=#{userId} and course_id=#{courseId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByUserIdAndCourseId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from course_study_progress c where user_id=#{userId} and course_id=#{courseId}
+	</select>
+
+</mapper>

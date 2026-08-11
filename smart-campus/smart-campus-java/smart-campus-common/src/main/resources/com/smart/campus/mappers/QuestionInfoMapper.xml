@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.QuestionInfoMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.smart.campus.entity.po.QuestionInfo">
+        <!--主键ID-->
+        <id column="question_id" property="questionId"/>
+        <!--题目类型:1单选 2多选 3判断 4填空-->
+        <result column="question_type" property="questionType"/>
+        <!--题目标题-->
+        <result column="question_title" property="questionTitle"/>
+        <!--题目配图，可为空，关联resource_info.resource_id多个用逗号隔开-->
+        <result column="question_image" property="questionImage"/>
+        <!--难度等级:1简单 2较易 3中等 4较难 5困难-->
+        <result column="difficulty_level" property="difficultyLevel"/>
+        <!--标准答案，建议存JSON或统一文本，如果是选择题，存储选择题选项ID,exercise_question_option.option_id-->
+        <result column="correct_answer" property="correctAnswer"/>
+        <!--答案解析-->
+        <result column="answer_analysis" property="answerAnalysis"/>
+        <!--创建时间-->
+        <result column="create_time" property="createTime"/>
+        <!--更新时间-->
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        q.question_id,q.question_type,q.question_title,q.question_image,
+        q.difficulty_level,q.correct_answer,q.answer_analysis,q.create_time,q.update_time
+
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.questionId != null">
+            and q.question_id = #{query.questionId}
+        </if>
+        <if test="query.questionType != null">
+            and q.question_type = #{query.questionType}
+        </if>
+        <if test="query.questionTitle != null and query.questionTitle!=''">
+            and q.question_title = #{query.questionTitle}
+        </if>
+        <if test="query.questionImage != null and query.questionImage!=''">
+            and q.question_image = #{query.questionImage}
+        </if>
+        <if test="query.difficultyLevel != null">
+            and q.difficulty_level = #{query.difficultyLevel}
+        </if>
+        <if test="query.correctAnswer != null and query.correctAnswer!=''">
+            and q.correct_answer = #{query.correctAnswer}
+        </if>
+        <if test="query.answerAnalysis != null and query.answerAnalysis!=''">
+            and q.answer_analysis = #{query.answerAnalysis}
+        </if>
+        <if test="query.createTime != null and query.createTime!=''">
+            <![CDATA[ and  q.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.updateTime != null and query.updateTime!=''">
+            <![CDATA[ and  q.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.questionTitleFuzzy!= null  and query.questionTitleFuzzy!=''">
+                and q.question_title like concat('%', #{query.questionTitleFuzzy}, '%')
+            </if>
+            <if test="query.questionImageFuzzy!= null  and query.questionImageFuzzy!=''">
+                and q.question_image like concat('%', #{query.questionImageFuzzy}, '%')
+            </if>
+            <if test="query.correctAnswerFuzzy!= null  and query.correctAnswerFuzzy!=''">
+                and q.correct_answer like concat('%', #{query.correctAnswerFuzzy}, '%')
+            </if>
+            <if test="query.answerAnalysisFuzzy!= null  and query.answerAnalysisFuzzy!=''">
+                and q.answer_analysis like concat('%', #{query.answerAnalysisFuzzy}, '%')
+            </if>
+            <if test="query.createTimeStart!= null and query.createTimeStart!=''">
+                <![CDATA[ and  q.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+                <![CDATA[ and  q.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+            <if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+                <![CDATA[ and  q.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+                <![CDATA[ and  q.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        FROM question_info q
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM question_info q
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.smart.campus.entity.po.QuestionInfo">
+        <selectKey keyProperty="bean.questionId" resultType="Integer" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        INSERT INTO question_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.questionType != null">
+                question_type,
+            </if>
+            <if test="bean.questionTitle != null">
+                question_title,
+            </if>
+            <if test="bean.questionImage != null">
+                question_image,
+            </if>
+            <if test="bean.difficultyLevel != null">
+                difficulty_level,
+            </if>
+            <if test="bean.correctAnswer != null">
+                correct_answer,
+            </if>
+            <if test="bean.answerAnalysis != null">
+                answer_analysis,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.updateTime != null">
+                update_time,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.questionType!=null">
+                #{bean.questionType},
+            </if>
+            <if test="bean.questionTitle!=null">
+                #{bean.questionTitle},
+            </if>
+            <if test="bean.questionImage!=null">
+                #{bean.questionImage},
+            </if>
+            <if test="bean.difficultyLevel!=null">
+                #{bean.difficultyLevel},
+            </if>
+            <if test="bean.correctAnswer!=null">
+                #{bean.correctAnswer},
+            </if>
+            <if test="bean.answerAnalysis!=null">
+                #{bean.answerAnalysis},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.updateTime!=null">
+                #{bean.updateTime},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.QuestionInfo">
+        INSERT INTO question_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.questionId != null">
+                question_id,
+            </if>
+            <if test="bean.questionType != null">
+                question_type,
+            </if>
+            <if test="bean.questionTitle != null">
+                question_title,
+            </if>
+            <if test="bean.questionImage != null">
+                question_image,
+            </if>
+            <if test="bean.difficultyLevel != null">
+                difficulty_level,
+            </if>
+            <if test="bean.correctAnswer != null">
+                correct_answer,
+            </if>
+            <if test="bean.answerAnalysis != null">
+                answer_analysis,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.updateTime != null">
+                update_time,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.questionId!=null">
+                #{bean.questionId},
+            </if>
+            <if test="bean.questionType!=null">
+                #{bean.questionType},
+            </if>
+            <if test="bean.questionTitle!=null">
+                #{bean.questionTitle},
+            </if>
+            <if test="bean.questionImage!=null">
+                #{bean.questionImage},
+            </if>
+            <if test="bean.difficultyLevel!=null">
+                #{bean.difficultyLevel},
+            </if>
+            <if test="bean.correctAnswer!=null">
+                #{bean.correctAnswer},
+            </if>
+            <if test="bean.answerAnalysis!=null">
+                #{bean.answerAnalysis},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.updateTime!=null">
+                #{bean.updateTime},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.questionType!=null">
+                question_type = VALUES(question_type),
+            </if>
+            <if test="bean.questionTitle!=null">
+                question_title = VALUES(question_title),
+            </if>
+            <if test="bean.questionImage!=null">
+                question_image = VALUES(question_image),
+            </if>
+            <if test="bean.difficultyLevel!=null">
+                difficulty_level = VALUES(difficulty_level),
+            </if>
+            <if test="bean.correctAnswer!=null">
+                correct_answer = VALUES(correct_answer),
+            </if>
+            <if test="bean.answerAnalysis!=null">
+                answer_analysis = VALUES(answer_analysis),
+            </if>
+            <if test="bean.createTime!=null">
+                create_time = VALUES(create_time),
+            </if>
+            <if test="bean.updateTime!=null">
+                update_time = VALUES(update_time),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.smart.campus.entity.po.QuestionInfo" useGeneratedKeys="true" keyProperty="questionId">
+        INSERT INTO question_info(
+        question_type,
+        question_title,
+        question_image,
+        difficulty_level,
+        correct_answer,
+        answer_analysis,
+        create_time,
+        update_time
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.questionType},
+            #{item.questionTitle},
+            #{item.questionImage},
+            #{item.difficultyLevel},
+            #{item.correctAnswer},
+            #{item.answerAnalysis},
+            #{item.createTime},
+            #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.QuestionInfo">
+        INSERT INTO question_info(
+        question_type,
+        question_title,
+        question_image,
+        difficulty_level,
+        correct_answer,
+        answer_analysis,
+        create_time,
+        update_time
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.questionType},
+            #{item.questionTitle},
+            #{item.questionImage},
+            #{item.difficultyLevel},
+            #{item.correctAnswer},
+            #{item.answerAnalysis},
+            #{item.createTime},
+            #{item.updateTime}
+            )
+        </foreach>
+        on DUPLICATE key update
+        question_type = VALUES(question_type),
+        question_title = VALUES(question_title),
+        question_image = VALUES(question_image),
+        difficulty_level = VALUES(difficulty_level),
+        correct_answer = VALUES(correct_answer),
+        answer_analysis = VALUES(answer_analysis),
+        create_time = VALUES(create_time),
+        update_time = VALUES(update_time)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.smart.campus.entity.query.QuestionInfoQuery">
+        UPDATE question_info q
+        <set>
+            <if test="bean.questionType != null">
+                question_type = #{bean.questionType},
+            </if>
+            <if test="bean.questionTitle != null">
+                question_title = #{bean.questionTitle},
+            </if>
+            <if test="bean.questionImage != null">
+                question_image = #{bean.questionImage},
+            </if>
+            <if test="bean.difficultyLevel != null">
+                difficulty_level = #{bean.difficultyLevel},
+            </if>
+            <if test="bean.correctAnswer != null">
+                correct_answer = #{bean.correctAnswer},
+            </if>
+            <if test="bean.answerAnalysis != null">
+                answer_analysis = #{bean.answerAnalysis},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.updateTime != null">
+                update_time = #{bean.updateTime},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete q from question_info q
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据QuestionId修改-->
+    <update id="updateByQuestionId" parameterType="com.smart.campus.entity.po.QuestionInfo">
+        UPDATE question_info
+        <set>
+            <if test="bean.questionType != null">
+                question_type = #{bean.questionType},
+            </if>
+            <if test="bean.questionTitle != null">
+                question_title = #{bean.questionTitle},
+            </if>
+            <if test="bean.questionImage != null">
+                question_image = #{bean.questionImage},
+            </if>
+            <if test="bean.difficultyLevel != null">
+                difficulty_level = #{bean.difficultyLevel},
+            </if>
+            <if test="bean.correctAnswer != null">
+                correct_answer = #{bean.correctAnswer},
+            </if>
+            <if test="bean.answerAnalysis != null">
+                answer_analysis = #{bean.answerAnalysis},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.updateTime != null">
+                update_time = #{bean.updateTime},
+            </if>
+        </set>
+        where question_id=#{questionId}
+    </update>
+
+    <!-- 根据QuestionId删除-->
+    <delete id="deleteByQuestionId">
+        delete from question_info where question_id=#{questionId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByQuestionId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from question_info q where question_id=#{questionId}
+    </select>
+
+</mapper>

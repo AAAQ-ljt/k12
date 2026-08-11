@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.ResourceInfoMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.smart.campus.entity.po.ResourceInfo">
+        <!--主键ID-->
+        <id column="resource_id" property="resourceId"/>
+        <!--教师ID-->
+        <result column="teacher_id" property="teacherId"/>
+        <!--父节点ID，0表示根节点-->
+        <result column="parent_id" property="parentId"/>
+        <!--节点类型:1目录 2资源-->
+        <result column="node_type" property="nodeType"/>
+        <!--名称，目录名或资源名-->
+        <result column="resource_name" property="resourceName"/>
+        <!--资源类型:1 视频 2图片 3文档 4压缩包 5其他，目录为空-->
+        <result column="resource_type" property="resourceType"/>
+        <!--原始文件名，目录为空-->
+        <result column="file_name" property="fileName"/>
+        <!--文件后缀，目录为空-->
+        <result column="file_suffix" property="fileSuffix"/>
+        <!--文件大小，目录为0-->
+        <result column="file_size" property="fileSize"/>
+        <!--文件存储路径，目录为空-->
+        <result column="file_path" property="filePath"/>
+        <!--封面图路径，可为空-->
+        <result column="cover_path" property="coverPath"/>
+        <!--状态:状态:1上传中 2转码中 3上传成功  4转码失败 5上传失败-->
+        <result column="status" property="status"/>
+        <!--创建时间-->
+        <result column="create_time" property="createTime"/>
+        <!--更新时间-->
+        <result column="update_time" property="updateTime"/>
+        <!--持续时间-->
+        <result column="duration" property="duration"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        r.resource_id,r.teacher_id,r.parent_id,r.node_type,r.resource_name,
+        r.resource_type,r.file_name,r.file_suffix,r.file_size,r.file_path,
+        r.cover_path,r.status,r.create_time,r.update_time,
+        r.duration
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.resourceId != null">
+            and r.resource_id = #{query.resourceId}
+        </if>
+        <if test="query.resourceIdList != null and query.resourceIdList.size > 0">
+            and r.resource_id in
+            <foreach collection="query.resourceIdList" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="query.teacherId != null">
+            and r.teacher_id = #{query.teacherId}
+        </if>
+        <if test="query.parentId != null">
+            and r.parent_id = #{query.parentId}
+        </if>
+        <if test="query.parentIdList != null and query.parentIdList.size > 0">
+            and r.parent_id in
+            <foreach collection="query.parentIdList" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="query.nodeType != null">
+            and r.node_type = #{query.nodeType}
+        </if>
+        <if test="query.resourceName != null and query.resourceName!=''">
+            and r.resource_name = #{query.resourceName}
+        </if>
+        <if test="query.resourceType != null">
+            and r.resource_type = #{query.resourceType}
+        </if>
+        <if test="query.fileName != null and query.fileName!=''">
+            and r.file_name = #{query.fileName}
+        </if>
+        <if test="query.fileSuffix != null and query.fileSuffix!=''">
+            and r.file_suffix = #{query.fileSuffix}
+        </if>
+        <if test="query.fileSize != null">
+            and r.file_size = #{query.fileSize}
+        </if>
+        <if test="query.filePath != null and query.filePath!=''">
+            and r.file_path = #{query.filePath}
+        </if>
+        <if test="query.coverPath != null and query.coverPath!=''">
+            and r.cover_path = #{query.coverPath}
+        </if>
+        <if test="query.status != null">
+            and r.status = #{query.status}
+        </if>
+        <if test="query.createTime != null and query.createTime!=''">
+            <![CDATA[ and  r.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.updateTime != null and query.updateTime!=''">
+            <![CDATA[ and  r.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.resourceNameFuzzy!= null  and query.resourceNameFuzzy!=''">
+                and r.resource_name like concat('%', #{query.resourceNameFuzzy}, '%')
+            </if>
+            <if test="query.fileNameFuzzy!= null  and query.fileNameFuzzy!=''">
+                and r.file_name like concat('%', #{query.fileNameFuzzy}, '%')
+            </if>
+            <if test="query.fileSuffixFuzzy!= null  and query.fileSuffixFuzzy!=''">
+                and r.file_suffix like concat('%', #{query.fileSuffixFuzzy}, '%')
+            </if>
+            <if test="query.filePathFuzzy!= null  and query.filePathFuzzy!=''">
+                and r.file_path like concat('%', #{query.filePathFuzzy}, '%')
+            </if>
+            <if test="query.coverPathFuzzy!= null  and query.coverPathFuzzy!=''">
+                and r.cover_path like concat('%', #{query.coverPathFuzzy}, '%')
+            </if>
+            <if test="query.createTimeStart!= null and query.createTimeStart!=''">
+                <![CDATA[ and  r.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+                <![CDATA[ and  r.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+            <if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+                <![CDATA[ and  r.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+                <![CDATA[ and  r.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        FROM resource_info r
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM resource_info r
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.smart.campus.entity.po.ResourceInfo">
+        <selectKey keyProperty="bean.resourceId" resultType="Integer" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        INSERT INTO resource_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.teacherId != null">
+                teacher_id,
+            </if>
+            <if test="bean.parentId != null">
+                parent_id,
+            </if>
+            <if test="bean.nodeType != null">
+                node_type,
+            </if>
+            <if test="bean.resourceName != null">
+                resource_name,
+            </if>
+            <if test="bean.resourceType != null">
+                resource_type,
+            </if>
+            <if test="bean.fileName != null">
+                file_name,
+            </if>
+            <if test="bean.fileSuffix != null">
+                file_suffix,
+            </if>
+            <if test="bean.fileSize != null">
+                file_size,
+            </if>
+            <if test="bean.filePath != null">
+                file_path,
+            </if>
+            <if test="bean.coverPath != null">
+                cover_path,
+            </if>
+            <if test="bean.status != null">
+                status,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.updateTime != null">
+                update_time,
+            </if>
+            <if test="bean.duration != null">
+                duration,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.teacherId!=null">
+                #{bean.teacherId},
+            </if>
+            <if test="bean.parentId!=null">
+                #{bean.parentId},
+            </if>
+            <if test="bean.nodeType!=null">
+                #{bean.nodeType},
+            </if>
+            <if test="bean.resourceName!=null">
+                #{bean.resourceName},
+            </if>
+            <if test="bean.resourceType!=null">
+                #{bean.resourceType},
+            </if>
+            <if test="bean.fileName!=null">
+                #{bean.fileName},
+            </if>
+            <if test="bean.fileSuffix!=null">
+                #{bean.fileSuffix},
+            </if>
+            <if test="bean.fileSize!=null">
+                #{bean.fileSize},
+            </if>
+            <if test="bean.filePath!=null">
+                #{bean.filePath},
+            </if>
+            <if test="bean.coverPath!=null">
+                #{bean.coverPath},
+            </if>
+            <if test="bean.status!=null">
+                #{bean.status},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.updateTime!=null">
+                #{bean.updateTime},
+            </if>
+            <if test="bean.duration!=null">
+                #{bean.duration},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.ResourceInfo">
+        INSERT INTO resource_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.resourceId != null">
+                resource_id,
+            </if>
+            <if test="bean.teacherId != null">
+                teacher_id,
+            </if>
+            <if test="bean.parentId != null">
+                parent_id,
+            </if>
+            <if test="bean.nodeType != null">
+                node_type,
+            </if>
+            <if test="bean.resourceName != null">
+                resource_name,
+            </if>
+            <if test="bean.resourceType != null">
+                resource_type,
+            </if>
+            <if test="bean.fileName != null">
+                file_name,
+            </if>
+            <if test="bean.fileSuffix != null">
+                file_suffix,
+            </if>
+            <if test="bean.fileSize != null">
+                file_size,
+            </if>
+            <if test="bean.filePath != null">
+                file_path,
+            </if>
+            <if test="bean.coverPath != null">
+                cover_path,
+            </if>
+            <if test="bean.status != null">
+                status,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.updateTime != null">
+                update_time,
+            </if>
+            <if test="bean.duration != null">
+                duration,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.resourceId!=null">
+                #{bean.resourceId},
+            </if>
+            <if test="bean.teacherId!=null">
+                #{bean.teacherId},
+            </if>
+            <if test="bean.parentId!=null">
+                #{bean.parentId},
+            </if>
+            <if test="bean.nodeType!=null">
+                #{bean.nodeType},
+            </if>
+            <if test="bean.resourceName!=null">
+                #{bean.resourceName},
+            </if>
+            <if test="bean.resourceType!=null">
+                #{bean.resourceType},
+            </if>
+            <if test="bean.fileName!=null">
+                #{bean.fileName},
+            </if>
+            <if test="bean.fileSuffix!=null">
+                #{bean.fileSuffix},
+            </if>
+            <if test="bean.fileSize!=null">
+                #{bean.fileSize},
+            </if>
+            <if test="bean.filePath!=null">
+                #{bean.filePath},
+            </if>
+            <if test="bean.coverPath!=null">
+                #{bean.coverPath},
+            </if>
+            <if test="bean.status!=null">
+                #{bean.status},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.updateTime!=null">
+                #{bean.updateTime},
+            </if>
+            <if test="bean.duration!=null">
+                #{bean.duration},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.teacherId!=null">
+                teacher_id = VALUES(teacher_id),
+            </if>
+            <if test="bean.parentId!=null">
+                parent_id = VALUES(parent_id),
+            </if>
+            <if test="bean.nodeType!=null">
+                node_type = VALUES(node_type),
+            </if>
+            <if test="bean.resourceName!=null">
+                resource_name = VALUES(resource_name),
+            </if>
+            <if test="bean.resourceType!=null">
+                resource_type = VALUES(resource_type),
+            </if>
+            <if test="bean.fileName!=null">
+                file_name = VALUES(file_name),
+            </if>
+            <if test="bean.fileSuffix!=null">
+                file_suffix = VALUES(file_suffix),
+            </if>
+            <if test="bean.fileSize!=null">
+                file_size = VALUES(file_size),
+            </if>
+            <if test="bean.filePath!=null">
+                file_path = VALUES(file_path),
+            </if>
+            <if test="bean.coverPath!=null">
+                cover_path = VALUES(cover_path),
+            </if>
+            <if test="bean.status!=null">
+                status = VALUES(status),
+            </if>
+            <if test="bean.createTime!=null">
+                create_time = VALUES(create_time),
+            </if>
+            <if test="bean.updateTime!=null">
+                update_time = VALUES(update_time),
+            </if>
+            <if test="bean.duration!=null">
+                duration = VALUES(duration),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.smart.campus.entity.po.ResourceInfo" useGeneratedKeys="true" keyProperty="resourceId">
+        INSERT INTO resource_info(
+        teacher_id,
+        parent_id,
+        node_type,
+        resource_name,
+        resource_type,
+        file_name,
+        file_suffix,
+        file_size,
+        file_path,
+        cover_path,
+        status,
+        create_time,
+        update_time,
+        duration
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.teacherId},
+            #{item.parentId},
+            #{item.nodeType},
+            #{item.resourceName},
+            #{item.resourceType},
+            #{item.fileName},
+            #{item.fileSuffix},
+            #{item.fileSize},
+            #{item.filePath},
+            #{item.coverPath},
+            #{item.status},
+            #{item.createTime},
+            #{item.updateTime},
+            #{item.duration}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.ResourceInfo">
+        INSERT INTO resource_info(
+        teacher_id,
+        parent_id,
+        node_type,
+        resource_name,
+        resource_type,
+        file_name,
+        file_suffix,
+        file_size,
+        file_path,
+        cover_path,
+        status,
+        create_time,
+        update_time,
+        duration
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.teacherId},
+            #{item.parentId},
+            #{item.nodeType},
+            #{item.resourceName},
+            #{item.resourceType},
+            #{item.fileName},
+            #{item.fileSuffix},
+            #{item.fileSize},
+            #{item.filePath},
+            #{item.coverPath},
+            #{item.status},
+            #{item.createTime},
+            #{item.updateTime},
+            #{item.duration}
+            )
+        </foreach>
+        on DUPLICATE key update
+        teacher_id = VALUES(teacher_id),
+        parent_id = VALUES(parent_id),
+        node_type = VALUES(node_type),
+        resource_name = VALUES(resource_name),
+        resource_type = VALUES(resource_type),
+        file_name = VALUES(file_name),
+        file_suffix = VALUES(file_suffix),
+        file_size = VALUES(file_size),
+        file_path = VALUES(file_path),
+        cover_path = VALUES(cover_path),
+        status = VALUES(status),
+        create_time = VALUES(create_time),
+        update_time = VALUES(update_time),
+        duration = VALUES(duration)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.smart.campus.entity.query.ResourceInfoQuery">
+        UPDATE resource_info r
+        <set>
+            <if test="bean.teacherId != null">
+                teacher_id = #{bean.teacherId},
+            </if>
+            <if test="bean.parentId != null">
+                parent_id = #{bean.parentId},
+            </if>
+            <if test="bean.nodeType != null">
+                node_type = #{bean.nodeType},
+            </if>
+            <if test="bean.resourceName != null">
+                resource_name = #{bean.resourceName},
+            </if>
+            <if test="bean.resourceType != null">
+                resource_type = #{bean.resourceType},
+            </if>
+            <if test="bean.fileName != null">
+                file_name = #{bean.fileName},
+            </if>
+            <if test="bean.fileSuffix != null">
+                file_suffix = #{bean.fileSuffix},
+            </if>
+            <if test="bean.fileSize != null">
+                file_size = #{bean.fileSize},
+            </if>
+            <if test="bean.filePath != null">
+                file_path = #{bean.filePath},
+            </if>
+            <if test="bean.coverPath != null">
+                cover_path = #{bean.coverPath},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.updateTime != null">
+                update_time = #{bean.updateTime},
+            </if>
+            <if test="bean.duration != null">
+                duration = #{bean.duration},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete r from resource_info r
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据ResourceId修改-->
+    <update id="updateByResourceId" parameterType="com.smart.campus.entity.po.ResourceInfo">
+        UPDATE resource_info
+        <set>
+            <if test="bean.teacherId != null">
+                teacher_id = #{bean.teacherId},
+            </if>
+            <if test="bean.parentId != null">
+                parent_id = #{bean.parentId},
+            </if>
+            <if test="bean.nodeType != null">
+                node_type = #{bean.nodeType},
+            </if>
+            <if test="bean.resourceName != null">
+                resource_name = #{bean.resourceName},
+            </if>
+            <if test="bean.resourceType != null">
+                resource_type = #{bean.resourceType},
+            </if>
+            <if test="bean.fileName != null">
+                file_name = #{bean.fileName},
+            </if>
+            <if test="bean.fileSuffix != null">
+                file_suffix = #{bean.fileSuffix},
+            </if>
+            <if test="bean.fileSize != null">
+                file_size = #{bean.fileSize},
+            </if>
+            <if test="bean.filePath != null">
+                file_path = #{bean.filePath},
+            </if>
+            <if test="bean.coverPath != null">
+                cover_path = #{bean.coverPath},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.updateTime != null">
+                update_time = #{bean.updateTime},
+            </if>
+            <if test="bean.duration != null">
+                duration = #{bean.duration},
+            </if>
+        </set>
+        where resource_id=#{resourceId}
+    </update>
+
+    <!-- 根据ResourceId删除-->
+    <delete id="deleteByResourceId">
+        delete from resource_info where resource_id=#{resourceId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByResourceId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from resource_info r where resource_id=#{resourceId}
+    </select>
+
+</mapper>

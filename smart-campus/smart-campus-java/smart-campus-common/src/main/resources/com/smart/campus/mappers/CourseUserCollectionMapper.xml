@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.CourseUserCollectionMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.CourseUserCollection">
+		<!--主键ID-->
+		<result column="course_id" property="courseId"  />
+		<!--主键ID-->
+		<result column="user_id" property="userId"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 c.course_id,c.user_id
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  c.course_id = #{query.courseId}
+			</if>
+			<if test="query.userId != null">
+				 and  c.user_id = #{query.userId}
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM course_user_collection c <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM course_user_collection c <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.CourseUserCollection">
+		 INSERT INTO course_user_collection
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.CourseUserCollection">
+		 INSERT INTO course_user_collection
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.CourseUserCollection">
+		 INSERT INTO course_user_collection(
+			 course_id,
+			 user_id
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.courseId},
+				 #{item.userId}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.CourseUserCollection">
+		 INSERT INTO course_user_collection(
+			 course_id,
+			 user_id
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.courseId},
+				 #{item.userId}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			course_id = VALUES(course_id),
+			user_id = VALUES(user_id)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.CourseUserCollectionQuery">
+		 UPDATE course_user_collection c
+ 		 <set> 
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete c from course_user_collection c
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据CourseIdAndUserId修改-->
+	<update id="updateByCourseIdAndUserId" parameterType="com.smart.campus.entity.po.CourseUserCollection">
+		 UPDATE course_user_collection
+ 		 <set> 
+ 		 </set>
+ 		 where course_id=#{courseId} and user_id=#{userId}
+	</update>
+
+	<!-- 根据CourseIdAndUserId删除-->
+	<delete id="deleteByCourseIdAndUserId">
+		delete from course_user_collection where course_id=#{courseId} and user_id=#{userId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByCourseIdAndUserId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from course_user_collection c where course_id=#{courseId} and user_id=#{userId}
+	</select>
+
+</mapper>

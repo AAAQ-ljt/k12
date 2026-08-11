@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.MessageInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.MessageInfo">
+		<!--主键ID-->
+		<id column="message_id" property="messageId"  />
+		<!--消息标题-->
+		<result column="message_title" property="messageTitle"  />
+		<!--消息内容-->
+		<result column="message_content" property="messageContent"  />
+		<!--消息类型: 1系统通知 2课程消息 3作业消息 4考试消息-->
+		<result column="message_type" property="messageType"  />
+		<!--业务类型: 0通用 1课程 2作业 3考试-->
+		<result column="biz_type" property="bizType"  />
+		<!--业务ID，如 courseId/taskId/examId-->
+		<result column="biz_id" property="bizId"  />
+		<!--发送人ID，系统消息可为空-->
+		<result column="sender_id" property="senderId"  />
+		<!--发送人名称，冗余展示-->
+		<result column="sender_name" property="senderName"  />
+		<!--发送范围: 1单人 2多人 3全体学生-->
+		<result column="send_scope" property="sendScope"  />
+		<!--点击跳转路径-->
+		<result column="jump_path" property="jumpPath"  />
+		<!--发送时间-->
+		<result column="send_time" property="sendTime"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 m.message_id,m.message_title,m.message_content,m.message_type,m.biz_type,
+		 m.biz_id,m.sender_id,m.sender_name,m.send_scope,m.jump_path,
+		 m.send_time,m.create_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.messageId != null">
+				 and  m.message_id = #{query.messageId}
+			</if>
+			<if test="query.messageTitle != null and query.messageTitle!=''">
+				 and  m.message_title = #{query.messageTitle}
+			</if>
+			<if test="query.messageContent != null and query.messageContent!=''">
+				 and  m.message_content = #{query.messageContent}
+			</if>
+			<if test="query.messageType != null">
+				 and  m.message_type = #{query.messageType}
+			</if>
+			<if test="query.bizType != null">
+				 and  m.biz_type = #{query.bizType}
+			</if>
+			<if test="query.bizId != null and query.bizId!=''">
+				 and  m.biz_id = #{query.bizId}
+			</if>
+			<if test="query.senderId != null">
+				 and  m.sender_id = #{query.senderId}
+			</if>
+			<if test="query.senderName != null and query.senderName!=''">
+				 and  m.sender_name = #{query.senderName}
+			</if>
+			<if test="query.sendScope != null">
+				 and  m.send_scope = #{query.sendScope}
+			</if>
+			<if test="query.jumpPath != null and query.jumpPath!=''">
+				 and  m.jump_path = #{query.jumpPath}
+			</if>
+			<if test="query.sendTime != null and query.sendTime!=''">
+				 <![CDATA[ and  m.send_time=str_to_date(#{query.sendTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  m.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.messageTitleFuzzy!= null  and query.messageTitleFuzzy!=''">
+				 and  m.message_title like concat('%', #{query.messageTitleFuzzy}, '%')
+			</if>
+			<if test="query.messageContentFuzzy!= null  and query.messageContentFuzzy!=''">
+				 and  m.message_content like concat('%', #{query.messageContentFuzzy}, '%')
+			</if>
+			<if test="query.bizIdFuzzy!= null  and query.bizIdFuzzy!=''">
+				 and  m.biz_id like concat('%', #{query.bizIdFuzzy}, '%')
+			</if>
+			<if test="query.senderNameFuzzy!= null  and query.senderNameFuzzy!=''">
+				 and  m.sender_name like concat('%', #{query.senderNameFuzzy}, '%')
+			</if>
+			<if test="query.jumpPathFuzzy!= null  and query.jumpPathFuzzy!=''">
+				 and  m.jump_path like concat('%', #{query.jumpPathFuzzy}, '%')
+			</if>
+			<if test="query.sendTimeStart!= null and query.sendTimeStart!=''">
+				 <![CDATA[ and  m.send_time>=str_to_date(#{query.sendTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.sendTimeEnd!= null and query.sendTimeEnd!=''">
+				 <![CDATA[ and  m.send_time< date_sub(str_to_date(#{query.sendTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  m.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  m.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM message_info m <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM message_info m <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.MessageInfo">
+		<selectKey keyProperty="bean.messageId" resultType="Long" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO message_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.messageTitle != null">
+				 message_title,
+			</if>
+			<if test="bean.messageContent != null">
+				 message_content,
+			</if>
+			<if test="bean.messageType != null">
+				 message_type,
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type,
+			</if>
+			<if test="bean.bizId != null">
+				 biz_id,
+			</if>
+			<if test="bean.senderId != null">
+				 sender_id,
+			</if>
+			<if test="bean.senderName != null">
+				 sender_name,
+			</if>
+			<if test="bean.sendScope != null">
+				 send_scope,
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path,
+			</if>
+			<if test="bean.sendTime != null">
+				 send_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.messageTitle!=null">
+				 #{bean.messageTitle},
+			</if>
+			<if test="bean.messageContent!=null">
+				 #{bean.messageContent},
+			</if>
+			<if test="bean.messageType!=null">
+				 #{bean.messageType},
+			</if>
+			<if test="bean.bizType!=null">
+				 #{bean.bizType},
+			</if>
+			<if test="bean.bizId!=null">
+				 #{bean.bizId},
+			</if>
+			<if test="bean.senderId!=null">
+				 #{bean.senderId},
+			</if>
+			<if test="bean.senderName!=null">
+				 #{bean.senderName},
+			</if>
+			<if test="bean.sendScope!=null">
+				 #{bean.sendScope},
+			</if>
+			<if test="bean.jumpPath!=null">
+				 #{bean.jumpPath},
+			</if>
+			<if test="bean.sendTime!=null">
+				 #{bean.sendTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.MessageInfo">
+		 INSERT INTO message_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.messageId != null">
+				 message_id,
+			</if>
+			<if test="bean.messageTitle != null">
+				 message_title,
+			</if>
+			<if test="bean.messageContent != null">
+				 message_content,
+			</if>
+			<if test="bean.messageType != null">
+				 message_type,
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type,
+			</if>
+			<if test="bean.bizId != null">
+				 biz_id,
+			</if>
+			<if test="bean.senderId != null">
+				 sender_id,
+			</if>
+			<if test="bean.senderName != null">
+				 sender_name,
+			</if>
+			<if test="bean.sendScope != null">
+				 send_scope,
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path,
+			</if>
+			<if test="bean.sendTime != null">
+				 send_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.messageId!=null">
+				 #{bean.messageId},
+			</if>
+			<if test="bean.messageTitle!=null">
+				 #{bean.messageTitle},
+			</if>
+			<if test="bean.messageContent!=null">
+				 #{bean.messageContent},
+			</if>
+			<if test="bean.messageType!=null">
+				 #{bean.messageType},
+			</if>
+			<if test="bean.bizType!=null">
+				 #{bean.bizType},
+			</if>
+			<if test="bean.bizId!=null">
+				 #{bean.bizId},
+			</if>
+			<if test="bean.senderId!=null">
+				 #{bean.senderId},
+			</if>
+			<if test="bean.senderName!=null">
+				 #{bean.senderName},
+			</if>
+			<if test="bean.sendScope!=null">
+				 #{bean.sendScope},
+			</if>
+			<if test="bean.jumpPath!=null">
+				 #{bean.jumpPath},
+			</if>
+			<if test="bean.sendTime!=null">
+				 #{bean.sendTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.messageTitle!=null">
+				 message_title = VALUES(message_title),
+			</if>
+			<if test="bean.messageContent!=null">
+				 message_content = VALUES(message_content),
+			</if>
+			<if test="bean.messageType!=null">
+				 message_type = VALUES(message_type),
+			</if>
+			<if test="bean.bizType!=null">
+				 biz_type = VALUES(biz_type),
+			</if>
+			<if test="bean.bizId!=null">
+				 biz_id = VALUES(biz_id),
+			</if>
+			<if test="bean.senderId!=null">
+				 sender_id = VALUES(sender_id),
+			</if>
+			<if test="bean.senderName!=null">
+				 sender_name = VALUES(sender_name),
+			</if>
+			<if test="bean.sendScope!=null">
+				 send_scope = VALUES(send_scope),
+			</if>
+			<if test="bean.jumpPath!=null">
+				 jump_path = VALUES(jump_path),
+			</if>
+			<if test="bean.sendTime!=null">
+				 send_time = VALUES(send_time),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.MessageInfo" useGeneratedKeys="true" keyProperty="messageId">
+		 INSERT INTO message_info(
+			 message_title,
+			 message_content,
+			 message_type,
+			 biz_type,
+			 biz_id,
+			 sender_id,
+			 sender_name,
+			 send_scope,
+			 jump_path,
+			 send_time,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.messageTitle},
+				 #{item.messageContent},
+				 #{item.messageType},
+				 #{item.bizType},
+				 #{item.bizId},
+				 #{item.senderId},
+				 #{item.senderName},
+				 #{item.sendScope},
+				 #{item.jumpPath},
+				 #{item.sendTime},
+				 #{item.createTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.MessageInfo">
+		 INSERT INTO message_info(
+			 message_title,
+			 message_content,
+			 message_type,
+			 biz_type,
+			 biz_id,
+			 sender_id,
+			 sender_name,
+			 send_scope,
+			 jump_path,
+			 send_time,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.messageTitle},
+				 #{item.messageContent},
+				 #{item.messageType},
+				 #{item.bizType},
+				 #{item.bizId},
+				 #{item.senderId},
+				 #{item.senderName},
+				 #{item.sendScope},
+				 #{item.jumpPath},
+				 #{item.sendTime},
+				 #{item.createTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			message_title = VALUES(message_title),
+			message_content = VALUES(message_content),
+			message_type = VALUES(message_type),
+			biz_type = VALUES(biz_type),
+			biz_id = VALUES(biz_id),
+			sender_id = VALUES(sender_id),
+			sender_name = VALUES(sender_name),
+			send_scope = VALUES(send_scope),
+			jump_path = VALUES(jump_path),
+			send_time = VALUES(send_time),
+			create_time = VALUES(create_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.MessageInfoQuery">
+		 UPDATE message_info m
+ 		 <set> 
+			<if test="bean.messageTitle != null">
+				 message_title = #{bean.messageTitle},
+			</if>
+			<if test="bean.messageContent != null">
+				 message_content = #{bean.messageContent},
+			</if>
+			<if test="bean.messageType != null">
+				 message_type = #{bean.messageType},
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type = #{bean.bizType},
+			</if>
+			<if test="bean.bizId != null">
+				 biz_id = #{bean.bizId},
+			</if>
+			<if test="bean.senderId != null">
+				 sender_id = #{bean.senderId},
+			</if>
+			<if test="bean.senderName != null">
+				 sender_name = #{bean.senderName},
+			</if>
+			<if test="bean.sendScope != null">
+				 send_scope = #{bean.sendScope},
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path = #{bean.jumpPath},
+			</if>
+			<if test="bean.sendTime != null">
+				 send_time = #{bean.sendTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete m from message_info m
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据MessageId修改-->
+	<update id="updateByMessageId" parameterType="com.smart.campus.entity.po.MessageInfo">
+		 UPDATE message_info
+ 		 <set> 
+			<if test="bean.messageTitle != null">
+				 message_title = #{bean.messageTitle},
+			</if>
+			<if test="bean.messageContent != null">
+				 message_content = #{bean.messageContent},
+			</if>
+			<if test="bean.messageType != null">
+				 message_type = #{bean.messageType},
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type = #{bean.bizType},
+			</if>
+			<if test="bean.bizId != null">
+				 biz_id = #{bean.bizId},
+			</if>
+			<if test="bean.senderId != null">
+				 sender_id = #{bean.senderId},
+			</if>
+			<if test="bean.senderName != null">
+				 sender_name = #{bean.senderName},
+			</if>
+			<if test="bean.sendScope != null">
+				 send_scope = #{bean.sendScope},
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path = #{bean.jumpPath},
+			</if>
+			<if test="bean.sendTime != null">
+				 send_time = #{bean.sendTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 where message_id=#{messageId}
+	</update>
+
+	<!-- 根据MessageId删除-->
+	<delete id="deleteByMessageId">
+		delete from message_info where message_id=#{messageId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByMessageId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from message_info m where message_id=#{messageId}
+	</select>
+
+</mapper>

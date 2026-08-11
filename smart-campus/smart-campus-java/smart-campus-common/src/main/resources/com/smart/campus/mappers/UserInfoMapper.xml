@@ -1,0 +1,679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.UserInfoMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.smart.campus.entity.po.UserInfo">
+        <!--主键ID-->
+        <id column="user_id" property="userId"/>
+        <!--用户编号/学号/工号/管理员账号-->
+        <result column="user_no" property="userNo"/>
+        <!--登录密码-->
+        <result column="password" property="password"/>
+        <!--真实姓名-->
+        <result column="real_name" property="realName"/>
+        <!--性别: 1男 2女 0未知-->
+        <result column="gender" property="gender"/>
+        <!--手机号-->
+        <result column="phone" property="phone"/>
+        <!--邮箱-->
+        <result column="email" property="email"/>
+        <!--头像地址-->
+        <result column="avatar" property="avatar"/>
+        <!--角色类型: 0:管理员 1:老师  2:学生-->
+        <result column="role_type" property="roleType"/>
+        <!--班级ID-->
+        <result column="class_id" property="classId"/>
+        <!--职称(教师用)-->
+        <result column="title_name" property="titleName"/>
+        <!--状态: 1启用 0停用-->
+        <result column="status" property="status"/>
+        <!--最后登录时间-->
+        <result column="last_login_time" property="lastLoginTime"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        u.user_id,u.user_no,u.password,u.real_name,u.gender,
+        u.phone,u.email,u.avatar,u.role_type,u.class_id,
+        u.title_name,u.status,u.last_login_time
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.userId != null">
+            and u.user_id = #{query.userId}
+        </if>
+        <if test="query.userNo != null and query.userNo!=''">
+            and u.user_no = #{query.userNo}
+        </if>
+        <if test="query.password != null and query.password!=''">
+            and u.password = #{query.password}
+        </if>
+        <if test="query.realName != null and query.realName!=''">
+            and u.real_name = #{query.realName}
+        </if>
+        <if test="query.gender != null">
+            and u.gender = #{query.gender}
+        </if>
+        <if test="query.phone != null and query.phone!=''">
+            and u.phone = #{query.phone}
+        </if>
+        <if test="query.email != null and query.email!=''">
+            and u.email = #{query.email}
+        </if>
+        <if test="query.avatar != null and query.avatar!=''">
+            and u.avatar = #{query.avatar}
+        </if>
+        <if test="query.roleType != null">
+            and u.role_type = #{query.roleType}
+        </if>
+        <if test="query.classId != null and query.classId!=''">
+            and u.class_id = #{query.classId}
+        </if>
+        <if test="query.titleName != null and query.titleName!=''">
+            and u.title_name = #{query.titleName}
+        </if>
+        <if test="query.status != null">
+            and u.status = #{query.status}
+        </if>
+        <if test="query.lastLoginTime != null and query.lastLoginTime!=''">
+            <![CDATA[ and  u.last_login_time=str_to_date(#{query.lastLoginTime}, '%Y-%m-%d') ]]>
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.userNoFuzzy!= null  and query.userNoFuzzy!=''">
+                and u.user_no like concat('%', #{query.userNoFuzzy}, '%')
+            </if>
+            <if test="query.passwordFuzzy!= null  and query.passwordFuzzy!=''">
+                and u.password like concat('%', #{query.passwordFuzzy}, '%')
+            </if>
+            <if test="query.realNameFuzzy!= null  and query.realNameFuzzy!=''">
+                and u.real_name like concat('%', #{query.realNameFuzzy}, '%')
+            </if>
+            <if test="query.phoneFuzzy!= null  and query.phoneFuzzy!=''">
+                and u.phone like concat('%', #{query.phoneFuzzy}, '%')
+            </if>
+            <if test="query.emailFuzzy!= null  and query.emailFuzzy!=''">
+                and u.email like concat('%', #{query.emailFuzzy}, '%')
+            </if>
+            <if test="query.avatarFuzzy!= null  and query.avatarFuzzy!=''">
+                and u.avatar like concat('%', #{query.avatarFuzzy}, '%')
+            </if>
+            <if test="query.classIdFuzzy!= null  and query.classIdFuzzy!=''">
+                and u.class_id like concat('%', #{query.classIdFuzzy}, '%')
+            </if>
+            <if test="query.titleNameFuzzy!= null  and query.titleNameFuzzy!=''">
+                and u.title_name like concat('%', #{query.titleNameFuzzy}, '%')
+            </if>
+            <if test="query.lastLoginTimeStart!= null and query.lastLoginTimeStart!=''">
+                <![CDATA[ and  u.last_login_time>=str_to_date(#{query.lastLoginTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.lastLoginTimeEnd!= null and query.lastLoginTimeEnd!=''">
+                <![CDATA[ and  u.last_login_time< date_sub(str_to_date(#{query.lastLoginTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        FROM user_info u
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM user_info u
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.smart.campus.entity.po.UserInfo">
+        <selectKey keyProperty="bean.userId" resultType="Integer" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        INSERT INTO user_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.userNo != null">
+                user_no,
+            </if>
+            <if test="bean.password != null">
+                password,
+            </if>
+            <if test="bean.realName != null">
+                real_name,
+            </if>
+            <if test="bean.gender != null">
+                gender,
+            </if>
+            <if test="bean.phone != null">
+                phone,
+            </if>
+            <if test="bean.email != null">
+                email,
+            </if>
+            <if test="bean.avatar != null">
+                avatar,
+            </if>
+            <if test="bean.roleType != null">
+                role_type,
+            </if>
+            <if test="bean.classId != null">
+                class_id,
+            </if>
+            <if test="bean.titleName != null">
+                title_name,
+            </if>
+            <if test="bean.status != null">
+                status,
+            </if>
+            <if test="bean.lastLoginTime != null">
+                last_login_time,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.userNo!=null">
+                #{bean.userNo},
+            </if>
+            <if test="bean.password!=null">
+                #{bean.password},
+            </if>
+            <if test="bean.realName!=null">
+                #{bean.realName},
+            </if>
+            <if test="bean.gender!=null">
+                #{bean.gender},
+            </if>
+            <if test="bean.phone!=null">
+                #{bean.phone},
+            </if>
+            <if test="bean.email!=null">
+                #{bean.email},
+            </if>
+            <if test="bean.avatar!=null">
+                #{bean.avatar},
+            </if>
+            <if test="bean.roleType!=null">
+                #{bean.roleType},
+            </if>
+            <if test="bean.classId!=null">
+                #{bean.classId},
+            </if>
+            <if test="bean.titleName!=null">
+                #{bean.titleName},
+            </if>
+            <if test="bean.status!=null">
+                #{bean.status},
+            </if>
+            <if test="bean.lastLoginTime!=null">
+                #{bean.lastLoginTime},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.UserInfo">
+        INSERT INTO user_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.userId != null">
+                user_id,
+            </if>
+            <if test="bean.userNo != null">
+                user_no,
+            </if>
+            <if test="bean.password != null">
+                password,
+            </if>
+            <if test="bean.realName != null">
+                real_name,
+            </if>
+            <if test="bean.gender != null">
+                gender,
+            </if>
+            <if test="bean.phone != null">
+                phone,
+            </if>
+            <if test="bean.email != null">
+                email,
+            </if>
+            <if test="bean.avatar != null">
+                avatar,
+            </if>
+            <if test="bean.roleType != null">
+                role_type,
+            </if>
+            <if test="bean.classId != null">
+                class_id,
+            </if>
+            <if test="bean.titleName != null">
+                title_name,
+            </if>
+            <if test="bean.status != null">
+                status,
+            </if>
+            <if test="bean.lastLoginTime != null">
+                last_login_time,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.userId!=null">
+                #{bean.userId},
+            </if>
+            <if test="bean.userNo!=null">
+                #{bean.userNo},
+            </if>
+            <if test="bean.password!=null">
+                #{bean.password},
+            </if>
+            <if test="bean.realName!=null">
+                #{bean.realName},
+            </if>
+            <if test="bean.gender!=null">
+                #{bean.gender},
+            </if>
+            <if test="bean.phone!=null">
+                #{bean.phone},
+            </if>
+            <if test="bean.email!=null">
+                #{bean.email},
+            </if>
+            <if test="bean.avatar!=null">
+                #{bean.avatar},
+            </if>
+            <if test="bean.roleType!=null">
+                #{bean.roleType},
+            </if>
+            <if test="bean.classId!=null">
+                #{bean.classId},
+            </if>
+            <if test="bean.titleName!=null">
+                #{bean.titleName},
+            </if>
+            <if test="bean.status!=null">
+                #{bean.status},
+            </if>
+            <if test="bean.lastLoginTime!=null">
+                #{bean.lastLoginTime},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.userNo!=null">
+                user_no = VALUES(user_no),
+            </if>
+            <if test="bean.password!=null">
+                password = VALUES(password),
+            </if>
+            <if test="bean.realName!=null">
+                real_name = VALUES(real_name),
+            </if>
+            <if test="bean.gender!=null">
+                gender = VALUES(gender),
+            </if>
+            <if test="bean.phone!=null">
+                phone = VALUES(phone),
+            </if>
+            <if test="bean.email!=null">
+                email = VALUES(email),
+            </if>
+            <if test="bean.avatar!=null">
+                avatar = VALUES(avatar),
+            </if>
+            <if test="bean.roleType!=null">
+                role_type = VALUES(role_type),
+            </if>
+            <if test="bean.classId!=null">
+                class_id = VALUES(class_id),
+            </if>
+            <if test="bean.titleName!=null">
+                title_name = VALUES(title_name),
+            </if>
+            <if test="bean.status!=null">
+                status = VALUES(status),
+            </if>
+            <if test="bean.lastLoginTime!=null">
+                last_login_time = VALUES(last_login_time),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.smart.campus.entity.po.UserInfo" useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO user_info(
+        user_no,
+        password,
+        real_name,
+        gender,
+        phone,
+        email,
+        avatar,
+        role_type,
+        class_id,
+        title_name,
+        status,
+        last_login_time
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.userNo},
+            #{item.password},
+            #{item.realName},
+            #{item.gender},
+            #{item.phone},
+            #{item.email},
+            #{item.avatar},
+            #{item.roleType},
+            #{item.classId},
+            #{item.titleName},
+            #{item.status},
+            #{item.lastLoginTime}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.UserInfo">
+        INSERT INTO user_info(
+        user_no,
+        password,
+        real_name,
+        gender,
+        phone,
+        email,
+        avatar,
+        role_type,
+        class_id,
+        title_name,
+        status,
+        last_login_time
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.userNo},
+            #{item.password},
+            #{item.realName},
+            #{item.gender},
+            #{item.phone},
+            #{item.email},
+            #{item.avatar},
+            #{item.roleType},
+            #{item.classId},
+            #{item.titleName},
+            #{item.status},
+            #{item.lastLoginTime}
+            )
+        </foreach>
+        on DUPLICATE key update
+        user_no = VALUES(user_no),
+        password = VALUES(password),
+        real_name = VALUES(real_name),
+        gender = VALUES(gender),
+        phone = VALUES(phone),
+        email = VALUES(email),
+        avatar = VALUES(avatar),
+        role_type = VALUES(role_type),
+        class_id = VALUES(class_id),
+        title_name = VALUES(title_name),
+        status = VALUES(status),
+        last_login_time = VALUES(last_login_time)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.smart.campus.entity.query.UserInfoQuery">
+        UPDATE user_info u
+        <set>
+            <if test="bean.userNo != null">
+                user_no = #{bean.userNo},
+            </if>
+            <if test="bean.password != null">
+                password = #{bean.password},
+            </if>
+            <if test="bean.realName != null">
+                real_name = #{bean.realName},
+            </if>
+            <if test="bean.gender != null">
+                gender = #{bean.gender},
+            </if>
+            <if test="bean.phone != null">
+                phone = #{bean.phone},
+            </if>
+            <if test="bean.email != null">
+                email = #{bean.email},
+            </if>
+            <if test="bean.avatar != null">
+                avatar = #{bean.avatar},
+            </if>
+            <if test="bean.roleType != null">
+                role_type = #{bean.roleType},
+            </if>
+            <if test="bean.classId != null">
+                class_id = #{bean.classId},
+            </if>
+            <if test="bean.titleName != null">
+                title_name = #{bean.titleName},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.lastLoginTime != null">
+                last_login_time = #{bean.lastLoginTime},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete u from user_info u
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据UserId修改-->
+    <update id="updateByUserId" parameterType="com.smart.campus.entity.po.UserInfo">
+        UPDATE user_info
+        <set>
+            <if test="bean.userNo != null">
+                user_no = #{bean.userNo},
+            </if>
+            <if test="bean.password != null">
+                password = #{bean.password},
+            </if>
+            <if test="bean.realName != null">
+                real_name = #{bean.realName},
+            </if>
+            <if test="bean.gender != null">
+                gender = #{bean.gender},
+            </if>
+            <if test="bean.phone != null">
+                phone = #{bean.phone},
+            </if>
+            <if test="bean.email != null">
+                email = #{bean.email},
+            </if>
+            <if test="bean.avatar != null">
+                avatar = #{bean.avatar},
+            </if>
+            <if test="bean.roleType != null">
+                role_type = #{bean.roleType},
+            </if>
+            <if test="bean.classId != null">
+                class_id = #{bean.classId},
+            </if>
+            <if test="bean.titleName != null">
+                title_name = #{bean.titleName},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.lastLoginTime != null">
+                last_login_time = #{bean.lastLoginTime},
+            </if>
+        </set>
+        where user_id=#{userId}
+    </update>
+
+    <!-- 根据UserId删除-->
+    <delete id="deleteByUserId">
+        delete from user_info where user_id=#{userId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByUserId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from user_info u where user_id=#{userId}
+    </select>
+
+    <select id="selectByUserIdList" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from user_info u
+        where u.user_id in
+        <foreach collection="userIdList" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+
+    <delete id="deleteBatchByUserIdList">
+        delete from user_info
+        where user_id in
+        <foreach collection="userIdList" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </delete>
+
+    <!-- 根据UserNo修改-->
+    <update id="updateByUserNo" parameterType="com.smart.campus.entity.po.UserInfo">
+        UPDATE user_info
+        <set>
+            <if test="bean.password != null">
+                password = #{bean.password},
+            </if>
+            <if test="bean.realName != null">
+                real_name = #{bean.realName},
+            </if>
+            <if test="bean.gender != null">
+                gender = #{bean.gender},
+            </if>
+            <if test="bean.phone != null">
+                phone = #{bean.phone},
+            </if>
+            <if test="bean.email != null">
+                email = #{bean.email},
+            </if>
+            <if test="bean.avatar != null">
+                avatar = #{bean.avatar},
+            </if>
+            <if test="bean.roleType != null">
+                role_type = #{bean.roleType},
+            </if>
+            <if test="bean.classId != null">
+                class_id = #{bean.classId},
+            </if>
+            <if test="bean.titleName != null">
+                title_name = #{bean.titleName},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.lastLoginTime != null">
+                last_login_time = #{bean.lastLoginTime},
+            </if>
+        </set>
+        where user_no=#{userNo}
+    </update>
+
+    <!-- 根据UserNo删除-->
+    <delete id="deleteByUserNo">
+        delete from user_info where user_no=#{userNo}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByUserNo" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from user_info u where user_no=#{userNo}
+    </select>
+
+    <!-- 根据Phone修改-->
+    <update id="updateByPhone" parameterType="com.smart.campus.entity.po.UserInfo">
+        UPDATE user_info
+        <set>
+            <if test="bean.userNo != null">
+                user_no = #{bean.userNo},
+            </if>
+            <if test="bean.password != null">
+                password = #{bean.password},
+            </if>
+            <if test="bean.realName != null">
+                real_name = #{bean.realName},
+            </if>
+            <if test="bean.gender != null">
+                gender = #{bean.gender},
+            </if>
+            <if test="bean.email != null">
+                email = #{bean.email},
+            </if>
+            <if test="bean.avatar != null">
+                avatar = #{bean.avatar},
+            </if>
+            <if test="bean.roleType != null">
+                role_type = #{bean.roleType},
+            </if>
+            <if test="bean.classId != null">
+                class_id = #{bean.classId},
+            </if>
+            <if test="bean.titleName != null">
+                title_name = #{bean.titleName},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.lastLoginTime != null">
+                last_login_time = #{bean.lastLoginTime},
+            </if>
+        </set>
+        where phone=#{phone}
+    </update>
+
+    <!-- 根据Phone删除-->
+    <delete id="deleteByPhone">
+        delete from user_info where phone=#{phone}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByPhone" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from user_info u where phone=#{phone}
+    </select>
+
+    <select id="selectUsedClassIdList" resultType="java.lang.Integer">
+        select distinct c.class_id
+        from class_info c
+        where c.class_id in
+        <foreach collection="classIdList" item="classId" open="(" separator="," close=")">
+            #{classId}
+        </foreach>
+        and exists (
+        select 1
+        from user_info u
+        where u.role_type in (1, 2)
+        and find_in_set(c.class_id, u.class_id)
+        )
+    </select>
+
+</mapper>

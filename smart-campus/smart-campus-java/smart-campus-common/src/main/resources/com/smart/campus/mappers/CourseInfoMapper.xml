@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.CourseInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.smart.campus.entity.po.CourseInfo">
+		<!--主键ID-->
+		<result column="course_id" property="courseId"  />
+		<!--课程名称-->
+		<result column="course_name" property="courseName"  />
+		<!--课程封面资源ID，可为空，对应resource_info.resource_id-->
+		<result column="cover_resource_id" property="coverResourceId"  />
+		<!--授课老师ID，对应user_info.user_id-->
+		<result column="teacher_id" property="teacherId"  />
+		<!--课程简介-->
+		<result column="description" property="description"  />
+		<!--录制状态: 0录制中 1录制完成-->
+		<result column="record_status" property="recordStatus"  />
+		<!--课程状态: 1正常 0停用-->
+		<result column="status" property="status"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 c.course_id,c.course_name,c.cover_resource_id,c.teacher_id,c.description,
+		 c.record_status,c.status,c.create_time,c.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  c.course_id = #{query.courseId}
+			</if>
+			<if test="query.courseName != null and query.courseName!=''">
+				 and  c.course_name = #{query.courseName}
+			</if>
+			<if test="query.coverResourceId != null">
+				 and  c.cover_resource_id = #{query.coverResourceId}
+			</if>
+			<if test="query.teacherId != null">
+				 and  c.teacher_id = #{query.teacherId}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  c.description = #{query.description}
+			</if>
+			<if test="query.recordStatus != null">
+				 and  c.record_status = #{query.recordStatus}
+			</if>
+			<if test="query.status != null">
+				 and  c.status = #{query.status}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  c.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  c.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.courseNameFuzzy!= null  and query.courseNameFuzzy!=''">
+				 and  c.course_name like concat('%', #{query.courseNameFuzzy}, '%')
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  c.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  c.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  c.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  c.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  c.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM course_info c <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM course_info c <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.smart.campus.entity.po.CourseInfo">
+		 INSERT INTO course_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.courseName != null">
+				 course_name,
+			</if>
+			<if test="bean.coverResourceId != null">
+				 cover_resource_id,
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.recordStatus != null">
+				 record_status,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.courseName!=null">
+				 #{bean.courseName},
+			</if>
+			<if test="bean.coverResourceId!=null">
+				 #{bean.coverResourceId},
+			</if>
+			<if test="bean.teacherId!=null">
+				 #{bean.teacherId},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.recordStatus!=null">
+				 #{bean.recordStatus},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.CourseInfo">
+		 INSERT INTO course_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.courseName != null">
+				 course_name,
+			</if>
+			<if test="bean.coverResourceId != null">
+				 cover_resource_id,
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.recordStatus != null">
+				 record_status,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.courseName!=null">
+				 #{bean.courseName},
+			</if>
+			<if test="bean.coverResourceId!=null">
+				 #{bean.coverResourceId},
+			</if>
+			<if test="bean.teacherId!=null">
+				 #{bean.teacherId},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.recordStatus!=null">
+				 #{bean.recordStatus},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.courseName!=null">
+				 course_name = VALUES(course_name),
+			</if>
+			<if test="bean.coverResourceId!=null">
+				 cover_resource_id = VALUES(cover_resource_id),
+			</if>
+			<if test="bean.teacherId!=null">
+				 teacher_id = VALUES(teacher_id),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+			<if test="bean.recordStatus!=null">
+				 record_status = VALUES(record_status),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.smart.campus.entity.po.CourseInfo">
+		 INSERT INTO course_info(
+			 course_id,
+			 course_name,
+			 cover_resource_id,
+			 teacher_id,
+			 description,
+			 record_status,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.courseId},
+				 #{item.courseName},
+				 #{item.coverResourceId},
+				 #{item.teacherId},
+				 #{item.description},
+				 #{item.recordStatus},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.smart.campus.entity.po.CourseInfo">
+		 INSERT INTO course_info(
+			 course_id,
+			 course_name,
+			 cover_resource_id,
+			 teacher_id,
+			 description,
+			 record_status,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.courseId},
+				 #{item.courseName},
+				 #{item.coverResourceId},
+				 #{item.teacherId},
+				 #{item.description},
+				 #{item.recordStatus},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			course_id = VALUES(course_id),
+			course_name = VALUES(course_name),
+			cover_resource_id = VALUES(cover_resource_id),
+			teacher_id = VALUES(teacher_id),
+			description = VALUES(description),
+			record_status = VALUES(record_status),
+			status = VALUES(status),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.smart.campus.entity.query.CourseInfoQuery">
+		 UPDATE course_info c
+ 		 <set> 
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.courseName != null">
+				 course_name = #{bean.courseName},
+			</if>
+			<if test="bean.coverResourceId != null">
+				 cover_resource_id = #{bean.coverResourceId},
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id = #{bean.teacherId},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.recordStatus != null">
+				 record_status = #{bean.recordStatus},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete c from course_info c
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据CourseId修改-->
+	<update id="updateByCourseId" parameterType="com.smart.campus.entity.po.CourseInfo">
+		 UPDATE course_info
+ 		 <set> 
+			<if test="bean.courseName != null">
+				 course_name = #{bean.courseName},
+			</if>
+			<if test="bean.coverResourceId != null">
+				 cover_resource_id = #{bean.coverResourceId},
+			</if>
+			<if test="bean.teacherId != null">
+				 teacher_id = #{bean.teacherId},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.recordStatus != null">
+				 record_status = #{bean.recordStatus},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where course_id=#{courseId}
+	</update>
+
+	<!-- 根据CourseId删除-->
+	<delete id="deleteByCourseId">
+		delete from course_info where course_id=#{courseId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByCourseId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from course_info c where course_id=#{courseId}
+	</select>
+
+</mapper>

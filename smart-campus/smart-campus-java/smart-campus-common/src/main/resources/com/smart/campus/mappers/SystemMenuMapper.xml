@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.campus.mappers.SystemMenuMapper">
+
+    <resultMap id="base_result_map" type="com.smart.campus.entity.po.SystemMenu">
+        <result column="menu_id" property="menuId" />
+        <result column="menu_code" property="menuCode" />
+        <result column="menu_name" property="menuName" />
+        <result column="parent_code" property="parentCode" />
+        <result column="menu_path" property="menuPath" />
+        <result column="route_name" property="routeName" />
+        <result column="menu_type" property="menuType" />
+        <result column="sort_order" property="sortOrder" />
+        <result column="status" property="status" />
+        <result column="remark" property="remark" />
+        <result column="create_time" property="createTime" />
+        <result column="last_update_time" property="lastUpdateTime" />
+    </resultMap>
+
+    <sql id="base_column_list">
+        s.menu_id,s.menu_code,s.menu_name,s.parent_code,s.menu_path,s.route_name,
+        s.menu_type,s.sort_order,s.status,s.remark,s.create_time,s.last_update_time
+    </sql>
+
+    <sql id="base_condition_field">
+        <if test="query.menuId != null">
+            and s.menu_id = #{query.menuId}
+        </if>
+        <if test="query.menuCode != null and query.menuCode != ''">
+            and s.menu_code = #{query.menuCode}
+        </if>
+        <if test="query.menuName != null and query.menuName != ''">
+            and s.menu_name = #{query.menuName}
+        </if>
+        <if test="query.parentCode != null and query.parentCode != ''">
+            and s.parent_code = #{query.parentCode}
+        </if>
+        <if test="query.menuPath != null and query.menuPath != ''">
+            and s.menu_path = #{query.menuPath}
+        </if>
+        <if test="query.routeName != null and query.routeName != ''">
+            and s.route_name = #{query.routeName}
+        </if>
+        <if test="query.menuType != null">
+            and s.menu_type = #{query.menuType}
+        </if>
+        <if test="query.sortOrder != null">
+            and s.sort_order = #{query.sortOrder}
+        </if>
+        <if test="query.status != null">
+            and s.status = #{query.status}
+        </if>
+        <if test="query.remark != null and query.remark != ''">
+            and s.remark = #{query.remark}
+        </if>
+        <if test="query.createTime != null and query.createTime != ''">
+            <![CDATA[ and s.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.lastUpdateTime != null and query.lastUpdateTime != ''">
+            <![CDATA[ and s.last_update_time=str_to_date(#{query.lastUpdateTime}, '%Y-%m-%d') ]]>
+        </if>
+    </sql>
+
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_field" />
+            <if test="query.menuNameFuzzy != null and query.menuNameFuzzy != ''">
+                and s.menu_name like concat('%', #{query.menuNameFuzzy}, '%')
+            </if>
+            <if test="query.createTimeStart != null and query.createTimeStart != ''">
+                <![CDATA[ and s.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.createTimeEnd != null and query.createTimeEnd != ''">
+                <![CDATA[ and s.create_time<date_sub(str_to_date(#{query.createTimeEnd}, '%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+            <if test="query.lastUpdateTimeStart != null and query.lastUpdateTimeStart != ''">
+                <![CDATA[ and s.last_update_time>=str_to_date(#{query.lastUpdateTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.lastUpdateTimeEnd != null and query.lastUpdateTimeEnd != ''">
+                <![CDATA[ and s.last_update_time<date_sub(str_to_date(#{query.lastUpdateTimeEnd}, '%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultMap="base_result_map">
+        SELECT <include refid="base_column_list" /> FROM system_menu s <include refid="query_condition" />
+        <if test="query.orderBy != null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage != null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM system_menu s <include refid="query_condition" />
+    </select>
+
+    <insert id="insert" parameterType="com.smart.campus.entity.po.SystemMenu" useGeneratedKeys="true" keyProperty="bean.menuId">
+        INSERT INTO system_menu
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.menuCode != null">menu_code,</if>
+            <if test="bean.menuName != null">menu_name,</if>
+            <if test="bean.parentCode != null">parent_code,</if>
+            <if test="bean.menuPath != null">menu_path,</if>
+            <if test="bean.routeName != null">route_name,</if>
+            <if test="bean.menuType != null">menu_type,</if>
+            <if test="bean.sortOrder != null">sort_order,</if>
+            <if test="bean.status != null">status,</if>
+            <if test="bean.remark != null">remark,</if>
+            <if test="bean.createTime != null">create_time,</if>
+            <if test="bean.lastUpdateTime != null">last_update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.menuCode != null">#{bean.menuCode},</if>
+            <if test="bean.menuName != null">#{bean.menuName},</if>
+            <if test="bean.parentCode != null">#{bean.parentCode},</if>
+            <if test="bean.menuPath != null">#{bean.menuPath},</if>
+            <if test="bean.routeName != null">#{bean.routeName},</if>
+            <if test="bean.menuType != null">#{bean.menuType},</if>
+            <if test="bean.sortOrder != null">#{bean.sortOrder},</if>
+            <if test="bean.status != null">#{bean.status},</if>
+            <if test="bean.remark != null">#{bean.remark},</if>
+            <if test="bean.createTime != null">#{bean.createTime},</if>
+            <if test="bean.lastUpdateTime != null">#{bean.lastUpdateTime},</if>
+        </trim>
+    </insert>
+
+    <insert id="insertOrUpdate" parameterType="com.smart.campus.entity.po.SystemMenu">
+        INSERT INTO system_menu(menu_code,menu_name,parent_code,menu_path,route_name,menu_type,sort_order,status,remark,create_time,last_update_time)
+        VALUES(#{bean.menuCode},#{bean.menuName},#{bean.parentCode},#{bean.menuPath},#{bean.routeName},#{bean.menuType},#{bean.sortOrder},#{bean.status},#{bean.remark},#{bean.createTime},#{bean.lastUpdateTime})
+        ON DUPLICATE KEY UPDATE
+        menu_name = VALUES(menu_name),parent_code = VALUES(parent_code),menu_path = VALUES(menu_path),route_name = VALUES(route_name),
+        menu_type = VALUES(menu_type),sort_order = VALUES(sort_order),status = VALUES(status),remark = VALUES(remark),last_update_time = VALUES(last_update_time)
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO system_menu(menu_code,menu_name,parent_code,menu_path,route_name,menu_type,sort_order,status,remark,create_time,last_update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.menuCode},#{item.menuName},#{item.parentCode},#{item.menuPath},#{item.routeName},#{item.menuType},#{item.sortOrder},#{item.status},#{item.remark},#{item.createTime},#{item.lastUpdateTime})
+        </foreach>
+    </insert>
+
+    <insert id="insertOrUpdateBatch">
+        INSERT INTO system_menu(menu_code,menu_name,parent_code,menu_path,route_name,menu_type,sort_order,status,remark,create_time,last_update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.menuCode},#{item.menuName},#{item.parentCode},#{item.menuPath},#{item.routeName},#{item.menuType},#{item.sortOrder},#{item.status},#{item.remark},#{item.createTime},#{item.lastUpdateTime})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        menu_name = VALUES(menu_name),parent_code = VALUES(parent_code),menu_path = VALUES(menu_path),route_name = VALUES(route_name),
+        menu_type = VALUES(menu_type),sort_order = VALUES(sort_order),status = VALUES(status),remark = VALUES(remark),last_update_time = VALUES(last_update_time)
+    </insert>
+
+    <update id="updateByParam">
+        UPDATE system_menu s
+        <set>
+            <if test="bean.menuCode != null">menu_code = #{bean.menuCode},</if>
+            <if test="bean.menuName != null">menu_name = #{bean.menuName},</if>
+            <if test="bean.parentCode != null">parent_code = #{bean.parentCode},</if>
+            <if test="bean.menuPath != null">menu_path = #{bean.menuPath},</if>
+            <if test="bean.routeName != null">route_name = #{bean.routeName},</if>
+            <if test="bean.menuType != null">menu_type = #{bean.menuType},</if>
+            <if test="bean.sortOrder != null">sort_order = #{bean.sortOrder},</if>
+            <if test="bean.status != null">status = #{bean.status},</if>
+            <if test="bean.remark != null">remark = #{bean.remark},</if>
+            <if test="bean.createTime != null">create_time = #{bean.createTime},</if>
+            <if test="bean.lastUpdateTime != null">last_update_time = #{bean.lastUpdateTime},</if>
+        </set>
+        <include refid="query_condition" />
+    </update>
+
+    <delete id="deleteByParam">
+        DELETE FROM system_menu s <include refid="query_condition" />
+    </delete>
+
+    <select id="selectByMenuId" resultMap="base_result_map">
+        SELECT <include refid="base_column_list" /> FROM system_menu s WHERE s.menu_id = #{menuId}
+    </select>
+
+    <select id="selectByMenuCode" resultMap="base_result_map">
+        SELECT <include refid="base_column_list" /> FROM system_menu s WHERE s.menu_code = #{menuCode}
+    </select>
+
+    <update id="updateByMenuId">
+        UPDATE system_menu
+        <set>
+            <if test="bean.menuCode != null">menu_code = #{bean.menuCode},</if>
+            <if test="bean.menuName != null">menu_name = #{bean.menuName},</if>
+            <if test="bean.parentCode != null">parent_code = #{bean.parentCode},</if>
+            <if test="bean.menuPath != null">menu_path = #{bean.menuPath},</if>
+            <if test="bean.routeName != null">route_name = #{bean.routeName},</if>
+            <if test="bean.menuType != null">menu_type = #{bean.menuType},</if>
+            <if test="bean.sortOrder != null">sort_order = #{bean.sortOrder},</if>
+            <if test="bean.status != null">status = #{bean.status},</if>
+            <if test="bean.remark != null">remark = #{bean.remark},</if>
+            <if test="bean.createTime != null">create_time = #{bean.createTime},</if>
+            <if test="bean.lastUpdateTime != null">last_update_time = #{bean.lastUpdateTime},</if>
+        </set>
+        WHERE menu_id = #{menuId}
+    </update>
+
+    <delete id="deleteByMenuId">
+        DELETE FROM system_menu WHERE menu_id = #{menuId}
+    </delete>
+</mapper>
