@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.PromptTemplateMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.PromptTemplate">
+		<!--主键-->
+		<id column="id" property="id"  />
+		<!--学段；ALL表示通用模板-->
+		<result column="stage" property="stage"  />
+		<!--场景/意图：EXPLAIN/QUIZ/PICTURE_BOOK/DRAW/ANIMATION/CODING/PLAN/PROGRESS/CHAT等-->
+		<result column="scene" property="scene"  />
+		<!--模板名-->
+		<result column="template_name" property="templateName"  />
+		<!--提示词内容（必须含"知识库无相关内容时如实说明，不要编造"类约束）-->
+		<result column="content" property="content"  />
+		<!--状态：0停用 1启用-->
+		<result column="status" property="status"  />
+		<!--备注-->
+		<result column="remark" property="remark"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 p.id,p.stage,p.scene,p.template_name,p.content,
+		 p.status,p.remark,p.create_time,p.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.id != null">
+				 and  p.id = #{query.id}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  p.stage = #{query.stage}
+			</if>
+			<if test="query.scene != null and query.scene!=''">
+				 and  p.scene = #{query.scene}
+			</if>
+			<if test="query.templateName != null and query.templateName!=''">
+				 and  p.template_name = #{query.templateName}
+			</if>
+			<if test="query.content != null and query.content!=''">
+				 and  p.content = #{query.content}
+			</if>
+			<if test="query.status != null">
+				 and  p.status = #{query.status}
+			</if>
+			<if test="query.remark != null and query.remark!=''">
+				 and  p.remark = #{query.remark}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  p.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  p.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  p.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.sceneFuzzy!= null  and query.sceneFuzzy!=''">
+				 and  p.scene like concat('%', #{query.sceneFuzzy}, '%')
+			</if>
+			<if test="query.templateNameFuzzy!= null  and query.templateNameFuzzy!=''">
+				 and  p.template_name like concat('%', #{query.templateNameFuzzy}, '%')
+			</if>
+			<if test="query.contentFuzzy!= null  and query.contentFuzzy!=''">
+				 and  p.content like concat('%', #{query.contentFuzzy}, '%')
+			</if>
+			<if test="query.remarkFuzzy!= null  and query.remarkFuzzy!=''">
+				 and  p.remark like concat('%', #{query.remarkFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  p.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  p.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  p.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  p.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM prompt_template p <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM prompt_template p <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.PromptTemplate">
+		<selectKey keyProperty="bean.id" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO prompt_template
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.scene != null">
+				 scene,
+			</if>
+			<if test="bean.templateName != null">
+				 template_name,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.remark != null">
+				 remark,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.scene!=null">
+				 #{bean.scene},
+			</if>
+			<if test="bean.templateName!=null">
+				 #{bean.templateName},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.remark!=null">
+				 #{bean.remark},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.PromptTemplate">
+		 INSERT INTO prompt_template
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.id != null">
+				 id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.scene != null">
+				 scene,
+			</if>
+			<if test="bean.templateName != null">
+				 template_name,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.remark != null">
+				 remark,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.id!=null">
+				 #{bean.id},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.scene!=null">
+				 #{bean.scene},
+			</if>
+			<if test="bean.templateName!=null">
+				 #{bean.templateName},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.remark!=null">
+				 #{bean.remark},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.scene!=null">
+				 scene = VALUES(scene),
+			</if>
+			<if test="bean.templateName!=null">
+				 template_name = VALUES(template_name),
+			</if>
+			<if test="bean.content!=null">
+				 content = VALUES(content),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.remark!=null">
+				 remark = VALUES(remark),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.PromptTemplate" useGeneratedKeys="true" keyProperty="id">
+		 INSERT INTO prompt_template(
+			 stage,
+			 scene,
+			 template_name,
+			 content,
+			 status,
+			 remark,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.stage},
+				 #{item.scene},
+				 #{item.templateName},
+				 #{item.content},
+				 #{item.status},
+				 #{item.remark},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.PromptTemplate">
+		 INSERT INTO prompt_template(
+			 stage,
+			 scene,
+			 template_name,
+			 content,
+			 status,
+			 remark,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.stage},
+				 #{item.scene},
+				 #{item.templateName},
+				 #{item.content},
+				 #{item.status},
+				 #{item.remark},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			stage = VALUES(stage),
+			scene = VALUES(scene),
+			template_name = VALUES(template_name),
+			content = VALUES(content),
+			status = VALUES(status),
+			remark = VALUES(remark),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.PromptTemplateQuery">
+		 UPDATE prompt_template p
+ 		 <set> 
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.scene != null">
+				 scene = #{bean.scene},
+			</if>
+			<if test="bean.templateName != null">
+				 template_name = #{bean.templateName},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.remark != null">
+				 remark = #{bean.remark},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete p from prompt_template p
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据Id修改-->
+	<update id="updateById" parameterType="com.nexora.entity.po.PromptTemplate">
+		 UPDATE prompt_template
+ 		 <set> 
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.scene != null">
+				 scene = #{bean.scene},
+			</if>
+			<if test="bean.templateName != null">
+				 template_name = #{bean.templateName},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.remark != null">
+				 remark = #{bean.remark},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where id=#{id}
+	</update>
+
+	<!-- 根据Id删除-->
+	<delete id="deleteById">
+		delete from prompt_template where id=#{id}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectById" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from prompt_template p where id=#{id}
+	</select>
+
+	<!-- 根据StageAndScene修改-->
+	<update id="updateByStageAndScene" parameterType="com.nexora.entity.po.PromptTemplate">
+		 UPDATE prompt_template
+ 		 <set> 
+			<if test="bean.templateName != null">
+				 template_name = #{bean.templateName},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.remark != null">
+				 remark = #{bean.remark},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where stage=#{stage} and scene=#{scene}
+	</update>
+
+	<!-- 根据StageAndScene删除-->
+	<delete id="deleteByStageAndScene">
+		delete from prompt_template where stage=#{stage} and scene=#{scene}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByStageAndScene" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from prompt_template p where stage=#{stage} and scene=#{scene}
+	</select>
+
+</mapper>

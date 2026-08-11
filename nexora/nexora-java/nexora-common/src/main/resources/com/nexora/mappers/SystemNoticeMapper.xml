@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.SystemNoticeMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.SystemNotice">
+		<!--通知ID-->
+		<id column="notice_id" property="noticeId"  />
+		<!--标题-->
+		<result column="title" property="title"  />
+		<!--内容-->
+		<result column="content" property="content"  />
+		<!--状态：0草稿 1已发布-->
+		<result column="status" property="status"  />
+		<!--发布时间-->
+		<result column="publish_time" property="publishTime"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 s.notice_id,s.title,s.content,s.status,s.publish_time,
+		 s.create_time,s.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.noticeId != null">
+				 and  s.notice_id = #{query.noticeId}
+			</if>
+			<if test="query.title != null and query.title!=''">
+				 and  s.title = #{query.title}
+			</if>
+			<if test="query.content != null and query.content!=''">
+				 and  s.content = #{query.content}
+			</if>
+			<if test="query.status != null">
+				 and  s.status = #{query.status}
+			</if>
+			<if test="query.publishTime != null and query.publishTime!=''">
+				 <![CDATA[ and  s.publish_time=str_to_date(#{query.publishTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  s.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  s.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
+				 and  s.title like concat('%', #{query.titleFuzzy}, '%')
+			</if>
+			<if test="query.contentFuzzy!= null  and query.contentFuzzy!=''">
+				 and  s.content like concat('%', #{query.contentFuzzy}, '%')
+			</if>
+			<if test="query.publishTimeStart!= null and query.publishTimeStart!=''">
+				 <![CDATA[ and  s.publish_time>=str_to_date(#{query.publishTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.publishTimeEnd!= null and query.publishTimeEnd!=''">
+				 <![CDATA[ and  s.publish_time< date_sub(str_to_date(#{query.publishTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  s.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  s.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  s.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  s.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM system_notice s <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM system_notice s <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.SystemNotice">
+		<selectKey keyProperty="bean.noticeId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO system_notice
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.publishTime!=null">
+				 #{bean.publishTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.SystemNotice">
+		 INSERT INTO system_notice
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.noticeId != null">
+				 notice_id,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.noticeId!=null">
+				 #{bean.noticeId},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.publishTime!=null">
+				 #{bean.publishTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.title!=null">
+				 title = VALUES(title),
+			</if>
+			<if test="bean.content!=null">
+				 content = VALUES(content),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.publishTime!=null">
+				 publish_time = VALUES(publish_time),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.SystemNotice" useGeneratedKeys="true" keyProperty="noticeId">
+		 INSERT INTO system_notice(
+			 title,
+			 content,
+			 status,
+			 publish_time,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.title},
+				 #{item.content},
+				 #{item.status},
+				 #{item.publishTime},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.SystemNotice">
+		 INSERT INTO system_notice(
+			 title,
+			 content,
+			 status,
+			 publish_time,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.title},
+				 #{item.content},
+				 #{item.status},
+				 #{item.publishTime},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			title = VALUES(title),
+			content = VALUES(content),
+			status = VALUES(status),
+			publish_time = VALUES(publish_time),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.SystemNoticeQuery">
+		 UPDATE system_notice s
+ 		 <set> 
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time = #{bean.publishTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete s from system_notice s
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据NoticeId修改-->
+	<update id="updateByNoticeId" parameterType="com.nexora.entity.po.SystemNotice">
+		 UPDATE system_notice
+ 		 <set> 
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.publishTime != null">
+				 publish_time = #{bean.publishTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where notice_id=#{noticeId}
+	</update>
+
+	<!-- 根据NoticeId删除-->
+	<delete id="deleteByNoticeId">
+		delete from system_notice where notice_id=#{noticeId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByNoticeId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from system_notice s where notice_id=#{noticeId}
+	</select>
+
+</mapper>

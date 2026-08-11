@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.PracticeRecordMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.PracticeRecord">
+		<!--记录ID-->
+		<id column="record_id" property="recordId"  />
+		<!--学生-->
+		<result column="user_id" property="userId"  />
+		<!--知识点【冗余快照：提交时从题目复制】-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--学段【冗余快照：按学段分析免join】-->
+		<result column="stage" property="stage"  />
+		<!--题目ID-->
+		<result column="question_id" property="questionId"  />
+		<!--题型【冗余快照】-->
+		<result column="question_type" property="questionType"  />
+		<!--学生作答-->
+		<result column="user_answer" property="userAnswer"  />
+		<!--0错 1对-->
+		<result column="is_correct" property="isCorrect"  />
+		<!--得分-->
+		<result column="score" property="score"  />
+		<!--用时（秒）-->
+		<result column="duration" property="duration"  />
+		<!--来源：0对话练习 1路径快测 2遗忘复习-->
+		<result column="source" property="source"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 p.record_id,p.user_id,p.knowledge_point_id,p.stage,p.question_id,
+		 p.question_type,p.user_answer,p.is_correct,p.score,p.duration,
+		 p.source,p.create_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.recordId != null">
+				 and  p.record_id = #{query.recordId}
+			</if>
+			<if test="query.userId != null">
+				 and  p.user_id = #{query.userId}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  p.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  p.stage = #{query.stage}
+			</if>
+			<if test="query.questionId != null and query.questionId!=''">
+				 and  p.question_id = #{query.questionId}
+			</if>
+			<if test="query.questionType != null">
+				 and  p.question_type = #{query.questionType}
+			</if>
+			<if test="query.userAnswer != null and query.userAnswer!=''">
+				 and  p.user_answer = #{query.userAnswer}
+			</if>
+			<if test="query.isCorrect != null">
+				 and  p.is_correct = #{query.isCorrect}
+			</if>
+			<if test="query.score != null">
+				 and  p.score = #{query.score}
+			</if>
+			<if test="query.duration != null">
+				 and  p.duration = #{query.duration}
+			</if>
+			<if test="query.source != null">
+				 and  p.source = #{query.source}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  p.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  p.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  p.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.questionIdFuzzy!= null  and query.questionIdFuzzy!=''">
+				 and  p.question_id like concat('%', #{query.questionIdFuzzy}, '%')
+			</if>
+			<if test="query.userAnswerFuzzy!= null  and query.userAnswerFuzzy!=''">
+				 and  p.user_answer like concat('%', #{query.userAnswerFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  p.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  p.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM practice_record p <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM practice_record p <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.PracticeRecord">
+		<selectKey keyProperty="bean.recordId" resultType="Long" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO practice_record
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.questionId != null">
+				 question_id,
+			</if>
+			<if test="bean.questionType != null">
+				 question_type,
+			</if>
+			<if test="bean.userAnswer != null">
+				 user_answer,
+			</if>
+			<if test="bean.isCorrect != null">
+				 is_correct,
+			</if>
+			<if test="bean.score != null">
+				 score,
+			</if>
+			<if test="bean.duration != null">
+				 duration,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.questionId!=null">
+				 #{bean.questionId},
+			</if>
+			<if test="bean.questionType!=null">
+				 #{bean.questionType},
+			</if>
+			<if test="bean.userAnswer!=null">
+				 #{bean.userAnswer},
+			</if>
+			<if test="bean.isCorrect!=null">
+				 #{bean.isCorrect},
+			</if>
+			<if test="bean.score!=null">
+				 #{bean.score},
+			</if>
+			<if test="bean.duration!=null">
+				 #{bean.duration},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.PracticeRecord">
+		 INSERT INTO practice_record
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.recordId != null">
+				 record_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.questionId != null">
+				 question_id,
+			</if>
+			<if test="bean.questionType != null">
+				 question_type,
+			</if>
+			<if test="bean.userAnswer != null">
+				 user_answer,
+			</if>
+			<if test="bean.isCorrect != null">
+				 is_correct,
+			</if>
+			<if test="bean.score != null">
+				 score,
+			</if>
+			<if test="bean.duration != null">
+				 duration,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.recordId!=null">
+				 #{bean.recordId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.questionId!=null">
+				 #{bean.questionId},
+			</if>
+			<if test="bean.questionType!=null">
+				 #{bean.questionType},
+			</if>
+			<if test="bean.userAnswer!=null">
+				 #{bean.userAnswer},
+			</if>
+			<if test="bean.isCorrect!=null">
+				 #{bean.isCorrect},
+			</if>
+			<if test="bean.score!=null">
+				 #{bean.score},
+			</if>
+			<if test="bean.duration!=null">
+				 #{bean.duration},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.questionId!=null">
+				 question_id = VALUES(question_id),
+			</if>
+			<if test="bean.questionType!=null">
+				 question_type = VALUES(question_type),
+			</if>
+			<if test="bean.userAnswer!=null">
+				 user_answer = VALUES(user_answer),
+			</if>
+			<if test="bean.isCorrect!=null">
+				 is_correct = VALUES(is_correct),
+			</if>
+			<if test="bean.score!=null">
+				 score = VALUES(score),
+			</if>
+			<if test="bean.duration!=null">
+				 duration = VALUES(duration),
+			</if>
+			<if test="bean.source!=null">
+				 source = VALUES(source),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.PracticeRecord" useGeneratedKeys="true" keyProperty="recordId">
+		 INSERT INTO practice_record(
+			 user_id,
+			 knowledge_point_id,
+			 stage,
+			 question_id,
+			 question_type,
+			 user_answer,
+			 is_correct,
+			 score,
+			 duration,
+			 source,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.knowledgePointId},
+				 #{item.stage},
+				 #{item.questionId},
+				 #{item.questionType},
+				 #{item.userAnswer},
+				 #{item.isCorrect},
+				 #{item.score},
+				 #{item.duration},
+				 #{item.source},
+				 #{item.createTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.PracticeRecord">
+		 INSERT INTO practice_record(
+			 user_id,
+			 knowledge_point_id,
+			 stage,
+			 question_id,
+			 question_type,
+			 user_answer,
+			 is_correct,
+			 score,
+			 duration,
+			 source,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.knowledgePointId},
+				 #{item.stage},
+				 #{item.questionId},
+				 #{item.questionType},
+				 #{item.userAnswer},
+				 #{item.isCorrect},
+				 #{item.score},
+				 #{item.duration},
+				 #{item.source},
+				 #{item.createTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			user_id = VALUES(user_id),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			stage = VALUES(stage),
+			question_id = VALUES(question_id),
+			question_type = VALUES(question_type),
+			user_answer = VALUES(user_answer),
+			is_correct = VALUES(is_correct),
+			score = VALUES(score),
+			duration = VALUES(duration),
+			source = VALUES(source),
+			create_time = VALUES(create_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.PracticeRecordQuery">
+		 UPDATE practice_record p
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.questionId != null">
+				 question_id = #{bean.questionId},
+			</if>
+			<if test="bean.questionType != null">
+				 question_type = #{bean.questionType},
+			</if>
+			<if test="bean.userAnswer != null">
+				 user_answer = #{bean.userAnswer},
+			</if>
+			<if test="bean.isCorrect != null">
+				 is_correct = #{bean.isCorrect},
+			</if>
+			<if test="bean.score != null">
+				 score = #{bean.score},
+			</if>
+			<if test="bean.duration != null">
+				 duration = #{bean.duration},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete p from practice_record p
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据RecordId修改-->
+	<update id="updateByRecordId" parameterType="com.nexora.entity.po.PracticeRecord">
+		 UPDATE practice_record
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.questionId != null">
+				 question_id = #{bean.questionId},
+			</if>
+			<if test="bean.questionType != null">
+				 question_type = #{bean.questionType},
+			</if>
+			<if test="bean.userAnswer != null">
+				 user_answer = #{bean.userAnswer},
+			</if>
+			<if test="bean.isCorrect != null">
+				 is_correct = #{bean.isCorrect},
+			</if>
+			<if test="bean.score != null">
+				 score = #{bean.score},
+			</if>
+			<if test="bean.duration != null">
+				 duration = #{bean.duration},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 where record_id=#{recordId}
+	</update>
+
+	<!-- 根据RecordId删除-->
+	<delete id="deleteByRecordId">
+		delete from practice_record where record_id=#{recordId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByRecordId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from practice_record p where record_id=#{recordId}
+	</select>
+
+</mapper>

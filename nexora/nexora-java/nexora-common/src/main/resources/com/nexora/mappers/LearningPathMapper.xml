@@ -1,0 +1,511 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.LearningPathMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.LearningPath">
+		<!--路径ID-->
+		<result column="path_id" property="pathId"  />
+		<!--学生-->
+		<result column="user_id" property="userId"  />
+		<!--学习分类/目标名（学生自建或AI命名）-->
+		<result column="title" property="title"  />
+		<!--学段【冗余快照】-->
+		<result column="stage" property="stage"  />
+		<!--来源：0规则生成 1AI生成-->
+		<result column="source" property="source"  />
+		<!--状态：0进行中 1已完成 2已放弃-->
+		<result column="status" property="status"  />
+		<!--节点总数【冗余：节点增删时维护】-->
+		<result column="total_items" property="totalItems"  />
+		<!--已完成节点数【冗余】-->
+		<result column="finished_items" property="finishedItems"  />
+		<!--进度百分比【冗余：列表直读免聚合】-->
+		<result column="progress" property="progress"  />
+		<!--当前节点，AI主动引导锚点-->
+		<result column="current_item_id" property="currentItemId"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 l.path_id,l.user_id,l.title,l.stage,l.source,
+		 l.status,l.total_items,l.finished_items,l.progress,l.current_item_id,
+		 l.create_time,l.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.pathId != null and query.pathId!=''">
+				 and  l.path_id = #{query.pathId}
+			</if>
+			<if test="query.userId != null">
+				 and  l.user_id = #{query.userId}
+			</if>
+			<if test="query.title != null and query.title!=''">
+				 and  l.title = #{query.title}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  l.stage = #{query.stage}
+			</if>
+			<if test="query.source != null">
+				 and  l.source = #{query.source}
+			</if>
+			<if test="query.status != null">
+				 and  l.status = #{query.status}
+			</if>
+			<if test="query.totalItems != null">
+				 and  l.total_items = #{query.totalItems}
+			</if>
+			<if test="query.finishedItems != null">
+				 and  l.finished_items = #{query.finishedItems}
+			</if>
+			<if test="query.progress != null">
+				 and  l.progress = #{query.progress}
+			</if>
+			<if test="query.currentItemId != null and query.currentItemId!=''">
+				 and  l.current_item_id = #{query.currentItemId}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  l.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  l.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.pathIdFuzzy!= null  and query.pathIdFuzzy!=''">
+				 and  l.path_id like concat('%', #{query.pathIdFuzzy}, '%')
+			</if>
+			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
+				 and  l.title like concat('%', #{query.titleFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  l.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.currentItemIdFuzzy!= null  and query.currentItemIdFuzzy!=''">
+				 and  l.current_item_id like concat('%', #{query.currentItemIdFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  l.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  l.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  l.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  l.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM learning_path l <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM learning_path l <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.LearningPath">
+		 INSERT INTO learning_path
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.pathId != null">
+				 path_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.totalItems != null">
+				 total_items,
+			</if>
+			<if test="bean.finishedItems != null">
+				 finished_items,
+			</if>
+			<if test="bean.progress != null">
+				 progress,
+			</if>
+			<if test="bean.currentItemId != null">
+				 current_item_id,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.pathId!=null">
+				 #{bean.pathId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.totalItems!=null">
+				 #{bean.totalItems},
+			</if>
+			<if test="bean.finishedItems!=null">
+				 #{bean.finishedItems},
+			</if>
+			<if test="bean.progress!=null">
+				 #{bean.progress},
+			</if>
+			<if test="bean.currentItemId!=null">
+				 #{bean.currentItemId},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.LearningPath">
+		 INSERT INTO learning_path
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.pathId != null">
+				 path_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.totalItems != null">
+				 total_items,
+			</if>
+			<if test="bean.finishedItems != null">
+				 finished_items,
+			</if>
+			<if test="bean.progress != null">
+				 progress,
+			</if>
+			<if test="bean.currentItemId != null">
+				 current_item_id,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.pathId!=null">
+				 #{bean.pathId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.totalItems!=null">
+				 #{bean.totalItems},
+			</if>
+			<if test="bean.finishedItems!=null">
+				 #{bean.finishedItems},
+			</if>
+			<if test="bean.progress!=null">
+				 #{bean.progress},
+			</if>
+			<if test="bean.currentItemId!=null">
+				 #{bean.currentItemId},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.pathId!=null">
+				 path_id = VALUES(path_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.title!=null">
+				 title = VALUES(title),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.source!=null">
+				 source = VALUES(source),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.totalItems!=null">
+				 total_items = VALUES(total_items),
+			</if>
+			<if test="bean.finishedItems!=null">
+				 finished_items = VALUES(finished_items),
+			</if>
+			<if test="bean.progress!=null">
+				 progress = VALUES(progress),
+			</if>
+			<if test="bean.currentItemId!=null">
+				 current_item_id = VALUES(current_item_id),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.LearningPath">
+		 INSERT INTO learning_path(
+			 path_id,
+			 user_id,
+			 title,
+			 stage,
+			 source,
+			 status,
+			 total_items,
+			 finished_items,
+			 progress,
+			 current_item_id,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.pathId},
+				 #{item.userId},
+				 #{item.title},
+				 #{item.stage},
+				 #{item.source},
+				 #{item.status},
+				 #{item.totalItems},
+				 #{item.finishedItems},
+				 #{item.progress},
+				 #{item.currentItemId},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.LearningPath">
+		 INSERT INTO learning_path(
+			 path_id,
+			 user_id,
+			 title,
+			 stage,
+			 source,
+			 status,
+			 total_items,
+			 finished_items,
+			 progress,
+			 current_item_id,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.pathId},
+				 #{item.userId},
+				 #{item.title},
+				 #{item.stage},
+				 #{item.source},
+				 #{item.status},
+				 #{item.totalItems},
+				 #{item.finishedItems},
+				 #{item.progress},
+				 #{item.currentItemId},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			path_id = VALUES(path_id),
+			user_id = VALUES(user_id),
+			title = VALUES(title),
+			stage = VALUES(stage),
+			source = VALUES(source),
+			status = VALUES(status),
+			total_items = VALUES(total_items),
+			finished_items = VALUES(finished_items),
+			progress = VALUES(progress),
+			current_item_id = VALUES(current_item_id),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.LearningPathQuery">
+		 UPDATE learning_path l
+ 		 <set> 
+			<if test="bean.pathId != null">
+				 path_id = #{bean.pathId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.totalItems != null">
+				 total_items = #{bean.totalItems},
+			</if>
+			<if test="bean.finishedItems != null">
+				 finished_items = #{bean.finishedItems},
+			</if>
+			<if test="bean.progress != null">
+				 progress = #{bean.progress},
+			</if>
+			<if test="bean.currentItemId != null">
+				 current_item_id = #{bean.currentItemId},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete l from learning_path l
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据PathId修改-->
+	<update id="updateByPathId" parameterType="com.nexora.entity.po.LearningPath">
+		 UPDATE learning_path
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.totalItems != null">
+				 total_items = #{bean.totalItems},
+			</if>
+			<if test="bean.finishedItems != null">
+				 finished_items = #{bean.finishedItems},
+			</if>
+			<if test="bean.progress != null">
+				 progress = #{bean.progress},
+			</if>
+			<if test="bean.currentItemId != null">
+				 current_item_id = #{bean.currentItemId},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where path_id=#{pathId}
+	</update>
+
+	<!-- 根据PathId删除-->
+	<delete id="deleteByPathId">
+		delete from learning_path where path_id=#{pathId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByPathId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from learning_path l where path_id=#{pathId}
+	</select>
+
+</mapper>

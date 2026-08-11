@@ -1,6 +1,6 @@
 # Nexora 前端规则（nexora-front）
 
-React 18 + TypeScript + Vite + antd v5 + Zustand + React Router + Axios + SCSS（CSS Modules）。
+React 19 + TypeScript + Vite + antd v6 + Zustand + React Router + Axios + SCSS（CSS Modules）。
 
 两个独立工程：
 
@@ -53,7 +53,7 @@ React 18 + TypeScript + Vite + antd v5 + Zustand + React Router + Axios + SCSS�
 
 # UI 与样式
 
-- antd v5；主题定制集中在 `ConfigProvider` theme token，不散落覆盖。
+- antd v6；主题定制集中在 `ConfigProvider` theme token，不散落覆盖。
 - 自定义样式统一 CSS Modules + SCSS；禁止内联样式堆叠。
 - 学生端使用"极光"主题：多彩渐变主色、圆角卡片、大字号、图标化引导，适配低龄学生。
 - 学段自适应 UI：按 `userInfo.stage` 切换布局密度与入口可见性——小低大按钮 / 图形化 / 语音朗读；高中信息密度高、代码优先。

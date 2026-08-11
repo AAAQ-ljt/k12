@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.KnowledgePointMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.KnowledgePoint">
+		<!--知识点ID-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--知识点名；同名跨学段多行，(name, stage)逻辑唯一-->
+		<result column="name" property="name"  />
+		<!--学段-->
+		<result column="stage" property="stage"  />
+		<!--学科-->
+		<result column="subject" property="subject"  />
+		<!--难度：1-3-->
+		<result column="difficulty" property="difficulty"  />
+		<!--描述-->
+		<result column="description" property="description"  />
+		<!--封面，可空-->
+		<result column="cover" property="cover"  />
+		<!--关联课时，可空-->
+		<result column="lesson_id" property="lessonId"  />
+		<!--排序-->
+		<result column="sort" property="sort"  />
+		<!--状态：0停用 1启用-->
+		<result column="status" property="status"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 k.knowledge_point_id,k.name,k.stage,k.subject,k.difficulty,
+		 k.description,k.cover,k.lesson_id,k.sort,k.status,
+		 k.create_time,k.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  k.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.name != null and query.name!=''">
+				 and  k.name = #{query.name}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  k.stage = #{query.stage}
+			</if>
+			<if test="query.subject != null and query.subject!=''">
+				 and  k.subject = #{query.subject}
+			</if>
+			<if test="query.difficulty != null">
+				 and  k.difficulty = #{query.difficulty}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  k.description = #{query.description}
+			</if>
+			<if test="query.cover != null and query.cover!=''">
+				 and  k.cover = #{query.cover}
+			</if>
+			<if test="query.lessonId != null and query.lessonId!=''">
+				 and  k.lesson_id = #{query.lessonId}
+			</if>
+			<if test="query.sort != null">
+				 and  k.sort = #{query.sort}
+			</if>
+			<if test="query.status != null">
+				 and  k.status = #{query.status}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  k.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  k.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  k.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.nameFuzzy!= null  and query.nameFuzzy!=''">
+				 and  k.name like concat('%', #{query.nameFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  k.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.subjectFuzzy!= null  and query.subjectFuzzy!=''">
+				 and  k.subject like concat('%', #{query.subjectFuzzy}, '%')
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  k.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+			<if test="query.coverFuzzy!= null  and query.coverFuzzy!=''">
+				 and  k.cover like concat('%', #{query.coverFuzzy}, '%')
+			</if>
+			<if test="query.lessonIdFuzzy!= null  and query.lessonIdFuzzy!=''">
+				 and  k.lesson_id like concat('%', #{query.lessonIdFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  k.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  k.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  k.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  k.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM knowledge_point k <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM knowledge_point k <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.KnowledgePoint">
+		 INSERT INTO knowledge_point
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.name != null">
+				 name,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.subject != null">
+				 subject,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.cover != null">
+				 cover,
+			</if>
+			<if test="bean.lessonId != null">
+				 lesson_id,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.name!=null">
+				 #{bean.name},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.subject!=null">
+				 #{bean.subject},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.cover!=null">
+				 #{bean.cover},
+			</if>
+			<if test="bean.lessonId!=null">
+				 #{bean.lessonId},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.KnowledgePoint">
+		 INSERT INTO knowledge_point
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.name != null">
+				 name,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.subject != null">
+				 subject,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.cover != null">
+				 cover,
+			</if>
+			<if test="bean.lessonId != null">
+				 lesson_id,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.name!=null">
+				 #{bean.name},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.subject!=null">
+				 #{bean.subject},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.cover!=null">
+				 #{bean.cover},
+			</if>
+			<if test="bean.lessonId!=null">
+				 #{bean.lessonId},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.name!=null">
+				 name = VALUES(name),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.subject!=null">
+				 subject = VALUES(subject),
+			</if>
+			<if test="bean.difficulty!=null">
+				 difficulty = VALUES(difficulty),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+			<if test="bean.cover!=null">
+				 cover = VALUES(cover),
+			</if>
+			<if test="bean.lessonId!=null">
+				 lesson_id = VALUES(lesson_id),
+			</if>
+			<if test="bean.sort!=null">
+				 sort = VALUES(sort),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.KnowledgePoint">
+		 INSERT INTO knowledge_point(
+			 knowledge_point_id,
+			 name,
+			 stage,
+			 subject,
+			 difficulty,
+			 description,
+			 cover,
+			 lesson_id,
+			 sort,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.knowledgePointId},
+				 #{item.name},
+				 #{item.stage},
+				 #{item.subject},
+				 #{item.difficulty},
+				 #{item.description},
+				 #{item.cover},
+				 #{item.lessonId},
+				 #{item.sort},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.KnowledgePoint">
+		 INSERT INTO knowledge_point(
+			 knowledge_point_id,
+			 name,
+			 stage,
+			 subject,
+			 difficulty,
+			 description,
+			 cover,
+			 lesson_id,
+			 sort,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.knowledgePointId},
+				 #{item.name},
+				 #{item.stage},
+				 #{item.subject},
+				 #{item.difficulty},
+				 #{item.description},
+				 #{item.cover},
+				 #{item.lessonId},
+				 #{item.sort},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			knowledge_point_id = VALUES(knowledge_point_id),
+			name = VALUES(name),
+			stage = VALUES(stage),
+			subject = VALUES(subject),
+			difficulty = VALUES(difficulty),
+			description = VALUES(description),
+			cover = VALUES(cover),
+			lesson_id = VALUES(lesson_id),
+			sort = VALUES(sort),
+			status = VALUES(status),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.KnowledgePointQuery">
+		 UPDATE knowledge_point k
+ 		 <set> 
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.name != null">
+				 name = #{bean.name},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.subject != null">
+				 subject = #{bean.subject},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.cover != null">
+				 cover = #{bean.cover},
+			</if>
+			<if test="bean.lessonId != null">
+				 lesson_id = #{bean.lessonId},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete k from knowledge_point k
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据KnowledgePointId修改-->
+	<update id="updateByKnowledgePointId" parameterType="com.nexora.entity.po.KnowledgePoint">
+		 UPDATE knowledge_point
+ 		 <set> 
+			<if test="bean.name != null">
+				 name = #{bean.name},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.subject != null">
+				 subject = #{bean.subject},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.cover != null">
+				 cover = #{bean.cover},
+			</if>
+			<if test="bean.lessonId != null">
+				 lesson_id = #{bean.lessonId},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where knowledge_point_id=#{knowledgePointId}
+	</update>
+
+	<!-- 根据KnowledgePointId删除-->
+	<delete id="deleteByKnowledgePointId">
+		delete from knowledge_point where knowledge_point_id=#{knowledgePointId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByKnowledgePointId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from knowledge_point k where knowledge_point_id=#{knowledgePointId}
+	</select>
+
+</mapper>

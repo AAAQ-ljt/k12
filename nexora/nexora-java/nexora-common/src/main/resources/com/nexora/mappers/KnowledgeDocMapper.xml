@@ -1,0 +1,648 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.KnowledgeDocMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.KnowledgeDoc">
+		<!--文档ID-->
+		<result column="doc_id" property="docId"  />
+		<!--标题-->
+		<result column="title" property="title"  />
+		<!--学段【冗余：与ES metadata双写一致】-->
+		<result column="stage" property="stage"  />
+		<!--知识点【冗余：检索过滤/管理筛选免join】-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--难度：1-3-->
+		<result column="difficulty" property="difficulty"  />
+		<!--数据类型，默认KNOWLEDGE-->
+		<result column="data_type" property="dataType"  />
+		<!--正文（Markdown）-->
+		<result column="content" property="content"  />
+		<!--来源：0手动维护 1资料解析-->
+		<result column="source_type" property="sourceType"  />
+		<!--来源资源ID（解析入库时回填），可空-->
+		<result column="source_resource_id" property="sourceResourceId"  />
+		<!--向量状态：0待处理 1处理中 2已完成 3失败 4过期-->
+		<result column="vector_status" property="vectorStatus"  />
+		<!--向量化失败时的错误原因，可空-->
+		<result column="vector_error" property="vectorError"  />
+		<!--入库分块数-->
+		<result column="chunk_count" property="chunkCount"  />
+		<!--状态：0下架 1上架-->
+		<result column="status" property="status"  />
+		<!--维护人-->
+		<result column="create_by" property="createBy"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 k.doc_id,k.title,k.stage,k.knowledge_point_id,k.difficulty,
+		 k.data_type,k.content,k.source_type,k.source_resource_id,k.vector_status,
+		 k.vector_error,k.chunk_count,k.status,k.create_by,k.create_time,
+		 k.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.docId != null and query.docId!=''">
+				 and  k.doc_id = #{query.docId}
+			</if>
+			<if test="query.title != null and query.title!=''">
+				 and  k.title = #{query.title}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  k.stage = #{query.stage}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  k.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.difficulty != null">
+				 and  k.difficulty = #{query.difficulty}
+			</if>
+			<if test="query.dataType != null and query.dataType!=''">
+				 and  k.data_type = #{query.dataType}
+			</if>
+			<if test="query.content != null and query.content!=''">
+				 and  k.content = #{query.content}
+			</if>
+			<if test="query.sourceType != null">
+				 and  k.source_type = #{query.sourceType}
+			</if>
+			<if test="query.sourceResourceId != null and query.sourceResourceId!=''">
+				 and  k.source_resource_id = #{query.sourceResourceId}
+			</if>
+			<if test="query.vectorStatus != null">
+				 and  k.vector_status = #{query.vectorStatus}
+			</if>
+			<if test="query.vectorError != null and query.vectorError!=''">
+				 and  k.vector_error = #{query.vectorError}
+			</if>
+			<if test="query.chunkCount != null">
+				 and  k.chunk_count = #{query.chunkCount}
+			</if>
+			<if test="query.status != null">
+				 and  k.status = #{query.status}
+			</if>
+			<if test="query.createBy != null">
+				 and  k.create_by = #{query.createBy}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  k.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  k.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.docIdFuzzy!= null  and query.docIdFuzzy!=''">
+				 and  k.doc_id like concat('%', #{query.docIdFuzzy}, '%')
+			</if>
+			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
+				 and  k.title like concat('%', #{query.titleFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  k.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  k.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.dataTypeFuzzy!= null  and query.dataTypeFuzzy!=''">
+				 and  k.data_type like concat('%', #{query.dataTypeFuzzy}, '%')
+			</if>
+			<if test="query.contentFuzzy!= null  and query.contentFuzzy!=''">
+				 and  k.content like concat('%', #{query.contentFuzzy}, '%')
+			</if>
+			<if test="query.sourceResourceIdFuzzy!= null  and query.sourceResourceIdFuzzy!=''">
+				 and  k.source_resource_id like concat('%', #{query.sourceResourceIdFuzzy}, '%')
+			</if>
+			<if test="query.vectorErrorFuzzy!= null  and query.vectorErrorFuzzy!=''">
+				 and  k.vector_error like concat('%', #{query.vectorErrorFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  k.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  k.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  k.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  k.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM knowledge_doc k <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM knowledge_doc k <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.KnowledgeDoc">
+		 INSERT INTO knowledge_doc
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.docId != null">
+				 doc_id,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.dataType != null">
+				 data_type,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.sourceType != null">
+				 source_type,
+			</if>
+			<if test="bean.sourceResourceId != null">
+				 source_resource_id,
+			</if>
+			<if test="bean.vectorStatus != null">
+				 vector_status,
+			</if>
+			<if test="bean.vectorError != null">
+				 vector_error,
+			</if>
+			<if test="bean.chunkCount != null">
+				 chunk_count,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.docId!=null">
+				 #{bean.docId},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.dataType!=null">
+				 #{bean.dataType},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.sourceType!=null">
+				 #{bean.sourceType},
+			</if>
+			<if test="bean.sourceResourceId!=null">
+				 #{bean.sourceResourceId},
+			</if>
+			<if test="bean.vectorStatus!=null">
+				 #{bean.vectorStatus},
+			</if>
+			<if test="bean.vectorError!=null">
+				 #{bean.vectorError},
+			</if>
+			<if test="bean.chunkCount!=null">
+				 #{bean.chunkCount},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.KnowledgeDoc">
+		 INSERT INTO knowledge_doc
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.docId != null">
+				 doc_id,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.dataType != null">
+				 data_type,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.sourceType != null">
+				 source_type,
+			</if>
+			<if test="bean.sourceResourceId != null">
+				 source_resource_id,
+			</if>
+			<if test="bean.vectorStatus != null">
+				 vector_status,
+			</if>
+			<if test="bean.vectorError != null">
+				 vector_error,
+			</if>
+			<if test="bean.chunkCount != null">
+				 chunk_count,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.docId!=null">
+				 #{bean.docId},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.dataType!=null">
+				 #{bean.dataType},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.sourceType!=null">
+				 #{bean.sourceType},
+			</if>
+			<if test="bean.sourceResourceId!=null">
+				 #{bean.sourceResourceId},
+			</if>
+			<if test="bean.vectorStatus!=null">
+				 #{bean.vectorStatus},
+			</if>
+			<if test="bean.vectorError!=null">
+				 #{bean.vectorError},
+			</if>
+			<if test="bean.chunkCount!=null">
+				 #{bean.chunkCount},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.docId!=null">
+				 doc_id = VALUES(doc_id),
+			</if>
+			<if test="bean.title!=null">
+				 title = VALUES(title),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.difficulty!=null">
+				 difficulty = VALUES(difficulty),
+			</if>
+			<if test="bean.dataType!=null">
+				 data_type = VALUES(data_type),
+			</if>
+			<if test="bean.content!=null">
+				 content = VALUES(content),
+			</if>
+			<if test="bean.sourceType!=null">
+				 source_type = VALUES(source_type),
+			</if>
+			<if test="bean.sourceResourceId!=null">
+				 source_resource_id = VALUES(source_resource_id),
+			</if>
+			<if test="bean.vectorStatus!=null">
+				 vector_status = VALUES(vector_status),
+			</if>
+			<if test="bean.vectorError!=null">
+				 vector_error = VALUES(vector_error),
+			</if>
+			<if test="bean.chunkCount!=null">
+				 chunk_count = VALUES(chunk_count),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createBy!=null">
+				 create_by = VALUES(create_by),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.KnowledgeDoc">
+		 INSERT INTO knowledge_doc(
+			 doc_id,
+			 title,
+			 stage,
+			 knowledge_point_id,
+			 difficulty,
+			 data_type,
+			 content,
+			 source_type,
+			 source_resource_id,
+			 vector_status,
+			 vector_error,
+			 chunk_count,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.docId},
+				 #{item.title},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.difficulty},
+				 #{item.dataType},
+				 #{item.content},
+				 #{item.sourceType},
+				 #{item.sourceResourceId},
+				 #{item.vectorStatus},
+				 #{item.vectorError},
+				 #{item.chunkCount},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.KnowledgeDoc">
+		 INSERT INTO knowledge_doc(
+			 doc_id,
+			 title,
+			 stage,
+			 knowledge_point_id,
+			 difficulty,
+			 data_type,
+			 content,
+			 source_type,
+			 source_resource_id,
+			 vector_status,
+			 vector_error,
+			 chunk_count,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.docId},
+				 #{item.title},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.difficulty},
+				 #{item.dataType},
+				 #{item.content},
+				 #{item.sourceType},
+				 #{item.sourceResourceId},
+				 #{item.vectorStatus},
+				 #{item.vectorError},
+				 #{item.chunkCount},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			doc_id = VALUES(doc_id),
+			title = VALUES(title),
+			stage = VALUES(stage),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			difficulty = VALUES(difficulty),
+			data_type = VALUES(data_type),
+			content = VALUES(content),
+			source_type = VALUES(source_type),
+			source_resource_id = VALUES(source_resource_id),
+			vector_status = VALUES(vector_status),
+			vector_error = VALUES(vector_error),
+			chunk_count = VALUES(chunk_count),
+			status = VALUES(status),
+			create_by = VALUES(create_by),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.KnowledgeDocQuery">
+		 UPDATE knowledge_doc k
+ 		 <set> 
+			<if test="bean.docId != null">
+				 doc_id = #{bean.docId},
+			</if>
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.dataType != null">
+				 data_type = #{bean.dataType},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.sourceType != null">
+				 source_type = #{bean.sourceType},
+			</if>
+			<if test="bean.sourceResourceId != null">
+				 source_resource_id = #{bean.sourceResourceId},
+			</if>
+			<if test="bean.vectorStatus != null">
+				 vector_status = #{bean.vectorStatus},
+			</if>
+			<if test="bean.vectorError != null">
+				 vector_error = #{bean.vectorError},
+			</if>
+			<if test="bean.chunkCount != null">
+				 chunk_count = #{bean.chunkCount},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete k from knowledge_doc k
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据DocId修改-->
+	<update id="updateByDocId" parameterType="com.nexora.entity.po.KnowledgeDoc">
+		 UPDATE knowledge_doc
+ 		 <set> 
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.dataType != null">
+				 data_type = #{bean.dataType},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.sourceType != null">
+				 source_type = #{bean.sourceType},
+			</if>
+			<if test="bean.sourceResourceId != null">
+				 source_resource_id = #{bean.sourceResourceId},
+			</if>
+			<if test="bean.vectorStatus != null">
+				 vector_status = #{bean.vectorStatus},
+			</if>
+			<if test="bean.vectorError != null">
+				 vector_error = #{bean.vectorError},
+			</if>
+			<if test="bean.chunkCount != null">
+				 chunk_count = #{bean.chunkCount},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where doc_id=#{docId}
+	</update>
+
+	<!-- 根据DocId删除-->
+	<delete id="deleteByDocId">
+		delete from knowledge_doc where doc_id=#{docId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByDocId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from knowledge_doc k where doc_id=#{docId}
+	</select>
+
+</mapper>

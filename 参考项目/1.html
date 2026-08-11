@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K12 AI通识课教学助手 - 学生端</title>
+    <style>
+        :root {
+            --primary-color: #4F46E5; /* 科技蓝 */
+            --bg-color: #F3F4F6;
+            --sidebar-width: 240px;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+            --card-bg: #FFFFFF;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        body { background-color: var(--bg-color); display: flex; height: 100vh; overflow: hidden; }
+
+        /* 左侧导航栏 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: #fff;
+            border-right: 1px solid #E5E7EB;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+        }
+        .logo { padding: 0 24px 30px; font-size: 20px; font-weight: bold; color: var(--primary-color); display: flex; align-items: center; gap: 10px; }
+        .nav-item {
+            padding: 12px 24px;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+        }
+        .nav-item:hover, .nav-item.active { background-color: #EEF2FF; color: var(--primary-color); border-right: 3px solid var(--primary-color); }
+        
+        /* 主体区域 */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* 顶部栏 */
+        .header {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .avatar { width: 36px; height: 36px; background: #C7D2FE; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-weight: bold; }
+        
+        /* 模拟学段切换器 */
+        .grade-selector select { padding: 6px 12px; border-radius: 6px; border: 1px solid #D1D5DB; outline: none; }
+
+        /* 内容滚动区 */
+        .content-scroll { flex: 1; overflow-y: auto; padding: 30px; }
+
+        /* 欢迎语与AI状态 */
+        .welcome-section { margin-bottom: 30px; }
+        .welcome-title { font-size: 24px; font-weight: bold; color: var(--text-main); margin-bottom: 8px; }
+        .ai-status { font-size: 14px; color: var(--primary-color); background: #EEF2FF; padding: 6px 12px; border-radius: 20px; display: inline-block; }
+
+        /* 功能卡片网格 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .card:hover { transform: translateY(-4px); border-color: var(--primary-color); }
+        .card-icon { width: 48px; height: 48px; border-radius: 10px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px; }
+        .card-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; color: var(--text-main); }
+        .card-desc { font-size: 13px; color: var(--text-sub); line-height: 1.5; }
+
+        /* 特殊样式：绘本工坊 */
+        .card.story-mode .card-icon { background: #FEF3C7; color: #D97706; }
+        /* 特殊样式：编程环境 */
+        .card.code-mode .card-icon { background: #ECFDF5; color: #059669; }
+
+        /* 学习路径区 */
+        .path-section { background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .section-header { font-size: 18px; font-weight: bold; margin-bottom: 20px; display: flex; justify-content: space-between; }
+        .progress-bar { height: 8px; background: #E5E7EB; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { height: 100%; background: var(--primary-color); width: 65%; }
+
+        /* 隐藏元素类 */
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 侧边导航 -->
+    <div class="sidebar">
+        <div class="logo">🤖 K12 AI 助手</div>
+        <div class="nav-item active">🏠 首页概览</div>
+        <div class="nav-item">💬 AI 助教对话</div>
+        <div class="nav-item" id="nav-story">📖 绘本工坊</div> <!-- 低龄可见 -->
+        <div class="nav-item">🛤️ 学习路径</div>
+        <div class="nav-item" id="nav-code">💻 编程环境</div> <!-- 高年级可见 -->
+        <div class="nav-item">📚 课程教材</div>
+        <div class="nav-item" style="margin-top: auto;">⚙️ 个人设置</div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <!-- 顶部栏 -->
+        <div class="header">
+            <h3>学习中心</h3>
+            <div class="user-info">
+                <!-- 模拟学段切换 -->
+                <div class="grade-selector">
+                    <select id="gradeSelect" onchange="switchGrade()">
+                        <option value="low">小学低年级 (1-2年级)</option>
+                        <option value="high">小学高年级 (3-6年级)</option>
+                        <option value="middle">初中</option>
+                        <option value="high_school">高中</option>
+                    </select>
+                </div>
+                <div class="avatar">李</div>
+                <span>李明同学</span>
+            </div>
+        </div>
+
+        <!-- 滚动内容区 -->
+        <div class="content-scroll">
+            
+            <div class="welcome-section">
+                <div class="welcome-title" id="welcomeText">下午好，李明！今天想探索什么知识？</div>
+                <div class="ai-status" id="aiStatus">当前模式：亲切鼓励风 (适合低年级)</div>
+            </div>
+
+            <!-- 核心功能卡片 -->
+            <div class="grid-container">
+                <!-- AI 助教 (所有学段可见) -->
+                <div class="card">
+                    <div class="card-icon">💬</div>
+                    <div class="card-title">AI 助教</div>
+                    <div class="card-desc">随时提问，无论是作文参考还是科学百科，我都能帮你。</div>
+                </div>
+
+                <!-- 绘本工坊 (仅低年级可见) -->
+                <div class="card story-mode" id="card-story">
+                    <div class="card-icon">📖</div>
+                    <div class="card-title">绘本工坊</div>
+                    <div class="card-desc">输入一个主题，AI为你生成专属的图文故事绘本。</div>
+                </div>
+
+                <!-- 编程环境 (高年级及以上可见) -->
+                <div class="card code-mode hidden" id="card-code">
+                    <div class="card-icon">💻</div>
+                    <div class="card-title">Python 编程沙箱</div>
+                    <div class="card-desc">基于 Pyodide 的在线编程环境，安全运行你的代码。</div>
+                </div>
+
+                <!-- 课程教材 (通用) -->
+                <div class="card">
+                    <div class="card-icon">📚</div>
+                    <div class="card-title">同步教材</div>
+                    <div class="card-desc">查看本学期的人工智能通识课章节内容。</div>
+                </div>
+            </div>
+
+            <!-- 学习路径 -->
+            <div class="path-section">
+                <div class="section-header">
+                    <span>🚀 个性化学习路径</span>
+                    <span style="font-size: 14px; color: var(--primary-color); cursor: pointer;">查看详情 ></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--text-sub);">
+                    <span>当前进度：第3章 - 机器学习初探</span>
+                    <span>已完成 65%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 简单的学段切换逻辑演示
+        function switchGrade() {
+            const grade = document.getElementById('gradeSelect').value;
+            const storyCard = document.getElementById('card-story');
+            const navStory = document.getElementById('nav-story');
+            const codeCard = document.getElementById('card-code');
+            const navCode = document.getElementById('nav-code');
+            const aiStatus = document.getElementById('aiStatus');
+            const welcomeText = document.getElementById('welcomeText');
+
+            // 重置显示
+            storyCard.classList.add('hidden');
+            navStory.classList.add('hidden');
+            codeCard.classList.add('hidden');
+            navCode.classList.add('hidden');
+
+            if (grade === 'low') {
+                // 低年级：显示绘本，隐藏编程
+                storyCard.classList.remove('hidden');
+                navStory.classList.remove('hidden');
+                aiStatus.innerText = "当前模式：亲切鼓励风 (适合低年级)";
+                aiStatus.style.background = "#FEF3C7";
+                aiStatus.style.color = "#D97706";
+                welcomeText.innerText = "小朋友你好呀！今天想听个什么故事？或者有什么想问的？";
+            } else {
+                // 高年级/初中/高中：隐藏绘本，显示编程
+                codeCard.classList.remove('hidden');
+                navCode.classList.remove('hidden');
+                
+                if(grade === 'high_school') {
+                     aiStatus.innerText = "当前模式：严谨深度风 (高中)";
+                     aiStatus.style.background = "#EEF2FF";
+                     aiStatus.style.color = "#4F46E5";
+                     welcomeText.innerText = "你好，李明。请继续推进你的深度学习研究路径。";
+                } else {
+                     aiStatus.innerText = "当前模式：清晰引导风";
+                     welcomeText.innerText = "下午好，李明！准备好开始今天的探索了吗？";
+                }
+            }
+        }
+        
+        // 初始化执行一次
+        switchGrade();
+    </script>
+</body>
+</html>

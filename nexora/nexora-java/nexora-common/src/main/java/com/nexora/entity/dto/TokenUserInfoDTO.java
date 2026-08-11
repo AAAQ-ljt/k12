@@ -1,0 +1,26 @@
+package com.nexora.entity.dto;
+
+import lombok.Data;
+
+import java.io.Serializable;
+
+/**
+ * Token 用户信息 DTO
+ */
+@Data
+public class TokenUserInfoDTO implements Serializable {
+
+    private String userId;
+
+    private String username;
+
+    /**
+     * 学段：PRIMARY_LOW / PRIMARY_HIGH / JUNIOR / SENIOR
+     */
+    private String stage;
+
+    /**
+     * 角色类型：0 管理员 / 1 学生
+     */
+    private Integer roleType;
+}

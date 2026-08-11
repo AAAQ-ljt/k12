@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.QuestionOptionMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.QuestionOption">
+		<!--选项ID-->
+		<id column="option_id" property="optionId"  />
+		<!--题目ID-->
+		<result column="question_id" property="questionId"  />
+		<!--选项标号：A/B/C/D-->
+		<result column="option_label" property="optionLabel"  />
+		<!--选项内容-->
+		<result column="option_content" property="optionContent"  />
+		<!--0否 1是-->
+		<result column="is_answer" property="isAnswer"  />
+		<!--排序-->
+		<result column="sort" property="sort"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 q.option_id,q.question_id,q.option_label,q.option_content,q.is_answer,
+		 q.sort,q.create_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.optionId != null">
+				 and  q.option_id = #{query.optionId}
+			</if>
+			<if test="query.questionId != null and query.questionId!=''">
+				 and  q.question_id = #{query.questionId}
+			</if>
+			<if test="query.optionLabel != null and query.optionLabel!=''">
+				 and  q.option_label = #{query.optionLabel}
+			</if>
+			<if test="query.optionContent != null and query.optionContent!=''">
+				 and  q.option_content = #{query.optionContent}
+			</if>
+			<if test="query.isAnswer != null">
+				 and  q.is_answer = #{query.isAnswer}
+			</if>
+			<if test="query.sort != null">
+				 and  q.sort = #{query.sort}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  q.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.questionIdFuzzy!= null  and query.questionIdFuzzy!=''">
+				 and  q.question_id like concat('%', #{query.questionIdFuzzy}, '%')
+			</if>
+			<if test="query.optionLabelFuzzy!= null  and query.optionLabelFuzzy!=''">
+				 and  q.option_label like concat('%', #{query.optionLabelFuzzy}, '%')
+			</if>
+			<if test="query.optionContentFuzzy!= null  and query.optionContentFuzzy!=''">
+				 and  q.option_content like concat('%', #{query.optionContentFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  q.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  q.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM question_option q <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM question_option q <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.QuestionOption">
+		<selectKey keyProperty="bean.optionId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO question_option
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.questionId != null">
+				 question_id,
+			</if>
+			<if test="bean.optionLabel != null">
+				 option_label,
+			</if>
+			<if test="bean.optionContent != null">
+				 option_content,
+			</if>
+			<if test="bean.isAnswer != null">
+				 is_answer,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.questionId!=null">
+				 #{bean.questionId},
+			</if>
+			<if test="bean.optionLabel!=null">
+				 #{bean.optionLabel},
+			</if>
+			<if test="bean.optionContent!=null">
+				 #{bean.optionContent},
+			</if>
+			<if test="bean.isAnswer!=null">
+				 #{bean.isAnswer},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.QuestionOption">
+		 INSERT INTO question_option
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.optionId != null">
+				 option_id,
+			</if>
+			<if test="bean.questionId != null">
+				 question_id,
+			</if>
+			<if test="bean.optionLabel != null">
+				 option_label,
+			</if>
+			<if test="bean.optionContent != null">
+				 option_content,
+			</if>
+			<if test="bean.isAnswer != null">
+				 is_answer,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.optionId!=null">
+				 #{bean.optionId},
+			</if>
+			<if test="bean.questionId!=null">
+				 #{bean.questionId},
+			</if>
+			<if test="bean.optionLabel!=null">
+				 #{bean.optionLabel},
+			</if>
+			<if test="bean.optionContent!=null">
+				 #{bean.optionContent},
+			</if>
+			<if test="bean.isAnswer!=null">
+				 #{bean.isAnswer},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.questionId!=null">
+				 question_id = VALUES(question_id),
+			</if>
+			<if test="bean.optionLabel!=null">
+				 option_label = VALUES(option_label),
+			</if>
+			<if test="bean.optionContent!=null">
+				 option_content = VALUES(option_content),
+			</if>
+			<if test="bean.isAnswer!=null">
+				 is_answer = VALUES(is_answer),
+			</if>
+			<if test="bean.sort!=null">
+				 sort = VALUES(sort),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.QuestionOption" useGeneratedKeys="true" keyProperty="optionId">
+		 INSERT INTO question_option(
+			 question_id,
+			 option_label,
+			 option_content,
+			 is_answer,
+			 sort,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.questionId},
+				 #{item.optionLabel},
+				 #{item.optionContent},
+				 #{item.isAnswer},
+				 #{item.sort},
+				 #{item.createTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.QuestionOption">
+		 INSERT INTO question_option(
+			 question_id,
+			 option_label,
+			 option_content,
+			 is_answer,
+			 sort,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.questionId},
+				 #{item.optionLabel},
+				 #{item.optionContent},
+				 #{item.isAnswer},
+				 #{item.sort},
+				 #{item.createTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			question_id = VALUES(question_id),
+			option_label = VALUES(option_label),
+			option_content = VALUES(option_content),
+			is_answer = VALUES(is_answer),
+			sort = VALUES(sort),
+			create_time = VALUES(create_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.QuestionOptionQuery">
+		 UPDATE question_option q
+ 		 <set> 
+			<if test="bean.questionId != null">
+				 question_id = #{bean.questionId},
+			</if>
+			<if test="bean.optionLabel != null">
+				 option_label = #{bean.optionLabel},
+			</if>
+			<if test="bean.optionContent != null">
+				 option_content = #{bean.optionContent},
+			</if>
+			<if test="bean.isAnswer != null">
+				 is_answer = #{bean.isAnswer},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete q from question_option q
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据OptionId修改-->
+	<update id="updateByOptionId" parameterType="com.nexora.entity.po.QuestionOption">
+		 UPDATE question_option
+ 		 <set> 
+			<if test="bean.questionId != null">
+				 question_id = #{bean.questionId},
+			</if>
+			<if test="bean.optionLabel != null">
+				 option_label = #{bean.optionLabel},
+			</if>
+			<if test="bean.optionContent != null">
+				 option_content = #{bean.optionContent},
+			</if>
+			<if test="bean.isAnswer != null">
+				 is_answer = #{bean.isAnswer},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 where option_id=#{optionId}
+	</update>
+
+	<!-- 根据OptionId删除-->
+	<delete id="deleteByOptionId">
+		delete from question_option where option_id=#{optionId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByOptionId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from question_option q where option_id=#{optionId}
+	</select>
+
+</mapper>

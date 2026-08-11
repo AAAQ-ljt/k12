@@ -6,13 +6,13 @@
 ## 1、设计约定
 
 - 引擎 InnoDB，字符集 utf8mb4（mb4 兼容 emoji，低龄学生 UI 需要）。
-- 主键策略：业务实体 `varchar(32)` UUID（课程 / 章节 / 课时 / 资源 / 知识点 / 文档 / 题目 / 会话 / 消息 / 路径 / 生成记录）；基础数据 `int` 自增（用户 / 菜单 / 通知）；高频写入的记录型大表 `bigint` 自增（practice_record / course_study_log）。
+- 主键策略：业务实体 `varchar(32)` UUID（课程 / 章节 / 课时 / 资源 / 知识点 / 文档 / 题目 / 会话 / 消息 / 路径 / 生成记录）；基础数据 `int` 自增（用户 / 菜单 / 通知 / 系统配置 / 动画模板）；高频写入的记录型大表 `bigint` 自增（practice_record / course_study_log）。
 - 公共字段：`create_time` / `update_time` datetime；序列化统一 `yyyy-MM-dd HH:mm:ss`（GMT+8）。
 - 状态 / 枚举字段统一 `tinyint` 或约定字符串，取值在"说明"列注明；前后端枚举值保持一致，禁止自造同义词。
 - 学段统一 `varchar(20)`：`PRIMARY_LOW` / `PRIMARY_HIGH` / `JUNIOR` / `SENIOR`。
 - 冗余字段在说明列标注【冗余】，并注明一致性维护方式；总原则见文末"冗余设计说明"。
 
-## 2、表清单总览（26 张）
+## 2、表清单总览（28 张）
 
 | 分组 | 表 |
 |---|---|
@@ -23,9 +23,9 @@
 | 题库与练习 | question_info、question_option、practice_record |
 | 学习数据 | course_study_progress、course_study_lesson_progress、course_study_log |
 | 对话智能体 | agent_session、agent_message |
-| 多模态 | ai_generation_record |
+| 多模态生成域 | ai_generation_record、animation_template |
 | 个性化路径 | learning_path、learning_path_item、knowledge_mastery |
-| 智能体配置 | prompt_template |
+| 智能体配置域 | prompt_template、system_config |
 
 ## 3、用户与权限
 
@@ -35,6 +35,7 @@
 |---|---|---|
 | user_id | int PK AI | 用户 ID |
 | username | varchar(32) | 登录名，唯一 |
+| email | varchar(100) | 邮箱，登录核心字段，可空（管理员可不填） |
 | password | varchar(64) | 密码（MD5 存储） |
 | nick_name | varchar(32) | 昵称 |
 | avatar | varchar(255) | 头像 URL |
@@ -47,6 +48,8 @@
 | status | tinyint | 0 禁用 / 1 启用 |
 | last_login_time | datetime | 最后登录时间 |
 | create_time / update_time | datetime | 公共字段 |
+
+唯一索引：`(email)`（MySQL 唯一索引允许多个 NULL，管理员无邮箱时不冲突）。
 
 ### system_menu 系统菜单表
 
@@ -82,6 +85,7 @@
 | title | varchar(200) | 标题 |
 | content | text | 内容 |
 | message_type | tinyint | 0 系统消息 / 1 学习提醒 |
+| jump_path | varchar(200) | 消息点击跳转路径，可空（学习提醒跳转课时 / 路径节点） |
 | create_by | int | 发送人（管理员） |
 | create_time | datetime | 创建时间 |
 
@@ -94,6 +98,7 @@
 | user_id | int | 接收人 |
 | read_status | tinyint | 0 未读 / 1 已读 |
 | read_time | datetime | 阅读时间 |
+| delete_flag | tinyint | 0 正常 / 1 已删除（学生隐藏消息） |
 | create_time | datetime | 创建时间 |
 
 索引：`(user_id, read_status)`。
@@ -126,7 +131,7 @@
 | lesson_count | int | 课时总数【冗余：课时增删时同事务维护，课程列表免聚合】 |
 | study_count | int | 学习人数【冗余：学习行为触发计数】 |
 | sort | int | 排序 |
-| status | tinyint | 0 上架 / 1 下架 |
+| status | tinyint | 1 上架 / 0 下架（与全局 status=1 启用语义一致） |
 | create_by | int | 创建人（管理员） |
 | create_time / update_time | datetime | 公共字段 |
 
@@ -181,6 +186,8 @@
 | resource_id | varchar(32) PK | 资源 ID |
 | resource_name | varchar(200) | 资源名 |
 | resource_type | varchar(20) | VIDEO / DOCUMENT / PPT / WORD / IMAGE / PICTURE_BOOK |
+| tags | varchar(500) | 资源标签，多个逗号分隔 |
+| description | varchar(500) | 资源简介 |
 | file_path | varchar(255) | 文件地址 |
 | file_size | bigint | 文件大小（字节） |
 | cover | varchar(255) | 封面 |
@@ -228,7 +235,8 @@
 | content | longtext | 正文（Markdown） |
 | source_type | tinyint | 0 手动维护 / 1 资料解析 |
 | source_resource_id | varchar(32) | 来源资源 ID（解析入库时回填），可空 |
-| vector_status | tinyint | 向量状态：0 未入库 / 1 已入库 / 2 过期 |
+| vector_status | tinyint | 向量状态：0 待处理 / 1 处理中 / 2 已完成 / 3 失败 / 4 过期 |
+| vector_error | varchar(500) | 向量化失败时的错误原因，可空 |
 | chunk_count | int | 入库分块数 |
 | status | tinyint | 0 下架 / 1 上架 |
 | create_by | int | 维护人 |
@@ -248,6 +256,7 @@
 | difficulty | tinyint | 难度：1-3 |
 | question_type | tinyint | 0 单选 / 1 多选 / 2 判断 / 3 填空 |
 | title | text | 题干 |
+| question_image | varchar(500) | 题目配图，关联 resource_info.resource_id，多个逗号分隔，可空（K12 低年级看图题） |
 | answer | varchar(500) | 判断 / 填空答案；选择题答案在选项表 |
 | analysis | text | 解析 |
 | source | tinyint | 0 管理员录入 / 1 AI 生成 |
@@ -269,6 +278,7 @@
 | option_content | varchar(500) | 选项内容 |
 | is_answer | tinyint | 0 否 / 1 是 |
 | sort | int | 排序 |
+| create_time | datetime | 创建时间 |
 
 索引：`(question_id)`。
 
@@ -376,11 +386,13 @@
 | generation_id | varchar(32) | 关联生成记录，可空 |
 | status | tinyint | 0 处理中 / 1 完成 / 2 取消 / 3 错误 |
 | error_info | varchar(500) | 错误信息，可空 |
+| prompt_tokens | int | 输入 token 用量，默认 0 |
+| completion_tokens | int | 输出 token 用量，默认 0（项目报告大模型调用策略数据支撑） |
 | create_time / update_time | datetime | 公共字段 |
 
 索引：`(session_id, create_time)`、`(user_id, create_time)`。
 
-## 10、多模态
+## 10、多模态生成域
 
 ### ai_generation_record AI 生成记录表
 
@@ -398,9 +410,28 @@
 | source | tinyint | 0 学生生成 / 1 管理员预置 |
 | status | tinyint | 0 生成中 / 1 完成 / 2 失败 / 3 已发布 |
 | saved | tinyint | 学生是否已保存到"我的"：0 否 / 1 是 |
+| audit_status | tinyint | 审核：0 待审核 / 1 通过 / 2 驳回（动画审核流程） |
+| create_by | int | 管理员预置时记录操作人 ID，可空 |
 | create_time / update_time | datetime | 公共字段 |
 
 索引：`(user_id, type)`、`(source, status, stage)`。
+
+### animation_template 动画模板库
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| template_id | int PK AI | 模板 ID |
+| template_name | varchar(100) | 模板名称 |
+| template_type | varchar(30) | 动画类型，对应意图：EXPLAIN / CONCEPT / PROCESS 等 |
+| stage | varchar(20) | 学段：PRIMARY_LOW / PRIMARY_HIGH / JUNIOR / SENIOR / ALL |
+| description | varchar(500) | 模板描述 |
+| template_content | longtext | SVG 模板 JSON，含分步脚本结构 |
+| preview_url | varchar(500) | 预览图 URL，可空 |
+| status | tinyint | 0 停用 / 1 启用 |
+| create_by | int | 创建人（管理员 ID） |
+| create_time / update_time | datetime | 公共字段 |
+
+索引：`(stage, template_type, status)`。
 
 ## 11、个性化路径
 
@@ -462,7 +493,7 @@
 
 唯一索引：`(user_id, knowledge_point_id)`；索引：`(user_id, next_review_time)`。
 
-## 12、智能体配置
+## 12、智能体配置域
 
 ### prompt_template 提示词模板表
 
@@ -478,6 +509,21 @@
 | create_time / update_time | datetime | 公共字段 |
 
 唯一索引：`(stage, scene)`；读取顺序：Redis 覆盖 → 本表 → 枚举默认值。
+
+### system_config 系统全局配置表
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| config_id | int PK AI | 配置 ID |
+| config_group | varchar(50) | 分组：AI_MODEL / RAG / PYODIDE / SYSTEM / SECURITY |
+| config_key | varchar(100) | 配置键，如 text_image_model / embedding_model / top_k / similarity_threshold |
+| config_value | text | 配置值，支持字符串 / JSON |
+| config_type | varchar(20) | 值类型：STRING / INT / FLOAT / BOOLEAN / JSON，默认 STRING |
+| description | varchar(200) | 配置说明 |
+| status | tinyint | 0 停用 / 1 启用 |
+| create_time / update_time | datetime | 公共字段 |
+
+唯一索引：`(config_group, config_key)`；索引：`(status)`。
 
 ## 13、冗余设计说明
 
@@ -496,6 +542,7 @@
 | learning_path.total_items / finished_items / progress | 节点状态变更时维护 |
 | knowledge_mastery.practice_count / correct_count | 批改后原子自增（`update set count = count + 1`），禁止先查后改 |
 | knowledge_doc.stage / knowledge_point_id / difficulty | 与 ES 向量 metadata 双写；重新入库时以本表为准同步 |
+| knowledge_doc.vector_status / vector_error | 本地表追踪向量化管线状态（待处理 / 处理中 / 已完成 / 失败 / 过期）；ES 侧无对应字段，状态变更时仅更新本表 |
 
 ## 14、衍生数据不建表（约定）
 
@@ -503,6 +550,7 @@
 - 学习时长统计：`course_study_log` 按 `study_date` 聚合。
 - 正确率：`knowledge_mastery.correct_count / practice_count`。
 - AI 推荐路径 vs 实际路径对比：`learning_path_item`（sort / status）对照 `practice_record` / `course_study_lesson_progress` 时间线。
+- 大模型 token 用量统计：`agent_message.prompt_tokens / completion_tokens` 按用户 / 学段 / 意图聚合。
 
 ## 15、初始数据清单（生成 nexora.sql 时落实）
 
@@ -510,5 +558,17 @@
 - 知识点库：什么是 AI / 机器学习 / 神经网络 / 计算机视觉 / 自然语言处理 / 排序算法 / Python 编程基础 / AI 伦理等，按学段 × 难度区分。
 - system_menu / system_role_menu：管理端菜单与权限编码。
 - prompt_template：各学段 × 各意图的默认提示词。
+- system_config 默认配置项：
+  - AI_MODEL 组：`text_image_model` = `wanx-v1`、`embedding_model` = `text-embedding-v4`
+  - RAG 组：`top_k` = `5`（INT）、`similarity_threshold` = `0.7`（FLOAT）
+  - PYODIDE 组：`pyodide_packages` = `pandas,numpy,matplotlib`（STRING）
+  - SYSTEM 组：`intent_route_rules` = JSON（意图路由规则）
+  - SECURITY 组：`content_safety_enabled` = `true`（BOOLEAN）
+- animation_template 默认模板（2-3 个示例 SVG 动画模板，覆盖 EXPLAIN / CONCEPT 意图 × ALL 学段）。
 - 示例知识文档（与 `knowledge/` 目录源文件对应）。
-- 演示账号：管理员 1 个 + 4 学段学生各 1 个。
+- 演示账号（密码均为 123456 MD5）：
+  - 管理员：`admin@nexora.com`
+  - 学生（小学低）：`student_low@nexora.com`
+  - 学生（小学高）：`student_high@nexora.com`
+  - 学生（初中）：`student_junior@nexora.com`
+  - 学生（高中）：`student_senior@nexora.com`

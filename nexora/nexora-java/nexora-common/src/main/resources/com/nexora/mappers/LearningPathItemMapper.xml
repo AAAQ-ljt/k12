@@ -1,0 +1,588 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.LearningPathItemMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.LearningPathItem">
+		<!--节点ID-->
+		<result column="item_id" property="itemId"  />
+		<!--所属路径-->
+		<result column="path_id" property="pathId"  />
+		<!--学生【冗余：到期复习直查免join路径表】-->
+		<result column="user_id" property="userId"  />
+		<!--知识点-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--知识点名【冗余快照】-->
+		<result column="knowledge_point_name" property="knowledgePointName"  />
+		<!--0主线 1兴趣分支-->
+		<result column="branch_type" property="branchType"  />
+		<!--分支名，可空-->
+		<result column="branch_name" property="branchName"  />
+		<!--0学习 1复习（遗忘曲线复习节点）-->
+		<result column="item_type" property="itemType"  />
+		<!--状态：0未解锁 1进行中 2已掌握-->
+		<result column="status" property="status"  />
+		<!--复习到期日（item_type=1时有效）-->
+		<result column="due_date" property="dueDate"  />
+		<!--排序-->
+		<result column="sort" property="sort"  />
+		<!--完成时间-->
+		<result column="finish_time" property="finishTime"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 l.item_id,l.path_id,l.user_id,l.knowledge_point_id,l.knowledge_point_name,
+		 l.branch_type,l.branch_name,l.item_type,l.status,l.due_date,
+		 l.sort,l.finish_time,l.create_time,l.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.itemId != null and query.itemId!=''">
+				 and  l.item_id = #{query.itemId}
+			</if>
+			<if test="query.pathId != null and query.pathId!=''">
+				 and  l.path_id = #{query.pathId}
+			</if>
+			<if test="query.userId != null">
+				 and  l.user_id = #{query.userId}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  l.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.knowledgePointName != null and query.knowledgePointName!=''">
+				 and  l.knowledge_point_name = #{query.knowledgePointName}
+			</if>
+			<if test="query.branchType != null">
+				 and  l.branch_type = #{query.branchType}
+			</if>
+			<if test="query.branchName != null and query.branchName!=''">
+				 and  l.branch_name = #{query.branchName}
+			</if>
+			<if test="query.itemType != null">
+				 and  l.item_type = #{query.itemType}
+			</if>
+			<if test="query.status != null">
+				 and  l.status = #{query.status}
+			</if>
+			<if test="query.dueDate != null and query.dueDate!=''">
+				 <![CDATA[ and  l.due_date=str_to_date(#{query.dueDate}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.sort != null">
+				 and  l.sort = #{query.sort}
+			</if>
+			<if test="query.finishTime != null and query.finishTime!=''">
+				 <![CDATA[ and  l.finish_time=str_to_date(#{query.finishTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  l.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  l.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.itemIdFuzzy!= null  and query.itemIdFuzzy!=''">
+				 and  l.item_id like concat('%', #{query.itemIdFuzzy}, '%')
+			</if>
+			<if test="query.pathIdFuzzy!= null  and query.pathIdFuzzy!=''">
+				 and  l.path_id like concat('%', #{query.pathIdFuzzy}, '%')
+			</if>
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  l.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.knowledgePointNameFuzzy!= null  and query.knowledgePointNameFuzzy!=''">
+				 and  l.knowledge_point_name like concat('%', #{query.knowledgePointNameFuzzy}, '%')
+			</if>
+			<if test="query.branchNameFuzzy!= null  and query.branchNameFuzzy!=''">
+				 and  l.branch_name like concat('%', #{query.branchNameFuzzy}, '%')
+			</if>
+			<if test="query.dueDateStart!= null and query.dueDateStart!=''">
+				 <![CDATA[ and  l.due_date>=str_to_date(#{query.dueDateStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.dueDateEnd!= null and query.dueDateEnd!=''">
+				 <![CDATA[ and  l.due_date< date_sub(str_to_date(#{query.dueDateEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.finishTimeStart!= null and query.finishTimeStart!=''">
+				 <![CDATA[ and  l.finish_time>=str_to_date(#{query.finishTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.finishTimeEnd!= null and query.finishTimeEnd!=''">
+				 <![CDATA[ and  l.finish_time< date_sub(str_to_date(#{query.finishTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  l.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  l.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  l.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  l.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM learning_path_item l <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM learning_path_item l <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.LearningPathItem">
+		 INSERT INTO learning_path_item
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.itemId != null">
+				 item_id,
+			</if>
+			<if test="bean.pathId != null">
+				 path_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.knowledgePointName != null">
+				 knowledge_point_name,
+			</if>
+			<if test="bean.branchType != null">
+				 branch_type,
+			</if>
+			<if test="bean.branchName != null">
+				 branch_name,
+			</if>
+			<if test="bean.itemType != null">
+				 item_type,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.dueDate != null">
+				 due_date,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.finishTime != null">
+				 finish_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.itemId!=null">
+				 #{bean.itemId},
+			</if>
+			<if test="bean.pathId!=null">
+				 #{bean.pathId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.knowledgePointName!=null">
+				 #{bean.knowledgePointName},
+			</if>
+			<if test="bean.branchType!=null">
+				 #{bean.branchType},
+			</if>
+			<if test="bean.branchName!=null">
+				 #{bean.branchName},
+			</if>
+			<if test="bean.itemType!=null">
+				 #{bean.itemType},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.dueDate!=null">
+				 #{bean.dueDate},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.finishTime!=null">
+				 #{bean.finishTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.LearningPathItem">
+		 INSERT INTO learning_path_item
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.itemId != null">
+				 item_id,
+			</if>
+			<if test="bean.pathId != null">
+				 path_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.knowledgePointName != null">
+				 knowledge_point_name,
+			</if>
+			<if test="bean.branchType != null">
+				 branch_type,
+			</if>
+			<if test="bean.branchName != null">
+				 branch_name,
+			</if>
+			<if test="bean.itemType != null">
+				 item_type,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.dueDate != null">
+				 due_date,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.finishTime != null">
+				 finish_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.itemId!=null">
+				 #{bean.itemId},
+			</if>
+			<if test="bean.pathId!=null">
+				 #{bean.pathId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.knowledgePointName!=null">
+				 #{bean.knowledgePointName},
+			</if>
+			<if test="bean.branchType!=null">
+				 #{bean.branchType},
+			</if>
+			<if test="bean.branchName!=null">
+				 #{bean.branchName},
+			</if>
+			<if test="bean.itemType!=null">
+				 #{bean.itemType},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.dueDate!=null">
+				 #{bean.dueDate},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.finishTime!=null">
+				 #{bean.finishTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.itemId!=null">
+				 item_id = VALUES(item_id),
+			</if>
+			<if test="bean.pathId!=null">
+				 path_id = VALUES(path_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.knowledgePointName!=null">
+				 knowledge_point_name = VALUES(knowledge_point_name),
+			</if>
+			<if test="bean.branchType!=null">
+				 branch_type = VALUES(branch_type),
+			</if>
+			<if test="bean.branchName!=null">
+				 branch_name = VALUES(branch_name),
+			</if>
+			<if test="bean.itemType!=null">
+				 item_type = VALUES(item_type),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.dueDate!=null">
+				 due_date = VALUES(due_date),
+			</if>
+			<if test="bean.sort!=null">
+				 sort = VALUES(sort),
+			</if>
+			<if test="bean.finishTime!=null">
+				 finish_time = VALUES(finish_time),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.LearningPathItem">
+		 INSERT INTO learning_path_item(
+			 item_id,
+			 path_id,
+			 user_id,
+			 knowledge_point_id,
+			 knowledge_point_name,
+			 branch_type,
+			 branch_name,
+			 item_type,
+			 status,
+			 due_date,
+			 sort,
+			 finish_time,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.itemId},
+				 #{item.pathId},
+				 #{item.userId},
+				 #{item.knowledgePointId},
+				 #{item.knowledgePointName},
+				 #{item.branchType},
+				 #{item.branchName},
+				 #{item.itemType},
+				 #{item.status},
+				 #{item.dueDate},
+				 #{item.sort},
+				 #{item.finishTime},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.LearningPathItem">
+		 INSERT INTO learning_path_item(
+			 item_id,
+			 path_id,
+			 user_id,
+			 knowledge_point_id,
+			 knowledge_point_name,
+			 branch_type,
+			 branch_name,
+			 item_type,
+			 status,
+			 due_date,
+			 sort,
+			 finish_time,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.itemId},
+				 #{item.pathId},
+				 #{item.userId},
+				 #{item.knowledgePointId},
+				 #{item.knowledgePointName},
+				 #{item.branchType},
+				 #{item.branchName},
+				 #{item.itemType},
+				 #{item.status},
+				 #{item.dueDate},
+				 #{item.sort},
+				 #{item.finishTime},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			item_id = VALUES(item_id),
+			path_id = VALUES(path_id),
+			user_id = VALUES(user_id),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			knowledge_point_name = VALUES(knowledge_point_name),
+			branch_type = VALUES(branch_type),
+			branch_name = VALUES(branch_name),
+			item_type = VALUES(item_type),
+			status = VALUES(status),
+			due_date = VALUES(due_date),
+			sort = VALUES(sort),
+			finish_time = VALUES(finish_time),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.LearningPathItemQuery">
+		 UPDATE learning_path_item l
+ 		 <set> 
+			<if test="bean.itemId != null">
+				 item_id = #{bean.itemId},
+			</if>
+			<if test="bean.pathId != null">
+				 path_id = #{bean.pathId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.knowledgePointName != null">
+				 knowledge_point_name = #{bean.knowledgePointName},
+			</if>
+			<if test="bean.branchType != null">
+				 branch_type = #{bean.branchType},
+			</if>
+			<if test="bean.branchName != null">
+				 branch_name = #{bean.branchName},
+			</if>
+			<if test="bean.itemType != null">
+				 item_type = #{bean.itemType},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.dueDate != null">
+				 due_date = #{bean.dueDate},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.finishTime != null">
+				 finish_time = #{bean.finishTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete l from learning_path_item l
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据ItemId修改-->
+	<update id="updateByItemId" parameterType="com.nexora.entity.po.LearningPathItem">
+		 UPDATE learning_path_item
+ 		 <set> 
+			<if test="bean.pathId != null">
+				 path_id = #{bean.pathId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.knowledgePointName != null">
+				 knowledge_point_name = #{bean.knowledgePointName},
+			</if>
+			<if test="bean.branchType != null">
+				 branch_type = #{bean.branchType},
+			</if>
+			<if test="bean.branchName != null">
+				 branch_name = #{bean.branchName},
+			</if>
+			<if test="bean.itemType != null">
+				 item_type = #{bean.itemType},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.dueDate != null">
+				 due_date = #{bean.dueDate},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.finishTime != null">
+				 finish_time = #{bean.finishTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where item_id=#{itemId}
+	</update>
+
+	<!-- 根据ItemId删除-->
+	<delete id="deleteByItemId">
+		delete from learning_path_item where item_id=#{itemId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByItemId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from learning_path_item l where item_id=#{itemId}
+	</select>
+
+</mapper>

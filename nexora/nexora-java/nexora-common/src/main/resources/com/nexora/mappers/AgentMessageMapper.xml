@@ -1,0 +1,688 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.AgentMessageMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.AgentMessage">
+		<!--消息ID（HTTP发送接口返回值）-->
+		<result column="message_id" property="messageId"  />
+		<!--会话ID-->
+		<result column="session_id" property="sessionId"  />
+		<!--学生【冗余：学习分析免join会话表】-->
+		<result column="user_id" property="userId"  />
+		<!--学段【冗余快照】-->
+		<result column="stage" property="stage"  />
+		<!--知识点，可空【冗余】-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--用户消息-->
+		<result column="user_message" property="userMessage"  />
+		<!--AI回复（流式完成后落库）-->
+		<result column="assistant_message" property="assistantMessage"  />
+		<!--意图：EXPLAIN/RECOMMEND/QUIZ/PICTURE_BOOK/DRAW/ANIMATION/CODING/PLAN/PROGRESS/CHAT-->
+		<result column="intent" property="intent"  />
+		<!--产物类型，可空：ANIMATION/PICTURE_BOOK/QUIZ/RESOURCE_LIST/CODE-->
+		<result column="biz_type" property="bizType"  />
+		<!--产物结构化JSON（卡片数据）-->
+		<result column="biz_data" property="bizData"  />
+		<!--关联生成记录，可空-->
+		<result column="generation_id" property="generationId"  />
+		<!--状态：0处理中 1完成 2取消 3错误-->
+		<result column="status" property="status"  />
+		<!--错误信息，可空-->
+		<result column="error_info" property="errorInfo"  />
+		<!--输入token用量，默认0-->
+		<result column="prompt_tokens" property="promptTokens"  />
+		<!--输出token用量，默认0-->
+		<result column="completion_tokens" property="completionTokens"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 a.message_id,a.session_id,a.user_id,a.stage,a.knowledge_point_id,
+		 a.user_message,a.assistant_message,a.intent,a.biz_type,a.biz_data,
+		 a.generation_id,a.status,a.error_info,a.prompt_tokens,a.completion_tokens,
+		 a.create_time,a.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.messageId != null and query.messageId!=''">
+				 and  a.message_id = #{query.messageId}
+			</if>
+			<if test="query.sessionId != null and query.sessionId!=''">
+				 and  a.session_id = #{query.sessionId}
+			</if>
+			<if test="query.userId != null">
+				 and  a.user_id = #{query.userId}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  a.stage = #{query.stage}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  a.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.userMessage != null and query.userMessage!=''">
+				 and  a.user_message = #{query.userMessage}
+			</if>
+			<if test="query.assistantMessage != null and query.assistantMessage!=''">
+				 and  a.assistant_message = #{query.assistantMessage}
+			</if>
+			<if test="query.intent != null and query.intent!=''">
+				 and  a.intent = #{query.intent}
+			</if>
+			<if test="query.bizType != null and query.bizType!=''">
+				 and  a.biz_type = #{query.bizType}
+			</if>
+			<if test="query.bizData != null and query.bizData!=''">
+				 and  a.biz_data = #{query.bizData}
+			</if>
+			<if test="query.generationId != null and query.generationId!=''">
+				 and  a.generation_id = #{query.generationId}
+			</if>
+			<if test="query.status != null">
+				 and  a.status = #{query.status}
+			</if>
+			<if test="query.errorInfo != null and query.errorInfo!=''">
+				 and  a.error_info = #{query.errorInfo}
+			</if>
+			<if test="query.promptTokens != null">
+				 and  a.prompt_tokens = #{query.promptTokens}
+			</if>
+			<if test="query.completionTokens != null">
+				 and  a.completion_tokens = #{query.completionTokens}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  a.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  a.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.messageIdFuzzy!= null  and query.messageIdFuzzy!=''">
+				 and  a.message_id like concat('%', #{query.messageIdFuzzy}, '%')
+			</if>
+			<if test="query.sessionIdFuzzy!= null  and query.sessionIdFuzzy!=''">
+				 and  a.session_id like concat('%', #{query.sessionIdFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  a.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  a.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.userMessageFuzzy!= null  and query.userMessageFuzzy!=''">
+				 and  a.user_message like concat('%', #{query.userMessageFuzzy}, '%')
+			</if>
+			<if test="query.assistantMessageFuzzy!= null  and query.assistantMessageFuzzy!=''">
+				 and  a.assistant_message like concat('%', #{query.assistantMessageFuzzy}, '%')
+			</if>
+			<if test="query.intentFuzzy!= null  and query.intentFuzzy!=''">
+				 and  a.intent like concat('%', #{query.intentFuzzy}, '%')
+			</if>
+			<if test="query.bizTypeFuzzy!= null  and query.bizTypeFuzzy!=''">
+				 and  a.biz_type like concat('%', #{query.bizTypeFuzzy}, '%')
+			</if>
+			<if test="query.bizDataFuzzy!= null  and query.bizDataFuzzy!=''">
+				 and  a.biz_data like concat('%', #{query.bizDataFuzzy}, '%')
+			</if>
+			<if test="query.generationIdFuzzy!= null  and query.generationIdFuzzy!=''">
+				 and  a.generation_id like concat('%', #{query.generationIdFuzzy}, '%')
+			</if>
+			<if test="query.errorInfoFuzzy!= null  and query.errorInfoFuzzy!=''">
+				 and  a.error_info like concat('%', #{query.errorInfoFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  a.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  a.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  a.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  a.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM agent_message a <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM agent_message a <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.AgentMessage">
+		 INSERT INTO agent_message
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.messageId != null">
+				 message_id,
+			</if>
+			<if test="bean.sessionId != null">
+				 session_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.userMessage != null">
+				 user_message,
+			</if>
+			<if test="bean.assistantMessage != null">
+				 assistant_message,
+			</if>
+			<if test="bean.intent != null">
+				 intent,
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type,
+			</if>
+			<if test="bean.bizData != null">
+				 biz_data,
+			</if>
+			<if test="bean.generationId != null">
+				 generation_id,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.errorInfo != null">
+				 error_info,
+			</if>
+			<if test="bean.promptTokens != null">
+				 prompt_tokens,
+			</if>
+			<if test="bean.completionTokens != null">
+				 completion_tokens,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.messageId!=null">
+				 #{bean.messageId},
+			</if>
+			<if test="bean.sessionId!=null">
+				 #{bean.sessionId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.userMessage!=null">
+				 #{bean.userMessage},
+			</if>
+			<if test="bean.assistantMessage!=null">
+				 #{bean.assistantMessage},
+			</if>
+			<if test="bean.intent!=null">
+				 #{bean.intent},
+			</if>
+			<if test="bean.bizType!=null">
+				 #{bean.bizType},
+			</if>
+			<if test="bean.bizData!=null">
+				 #{bean.bizData},
+			</if>
+			<if test="bean.generationId!=null">
+				 #{bean.generationId},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.errorInfo!=null">
+				 #{bean.errorInfo},
+			</if>
+			<if test="bean.promptTokens!=null">
+				 #{bean.promptTokens},
+			</if>
+			<if test="bean.completionTokens!=null">
+				 #{bean.completionTokens},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.AgentMessage">
+		 INSERT INTO agent_message
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.messageId != null">
+				 message_id,
+			</if>
+			<if test="bean.sessionId != null">
+				 session_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.userMessage != null">
+				 user_message,
+			</if>
+			<if test="bean.assistantMessage != null">
+				 assistant_message,
+			</if>
+			<if test="bean.intent != null">
+				 intent,
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type,
+			</if>
+			<if test="bean.bizData != null">
+				 biz_data,
+			</if>
+			<if test="bean.generationId != null">
+				 generation_id,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.errorInfo != null">
+				 error_info,
+			</if>
+			<if test="bean.promptTokens != null">
+				 prompt_tokens,
+			</if>
+			<if test="bean.completionTokens != null">
+				 completion_tokens,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.messageId!=null">
+				 #{bean.messageId},
+			</if>
+			<if test="bean.sessionId!=null">
+				 #{bean.sessionId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.userMessage!=null">
+				 #{bean.userMessage},
+			</if>
+			<if test="bean.assistantMessage!=null">
+				 #{bean.assistantMessage},
+			</if>
+			<if test="bean.intent!=null">
+				 #{bean.intent},
+			</if>
+			<if test="bean.bizType!=null">
+				 #{bean.bizType},
+			</if>
+			<if test="bean.bizData!=null">
+				 #{bean.bizData},
+			</if>
+			<if test="bean.generationId!=null">
+				 #{bean.generationId},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.errorInfo!=null">
+				 #{bean.errorInfo},
+			</if>
+			<if test="bean.promptTokens!=null">
+				 #{bean.promptTokens},
+			</if>
+			<if test="bean.completionTokens!=null">
+				 #{bean.completionTokens},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.messageId!=null">
+				 message_id = VALUES(message_id),
+			</if>
+			<if test="bean.sessionId!=null">
+				 session_id = VALUES(session_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.userMessage!=null">
+				 user_message = VALUES(user_message),
+			</if>
+			<if test="bean.assistantMessage!=null">
+				 assistant_message = VALUES(assistant_message),
+			</if>
+			<if test="bean.intent!=null">
+				 intent = VALUES(intent),
+			</if>
+			<if test="bean.bizType!=null">
+				 biz_type = VALUES(biz_type),
+			</if>
+			<if test="bean.bizData!=null">
+				 biz_data = VALUES(biz_data),
+			</if>
+			<if test="bean.generationId!=null">
+				 generation_id = VALUES(generation_id),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.errorInfo!=null">
+				 error_info = VALUES(error_info),
+			</if>
+			<if test="bean.promptTokens!=null">
+				 prompt_tokens = VALUES(prompt_tokens),
+			</if>
+			<if test="bean.completionTokens!=null">
+				 completion_tokens = VALUES(completion_tokens),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.AgentMessage">
+		 INSERT INTO agent_message(
+			 message_id,
+			 session_id,
+			 user_id,
+			 stage,
+			 knowledge_point_id,
+			 user_message,
+			 assistant_message,
+			 intent,
+			 biz_type,
+			 biz_data,
+			 generation_id,
+			 status,
+			 error_info,
+			 prompt_tokens,
+			 completion_tokens,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.messageId},
+				 #{item.sessionId},
+				 #{item.userId},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.userMessage},
+				 #{item.assistantMessage},
+				 #{item.intent},
+				 #{item.bizType},
+				 #{item.bizData},
+				 #{item.generationId},
+				 #{item.status},
+				 #{item.errorInfo},
+				 #{item.promptTokens},
+				 #{item.completionTokens},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.AgentMessage">
+		 INSERT INTO agent_message(
+			 message_id,
+			 session_id,
+			 user_id,
+			 stage,
+			 knowledge_point_id,
+			 user_message,
+			 assistant_message,
+			 intent,
+			 biz_type,
+			 biz_data,
+			 generation_id,
+			 status,
+			 error_info,
+			 prompt_tokens,
+			 completion_tokens,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.messageId},
+				 #{item.sessionId},
+				 #{item.userId},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.userMessage},
+				 #{item.assistantMessage},
+				 #{item.intent},
+				 #{item.bizType},
+				 #{item.bizData},
+				 #{item.generationId},
+				 #{item.status},
+				 #{item.errorInfo},
+				 #{item.promptTokens},
+				 #{item.completionTokens},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			message_id = VALUES(message_id),
+			session_id = VALUES(session_id),
+			user_id = VALUES(user_id),
+			stage = VALUES(stage),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			user_message = VALUES(user_message),
+			assistant_message = VALUES(assistant_message),
+			intent = VALUES(intent),
+			biz_type = VALUES(biz_type),
+			biz_data = VALUES(biz_data),
+			generation_id = VALUES(generation_id),
+			status = VALUES(status),
+			error_info = VALUES(error_info),
+			prompt_tokens = VALUES(prompt_tokens),
+			completion_tokens = VALUES(completion_tokens),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.AgentMessageQuery">
+		 UPDATE agent_message a
+ 		 <set> 
+			<if test="bean.messageId != null">
+				 message_id = #{bean.messageId},
+			</if>
+			<if test="bean.sessionId != null">
+				 session_id = #{bean.sessionId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.userMessage != null">
+				 user_message = #{bean.userMessage},
+			</if>
+			<if test="bean.assistantMessage != null">
+				 assistant_message = #{bean.assistantMessage},
+			</if>
+			<if test="bean.intent != null">
+				 intent = #{bean.intent},
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type = #{bean.bizType},
+			</if>
+			<if test="bean.bizData != null">
+				 biz_data = #{bean.bizData},
+			</if>
+			<if test="bean.generationId != null">
+				 generation_id = #{bean.generationId},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.errorInfo != null">
+				 error_info = #{bean.errorInfo},
+			</if>
+			<if test="bean.promptTokens != null">
+				 prompt_tokens = #{bean.promptTokens},
+			</if>
+			<if test="bean.completionTokens != null">
+				 completion_tokens = #{bean.completionTokens},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete a from agent_message a
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据MessageId修改-->
+	<update id="updateByMessageId" parameterType="com.nexora.entity.po.AgentMessage">
+		 UPDATE agent_message
+ 		 <set> 
+			<if test="bean.sessionId != null">
+				 session_id = #{bean.sessionId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.userMessage != null">
+				 user_message = #{bean.userMessage},
+			</if>
+			<if test="bean.assistantMessage != null">
+				 assistant_message = #{bean.assistantMessage},
+			</if>
+			<if test="bean.intent != null">
+				 intent = #{bean.intent},
+			</if>
+			<if test="bean.bizType != null">
+				 biz_type = #{bean.bizType},
+			</if>
+			<if test="bean.bizData != null">
+				 biz_data = #{bean.bizData},
+			</if>
+			<if test="bean.generationId != null">
+				 generation_id = #{bean.generationId},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.errorInfo != null">
+				 error_info = #{bean.errorInfo},
+			</if>
+			<if test="bean.promptTokens != null">
+				 prompt_tokens = #{bean.promptTokens},
+			</if>
+			<if test="bean.completionTokens != null">
+				 completion_tokens = #{bean.completionTokens},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where message_id=#{messageId}
+	</update>
+
+	<!-- 根据MessageId删除-->
+	<delete id="deleteByMessageId">
+		delete from agent_message where message_id=#{messageId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByMessageId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from agent_message a where message_id=#{messageId}
+	</select>
+
+</mapper>

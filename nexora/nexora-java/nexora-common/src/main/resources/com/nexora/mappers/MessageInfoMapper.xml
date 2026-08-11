@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.MessageInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.MessageInfo">
+		<!--消息ID-->
+		<id column="message_id" property="messageId"  />
+		<!--标题-->
+		<result column="title" property="title"  />
+		<!--内容-->
+		<result column="content" property="content"  />
+		<!--类型：0系统消息 1学习提醒-->
+		<result column="message_type" property="messageType"  />
+		<!--消息点击跳转路径，可空-->
+		<result column="jump_path" property="jumpPath"  />
+		<!--发送人（管理员）-->
+		<result column="create_by" property="createBy"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 m.message_id,m.title,m.content,m.message_type,m.jump_path,
+		 m.create_by,m.create_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.messageId != null">
+				 and  m.message_id = #{query.messageId}
+			</if>
+			<if test="query.title != null and query.title!=''">
+				 and  m.title = #{query.title}
+			</if>
+			<if test="query.content != null and query.content!=''">
+				 and  m.content = #{query.content}
+			</if>
+			<if test="query.messageType != null">
+				 and  m.message_type = #{query.messageType}
+			</if>
+			<if test="query.jumpPath != null and query.jumpPath!=''">
+				 and  m.jump_path = #{query.jumpPath}
+			</if>
+			<if test="query.createBy != null">
+				 and  m.create_by = #{query.createBy}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  m.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
+				 and  m.title like concat('%', #{query.titleFuzzy}, '%')
+			</if>
+			<if test="query.contentFuzzy!= null  and query.contentFuzzy!=''">
+				 and  m.content like concat('%', #{query.contentFuzzy}, '%')
+			</if>
+			<if test="query.jumpPathFuzzy!= null  and query.jumpPathFuzzy!=''">
+				 and  m.jump_path like concat('%', #{query.jumpPathFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  m.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  m.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM message_info m <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM message_info m <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.MessageInfo">
+		<selectKey keyProperty="bean.messageId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO message_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.messageType != null">
+				 message_type,
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.messageType!=null">
+				 #{bean.messageType},
+			</if>
+			<if test="bean.jumpPath!=null">
+				 #{bean.jumpPath},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.MessageInfo">
+		 INSERT INTO message_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.messageId != null">
+				 message_id,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.messageType != null">
+				 message_type,
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.messageId!=null">
+				 #{bean.messageId},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.messageType!=null">
+				 #{bean.messageType},
+			</if>
+			<if test="bean.jumpPath!=null">
+				 #{bean.jumpPath},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.title!=null">
+				 title = VALUES(title),
+			</if>
+			<if test="bean.content!=null">
+				 content = VALUES(content),
+			</if>
+			<if test="bean.messageType!=null">
+				 message_type = VALUES(message_type),
+			</if>
+			<if test="bean.jumpPath!=null">
+				 jump_path = VALUES(jump_path),
+			</if>
+			<if test="bean.createBy!=null">
+				 create_by = VALUES(create_by),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.MessageInfo" useGeneratedKeys="true" keyProperty="messageId">
+		 INSERT INTO message_info(
+			 title,
+			 content,
+			 message_type,
+			 jump_path,
+			 create_by,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.title},
+				 #{item.content},
+				 #{item.messageType},
+				 #{item.jumpPath},
+				 #{item.createBy},
+				 #{item.createTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.MessageInfo">
+		 INSERT INTO message_info(
+			 title,
+			 content,
+			 message_type,
+			 jump_path,
+			 create_by,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.title},
+				 #{item.content},
+				 #{item.messageType},
+				 #{item.jumpPath},
+				 #{item.createBy},
+				 #{item.createTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			title = VALUES(title),
+			content = VALUES(content),
+			message_type = VALUES(message_type),
+			jump_path = VALUES(jump_path),
+			create_by = VALUES(create_by),
+			create_time = VALUES(create_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.MessageInfoQuery">
+		 UPDATE message_info m
+ 		 <set> 
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.messageType != null">
+				 message_type = #{bean.messageType},
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path = #{bean.jumpPath},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete m from message_info m
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据MessageId修改-->
+	<update id="updateByMessageId" parameterType="com.nexora.entity.po.MessageInfo">
+		 UPDATE message_info
+ 		 <set> 
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.messageType != null">
+				 message_type = #{bean.messageType},
+			</if>
+			<if test="bean.jumpPath != null">
+				 jump_path = #{bean.jumpPath},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 where message_id=#{messageId}
+	</update>
+
+	<!-- 根据MessageId删除-->
+	<delete id="deleteByMessageId">
+		delete from message_info where message_id=#{messageId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByMessageId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from message_info m where message_id=#{messageId}
+	</select>
+
+</mapper>

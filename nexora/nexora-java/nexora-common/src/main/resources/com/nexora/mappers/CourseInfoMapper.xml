@@ -1,0 +1,614 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.CourseInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.CourseInfo">
+		<!--课程ID-->
+		<result column="course_id" property="courseId"  />
+		<!--课程名-->
+		<result column="course_name" property="courseName"  />
+		<!--封面URL-->
+		<result column="cover" property="cover"  />
+		<!--学段【冗余：学生端按学段过滤主筛选键】-->
+		<result column="stage" property="stage"  />
+		<!--学科-->
+		<result column="subject" property="subject"  />
+		<!--难度：1-3星-->
+		<result column="difficulty" property="difficulty"  />
+		<!--简介-->
+		<result column="description" property="description"  />
+		<!--详细介绍-->
+		<result column="intro" property="intro"  />
+		<!--课时总数【冗余：课时增删时同事务维护】-->
+		<result column="lesson_count" property="lessonCount"  />
+		<!--学习人数【冗余：学习行为触发计数】-->
+		<result column="study_count" property="studyCount"  />
+		<!--排序-->
+		<result column="sort" property="sort"  />
+		<!--状态：1上架 0下架-->
+		<result column="status" property="status"  />
+		<!--创建人（管理员）-->
+		<result column="create_by" property="createBy"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 c.course_id,c.course_name,c.cover,c.stage,c.subject,
+		 c.difficulty,c.description,c.intro,c.lesson_count,c.study_count,
+		 c.sort,c.status,c.create_by,c.create_time,c.update_time
+		 
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  c.course_id = #{query.courseId}
+			</if>
+			<if test="query.courseName != null and query.courseName!=''">
+				 and  c.course_name = #{query.courseName}
+			</if>
+			<if test="query.cover != null and query.cover!=''">
+				 and  c.cover = #{query.cover}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  c.stage = #{query.stage}
+			</if>
+			<if test="query.subject != null and query.subject!=''">
+				 and  c.subject = #{query.subject}
+			</if>
+			<if test="query.difficulty != null">
+				 and  c.difficulty = #{query.difficulty}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  c.description = #{query.description}
+			</if>
+			<if test="query.intro != null and query.intro!=''">
+				 and  c.intro = #{query.intro}
+			</if>
+			<if test="query.lessonCount != null">
+				 and  c.lesson_count = #{query.lessonCount}
+			</if>
+			<if test="query.studyCount != null">
+				 and  c.study_count = #{query.studyCount}
+			</if>
+			<if test="query.sort != null">
+				 and  c.sort = #{query.sort}
+			</if>
+			<if test="query.status != null">
+				 and  c.status = #{query.status}
+			</if>
+			<if test="query.createBy != null">
+				 and  c.create_by = #{query.createBy}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  c.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  c.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.courseNameFuzzy!= null  and query.courseNameFuzzy!=''">
+				 and  c.course_name like concat('%', #{query.courseNameFuzzy}, '%')
+			</if>
+			<if test="query.coverFuzzy!= null  and query.coverFuzzy!=''">
+				 and  c.cover like concat('%', #{query.coverFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  c.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.subjectFuzzy!= null  and query.subjectFuzzy!=''">
+				 and  c.subject like concat('%', #{query.subjectFuzzy}, '%')
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  c.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+			<if test="query.introFuzzy!= null  and query.introFuzzy!=''">
+				 and  c.intro like concat('%', #{query.introFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  c.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  c.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  c.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  c.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM course_info c <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM course_info c <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.CourseInfo">
+		 INSERT INTO course_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.courseName != null">
+				 course_name,
+			</if>
+			<if test="bean.cover != null">
+				 cover,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.subject != null">
+				 subject,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.intro != null">
+				 intro,
+			</if>
+			<if test="bean.lessonCount != null">
+				 lesson_count,
+			</if>
+			<if test="bean.studyCount != null">
+				 study_count,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.courseName!=null">
+				 #{bean.courseName},
+			</if>
+			<if test="bean.cover!=null">
+				 #{bean.cover},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.subject!=null">
+				 #{bean.subject},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.intro!=null">
+				 #{bean.intro},
+			</if>
+			<if test="bean.lessonCount!=null">
+				 #{bean.lessonCount},
+			</if>
+			<if test="bean.studyCount!=null">
+				 #{bean.studyCount},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.CourseInfo">
+		 INSERT INTO course_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.courseName != null">
+				 course_name,
+			</if>
+			<if test="bean.cover != null">
+				 cover,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.subject != null">
+				 subject,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.intro != null">
+				 intro,
+			</if>
+			<if test="bean.lessonCount != null">
+				 lesson_count,
+			</if>
+			<if test="bean.studyCount != null">
+				 study_count,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.courseName!=null">
+				 #{bean.courseName},
+			</if>
+			<if test="bean.cover!=null">
+				 #{bean.cover},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.subject!=null">
+				 #{bean.subject},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.intro!=null">
+				 #{bean.intro},
+			</if>
+			<if test="bean.lessonCount!=null">
+				 #{bean.lessonCount},
+			</if>
+			<if test="bean.studyCount!=null">
+				 #{bean.studyCount},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.courseName!=null">
+				 course_name = VALUES(course_name),
+			</if>
+			<if test="bean.cover!=null">
+				 cover = VALUES(cover),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.subject!=null">
+				 subject = VALUES(subject),
+			</if>
+			<if test="bean.difficulty!=null">
+				 difficulty = VALUES(difficulty),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+			<if test="bean.intro!=null">
+				 intro = VALUES(intro),
+			</if>
+			<if test="bean.lessonCount!=null">
+				 lesson_count = VALUES(lesson_count),
+			</if>
+			<if test="bean.studyCount!=null">
+				 study_count = VALUES(study_count),
+			</if>
+			<if test="bean.sort!=null">
+				 sort = VALUES(sort),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createBy!=null">
+				 create_by = VALUES(create_by),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.CourseInfo">
+		 INSERT INTO course_info(
+			 course_id,
+			 course_name,
+			 cover,
+			 stage,
+			 subject,
+			 difficulty,
+			 description,
+			 intro,
+			 lesson_count,
+			 study_count,
+			 sort,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.courseId},
+				 #{item.courseName},
+				 #{item.cover},
+				 #{item.stage},
+				 #{item.subject},
+				 #{item.difficulty},
+				 #{item.description},
+				 #{item.intro},
+				 #{item.lessonCount},
+				 #{item.studyCount},
+				 #{item.sort},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.CourseInfo">
+		 INSERT INTO course_info(
+			 course_id,
+			 course_name,
+			 cover,
+			 stage,
+			 subject,
+			 difficulty,
+			 description,
+			 intro,
+			 lesson_count,
+			 study_count,
+			 sort,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.courseId},
+				 #{item.courseName},
+				 #{item.cover},
+				 #{item.stage},
+				 #{item.subject},
+				 #{item.difficulty},
+				 #{item.description},
+				 #{item.intro},
+				 #{item.lessonCount},
+				 #{item.studyCount},
+				 #{item.sort},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			course_id = VALUES(course_id),
+			course_name = VALUES(course_name),
+			cover = VALUES(cover),
+			stage = VALUES(stage),
+			subject = VALUES(subject),
+			difficulty = VALUES(difficulty),
+			description = VALUES(description),
+			intro = VALUES(intro),
+			lesson_count = VALUES(lesson_count),
+			study_count = VALUES(study_count),
+			sort = VALUES(sort),
+			status = VALUES(status),
+			create_by = VALUES(create_by),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.CourseInfoQuery">
+		 UPDATE course_info c
+ 		 <set> 
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.courseName != null">
+				 course_name = #{bean.courseName},
+			</if>
+			<if test="bean.cover != null">
+				 cover = #{bean.cover},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.subject != null">
+				 subject = #{bean.subject},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.intro != null">
+				 intro = #{bean.intro},
+			</if>
+			<if test="bean.lessonCount != null">
+				 lesson_count = #{bean.lessonCount},
+			</if>
+			<if test="bean.studyCount != null">
+				 study_count = #{bean.studyCount},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete c from course_info c
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据CourseId修改-->
+	<update id="updateByCourseId" parameterType="com.nexora.entity.po.CourseInfo">
+		 UPDATE course_info
+ 		 <set> 
+			<if test="bean.courseName != null">
+				 course_name = #{bean.courseName},
+			</if>
+			<if test="bean.cover != null">
+				 cover = #{bean.cover},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.subject != null">
+				 subject = #{bean.subject},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.intro != null">
+				 intro = #{bean.intro},
+			</if>
+			<if test="bean.lessonCount != null">
+				 lesson_count = #{bean.lessonCount},
+			</if>
+			<if test="bean.studyCount != null">
+				 study_count = #{bean.studyCount},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where course_id=#{courseId}
+	</update>
+
+	<!-- 根据CourseId删除-->
+	<delete id="deleteByCourseId">
+		delete from course_info where course_id=#{courseId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByCourseId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from course_info c where course_id=#{courseId}
+	</select>
+
+</mapper>

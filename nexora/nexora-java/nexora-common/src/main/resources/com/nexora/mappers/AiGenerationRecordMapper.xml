@@ -1,0 +1,648 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.AiGenerationRecordMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.AiGenerationRecord">
+		<!--记录ID-->
+		<result column="record_id" property="recordId"  />
+		<!--学生，可空（管理员预置无学生）-->
+		<result column="user_id" property="userId"  />
+		<!--学段【冗余：预置绘本库按学段过滤】-->
+		<result column="stage" property="stage"  />
+		<!--知识点，可空-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--类型：ANIMATION/PICTURE_BOOK/DRAW/PPT/WORD/CODE-->
+		<result column="type" property="type"  />
+		<!--标题-->
+		<result column="title" property="title"  />
+		<!--结构化内容JSON（SVG分步脚本/绘本分页等）-->
+		<result column="content" property="content"  />
+		<!--产物文件地址（Word/PPT/图片）-->
+		<result column="file_url" property="fileUrl"  />
+		<!--封面-->
+		<result column="cover_url" property="coverUrl"  />
+		<!--来源：0学生生成 1管理员预置-->
+		<result column="source" property="source"  />
+		<!--状态：0生成中 1完成 2失败 3已发布-->
+		<result column="status" property="status"  />
+		<!--学生是否已保存到"我的"：0否 1是-->
+		<result column="saved" property="saved"  />
+		<!--审核：0待审核 1通过 2驳回（动画审核流程）-->
+		<result column="audit_status" property="auditStatus"  />
+		<!--管理员预置时记录操作人ID，可空-->
+		<result column="create_by" property="createBy"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 a.record_id,a.user_id,a.stage,a.knowledge_point_id,a.type,
+		 a.title,a.content,a.file_url,a.cover_url,a.source,
+		 a.status,a.saved,a.audit_status,a.create_by,a.create_time,
+		 a.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.recordId != null and query.recordId!=''">
+				 and  a.record_id = #{query.recordId}
+			</if>
+			<if test="query.userId != null">
+				 and  a.user_id = #{query.userId}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  a.stage = #{query.stage}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  a.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.type != null and query.type!=''">
+				 and  a.type = #{query.type}
+			</if>
+			<if test="query.title != null and query.title!=''">
+				 and  a.title = #{query.title}
+			</if>
+			<if test="query.content != null and query.content!=''">
+				 and  a.content = #{query.content}
+			</if>
+			<if test="query.fileUrl != null and query.fileUrl!=''">
+				 and  a.file_url = #{query.fileUrl}
+			</if>
+			<if test="query.coverUrl != null and query.coverUrl!=''">
+				 and  a.cover_url = #{query.coverUrl}
+			</if>
+			<if test="query.source != null">
+				 and  a.source = #{query.source}
+			</if>
+			<if test="query.status != null">
+				 and  a.status = #{query.status}
+			</if>
+			<if test="query.saved != null">
+				 and  a.saved = #{query.saved}
+			</if>
+			<if test="query.auditStatus != null">
+				 and  a.audit_status = #{query.auditStatus}
+			</if>
+			<if test="query.createBy != null">
+				 and  a.create_by = #{query.createBy}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  a.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  a.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.recordIdFuzzy!= null  and query.recordIdFuzzy!=''">
+				 and  a.record_id like concat('%', #{query.recordIdFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  a.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  a.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.typeFuzzy!= null  and query.typeFuzzy!=''">
+				 and  a.type like concat('%', #{query.typeFuzzy}, '%')
+			</if>
+			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
+				 and  a.title like concat('%', #{query.titleFuzzy}, '%')
+			</if>
+			<if test="query.contentFuzzy!= null  and query.contentFuzzy!=''">
+				 and  a.content like concat('%', #{query.contentFuzzy}, '%')
+			</if>
+			<if test="query.fileUrlFuzzy!= null  and query.fileUrlFuzzy!=''">
+				 and  a.file_url like concat('%', #{query.fileUrlFuzzy}, '%')
+			</if>
+			<if test="query.coverUrlFuzzy!= null  and query.coverUrlFuzzy!=''">
+				 and  a.cover_url like concat('%', #{query.coverUrlFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  a.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  a.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  a.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  a.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM ai_generation_record a <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM ai_generation_record a <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.AiGenerationRecord">
+		 INSERT INTO ai_generation_record
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.recordId != null">
+				 record_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.type != null">
+				 type,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.fileUrl != null">
+				 file_url,
+			</if>
+			<if test="bean.coverUrl != null">
+				 cover_url,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.saved != null">
+				 saved,
+			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.recordId!=null">
+				 #{bean.recordId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.type!=null">
+				 #{bean.type},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.fileUrl!=null">
+				 #{bean.fileUrl},
+			</if>
+			<if test="bean.coverUrl!=null">
+				 #{bean.coverUrl},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.saved!=null">
+				 #{bean.saved},
+			</if>
+			<if test="bean.auditStatus!=null">
+				 #{bean.auditStatus},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.AiGenerationRecord">
+		 INSERT INTO ai_generation_record
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.recordId != null">
+				 record_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.type != null">
+				 type,
+			</if>
+			<if test="bean.title != null">
+				 title,
+			</if>
+			<if test="bean.content != null">
+				 content,
+			</if>
+			<if test="bean.fileUrl != null">
+				 file_url,
+			</if>
+			<if test="bean.coverUrl != null">
+				 cover_url,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.saved != null">
+				 saved,
+			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.recordId!=null">
+				 #{bean.recordId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.type!=null">
+				 #{bean.type},
+			</if>
+			<if test="bean.title!=null">
+				 #{bean.title},
+			</if>
+			<if test="bean.content!=null">
+				 #{bean.content},
+			</if>
+			<if test="bean.fileUrl!=null">
+				 #{bean.fileUrl},
+			</if>
+			<if test="bean.coverUrl!=null">
+				 #{bean.coverUrl},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.saved!=null">
+				 #{bean.saved},
+			</if>
+			<if test="bean.auditStatus!=null">
+				 #{bean.auditStatus},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.recordId!=null">
+				 record_id = VALUES(record_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.type!=null">
+				 type = VALUES(type),
+			</if>
+			<if test="bean.title!=null">
+				 title = VALUES(title),
+			</if>
+			<if test="bean.content!=null">
+				 content = VALUES(content),
+			</if>
+			<if test="bean.fileUrl!=null">
+				 file_url = VALUES(file_url),
+			</if>
+			<if test="bean.coverUrl!=null">
+				 cover_url = VALUES(cover_url),
+			</if>
+			<if test="bean.source!=null">
+				 source = VALUES(source),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.saved!=null">
+				 saved = VALUES(saved),
+			</if>
+			<if test="bean.auditStatus!=null">
+				 audit_status = VALUES(audit_status),
+			</if>
+			<if test="bean.createBy!=null">
+				 create_by = VALUES(create_by),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.AiGenerationRecord">
+		 INSERT INTO ai_generation_record(
+			 record_id,
+			 user_id,
+			 stage,
+			 knowledge_point_id,
+			 type,
+			 title,
+			 content,
+			 file_url,
+			 cover_url,
+			 source,
+			 status,
+			 saved,
+			 audit_status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.recordId},
+				 #{item.userId},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.type},
+				 #{item.title},
+				 #{item.content},
+				 #{item.fileUrl},
+				 #{item.coverUrl},
+				 #{item.source},
+				 #{item.status},
+				 #{item.saved},
+				 #{item.auditStatus},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.AiGenerationRecord">
+		 INSERT INTO ai_generation_record(
+			 record_id,
+			 user_id,
+			 stage,
+			 knowledge_point_id,
+			 type,
+			 title,
+			 content,
+			 file_url,
+			 cover_url,
+			 source,
+			 status,
+			 saved,
+			 audit_status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.recordId},
+				 #{item.userId},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.type},
+				 #{item.title},
+				 #{item.content},
+				 #{item.fileUrl},
+				 #{item.coverUrl},
+				 #{item.source},
+				 #{item.status},
+				 #{item.saved},
+				 #{item.auditStatus},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			record_id = VALUES(record_id),
+			user_id = VALUES(user_id),
+			stage = VALUES(stage),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			type = VALUES(type),
+			title = VALUES(title),
+			content = VALUES(content),
+			file_url = VALUES(file_url),
+			cover_url = VALUES(cover_url),
+			source = VALUES(source),
+			status = VALUES(status),
+			saved = VALUES(saved),
+			audit_status = VALUES(audit_status),
+			create_by = VALUES(create_by),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.AiGenerationRecordQuery">
+		 UPDATE ai_generation_record a
+ 		 <set> 
+			<if test="bean.recordId != null">
+				 record_id = #{bean.recordId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.type != null">
+				 type = #{bean.type},
+			</if>
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.fileUrl != null">
+				 file_url = #{bean.fileUrl},
+			</if>
+			<if test="bean.coverUrl != null">
+				 cover_url = #{bean.coverUrl},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.saved != null">
+				 saved = #{bean.saved},
+			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status = #{bean.auditStatus},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete a from ai_generation_record a
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据RecordId修改-->
+	<update id="updateByRecordId" parameterType="com.nexora.entity.po.AiGenerationRecord">
+		 UPDATE ai_generation_record
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.type != null">
+				 type = #{bean.type},
+			</if>
+			<if test="bean.title != null">
+				 title = #{bean.title},
+			</if>
+			<if test="bean.content != null">
+				 content = #{bean.content},
+			</if>
+			<if test="bean.fileUrl != null">
+				 file_url = #{bean.fileUrl},
+			</if>
+			<if test="bean.coverUrl != null">
+				 cover_url = #{bean.coverUrl},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.saved != null">
+				 saved = #{bean.saved},
+			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status = #{bean.auditStatus},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where record_id=#{recordId}
+	</update>
+
+	<!-- 根据RecordId删除-->
+	<delete id="deleteByRecordId">
+		delete from ai_generation_record where record_id=#{recordId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByRecordId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from ai_generation_record a where record_id=#{recordId}
+	</select>
+
+</mapper>

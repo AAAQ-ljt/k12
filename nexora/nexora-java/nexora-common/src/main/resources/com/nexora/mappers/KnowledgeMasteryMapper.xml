@@ -1,0 +1,622 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.KnowledgeMasteryMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.KnowledgeMastery">
+		<!--主键-->
+		<id column="id" property="id"  />
+		<!--学生-->
+		<result column="user_id" property="userId"  />
+		<!--知识点-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--学段【冗余：雷达图按学段聚合免join】-->
+		<result column="stage" property="stage"  />
+		<!--掌握度0-100-->
+		<result column="mastery_score" property="masteryScore"  />
+		<!--状态：0未解锁 1进行中 2已掌握-->
+		<result column="status" property="status"  />
+		<!--练习次数【冗余计数：批改后原子+1】-->
+		<result column="practice_count" property="practiceCount"  />
+		<!--答对次数【冗余：正确率=correct_count/practice_count】-->
+		<result column="correct_count" property="correctCount"  />
+		<!--最近练习时间-->
+		<result column="last_practice_time" property="lastPracticeTime"  />
+		<!--掌握时间（遗忘曲线计时起点）-->
+		<result column="last_master_time" property="lastMasterTime"  />
+		<!--下次复习时间-->
+		<result column="next_review_time" property="nextReviewTime"  />
+		<!--遗忘曲线阶段0-4（对应1/3/7/15天间隔）-->
+		<result column="review_stage" property="reviewStage"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 k.id,k.user_id,k.knowledge_point_id,k.stage,k.mastery_score,
+		 k.status,k.practice_count,k.correct_count,k.last_practice_time,k.last_master_time,
+		 k.next_review_time,k.review_stage,k.create_time,k.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.id != null">
+				 and  k.id = #{query.id}
+			</if>
+			<if test="query.userId != null">
+				 and  k.user_id = #{query.userId}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  k.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  k.stage = #{query.stage}
+			</if>
+			<if test="query.masteryScore != null">
+				 and  k.mastery_score = #{query.masteryScore}
+			</if>
+			<if test="query.status != null">
+				 and  k.status = #{query.status}
+			</if>
+			<if test="query.practiceCount != null">
+				 and  k.practice_count = #{query.practiceCount}
+			</if>
+			<if test="query.correctCount != null">
+				 and  k.correct_count = #{query.correctCount}
+			</if>
+			<if test="query.lastPracticeTime != null and query.lastPracticeTime!=''">
+				 <![CDATA[ and  k.last_practice_time=str_to_date(#{query.lastPracticeTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastMasterTime != null and query.lastMasterTime!=''">
+				 <![CDATA[ and  k.last_master_time=str_to_date(#{query.lastMasterTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.nextReviewTime != null and query.nextReviewTime!=''">
+				 <![CDATA[ and  k.next_review_time=str_to_date(#{query.nextReviewTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.reviewStage != null">
+				 and  k.review_stage = #{query.reviewStage}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  k.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  k.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  k.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  k.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.lastPracticeTimeStart!= null and query.lastPracticeTimeStart!=''">
+				 <![CDATA[ and  k.last_practice_time>=str_to_date(#{query.lastPracticeTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastPracticeTimeEnd!= null and query.lastPracticeTimeEnd!=''">
+				 <![CDATA[ and  k.last_practice_time< date_sub(str_to_date(#{query.lastPracticeTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.lastMasterTimeStart!= null and query.lastMasterTimeStart!=''">
+				 <![CDATA[ and  k.last_master_time>=str_to_date(#{query.lastMasterTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastMasterTimeEnd!= null and query.lastMasterTimeEnd!=''">
+				 <![CDATA[ and  k.last_master_time< date_sub(str_to_date(#{query.lastMasterTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.nextReviewTimeStart!= null and query.nextReviewTimeStart!=''">
+				 <![CDATA[ and  k.next_review_time>=str_to_date(#{query.nextReviewTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.nextReviewTimeEnd!= null and query.nextReviewTimeEnd!=''">
+				 <![CDATA[ and  k.next_review_time< date_sub(str_to_date(#{query.nextReviewTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  k.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  k.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  k.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  k.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM knowledge_mastery k <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM knowledge_mastery k <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.KnowledgeMastery">
+		<selectKey keyProperty="bean.id" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO knowledge_mastery
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.masteryScore != null">
+				 mastery_score,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.practiceCount != null">
+				 practice_count,
+			</if>
+			<if test="bean.correctCount != null">
+				 correct_count,
+			</if>
+			<if test="bean.lastPracticeTime != null">
+				 last_practice_time,
+			</if>
+			<if test="bean.lastMasterTime != null">
+				 last_master_time,
+			</if>
+			<if test="bean.nextReviewTime != null">
+				 next_review_time,
+			</if>
+			<if test="bean.reviewStage != null">
+				 review_stage,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.masteryScore!=null">
+				 #{bean.masteryScore},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.practiceCount!=null">
+				 #{bean.practiceCount},
+			</if>
+			<if test="bean.correctCount!=null">
+				 #{bean.correctCount},
+			</if>
+			<if test="bean.lastPracticeTime!=null">
+				 #{bean.lastPracticeTime},
+			</if>
+			<if test="bean.lastMasterTime!=null">
+				 #{bean.lastMasterTime},
+			</if>
+			<if test="bean.nextReviewTime!=null">
+				 #{bean.nextReviewTime},
+			</if>
+			<if test="bean.reviewStage!=null">
+				 #{bean.reviewStage},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.KnowledgeMastery">
+		 INSERT INTO knowledge_mastery
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.id != null">
+				 id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.masteryScore != null">
+				 mastery_score,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.practiceCount != null">
+				 practice_count,
+			</if>
+			<if test="bean.correctCount != null">
+				 correct_count,
+			</if>
+			<if test="bean.lastPracticeTime != null">
+				 last_practice_time,
+			</if>
+			<if test="bean.lastMasterTime != null">
+				 last_master_time,
+			</if>
+			<if test="bean.nextReviewTime != null">
+				 next_review_time,
+			</if>
+			<if test="bean.reviewStage != null">
+				 review_stage,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.id!=null">
+				 #{bean.id},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.masteryScore!=null">
+				 #{bean.masteryScore},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.practiceCount!=null">
+				 #{bean.practiceCount},
+			</if>
+			<if test="bean.correctCount!=null">
+				 #{bean.correctCount},
+			</if>
+			<if test="bean.lastPracticeTime!=null">
+				 #{bean.lastPracticeTime},
+			</if>
+			<if test="bean.lastMasterTime!=null">
+				 #{bean.lastMasterTime},
+			</if>
+			<if test="bean.nextReviewTime!=null">
+				 #{bean.nextReviewTime},
+			</if>
+			<if test="bean.reviewStage!=null">
+				 #{bean.reviewStage},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.masteryScore!=null">
+				 mastery_score = VALUES(mastery_score),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.practiceCount!=null">
+				 practice_count = VALUES(practice_count),
+			</if>
+			<if test="bean.correctCount!=null">
+				 correct_count = VALUES(correct_count),
+			</if>
+			<if test="bean.lastPracticeTime!=null">
+				 last_practice_time = VALUES(last_practice_time),
+			</if>
+			<if test="bean.lastMasterTime!=null">
+				 last_master_time = VALUES(last_master_time),
+			</if>
+			<if test="bean.nextReviewTime!=null">
+				 next_review_time = VALUES(next_review_time),
+			</if>
+			<if test="bean.reviewStage!=null">
+				 review_stage = VALUES(review_stage),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.KnowledgeMastery" useGeneratedKeys="true" keyProperty="id">
+		 INSERT INTO knowledge_mastery(
+			 user_id,
+			 knowledge_point_id,
+			 stage,
+			 mastery_score,
+			 status,
+			 practice_count,
+			 correct_count,
+			 last_practice_time,
+			 last_master_time,
+			 next_review_time,
+			 review_stage,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.knowledgePointId},
+				 #{item.stage},
+				 #{item.masteryScore},
+				 #{item.status},
+				 #{item.practiceCount},
+				 #{item.correctCount},
+				 #{item.lastPracticeTime},
+				 #{item.lastMasterTime},
+				 #{item.nextReviewTime},
+				 #{item.reviewStage},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.KnowledgeMastery">
+		 INSERT INTO knowledge_mastery(
+			 user_id,
+			 knowledge_point_id,
+			 stage,
+			 mastery_score,
+			 status,
+			 practice_count,
+			 correct_count,
+			 last_practice_time,
+			 last_master_time,
+			 next_review_time,
+			 review_stage,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.knowledgePointId},
+				 #{item.stage},
+				 #{item.masteryScore},
+				 #{item.status},
+				 #{item.practiceCount},
+				 #{item.correctCount},
+				 #{item.lastPracticeTime},
+				 #{item.lastMasterTime},
+				 #{item.nextReviewTime},
+				 #{item.reviewStage},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			user_id = VALUES(user_id),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			stage = VALUES(stage),
+			mastery_score = VALUES(mastery_score),
+			status = VALUES(status),
+			practice_count = VALUES(practice_count),
+			correct_count = VALUES(correct_count),
+			last_practice_time = VALUES(last_practice_time),
+			last_master_time = VALUES(last_master_time),
+			next_review_time = VALUES(next_review_time),
+			review_stage = VALUES(review_stage),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.KnowledgeMasteryQuery">
+		 UPDATE knowledge_mastery k
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.masteryScore != null">
+				 mastery_score = #{bean.masteryScore},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.practiceCount != null">
+				 practice_count = #{bean.practiceCount},
+			</if>
+			<if test="bean.correctCount != null">
+				 correct_count = #{bean.correctCount},
+			</if>
+			<if test="bean.lastPracticeTime != null">
+				 last_practice_time = #{bean.lastPracticeTime},
+			</if>
+			<if test="bean.lastMasterTime != null">
+				 last_master_time = #{bean.lastMasterTime},
+			</if>
+			<if test="bean.nextReviewTime != null">
+				 next_review_time = #{bean.nextReviewTime},
+			</if>
+			<if test="bean.reviewStage != null">
+				 review_stage = #{bean.reviewStage},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete k from knowledge_mastery k
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据Id修改-->
+	<update id="updateById" parameterType="com.nexora.entity.po.KnowledgeMastery">
+		 UPDATE knowledge_mastery
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.masteryScore != null">
+				 mastery_score = #{bean.masteryScore},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.practiceCount != null">
+				 practice_count = #{bean.practiceCount},
+			</if>
+			<if test="bean.correctCount != null">
+				 correct_count = #{bean.correctCount},
+			</if>
+			<if test="bean.lastPracticeTime != null">
+				 last_practice_time = #{bean.lastPracticeTime},
+			</if>
+			<if test="bean.lastMasterTime != null">
+				 last_master_time = #{bean.lastMasterTime},
+			</if>
+			<if test="bean.nextReviewTime != null">
+				 next_review_time = #{bean.nextReviewTime},
+			</if>
+			<if test="bean.reviewStage != null">
+				 review_stage = #{bean.reviewStage},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where id=#{id}
+	</update>
+
+	<!-- 根据Id删除-->
+	<delete id="deleteById">
+		delete from knowledge_mastery where id=#{id}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectById" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from knowledge_mastery k where id=#{id}
+	</select>
+
+	<!-- 根据UserIdAndKnowledgePointId修改-->
+	<update id="updateByUserIdAndKnowledgePointId" parameterType="com.nexora.entity.po.KnowledgeMastery">
+		 UPDATE knowledge_mastery
+ 		 <set> 
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.masteryScore != null">
+				 mastery_score = #{bean.masteryScore},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.practiceCount != null">
+				 practice_count = #{bean.practiceCount},
+			</if>
+			<if test="bean.correctCount != null">
+				 correct_count = #{bean.correctCount},
+			</if>
+			<if test="bean.lastPracticeTime != null">
+				 last_practice_time = #{bean.lastPracticeTime},
+			</if>
+			<if test="bean.lastMasterTime != null">
+				 last_master_time = #{bean.lastMasterTime},
+			</if>
+			<if test="bean.nextReviewTime != null">
+				 next_review_time = #{bean.nextReviewTime},
+			</if>
+			<if test="bean.reviewStage != null">
+				 review_stage = #{bean.reviewStage},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where user_id=#{userId} and knowledge_point_id=#{knowledgePointId}
+	</update>
+
+	<!-- 根据UserIdAndKnowledgePointId删除-->
+	<delete id="deleteByUserIdAndKnowledgePointId">
+		delete from knowledge_mastery where user_id=#{userId} and knowledge_point_id=#{knowledgePointId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByUserIdAndKnowledgePointId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from knowledge_mastery k where user_id=#{userId} and knowledge_point_id=#{knowledgePointId}
+	</select>
+
+</mapper>

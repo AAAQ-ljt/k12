@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.AnimationTemplateMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.AnimationTemplate">
+		<!--模板ID-->
+		<id column="template_id" property="templateId"  />
+		<!--模板名称-->
+		<result column="template_name" property="templateName"  />
+		<!--动画类型，对应意图：EXPLAIN/CONCEPT/PROCESS等-->
+		<result column="template_type" property="templateType"  />
+		<!--学段：PRIMARY_LOW/PRIMARY_HIGH/JUNIOR/SENIOR/ALL-->
+		<result column="stage" property="stage"  />
+		<!--模板描述-->
+		<result column="description" property="description"  />
+		<!--SVG模板JSON，含分步脚本结构-->
+		<result column="template_content" property="templateContent"  />
+		<!--预览图URL，可空-->
+		<result column="preview_url" property="previewUrl"  />
+		<!--状态：0停用 1启用-->
+		<result column="status" property="status"  />
+		<!--创建人（管理员ID）-->
+		<result column="create_by" property="createBy"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 a.template_id,a.template_name,a.template_type,a.stage,a.description,
+		 a.template_content,a.preview_url,a.status,a.create_by,a.create_time,
+		 a.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.templateId != null">
+				 and  a.template_id = #{query.templateId}
+			</if>
+			<if test="query.templateName != null and query.templateName!=''">
+				 and  a.template_name = #{query.templateName}
+			</if>
+			<if test="query.templateType != null and query.templateType!=''">
+				 and  a.template_type = #{query.templateType}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  a.stage = #{query.stage}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  a.description = #{query.description}
+			</if>
+			<if test="query.templateContent != null and query.templateContent!=''">
+				 and  a.template_content = #{query.templateContent}
+			</if>
+			<if test="query.previewUrl != null and query.previewUrl!=''">
+				 and  a.preview_url = #{query.previewUrl}
+			</if>
+			<if test="query.status != null">
+				 and  a.status = #{query.status}
+			</if>
+			<if test="query.createBy != null">
+				 and  a.create_by = #{query.createBy}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  a.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  a.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.templateNameFuzzy!= null  and query.templateNameFuzzy!=''">
+				 and  a.template_name like concat('%', #{query.templateNameFuzzy}, '%')
+			</if>
+			<if test="query.templateTypeFuzzy!= null  and query.templateTypeFuzzy!=''">
+				 and  a.template_type like concat('%', #{query.templateTypeFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  a.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  a.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+			<if test="query.templateContentFuzzy!= null  and query.templateContentFuzzy!=''">
+				 and  a.template_content like concat('%', #{query.templateContentFuzzy}, '%')
+			</if>
+			<if test="query.previewUrlFuzzy!= null  and query.previewUrlFuzzy!=''">
+				 and  a.preview_url like concat('%', #{query.previewUrlFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  a.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  a.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  a.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  a.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM animation_template a <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM animation_template a <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.AnimationTemplate">
+		<selectKey keyProperty="bean.templateId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO animation_template
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.templateName != null">
+				 template_name,
+			</if>
+			<if test="bean.templateType != null">
+				 template_type,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.templateContent != null">
+				 template_content,
+			</if>
+			<if test="bean.previewUrl != null">
+				 preview_url,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.templateName!=null">
+				 #{bean.templateName},
+			</if>
+			<if test="bean.templateType!=null">
+				 #{bean.templateType},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.templateContent!=null">
+				 #{bean.templateContent},
+			</if>
+			<if test="bean.previewUrl!=null">
+				 #{bean.previewUrl},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.AnimationTemplate">
+		 INSERT INTO animation_template
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.templateId != null">
+				 template_id,
+			</if>
+			<if test="bean.templateName != null">
+				 template_name,
+			</if>
+			<if test="bean.templateType != null">
+				 template_type,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.templateContent != null">
+				 template_content,
+			</if>
+			<if test="bean.previewUrl != null">
+				 preview_url,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.templateId!=null">
+				 #{bean.templateId},
+			</if>
+			<if test="bean.templateName!=null">
+				 #{bean.templateName},
+			</if>
+			<if test="bean.templateType!=null">
+				 #{bean.templateType},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.templateContent!=null">
+				 #{bean.templateContent},
+			</if>
+			<if test="bean.previewUrl!=null">
+				 #{bean.previewUrl},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.templateName!=null">
+				 template_name = VALUES(template_name),
+			</if>
+			<if test="bean.templateType!=null">
+				 template_type = VALUES(template_type),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+			<if test="bean.templateContent!=null">
+				 template_content = VALUES(template_content),
+			</if>
+			<if test="bean.previewUrl!=null">
+				 preview_url = VALUES(preview_url),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createBy!=null">
+				 create_by = VALUES(create_by),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.AnimationTemplate" useGeneratedKeys="true" keyProperty="templateId">
+		 INSERT INTO animation_template(
+			 template_name,
+			 template_type,
+			 stage,
+			 description,
+			 template_content,
+			 preview_url,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.templateName},
+				 #{item.templateType},
+				 #{item.stage},
+				 #{item.description},
+				 #{item.templateContent},
+				 #{item.previewUrl},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.AnimationTemplate">
+		 INSERT INTO animation_template(
+			 template_name,
+			 template_type,
+			 stage,
+			 description,
+			 template_content,
+			 preview_url,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.templateName},
+				 #{item.templateType},
+				 #{item.stage},
+				 #{item.description},
+				 #{item.templateContent},
+				 #{item.previewUrl},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			template_name = VALUES(template_name),
+			template_type = VALUES(template_type),
+			stage = VALUES(stage),
+			description = VALUES(description),
+			template_content = VALUES(template_content),
+			preview_url = VALUES(preview_url),
+			status = VALUES(status),
+			create_by = VALUES(create_by),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.AnimationTemplateQuery">
+		 UPDATE animation_template a
+ 		 <set> 
+			<if test="bean.templateName != null">
+				 template_name = #{bean.templateName},
+			</if>
+			<if test="bean.templateType != null">
+				 template_type = #{bean.templateType},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.templateContent != null">
+				 template_content = #{bean.templateContent},
+			</if>
+			<if test="bean.previewUrl != null">
+				 preview_url = #{bean.previewUrl},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete a from animation_template a
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据TemplateId修改-->
+	<update id="updateByTemplateId" parameterType="com.nexora.entity.po.AnimationTemplate">
+		 UPDATE animation_template
+ 		 <set> 
+			<if test="bean.templateName != null">
+				 template_name = #{bean.templateName},
+			</if>
+			<if test="bean.templateType != null">
+				 template_type = #{bean.templateType},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.templateContent != null">
+				 template_content = #{bean.templateContent},
+			</if>
+			<if test="bean.previewUrl != null">
+				 preview_url = #{bean.previewUrl},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where template_id=#{templateId}
+	</update>
+
+	<!-- 根据TemplateId删除-->
+	<delete id="deleteByTemplateId">
+		delete from animation_template where template_id=#{templateId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByTemplateId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from animation_template a where template_id=#{templateId}
+	</select>
+
+</mapper>

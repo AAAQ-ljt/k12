@@ -1,0 +1,511 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.SystemMenuMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.SystemMenu">
+		<!--菜单ID-->
+		<id column="menu_id" property="menuId"  />
+		<!--父菜单ID，0为根-->
+		<result column="parent_id" property="parentId"  />
+		<!--菜单名-->
+		<result column="menu_name" property="menuName"  />
+		<!--权限编码，与管理端权限注解一一对应-->
+		<result column="menu_code" property="menuCode"  />
+		<!--类型：0目录 1菜单 2按钮-->
+		<result column="menu_type" property="menuType"  />
+		<!--前端路由路径-->
+		<result column="path" property="path"  />
+		<!--图标-->
+		<result column="icon" property="icon"  />
+		<!--排序-->
+		<result column="sort" property="sort"  />
+		<!--状态：0停用 1启用-->
+		<result column="status" property="status"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 s.menu_id,s.parent_id,s.menu_name,s.menu_code,s.menu_type,
+		 s.path,s.icon,s.sort,s.status,s.create_time,
+		 s.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.menuId != null">
+				 and  s.menu_id = #{query.menuId}
+			</if>
+			<if test="query.parentId != null">
+				 and  s.parent_id = #{query.parentId}
+			</if>
+			<if test="query.menuName != null and query.menuName!=''">
+				 and  s.menu_name = #{query.menuName}
+			</if>
+			<if test="query.menuCode != null and query.menuCode!=''">
+				 and  s.menu_code = #{query.menuCode}
+			</if>
+			<if test="query.menuType != null">
+				 and  s.menu_type = #{query.menuType}
+			</if>
+			<if test="query.path != null and query.path!=''">
+				 and  s.path = #{query.path}
+			</if>
+			<if test="query.icon != null and query.icon!=''">
+				 and  s.icon = #{query.icon}
+			</if>
+			<if test="query.sort != null">
+				 and  s.sort = #{query.sort}
+			</if>
+			<if test="query.status != null">
+				 and  s.status = #{query.status}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  s.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  s.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.menuNameFuzzy!= null  and query.menuNameFuzzy!=''">
+				 and  s.menu_name like concat('%', #{query.menuNameFuzzy}, '%')
+			</if>
+			<if test="query.menuCodeFuzzy!= null  and query.menuCodeFuzzy!=''">
+				 and  s.menu_code like concat('%', #{query.menuCodeFuzzy}, '%')
+			</if>
+			<if test="query.pathFuzzy!= null  and query.pathFuzzy!=''">
+				 and  s.path like concat('%', #{query.pathFuzzy}, '%')
+			</if>
+			<if test="query.iconFuzzy!= null  and query.iconFuzzy!=''">
+				 and  s.icon like concat('%', #{query.iconFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  s.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  s.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  s.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  s.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM system_menu s <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM system_menu s <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.SystemMenu">
+		<selectKey keyProperty="bean.menuId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO system_menu
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.parentId != null">
+				 parent_id,
+			</if>
+			<if test="bean.menuName != null">
+				 menu_name,
+			</if>
+			<if test="bean.menuCode != null">
+				 menu_code,
+			</if>
+			<if test="bean.menuType != null">
+				 menu_type,
+			</if>
+			<if test="bean.path != null">
+				 path,
+			</if>
+			<if test="bean.icon != null">
+				 icon,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.parentId!=null">
+				 #{bean.parentId},
+			</if>
+			<if test="bean.menuName!=null">
+				 #{bean.menuName},
+			</if>
+			<if test="bean.menuCode!=null">
+				 #{bean.menuCode},
+			</if>
+			<if test="bean.menuType!=null">
+				 #{bean.menuType},
+			</if>
+			<if test="bean.path!=null">
+				 #{bean.path},
+			</if>
+			<if test="bean.icon!=null">
+				 #{bean.icon},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.SystemMenu">
+		 INSERT INTO system_menu
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.menuId != null">
+				 menu_id,
+			</if>
+			<if test="bean.parentId != null">
+				 parent_id,
+			</if>
+			<if test="bean.menuName != null">
+				 menu_name,
+			</if>
+			<if test="bean.menuCode != null">
+				 menu_code,
+			</if>
+			<if test="bean.menuType != null">
+				 menu_type,
+			</if>
+			<if test="bean.path != null">
+				 path,
+			</if>
+			<if test="bean.icon != null">
+				 icon,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.menuId!=null">
+				 #{bean.menuId},
+			</if>
+			<if test="bean.parentId!=null">
+				 #{bean.parentId},
+			</if>
+			<if test="bean.menuName!=null">
+				 #{bean.menuName},
+			</if>
+			<if test="bean.menuCode!=null">
+				 #{bean.menuCode},
+			</if>
+			<if test="bean.menuType!=null">
+				 #{bean.menuType},
+			</if>
+			<if test="bean.path!=null">
+				 #{bean.path},
+			</if>
+			<if test="bean.icon!=null">
+				 #{bean.icon},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.parentId!=null">
+				 parent_id = VALUES(parent_id),
+			</if>
+			<if test="bean.menuName!=null">
+				 menu_name = VALUES(menu_name),
+			</if>
+			<if test="bean.menuCode!=null">
+				 menu_code = VALUES(menu_code),
+			</if>
+			<if test="bean.menuType!=null">
+				 menu_type = VALUES(menu_type),
+			</if>
+			<if test="bean.path!=null">
+				 path = VALUES(path),
+			</if>
+			<if test="bean.icon!=null">
+				 icon = VALUES(icon),
+			</if>
+			<if test="bean.sort!=null">
+				 sort = VALUES(sort),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.SystemMenu" useGeneratedKeys="true" keyProperty="menuId">
+		 INSERT INTO system_menu(
+			 parent_id,
+			 menu_name,
+			 menu_code,
+			 menu_type,
+			 path,
+			 icon,
+			 sort,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.parentId},
+				 #{item.menuName},
+				 #{item.menuCode},
+				 #{item.menuType},
+				 #{item.path},
+				 #{item.icon},
+				 #{item.sort},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.SystemMenu">
+		 INSERT INTO system_menu(
+			 parent_id,
+			 menu_name,
+			 menu_code,
+			 menu_type,
+			 path,
+			 icon,
+			 sort,
+			 status,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.parentId},
+				 #{item.menuName},
+				 #{item.menuCode},
+				 #{item.menuType},
+				 #{item.path},
+				 #{item.icon},
+				 #{item.sort},
+				 #{item.status},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			parent_id = VALUES(parent_id),
+			menu_name = VALUES(menu_name),
+			menu_code = VALUES(menu_code),
+			menu_type = VALUES(menu_type),
+			path = VALUES(path),
+			icon = VALUES(icon),
+			sort = VALUES(sort),
+			status = VALUES(status),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.SystemMenuQuery">
+		 UPDATE system_menu s
+ 		 <set> 
+			<if test="bean.parentId != null">
+				 parent_id = #{bean.parentId},
+			</if>
+			<if test="bean.menuName != null">
+				 menu_name = #{bean.menuName},
+			</if>
+			<if test="bean.menuCode != null">
+				 menu_code = #{bean.menuCode},
+			</if>
+			<if test="bean.menuType != null">
+				 menu_type = #{bean.menuType},
+			</if>
+			<if test="bean.path != null">
+				 path = #{bean.path},
+			</if>
+			<if test="bean.icon != null">
+				 icon = #{bean.icon},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete s from system_menu s
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据MenuId修改-->
+	<update id="updateByMenuId" parameterType="com.nexora.entity.po.SystemMenu">
+		 UPDATE system_menu
+ 		 <set> 
+			<if test="bean.parentId != null">
+				 parent_id = #{bean.parentId},
+			</if>
+			<if test="bean.menuName != null">
+				 menu_name = #{bean.menuName},
+			</if>
+			<if test="bean.menuCode != null">
+				 menu_code = #{bean.menuCode},
+			</if>
+			<if test="bean.menuType != null">
+				 menu_type = #{bean.menuType},
+			</if>
+			<if test="bean.path != null">
+				 path = #{bean.path},
+			</if>
+			<if test="bean.icon != null">
+				 icon = #{bean.icon},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where menu_id=#{menuId}
+	</update>
+
+	<!-- 根据MenuId删除-->
+	<delete id="deleteByMenuId">
+		delete from system_menu where menu_id=#{menuId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByMenuId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from system_menu s where menu_id=#{menuId}
+	</select>
+
+	<!-- 根据MenuCode修改-->
+	<update id="updateByMenuCode" parameterType="com.nexora.entity.po.SystemMenu">
+		 UPDATE system_menu
+ 		 <set> 
+			<if test="bean.parentId != null">
+				 parent_id = #{bean.parentId},
+			</if>
+			<if test="bean.menuName != null">
+				 menu_name = #{bean.menuName},
+			</if>
+			<if test="bean.menuType != null">
+				 menu_type = #{bean.menuType},
+			</if>
+			<if test="bean.path != null">
+				 path = #{bean.path},
+			</if>
+			<if test="bean.icon != null">
+				 icon = #{bean.icon},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where menu_code=#{menuCode}
+	</update>
+
+	<!-- 根据MenuCode删除-->
+	<delete id="deleteByMenuCode">
+		delete from system_menu where menu_code=#{menuCode}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByMenuCode" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from system_menu s where menu_code=#{menuCode}
+	</select>
+
+</mapper>

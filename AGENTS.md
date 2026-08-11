@@ -17,9 +17,9 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）工作空间，使
 
 前端统一：
 
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite
-- antd v5（双端统一组件库）+ Zustand + React Router
+- antd v6（双端统一组件库）+ Zustand + React Router
 - Markdown 渲染（react-markdown）/ WebSocket 聊天 UI / 图表 ECharts / 视频 ArtPlayer+HLS / 代码编辑器 Monaco / 浏览器端 Python 运行 Pyodide
 
 # 接口规范

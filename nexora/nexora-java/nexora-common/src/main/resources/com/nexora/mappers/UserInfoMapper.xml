@@ -1,0 +1,763 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.UserInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.UserInfo">
+		<!--用户ID-->
+		<id column="user_id" property="userId"  />
+		<!--登录名-->
+		<result column="username" property="username"  />
+		<!--邮箱，登录核心字段，可空（管理员可不填）-->
+		<result column="email" property="email"  />
+		<!--密码（MD5存储）-->
+		<result column="password" property="password"  />
+		<!--昵称-->
+		<result column="nick_name" property="nickName"  />
+		<!--头像URL-->
+		<result column="avatar" property="avatar"  />
+		<!--角色：0管理员 1学生-->
+		<result column="role_type" property="roleType"  />
+		<!--学段：PRIMARY_LOW/PRIMARY_HIGH/JUNIOR/SENIOR；学生必填，管理员为空-->
+		<result column="stage" property="stage"  />
+		<!--年级（如三年级）-->
+		<result column="grade" property="grade"  />
+		<!--兴趣标签，JSON数组字符串-->
+		<result column="interests" property="interests"  />
+		<!--学习风格标签JSON【冗余：规则引擎按行为周期计算后落地】-->
+		<result column="learning_style_tags" property="learningStyleTags"  />
+		<!--性别：0女 1男 2保密-->
+		<result column="sex" property="sex"  />
+		<!--状态：0禁用 1启用-->
+		<result column="status" property="status"  />
+		<!--最后登录时间-->
+		<result column="last_login_time" property="lastLoginTime"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 u.user_id,u.username,u.email,u.password,u.nick_name,
+		 u.avatar,u.role_type,u.stage,u.grade,u.interests,
+		 u.learning_style_tags,u.sex,u.status,u.last_login_time,u.create_time,
+		 u.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.userId != null">
+				 and  u.user_id = #{query.userId}
+			</if>
+			<if test="query.username != null and query.username!=''">
+				 and  u.username = #{query.username}
+			</if>
+			<if test="query.email != null and query.email!=''">
+				 and  u.email = #{query.email}
+			</if>
+			<if test="query.password != null and query.password!=''">
+				 and  u.password = #{query.password}
+			</if>
+			<if test="query.nickName != null and query.nickName!=''">
+				 and  u.nick_name = #{query.nickName}
+			</if>
+			<if test="query.avatar != null and query.avatar!=''">
+				 and  u.avatar = #{query.avatar}
+			</if>
+			<if test="query.roleType != null">
+				 and  u.role_type = #{query.roleType}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  u.stage = #{query.stage}
+			</if>
+			<if test="query.grade != null and query.grade!=''">
+				 and  u.grade = #{query.grade}
+			</if>
+			<if test="query.interests != null and query.interests!=''">
+				 and  u.interests = #{query.interests}
+			</if>
+			<if test="query.learningStyleTags != null and query.learningStyleTags!=''">
+				 and  u.learning_style_tags = #{query.learningStyleTags}
+			</if>
+			<if test="query.sex != null">
+				 and  u.sex = #{query.sex}
+			</if>
+			<if test="query.status != null">
+				 and  u.status = #{query.status}
+			</if>
+			<if test="query.lastLoginTime != null and query.lastLoginTime!=''">
+				 <![CDATA[ and  u.last_login_time=str_to_date(#{query.lastLoginTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  u.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  u.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.usernameFuzzy!= null  and query.usernameFuzzy!=''">
+				 and  u.username like concat('%', #{query.usernameFuzzy}, '%')
+			</if>
+			<if test="query.emailFuzzy!= null  and query.emailFuzzy!=''">
+				 and  u.email like concat('%', #{query.emailFuzzy}, '%')
+			</if>
+			<if test="query.passwordFuzzy!= null  and query.passwordFuzzy!=''">
+				 and  u.password like concat('%', #{query.passwordFuzzy}, '%')
+			</if>
+			<if test="query.nickNameFuzzy!= null  and query.nickNameFuzzy!=''">
+				 and  u.nick_name like concat('%', #{query.nickNameFuzzy}, '%')
+			</if>
+			<if test="query.avatarFuzzy!= null  and query.avatarFuzzy!=''">
+				 and  u.avatar like concat('%', #{query.avatarFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  u.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.gradeFuzzy!= null  and query.gradeFuzzy!=''">
+				 and  u.grade like concat('%', #{query.gradeFuzzy}, '%')
+			</if>
+			<if test="query.interestsFuzzy!= null  and query.interestsFuzzy!=''">
+				 and  u.interests like concat('%', #{query.interestsFuzzy}, '%')
+			</if>
+			<if test="query.learningStyleTagsFuzzy!= null  and query.learningStyleTagsFuzzy!=''">
+				 and  u.learning_style_tags like concat('%', #{query.learningStyleTagsFuzzy}, '%')
+			</if>
+			<if test="query.lastLoginTimeStart!= null and query.lastLoginTimeStart!=''">
+				 <![CDATA[ and  u.last_login_time>=str_to_date(#{query.lastLoginTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.lastLoginTimeEnd!= null and query.lastLoginTimeEnd!=''">
+				 <![CDATA[ and  u.last_login_time< date_sub(str_to_date(#{query.lastLoginTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  u.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  u.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  u.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  u.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM user_info u <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM user_info u <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.UserInfo">
+		<selectKey keyProperty="bean.userId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO user_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.username != null">
+				 username,
+			</if>
+			<if test="bean.email != null">
+				 email,
+			</if>
+			<if test="bean.password != null">
+				 password,
+			</if>
+			<if test="bean.nickName != null">
+				 nick_name,
+			</if>
+			<if test="bean.avatar != null">
+				 avatar,
+			</if>
+			<if test="bean.roleType != null">
+				 role_type,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.grade != null">
+				 grade,
+			</if>
+			<if test="bean.interests != null">
+				 interests,
+			</if>
+			<if test="bean.learningStyleTags != null">
+				 learning_style_tags,
+			</if>
+			<if test="bean.sex != null">
+				 sex,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.lastLoginTime != null">
+				 last_login_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.username!=null">
+				 #{bean.username},
+			</if>
+			<if test="bean.email!=null">
+				 #{bean.email},
+			</if>
+			<if test="bean.password!=null">
+				 #{bean.password},
+			</if>
+			<if test="bean.nickName!=null">
+				 #{bean.nickName},
+			</if>
+			<if test="bean.avatar!=null">
+				 #{bean.avatar},
+			</if>
+			<if test="bean.roleType!=null">
+				 #{bean.roleType},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.grade!=null">
+				 #{bean.grade},
+			</if>
+			<if test="bean.interests!=null">
+				 #{bean.interests},
+			</if>
+			<if test="bean.learningStyleTags!=null">
+				 #{bean.learningStyleTags},
+			</if>
+			<if test="bean.sex!=null">
+				 #{bean.sex},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.lastLoginTime!=null">
+				 #{bean.lastLoginTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.UserInfo">
+		 INSERT INTO user_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.username != null">
+				 username,
+			</if>
+			<if test="bean.email != null">
+				 email,
+			</if>
+			<if test="bean.password != null">
+				 password,
+			</if>
+			<if test="bean.nickName != null">
+				 nick_name,
+			</if>
+			<if test="bean.avatar != null">
+				 avatar,
+			</if>
+			<if test="bean.roleType != null">
+				 role_type,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.grade != null">
+				 grade,
+			</if>
+			<if test="bean.interests != null">
+				 interests,
+			</if>
+			<if test="bean.learningStyleTags != null">
+				 learning_style_tags,
+			</if>
+			<if test="bean.sex != null">
+				 sex,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.lastLoginTime != null">
+				 last_login_time,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.username!=null">
+				 #{bean.username},
+			</if>
+			<if test="bean.email!=null">
+				 #{bean.email},
+			</if>
+			<if test="bean.password!=null">
+				 #{bean.password},
+			</if>
+			<if test="bean.nickName!=null">
+				 #{bean.nickName},
+			</if>
+			<if test="bean.avatar!=null">
+				 #{bean.avatar},
+			</if>
+			<if test="bean.roleType!=null">
+				 #{bean.roleType},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.grade!=null">
+				 #{bean.grade},
+			</if>
+			<if test="bean.interests!=null">
+				 #{bean.interests},
+			</if>
+			<if test="bean.learningStyleTags!=null">
+				 #{bean.learningStyleTags},
+			</if>
+			<if test="bean.sex!=null">
+				 #{bean.sex},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.lastLoginTime!=null">
+				 #{bean.lastLoginTime},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.username!=null">
+				 username = VALUES(username),
+			</if>
+			<if test="bean.email!=null">
+				 email = VALUES(email),
+			</if>
+			<if test="bean.password!=null">
+				 password = VALUES(password),
+			</if>
+			<if test="bean.nickName!=null">
+				 nick_name = VALUES(nick_name),
+			</if>
+			<if test="bean.avatar!=null">
+				 avatar = VALUES(avatar),
+			</if>
+			<if test="bean.roleType!=null">
+				 role_type = VALUES(role_type),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.grade!=null">
+				 grade = VALUES(grade),
+			</if>
+			<if test="bean.interests!=null">
+				 interests = VALUES(interests),
+			</if>
+			<if test="bean.learningStyleTags!=null">
+				 learning_style_tags = VALUES(learning_style_tags),
+			</if>
+			<if test="bean.sex!=null">
+				 sex = VALUES(sex),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.lastLoginTime!=null">
+				 last_login_time = VALUES(last_login_time),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.UserInfo" useGeneratedKeys="true" keyProperty="userId">
+		 INSERT INTO user_info(
+			 username,
+			 email,
+			 password,
+			 nick_name,
+			 avatar,
+			 role_type,
+			 stage,
+			 grade,
+			 interests,
+			 learning_style_tags,
+			 sex,
+			 status,
+			 last_login_time,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.username},
+				 #{item.email},
+				 #{item.password},
+				 #{item.nickName},
+				 #{item.avatar},
+				 #{item.roleType},
+				 #{item.stage},
+				 #{item.grade},
+				 #{item.interests},
+				 #{item.learningStyleTags},
+				 #{item.sex},
+				 #{item.status},
+				 #{item.lastLoginTime},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.UserInfo">
+		 INSERT INTO user_info(
+			 username,
+			 email,
+			 password,
+			 nick_name,
+			 avatar,
+			 role_type,
+			 stage,
+			 grade,
+			 interests,
+			 learning_style_tags,
+			 sex,
+			 status,
+			 last_login_time,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.username},
+				 #{item.email},
+				 #{item.password},
+				 #{item.nickName},
+				 #{item.avatar},
+				 #{item.roleType},
+				 #{item.stage},
+				 #{item.grade},
+				 #{item.interests},
+				 #{item.learningStyleTags},
+				 #{item.sex},
+				 #{item.status},
+				 #{item.lastLoginTime},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			username = VALUES(username),
+			email = VALUES(email),
+			password = VALUES(password),
+			nick_name = VALUES(nick_name),
+			avatar = VALUES(avatar),
+			role_type = VALUES(role_type),
+			stage = VALUES(stage),
+			grade = VALUES(grade),
+			interests = VALUES(interests),
+			learning_style_tags = VALUES(learning_style_tags),
+			sex = VALUES(sex),
+			status = VALUES(status),
+			last_login_time = VALUES(last_login_time),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.UserInfoQuery">
+		 UPDATE user_info u
+ 		 <set> 
+			<if test="bean.username != null">
+				 username = #{bean.username},
+			</if>
+			<if test="bean.email != null">
+				 email = #{bean.email},
+			</if>
+			<if test="bean.password != null">
+				 password = #{bean.password},
+			</if>
+			<if test="bean.nickName != null">
+				 nick_name = #{bean.nickName},
+			</if>
+			<if test="bean.avatar != null">
+				 avatar = #{bean.avatar},
+			</if>
+			<if test="bean.roleType != null">
+				 role_type = #{bean.roleType},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
+			</if>
+			<if test="bean.interests != null">
+				 interests = #{bean.interests},
+			</if>
+			<if test="bean.learningStyleTags != null">
+				 learning_style_tags = #{bean.learningStyleTags},
+			</if>
+			<if test="bean.sex != null">
+				 sex = #{bean.sex},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.lastLoginTime != null">
+				 last_login_time = #{bean.lastLoginTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete u from user_info u
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据UserId修改-->
+	<update id="updateByUserId" parameterType="com.nexora.entity.po.UserInfo">
+		 UPDATE user_info
+ 		 <set> 
+			<if test="bean.username != null">
+				 username = #{bean.username},
+			</if>
+			<if test="bean.email != null">
+				 email = #{bean.email},
+			</if>
+			<if test="bean.password != null">
+				 password = #{bean.password},
+			</if>
+			<if test="bean.nickName != null">
+				 nick_name = #{bean.nickName},
+			</if>
+			<if test="bean.avatar != null">
+				 avatar = #{bean.avatar},
+			</if>
+			<if test="bean.roleType != null">
+				 role_type = #{bean.roleType},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
+			</if>
+			<if test="bean.interests != null">
+				 interests = #{bean.interests},
+			</if>
+			<if test="bean.learningStyleTags != null">
+				 learning_style_tags = #{bean.learningStyleTags},
+			</if>
+			<if test="bean.sex != null">
+				 sex = #{bean.sex},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.lastLoginTime != null">
+				 last_login_time = #{bean.lastLoginTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where user_id=#{userId}
+	</update>
+
+	<!-- 根据UserId删除-->
+	<delete id="deleteByUserId">
+		delete from user_info where user_id=#{userId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByUserId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from user_info u where user_id=#{userId}
+	</select>
+
+	<!-- 根据Username修改-->
+	<update id="updateByUsername" parameterType="com.nexora.entity.po.UserInfo">
+		 UPDATE user_info
+ 		 <set> 
+			<if test="bean.email != null">
+				 email = #{bean.email},
+			</if>
+			<if test="bean.password != null">
+				 password = #{bean.password},
+			</if>
+			<if test="bean.nickName != null">
+				 nick_name = #{bean.nickName},
+			</if>
+			<if test="bean.avatar != null">
+				 avatar = #{bean.avatar},
+			</if>
+			<if test="bean.roleType != null">
+				 role_type = #{bean.roleType},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
+			</if>
+			<if test="bean.interests != null">
+				 interests = #{bean.interests},
+			</if>
+			<if test="bean.learningStyleTags != null">
+				 learning_style_tags = #{bean.learningStyleTags},
+			</if>
+			<if test="bean.sex != null">
+				 sex = #{bean.sex},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.lastLoginTime != null">
+				 last_login_time = #{bean.lastLoginTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where username=#{username}
+	</update>
+
+	<!-- 根据Username删除-->
+	<delete id="deleteByUsername">
+		delete from user_info where username=#{username}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByUsername" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from user_info u where username=#{username}
+	</select>
+
+	<!-- 根据Email修改-->
+	<update id="updateByEmail" parameterType="com.nexora.entity.po.UserInfo">
+		 UPDATE user_info
+ 		 <set> 
+			<if test="bean.username != null">
+				 username = #{bean.username},
+			</if>
+			<if test="bean.password != null">
+				 password = #{bean.password},
+			</if>
+			<if test="bean.nickName != null">
+				 nick_name = #{bean.nickName},
+			</if>
+			<if test="bean.avatar != null">
+				 avatar = #{bean.avatar},
+			</if>
+			<if test="bean.roleType != null">
+				 role_type = #{bean.roleType},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
+			</if>
+			<if test="bean.interests != null">
+				 interests = #{bean.interests},
+			</if>
+			<if test="bean.learningStyleTags != null">
+				 learning_style_tags = #{bean.learningStyleTags},
+			</if>
+			<if test="bean.sex != null">
+				 sex = #{bean.sex},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.lastLoginTime != null">
+				 last_login_time = #{bean.lastLoginTime},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where email=#{email}
+	</update>
+
+	<!-- 根据Email删除-->
+	<delete id="deleteByEmail">
+		delete from user_info where email=#{email}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByEmail" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from user_info u where email=#{email}
+	</select>
+
+</mapper>

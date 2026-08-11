@@ -24,6 +24,19 @@ spring:
       port: 6379
   elasticsearch:
     uris: http://localhost:9200
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: ${NEXORA_MAIL_USERNAME:1994616658@qq.com}
+    password: ${NEXORA_MAIL_PASSWORD:your-auth-code}
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+          auth: true
+          starttls:
+            enable: true
   ai:
     vectorstore:
       elasticsearch:
@@ -52,11 +65,12 @@ spring:
             nexora-mcp:
               url: http://localhost:8084
 mybatis:
+  mapper-locations: classpath*:/com/nexora/mappers/*.xml
   configuration:
     map-underscore-to-camel-case: true
 #项目目录（按本机实际路径调整）
 project:
-  folder: e:/webser/web_app/nexora/
+  folder: d:/dev/ai/k12/nexora/
 
 #日志级别
 log:

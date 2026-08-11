@@ -1,0 +1,685 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.ResourceInfoMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.ResourceInfo">
+		<!--资源ID-->
+		<result column="resource_id" property="resourceId"  />
+		<!--资源名-->
+		<result column="resource_name" property="resourceName"  />
+		<!--类型：VIDEO/DOCUMENT/PPT/WORD/IMAGE/PICTURE_BOOK-->
+		<result column="resource_type" property="resourceType"  />
+		<!--资源标签，多个逗号分隔-->
+		<result column="tags" property="tags"  />
+		<!--资源简介-->
+		<result column="description" property="description"  />
+		<!--文件地址-->
+		<result column="file_path" property="filePath"  />
+		<!--文件大小（字节）-->
+		<result column="file_size" property="fileSize"  />
+		<!--封面-->
+		<result column="cover" property="cover"  />
+		<!--音视频时长（秒）-->
+		<result column="duration" property="duration"  />
+		<!--HLS转码产物地址-->
+		<result column="hls_path" property="hlsPath"  />
+		<!--归属学段，可空-->
+		<result column="stage" property="stage"  />
+		<!--关联知识点【冗余：recommendResource工具按知识点直查】-->
+		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--来源：0后台上传 1AI生成-->
+		<result column="source" property="source"  />
+		<!--状态：0处理中 1可用 2失败-->
+		<result column="status" property="status"  />
+		<!--上传人-->
+		<result column="create_by" property="createBy"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 r.resource_id,r.resource_name,r.resource_type,r.tags,r.description,
+		 r.file_path,r.file_size,r.cover,r.duration,r.hls_path,
+		 r.stage,r.knowledge_point_id,r.source,r.status,r.create_by,
+		 r.create_time,r.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.resourceId != null and query.resourceId!=''">
+				 and  r.resource_id = #{query.resourceId}
+			</if>
+			<if test="query.resourceName != null and query.resourceName!=''">
+				 and  r.resource_name = #{query.resourceName}
+			</if>
+			<if test="query.resourceType != null and query.resourceType!=''">
+				 and  r.resource_type = #{query.resourceType}
+			</if>
+			<if test="query.tags != null and query.tags!=''">
+				 and  r.tags = #{query.tags}
+			</if>
+			<if test="query.description != null and query.description!=''">
+				 and  r.description = #{query.description}
+			</if>
+			<if test="query.filePath != null and query.filePath!=''">
+				 and  r.file_path = #{query.filePath}
+			</if>
+			<if test="query.fileSize != null">
+				 and  r.file_size = #{query.fileSize}
+			</if>
+			<if test="query.cover != null and query.cover!=''">
+				 and  r.cover = #{query.cover}
+			</if>
+			<if test="query.duration != null">
+				 and  r.duration = #{query.duration}
+			</if>
+			<if test="query.hlsPath != null and query.hlsPath!=''">
+				 and  r.hls_path = #{query.hlsPath}
+			</if>
+			<if test="query.stage != null and query.stage!=''">
+				 and  r.stage = #{query.stage}
+			</if>
+			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
+				 and  r.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.source != null">
+				 and  r.source = #{query.source}
+			</if>
+			<if test="query.status != null">
+				 and  r.status = #{query.status}
+			</if>
+			<if test="query.createBy != null">
+				 and  r.create_by = #{query.createBy}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  r.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  r.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.resourceIdFuzzy!= null  and query.resourceIdFuzzy!=''">
+				 and  r.resource_id like concat('%', #{query.resourceIdFuzzy}, '%')
+			</if>
+			<if test="query.resourceNameFuzzy!= null  and query.resourceNameFuzzy!=''">
+				 and  r.resource_name like concat('%', #{query.resourceNameFuzzy}, '%')
+			</if>
+			<if test="query.resourceTypeFuzzy!= null  and query.resourceTypeFuzzy!=''">
+				 and  r.resource_type like concat('%', #{query.resourceTypeFuzzy}, '%')
+			</if>
+			<if test="query.tagsFuzzy!= null  and query.tagsFuzzy!=''">
+				 and  r.tags like concat('%', #{query.tagsFuzzy}, '%')
+			</if>
+			<if test="query.descriptionFuzzy!= null  and query.descriptionFuzzy!=''">
+				 and  r.description like concat('%', #{query.descriptionFuzzy}, '%')
+			</if>
+			<if test="query.filePathFuzzy!= null  and query.filePathFuzzy!=''">
+				 and  r.file_path like concat('%', #{query.filePathFuzzy}, '%')
+			</if>
+			<if test="query.coverFuzzy!= null  and query.coverFuzzy!=''">
+				 and  r.cover like concat('%', #{query.coverFuzzy}, '%')
+			</if>
+			<if test="query.hlsPathFuzzy!= null  and query.hlsPathFuzzy!=''">
+				 and  r.hls_path like concat('%', #{query.hlsPathFuzzy}, '%')
+			</if>
+			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
+				 and  r.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.knowledgePointIdFuzzy!= null  and query.knowledgePointIdFuzzy!=''">
+				 and  r.knowledge_point_id like concat('%', #{query.knowledgePointIdFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  r.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  r.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  r.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  r.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM resource_info r <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM resource_info r <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.ResourceInfo">
+		 INSERT INTO resource_info
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.resourceId != null">
+				 resource_id,
+			</if>
+			<if test="bean.resourceName != null">
+				 resource_name,
+			</if>
+			<if test="bean.resourceType != null">
+				 resource_type,
+			</if>
+			<if test="bean.tags != null">
+				 tags,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.filePath != null">
+				 file_path,
+			</if>
+			<if test="bean.fileSize != null">
+				 file_size,
+			</if>
+			<if test="bean.cover != null">
+				 cover,
+			</if>
+			<if test="bean.duration != null">
+				 duration,
+			</if>
+			<if test="bean.hlsPath != null">
+				 hls_path,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.resourceId!=null">
+				 #{bean.resourceId},
+			</if>
+			<if test="bean.resourceName!=null">
+				 #{bean.resourceName},
+			</if>
+			<if test="bean.resourceType!=null">
+				 #{bean.resourceType},
+			</if>
+			<if test="bean.tags!=null">
+				 #{bean.tags},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.filePath!=null">
+				 #{bean.filePath},
+			</if>
+			<if test="bean.fileSize!=null">
+				 #{bean.fileSize},
+			</if>
+			<if test="bean.cover!=null">
+				 #{bean.cover},
+			</if>
+			<if test="bean.duration!=null">
+				 #{bean.duration},
+			</if>
+			<if test="bean.hlsPath!=null">
+				 #{bean.hlsPath},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.ResourceInfo">
+		 INSERT INTO resource_info
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.resourceId != null">
+				 resource_id,
+			</if>
+			<if test="bean.resourceName != null">
+				 resource_name,
+			</if>
+			<if test="bean.resourceType != null">
+				 resource_type,
+			</if>
+			<if test="bean.tags != null">
+				 tags,
+			</if>
+			<if test="bean.description != null">
+				 description,
+			</if>
+			<if test="bean.filePath != null">
+				 file_path,
+			</if>
+			<if test="bean.fileSize != null">
+				 file_size,
+			</if>
+			<if test="bean.cover != null">
+				 cover,
+			</if>
+			<if test="bean.duration != null">
+				 duration,
+			</if>
+			<if test="bean.hlsPath != null">
+				 hls_path,
+			</if>
+			<if test="bean.stage != null">
+				 stage,
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id,
+			</if>
+			<if test="bean.source != null">
+				 source,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createBy != null">
+				 create_by,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.resourceId!=null">
+				 #{bean.resourceId},
+			</if>
+			<if test="bean.resourceName!=null">
+				 #{bean.resourceName},
+			</if>
+			<if test="bean.resourceType!=null">
+				 #{bean.resourceType},
+			</if>
+			<if test="bean.tags!=null">
+				 #{bean.tags},
+			</if>
+			<if test="bean.description!=null">
+				 #{bean.description},
+			</if>
+			<if test="bean.filePath!=null">
+				 #{bean.filePath},
+			</if>
+			<if test="bean.fileSize!=null">
+				 #{bean.fileSize},
+			</if>
+			<if test="bean.cover!=null">
+				 #{bean.cover},
+			</if>
+			<if test="bean.duration!=null">
+				 #{bean.duration},
+			</if>
+			<if test="bean.hlsPath!=null">
+				 #{bean.hlsPath},
+			</if>
+			<if test="bean.stage!=null">
+				 #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.source!=null">
+				 #{bean.source},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createBy!=null">
+				 #{bean.createBy},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.resourceId!=null">
+				 resource_id = VALUES(resource_id),
+			</if>
+			<if test="bean.resourceName!=null">
+				 resource_name = VALUES(resource_name),
+			</if>
+			<if test="bean.resourceType!=null">
+				 resource_type = VALUES(resource_type),
+			</if>
+			<if test="bean.tags!=null">
+				 tags = VALUES(tags),
+			</if>
+			<if test="bean.description!=null">
+				 description = VALUES(description),
+			</if>
+			<if test="bean.filePath!=null">
+				 file_path = VALUES(file_path),
+			</if>
+			<if test="bean.fileSize!=null">
+				 file_size = VALUES(file_size),
+			</if>
+			<if test="bean.cover!=null">
+				 cover = VALUES(cover),
+			</if>
+			<if test="bean.duration!=null">
+				 duration = VALUES(duration),
+			</if>
+			<if test="bean.hlsPath!=null">
+				 hls_path = VALUES(hls_path),
+			</if>
+			<if test="bean.stage!=null">
+				 stage = VALUES(stage),
+			</if>
+			<if test="bean.knowledgePointId!=null">
+				 knowledge_point_id = VALUES(knowledge_point_id),
+			</if>
+			<if test="bean.source!=null">
+				 source = VALUES(source),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createBy!=null">
+				 create_by = VALUES(create_by),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.ResourceInfo">
+		 INSERT INTO resource_info(
+			 resource_id,
+			 resource_name,
+			 resource_type,
+			 tags,
+			 description,
+			 file_path,
+			 file_size,
+			 cover,
+			 duration,
+			 hls_path,
+			 stage,
+			 knowledge_point_id,
+			 source,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.resourceId},
+				 #{item.resourceName},
+				 #{item.resourceType},
+				 #{item.tags},
+				 #{item.description},
+				 #{item.filePath},
+				 #{item.fileSize},
+				 #{item.cover},
+				 #{item.duration},
+				 #{item.hlsPath},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.source},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.ResourceInfo">
+		 INSERT INTO resource_info(
+			 resource_id,
+			 resource_name,
+			 resource_type,
+			 tags,
+			 description,
+			 file_path,
+			 file_size,
+			 cover,
+			 duration,
+			 hls_path,
+			 stage,
+			 knowledge_point_id,
+			 source,
+			 status,
+			 create_by,
+			 create_time,
+			 update_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.resourceId},
+				 #{item.resourceName},
+				 #{item.resourceType},
+				 #{item.tags},
+				 #{item.description},
+				 #{item.filePath},
+				 #{item.fileSize},
+				 #{item.cover},
+				 #{item.duration},
+				 #{item.hlsPath},
+				 #{item.stage},
+				 #{item.knowledgePointId},
+				 #{item.source},
+				 #{item.status},
+				 #{item.createBy},
+				 #{item.createTime},
+				 #{item.updateTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			resource_id = VALUES(resource_id),
+			resource_name = VALUES(resource_name),
+			resource_type = VALUES(resource_type),
+			tags = VALUES(tags),
+			description = VALUES(description),
+			file_path = VALUES(file_path),
+			file_size = VALUES(file_size),
+			cover = VALUES(cover),
+			duration = VALUES(duration),
+			hls_path = VALUES(hls_path),
+			stage = VALUES(stage),
+			knowledge_point_id = VALUES(knowledge_point_id),
+			source = VALUES(source),
+			status = VALUES(status),
+			create_by = VALUES(create_by),
+			create_time = VALUES(create_time),
+			update_time = VALUES(update_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.ResourceInfoQuery">
+		 UPDATE resource_info r
+ 		 <set> 
+			<if test="bean.resourceId != null">
+				 resource_id = #{bean.resourceId},
+			</if>
+			<if test="bean.resourceName != null">
+				 resource_name = #{bean.resourceName},
+			</if>
+			<if test="bean.resourceType != null">
+				 resource_type = #{bean.resourceType},
+			</if>
+			<if test="bean.tags != null">
+				 tags = #{bean.tags},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.filePath != null">
+				 file_path = #{bean.filePath},
+			</if>
+			<if test="bean.fileSize != null">
+				 file_size = #{bean.fileSize},
+			</if>
+			<if test="bean.cover != null">
+				 cover = #{bean.cover},
+			</if>
+			<if test="bean.duration != null">
+				 duration = #{bean.duration},
+			</if>
+			<if test="bean.hlsPath != null">
+				 hls_path = #{bean.hlsPath},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete r from resource_info r
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据ResourceId修改-->
+	<update id="updateByResourceId" parameterType="com.nexora.entity.po.ResourceInfo">
+		 UPDATE resource_info
+ 		 <set> 
+			<if test="bean.resourceName != null">
+				 resource_name = #{bean.resourceName},
+			</if>
+			<if test="bean.resourceType != null">
+				 resource_type = #{bean.resourceType},
+			</if>
+			<if test="bean.tags != null">
+				 tags = #{bean.tags},
+			</if>
+			<if test="bean.description != null">
+				 description = #{bean.description},
+			</if>
+			<if test="bean.filePath != null">
+				 file_path = #{bean.filePath},
+			</if>
+			<if test="bean.fileSize != null">
+				 file_size = #{bean.fileSize},
+			</if>
+			<if test="bean.cover != null">
+				 cover = #{bean.cover},
+			</if>
+			<if test="bean.duration != null">
+				 duration = #{bean.duration},
+			</if>
+			<if test="bean.hlsPath != null">
+				 hls_path = #{bean.hlsPath},
+			</if>
+			<if test="bean.stage != null">
+				 stage = #{bean.stage},
+			</if>
+			<if test="bean.knowledgePointId != null">
+				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.source != null">
+				 source = #{bean.source},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createBy != null">
+				 create_by = #{bean.createBy},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+ 		 </set>
+ 		 where resource_id=#{resourceId}
+	</update>
+
+	<!-- 根据ResourceId删除-->
+	<delete id="deleteByResourceId">
+		delete from resource_info where resource_id=#{resourceId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByResourceId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from resource_info r where resource_id=#{resourceId}
+	</select>
+
+</mapper>

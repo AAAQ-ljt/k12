@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.CourseChapterLessonResourceMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.CourseChapterLessonResource">
+		<!--主键-->
+		<id column="id" property="id"  />
+		<!--课时ID-->
+		<result column="lesson_id" property="lessonId"  />
+		<!--课程ID【冗余】-->
+		<result column="course_id" property="courseId"  />
+		<!--资源ID-->
+		<result column="resource_id" property="resourceId"  />
+		<!--排序-->
+		<result column="sort" property="sort"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 c.id,c.lesson_id,c.course_id,c.resource_id,c.sort,
+		 c.create_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.id != null">
+				 and  c.id = #{query.id}
+			</if>
+			<if test="query.lessonId != null and query.lessonId!=''">
+				 and  c.lesson_id = #{query.lessonId}
+			</if>
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  c.course_id = #{query.courseId}
+			</if>
+			<if test="query.resourceId != null and query.resourceId!=''">
+				 and  c.resource_id = #{query.resourceId}
+			</if>
+			<if test="query.sort != null">
+				 and  c.sort = #{query.sort}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  c.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.lessonIdFuzzy!= null  and query.lessonIdFuzzy!=''">
+				 and  c.lesson_id like concat('%', #{query.lessonIdFuzzy}, '%')
+			</if>
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.resourceIdFuzzy!= null  and query.resourceIdFuzzy!=''">
+				 and  c.resource_id like concat('%', #{query.resourceIdFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  c.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  c.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM course_chapter_lesson_resource c <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM course_chapter_lesson_resource c <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.CourseChapterLessonResource">
+		<selectKey keyProperty="bean.id" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO course_chapter_lesson_resource
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.lessonId != null">
+				 lesson_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.resourceId != null">
+				 resource_id,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.lessonId!=null">
+				 #{bean.lessonId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.resourceId!=null">
+				 #{bean.resourceId},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.CourseChapterLessonResource">
+		 INSERT INTO course_chapter_lesson_resource
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.id != null">
+				 id,
+			</if>
+			<if test="bean.lessonId != null">
+				 lesson_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.resourceId != null">
+				 resource_id,
+			</if>
+			<if test="bean.sort != null">
+				 sort,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.id!=null">
+				 #{bean.id},
+			</if>
+			<if test="bean.lessonId!=null">
+				 #{bean.lessonId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.resourceId!=null">
+				 #{bean.resourceId},
+			</if>
+			<if test="bean.sort!=null">
+				 #{bean.sort},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.lessonId!=null">
+				 lesson_id = VALUES(lesson_id),
+			</if>
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.resourceId!=null">
+				 resource_id = VALUES(resource_id),
+			</if>
+			<if test="bean.sort!=null">
+				 sort = VALUES(sort),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.CourseChapterLessonResource" useGeneratedKeys="true" keyProperty="id">
+		 INSERT INTO course_chapter_lesson_resource(
+			 lesson_id,
+			 course_id,
+			 resource_id,
+			 sort,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.lessonId},
+				 #{item.courseId},
+				 #{item.resourceId},
+				 #{item.sort},
+				 #{item.createTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.nexora.entity.po.CourseChapterLessonResource">
+		 INSERT INTO course_chapter_lesson_resource(
+			 lesson_id,
+			 course_id,
+			 resource_id,
+			 sort,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.lessonId},
+				 #{item.courseId},
+				 #{item.resourceId},
+				 #{item.sort},
+				 #{item.createTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			lesson_id = VALUES(lesson_id),
+			course_id = VALUES(course_id),
+			resource_id = VALUES(resource_id),
+			sort = VALUES(sort),
+			create_time = VALUES(create_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.CourseChapterLessonResourceQuery">
+		 UPDATE course_chapter_lesson_resource c
+ 		 <set> 
+			<if test="bean.lessonId != null">
+				 lesson_id = #{bean.lessonId},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.resourceId != null">
+				 resource_id = #{bean.resourceId},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete c from course_chapter_lesson_resource c
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据Id修改-->
+	<update id="updateById" parameterType="com.nexora.entity.po.CourseChapterLessonResource">
+		 UPDATE course_chapter_lesson_resource
+ 		 <set> 
+			<if test="bean.lessonId != null">
+				 lesson_id = #{bean.lessonId},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.resourceId != null">
+				 resource_id = #{bean.resourceId},
+			</if>
+			<if test="bean.sort != null">
+				 sort = #{bean.sort},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 where id=#{id}
+	</update>
+
+	<!-- 根据Id删除-->
+	<delete id="deleteById">
+		delete from course_chapter_lesson_resource where id=#{id}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectById" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from course_chapter_lesson_resource c where id=#{id}
+	</select>
+
+</mapper>
