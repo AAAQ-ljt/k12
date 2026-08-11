@@ -1,0 +1,41 @@
+server:
+  port: 6061
+  servlet:
+    context-path: /api
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+  datasource:
+    url: jdbc:mysql://localhost:3306/nexora?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  task:
+    scheduling:
+      pool:
+        size: 5
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  elasticsearch:
+    uris: http://localhost:9200
+mybatis:
+  mapper-locations: classpath:/mappers/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+#项目目录（按本机实际路径调整）
+project:
+  folder: e:/webser/web_app/nexora/
+resource:
+  temp-dir: resource/temp
+  file-dir: resource/files
+  upload-session-ttl-minutes: 120
+  ffmpeg-path: ffmpeg
+
+#日志级别
+log:
+  root:
+    level: debug

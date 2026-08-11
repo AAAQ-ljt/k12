@@ -1,0 +1,29 @@
+server:
+  port: 8084
+spring:
+  main:
+    web-application-type: reactive
+  datasource:
+    url: jdbc:mysql://localhost:3306/nexora?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        name: nexora-mcp
+        version: 1.0.0
+        streamable-http:
+          mcp-endpoint: /mcp
+          keep-alive-interval: 60s
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+#项目目录（按本机实际路径调整）
+project:
+  folder: e:/webser/web_app/nexora/

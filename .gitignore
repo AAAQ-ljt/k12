@@ -1,0 +1,53 @@
+# ===== 后端（Java / Maven）=====
+target/
+*.class
+*.jar
+*.war
+*.ear
+!.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# ===== 前端（Node / Vite）=====
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# ===== 环境变量（.env.development / .env.production 含代理与端口、无密钥，提交；本地覆盖文件不提交）=====
+.env.local
+.env.*.local
+
+# ===== 日志 =====
+logs/
+*.log
+
+# ===== IDE =====
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 运行时产物（资源上传临时目录 / 分片文件 / 转码产物）=====
+resource/temp/
+resource/files/
+
+# ===== 注意：以下内容需要提交，勿加入忽略 =====
+# AGENTS.md、.codex/skills/（项目约束体系）、nexora/docs/（设计文档）、
+# nexora-java/nexora.sql（版本化 DDL）、knowledge/（知识库源文件）、
+# 参考项目/ 与 smart-campus提示词记录/（本仓库已跟踪的参考资料）
