@@ -8,10 +8,10 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 
 后端 `nexora-java/`（Maven 多模块）：
 
-- `nexora-common`：公共模块，包路径 `com.nexora.common`。承载 PO / DTO / VO / Query、Service / Mapper、Redis 组件、AI 公共组件（ChatClient 配置、意图路由、流式输出）、异常、枚举、工具类。
+- `nexora-common`：公共模块，包路径 `com.nexora`（easycode 生成层）。承载 PO / DTO / VO / Query、Service / Mapper、Redis 组件、异常、枚举、工具类；AI 公共组件（ChatClient 配置、意图路由、流式输出）后续也沉淀在此层。
 - `nexora-admin`：管理端服务，包路径 `com.nexora.admin`。承载 Controller、Biz、管理端专用 DTO/VO。独立启动，运行在管理端端口 6061。
-- `nexora-web`：学生端服务，包路径 `com.nexora.web`。承载 Controller、Biz、AI 对话组件（Netty WebSocket 流式）、MCP Client、学生端专用 DTO/VO。独立启动，运行在用户端端口 6060（WebSocket 6062）。
-- `nexora-mcp`：MCP 教学工具服务，包路径 `com.nexora.mcp`。Spring AI MCP Server（Streamable HTTP），通过 @Tool 暴露教学域工具。独立启动，运行在 8084。
+- `nexora-web`：学生端服务，包路径 `com.nexora`（Netty WS 子包 `com.nexora.websocket`）。承载 Controller、Biz、AI 对话组件（Netty WebSocket 流式）、MCP Client、学生端专用 DTO/VO。独立启动，运行在用户端端口 6060（WebSocket 6062）。*当前为骨架：登录拦截器 / 学生接口 / AI 链路按开发排期 P1/P3 落地。*
+- `nexora-mcp`：MCP 教学工具服务，包路径 `com.nexora`。Spring AI MCP Server（Streamable HTTP），通过 @Tool 暴露教学域工具。独立启动，运行在 8084。
 
 依赖方向：`admin → common`、`web → common`、`mcp → common`。common 不允许反向依赖任何端。
 
@@ -20,7 +20,7 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 - `nexora-front-admin`：管理后台前端工程（端口 3001）。
 - `nexora-front-web`：学生端前端工程（端口 3000）。页面结构固定 5 页：AI 助教（首页 / 对话区）/ 个性化学习路径 / 课程教材 / 编程环境（小高及以上可见）/ 我的；多模态产物（SVG 动画、绘本、答题卡片）以对话内卡片 + 全屏体验承载。
 
-> 包名提醒：common 用 `com.nexora.common`，admin 用 `com.nexora.admin`，web 用 `com.nexora.web`，mcp 用 `com.nexora.mcp`。新增类必须落到正确的包路径，不要混。
+> 包名提醒：common 用 `com.nexora`，admin 用 `com.nexora.admin`，web 用 `com.nexora`（websocket 在 `com.nexora.websocket`），mcp 用 `com.nexora`。新增类必须落到正确的包路径，不要混。
 
 # 系统角色
 
@@ -46,9 +46,10 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 
 - 管理端 token 走 header `adminToken`，由管理端登录拦截器校验，并配合 Redis 登录组件做有效期管理。
 - 用户端 token 走 header `studentToken`，由用户端登录拦截器校验。
-- 管理端接口必须打权限注解，权限编码与系统菜单表中的编码一一对应。
+- 管理端接口必须登录（登录拦截器校验 adminToken）；权限注解体系规划在 P7 系统收尾落地，落地后接口必须带权限注解，编码与系统菜单表一一对应。
 - 当前登录用户统一从登录上下文持有器（ThreadLocal）取，禁止在 Controller / Service 里再次手动解析 token。
 - AI 对话接口必须登录；MCP 工具服务不直接对外，仅由 web 端 MCP Client 调用。
+- 用户端登录交互（参考 Codex 模式，已确认）：公开页面（AI 助手、编程环境）免登录可浏览；受保护页面 / 接口未登录时前端弹出登录弹窗、后端统一返回 401；左下角固定登录入口（未登录显示「登录」按钮，已登录显示头像/昵称 + 下拉：个人中心、退出登录）。
 
 # 核心业务域
 
@@ -70,6 +71,7 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 - 学习记录：服务端记录学习时长、视频时间点；前端按课时恢复播放进度。
 - 学习路径：学生可自建学习分类，AI 生成主线 + 兴趣分支路径；已掌握知识点按遗忘曲线间隔（1/3/7/15 天）自动排复习节点，快测未过回炉"进行中"。
 - AI 回复链路：先意图路由 → 教学动作走 MCP 工具 → 知识问答走 RAG → 其余走通用对话；回复必须流式。
+- AI 模型分工（已确认）：对话 / 意图路由 / SVG 动画 / 编程辅助 / 学习路径生成 = DeepSeek API（`NEXORA_DEEPSEEK_API_KEY`）；知识向量化 = 阿里百炼 text-embedding-v4（`NEXORA_DASHSCOPE_API_KEY`）；绘本插图 = 阿里百炼文生图（`NEXORA_DASHSCOPE_API_KEY`）。
 - MCP 工具：只做教学域操作（查课程 / 查进度 / 查掌握度 / 出题 / 批改 / 记录进度 / 规划路径 / 推荐资源），入参校验，返回结构化字符串。
 
 # 字段与返回约定
@@ -84,7 +86,7 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 
 - 禁止前后端字段不一致或私自重命名 PO 字段。
 - 禁止生成 mock 数据，联调以真实接口为准。
-- 禁止管理端接口不带权限注解。
+- 禁止管理端接口不登录；P7 权限注解体系落地后，禁止管理端接口不带权限注解。
 - 禁止用户端接口暴露管理端字段（创建人、排序权重、审核状态等）。
 - 禁止把仅一端使用的类放进 common 模块。
 - 禁止 Controller / Biz / Service / Mapper 越层。

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Table, Pagination } from 'antd';
+import type { TableProps } from 'antd';
+import type { Key } from 'react';
 import styles from './BaseDataTable.module.scss';
 
 /**
@@ -40,9 +42,9 @@ export interface BaseDataTableProps<T extends Record<string, any>> {
   /** 复选框是否启用 */
   selectable?: boolean;
   /** 已选中的行键列表 */
-  selectedRowKeys?: string[] | number[];
+  selectedRowKeys?: Key[];
   /** 选中行变更回调 */
-  onSelectChange?: (selectedRowKeys: string[] | number[], selectedRecords: T[]) => void;
+  onSelectChange?: (selectedRowKeys: Key[], selectedRecords: T[]) => void;
   /** 加载状态 */
   loading?: boolean;
   /** 分页页码变更回调 */
@@ -94,7 +96,7 @@ export default function BaseDataTable<T extends Record<string, any>>(
 
   // 处理选择行变更
   const handleSelectChange = (
-    selectedRowKeys: string[] | number[],
+    selectedRowKeys: Key[],
     selectedRecords: T[],
   ) => {
     onSelectChange?.(selectedRowKeys, selectedRecords);
@@ -138,7 +140,7 @@ export default function BaseDataTable<T extends Record<string, any>>(
   };
 
   // 复选框配置
-  const rowSelection = selectable
+  const rowSelection: TableProps<T>['rowSelection'] | undefined = selectable
     ? {
         selectedRowKeys,
         onChange: handleSelectChange,
@@ -188,3 +190,4 @@ export default function BaseDataTable<T extends Record<string, any>>(
     </div>
   );
 }
+

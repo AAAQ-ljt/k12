@@ -6,14 +6,14 @@ Spring Boot 3 + MyBatis（自定义泛型 Mapper，不是 MyBatis Plus）+ MySQL
 
 | 模块 | 包路径 | 职责 |
 |---|---|---|
-| nexora-common | `com.nexora.common.*` | PO / DTO / VO / Query、Service / Mapper、Redis 组件、AI 公共组件、异常、枚举、工具类 |
+| nexora-common | `com.nexora.*`（easycode 生成层） | PO / DTO / VO / Query、Service / Mapper、Redis 组件、AI 公共组件、异常、枚举、工具类 |
 | nexora-admin | `com.nexora.admin.*` | 管理端 Controller、Biz、管理端专用 DTO/VO；独立启动 |
-| nexora-web | `com.nexora.web.*` | 用户端 Controller、Biz、AI 对话组件、MCP Client；独立启动 |
-| nexora-mcp | `com.nexora.mcp.*` | MCP 教学工具服务（Streamable HTTP）；独立启动 |
+| nexora-web | `com.nexora.*`（Netty WS 子包 `com.nexora.websocket.*`） | 用户端 Controller、Biz、AI 对话组件、MCP Client；独立启动 |
+| nexora-mcp | `com.nexora.*` | MCP 教学工具服务（Streamable HTTP）；独立启动 |
 
 依赖方向：`admin → common`、`web → common`、`mcp → common`。common 不允许反向依赖端模块。
 
-启动类位于各端模块根包；Mapper 扫描指向 `com.nexora.common.mappers`。
+启动类位于各端模块根包；Mapper 扫描指向 `com.nexora.mappers`。
 
 # 分层规范
 
@@ -28,11 +28,11 @@ Controller → Biz → Service → Mapper → 数据库
 # 实体类分工
 
 - **PO**：表映射对象，放 common 的 `entity/po`。Date 字段使用统一的 JSON 格式化注解（`yyyy-MM-dd HH:mm:ss`，时区 GMT+8）。
-- **DTO**：接收前端入参，放 common 的 `entity/dto`。需要校验时使用分组校验注解。
+- **DTO**：接收前端入参，放 common 的 `entity/dto`；仅某一端使用的入参 DTO 放对应端模块的 `dto`（如 `nexora-admin/dto`）。需要校验时使用分组校验注解。
 - **VO**：返回前端的数据结构，放 common 的 `entity/vo`；若仅服务于某一端的复杂返回结构，可放对应端模块下的 `entity/vo`。
 - **Query**：分页查询参数，继承统一分页基类，放 common 的 `entity/query`。模糊匹配字段以 `Fuzzy` 后缀约定。
 
-主键策略：业务实体多为 String UUID（课程 / 章节 / 课时 / 资源 / 会话 / 消息），基础数据多为自增整数（班级 / 用户等）。
+主键策略：业务实体多为 String UUID（课程 / 章节 / 课时 / 资源 / 会话 / 消息），基础数据多为自增整数（用户等）。
 
 # Controller 规范
 
@@ -46,14 +46,15 @@ Controller → Biz → Service → Mapper → 数据库
 # 鉴权与登录态
 
 - 管理端：登录拦截器读 header `adminToken`，查 Redis 登录组件验证，写入登录上下文持有器（ThreadLocal）。
-- 用户端：登录拦截器读 header `studentToken`，逻辑同上。
+- 用户端：登录拦截器读 header `studentToken`，逻辑同上；**公开接口（登录 / 注册 / 公开浏览）放行，受保护接口未登录返回统一 401**，前端收到 401 弹出登录弹窗（Codex 模式，已确认）。
 - 业务代码取当前登录用户只能从登录上下文持有器取，禁止再解析 token。
 - 权限拒绝：抛业务异常（带权限错误码），由全局异常处理统一转响应。
 
 # AI 调用规范（nexora-web）
 
-- **模型接入**：Spring AI ChatClient（OpenAI 兼容协议对接阿里百炼 qwen 系列）；api-key / base-url 走环境变量或外部配置，禁止硬编码。
-- **Embedding**：text-embedding-v4（维度与 ES 索引一致）；向量库用 ES VectorStore。
+- **模型接入**：Spring AI ChatClient（OpenAI 兼容协议）。对话模型 = DeepSeek API（`NEXORA_DEEPSEEK_API_KEY`，负责对话 / RAG 回答 / SVG 动画 / 编程辅助 / 学习路径生成）；api-key / base-url 走环境变量或外部配置，禁止硬编码。
+- **Embedding**：阿里百炼 text-embedding-v4（`NEXORA_DASHSCOPE_API_KEY`，维度与 ES 索引一致，默认 1024）；向量库用 ES VectorStore。
+- **文生图（绘本）**：阿里百炼文生图（`NEXORA_DASHSCOPE_API_KEY`），低年级绘本插图。
 - **意图路由**：统一 `UserIntent` 结构（intent / data / stage），先路由再执行；路由失败兜底 CHAT。
 - **流式输出**：回复必须流式，经 Netty WebSocket 消息推送组件（MessageHandler / ChannelContextUtils，借鉴 easymall）下发增量；前端可取消（`cancelMessage`）。
 - **WebSocket 推送**：学生端 Netty WebSocket 服务（独立端口 6062），登录后携带 token 连接，按 userId 路由消息；发送消息走 HTTP，回复经 WS 推送。
@@ -95,6 +96,8 @@ Controller → Biz → Service → Mapper → 数据库
 - Service / Biz 通过依赖注入使用这些组件；禁止 Controller 直接操作 RedisTemplate。
 
 # 开发规范
+
+> 当前进度：common 的 PO / Service / Mapper 已完整（easycode 生成）；admin / web / mcp 的业务层按 `docs/开发排期.md` 逐步落地（P0 校准、P1 账号体系、P2 课程资源、P3 AI 对话…）。
 
 - Controller 只做"收 → 派发 → 回"；业务逻辑在 Biz 或 Service。
 - 跨 Service 的组合放 Biz；单表 / 单领域事务边界放 Service。

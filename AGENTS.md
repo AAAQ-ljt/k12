@@ -2,7 +2,9 @@
 
 K12 人工智能通识课教学助手（赛题 JBGS-2026-02）工作空间，使用 Codex 构建。
 
-主项目为 `nexora/`（Nexora = Nexus 连接 + Aurora 极光）；`参考项目/smart-campus/`（教学平台底座，迁移来源）与 `参考项目/easymall/`（Spring AI 智能体骨架 + MCP 工程结构，借鉴来源）为参考源码，**只读，禁止修改**；`smart-campus提示词记录/` 为历史构建提示词存档（Claude Code 规范，仅供理解设计意图，不要照抄其中的 .claude 配置）。
+主项目为 `nexora/`（Nexora = Nexus 连接 + Aurora 极光）；`参考项目/easymall/`（手敲严谨版：Spring AI 智能体骨架 + Netty WebSocket + MCP 工程结构，借鉴来源）为参考源码，**只读，禁止修改**（smart-campus 已弃用、不再保留）。
+
+> 执行依据：开发排期见 `nexora/docs/开发排期.md`（P0/P1 已定稿，P2–P7 路线图阶段前再细化）；代码现状与本文档不一致时，以校准后的描述为准。
 
 # 技术规范
 
@@ -24,9 +26,9 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）工作空间，使
 
 # 接口规范
 
-- 统一接口风格
-- 接口名称必须带模块前缀
-- 示例：courseInfo/loadCourseInfoList、courseInfo/getCourseInfo、agent/sendMessage
+- 统一接口风格：路径 = `/api/<模块名>/<动作>`，模块名小驼峰
+- 动作命名统一：分页列表 `loadDataList`、详情 `getInfo`、新增 `add`、修改 `update`、删除 `del`、状态变更 `changeStatus`、下拉选项 `getXxxOptions`
+- 示例：`/api/courseInfo/loadDataList`、`/api/userInfo/getInfo`、`/api/studentInfo/login`、`/api/agent/sendMessage`
 
 # 输出要求
 
