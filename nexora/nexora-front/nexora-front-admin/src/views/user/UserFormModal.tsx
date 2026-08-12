@@ -32,6 +32,8 @@ export default function UserFormModal({
         form.setFieldsValue(initialValues);
       } else {
         form.resetFields();
+        // 默认值：角色=学生、状态=启用
+        form.setFieldsValue({ roleType: 1, status: 1 });
       }
     }
   }, [open, initialValues, form]);
@@ -51,8 +53,6 @@ export default function UserFormModal({
       message.success('新增用户成功');
     } else {
       const payload: Record<string, any> = { ...values, userId: initialValues?.userId };
-      // password 为空则不传
-      if (!payload.password) delete payload.password;
       await update(payload);
       message.success('修改用户成功');
     }
@@ -73,7 +73,7 @@ export default function UserFormModal({
       onOk={handleSubmit}
       footer={isView ? <Button onClick={onCancel}>关闭</Button> : undefined}
     >
-      <Form form={form} layout="vertical" disabled={isView}>
+      <Form form={form} layout="vertical" disabled={isView} autoComplete="off">
         <Form.Item
           name="email"
           label="邮箱"
@@ -93,18 +93,9 @@ export default function UserFormModal({
           <Input placeholder="请输入用户名" maxLength={50} />
         </Form.Item>
 
-        <Form.Item
-          name="password"
-          label="密码"
-          rules={isCreate ? [{ required: true, message: '请输入密码' }] : []}
-          extra={!isCreate ? '留空则不修改' : undefined}
-        >
-          <Input.Password placeholder={isCreate ? '请输入密码' : '留空则不修改'} />
-        </Form.Item>
-
         <Form.Item name="grade" label="年级" rules={[{ required: true, message: '请选择年级' }]}>
           <Select
-            placeholder="请选择年级（自动带出学段）"
+            placeholder="请选择年级"
             options={GRADE_OPTIONS}
             onChange={handleGradeChange}
           />

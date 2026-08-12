@@ -60,10 +60,10 @@ public class UserInfoController extends ABaseController {
         if (StringTools.isEmpty(userInfo.getUsername())) {
             throw new BusinessException("用户名不能为空");
         }
+        // 密码缺省默认 123456（MD5 存储），前端新增用户不填密码
         if (StringTools.isEmpty(userInfo.getPassword())) {
-            throw new BusinessException("密码不能为空");
+            userInfo.setPassword("123456");
         }
-        // 密码统一 MD5 存储
         userInfo.setPassword(StringTools.encodeByMD5(userInfo.getPassword()));
         // 默认值：启用、创建时间
         if (userInfo.getStatus() == null) {
