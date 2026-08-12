@@ -105,4 +105,9 @@ public interface UserInfoService {
 	 */
 	Integer deleteUserInfoByEmail(String email);
 
+	/**
+	 * 根据邮箱和密码查询用户（登录校验）
+	 */
+	UserInfo findByEmailAndPassword(String email, String password);
+
 }

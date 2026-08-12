@@ -175,4 +175,19 @@ public class UserInfoServiceImpl implements UserInfoService {
 	public Integer deleteUserInfoByEmail(String email) {
 		return this.userInfoMapper.deleteByEmail(email);
 	}
+
+	/**
+	 * 根据邮箱和密码查询用户（登录校验）
+	 */
+	@Override
+	public UserInfo findByEmailAndPassword(String email, String password) {
+		UserInfoQuery query = new UserInfoQuery();
+		query.setEmail(email);
+		query.setPassword(password);
+		List<UserInfo> list = this.findListByParam(query);
+		if (list == null || list.isEmpty()) {
+			return null;
+		}
+		return list.get(0);
+	}
 }

@@ -3,7 +3,7 @@ package com.nexora.component;
 import com.alibaba.fastjson2.JSON;
 import com.nexora.constants.Constants;
 import com.nexora.entity.dto.TokenUserInfoDTO;
-import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class RedisComponent {
 
-    @Resource
+    @Autowired
     private StringRedisTemplate redisTemplate;
 
     /**

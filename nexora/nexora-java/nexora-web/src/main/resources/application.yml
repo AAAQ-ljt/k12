@@ -5,6 +5,12 @@ server:
 ws:
   port: 6062
 spring:
+  # Gate 1 阶段临时排除 ES 向量库和 Ollama Embedding 自动配置（ES 未启动 + EmbeddingModel 冲突）
+  # Gate 2/3 启动 ES 后移除以下排除项
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
   servlet:
     multipart:
       max-file-size: 5MB
