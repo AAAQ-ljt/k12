@@ -17,7 +17,7 @@ public class CourseStudyLessonProgressQuery extends BaseParam {
 	/**
 	 * 学生
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 课程【冗余】
@@ -84,11 +84,11 @@ public class CourseStudyLessonProgressQuery extends BaseParam {
 		return this.id;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

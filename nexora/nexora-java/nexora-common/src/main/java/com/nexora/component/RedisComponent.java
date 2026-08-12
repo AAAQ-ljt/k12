@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,11 +62,23 @@ public class RedisComponent {
     /**
      * 保存图形验证码（10 分钟有效），返回验证码 key
      */
-    public String saveCheckCode(String code) {
+    public String saveCheckCode(String code, String oldCheckCodeKey) {
+        cleanAllCheckCode();
+        cleanCheckCode(oldCheckCodeKey);
         String checkCodeKey = UUID.randomUUID().toString().replace("-", "");
         redisTemplate.opsForValue().set(Constants.REDIS_KEY_CHECK_CODE + checkCodeKey, code,
                 Constants.CHECK_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
         return checkCodeKey;
+    }
+
+    /**
+     * 清理所有图形验证码（刷新前调用，避免历史 key 残留堆积）
+     */
+    private void cleanAllCheckCode() {
+        Set<String> keys = redisTemplate.keys(Constants.REDIS_KEY_CHECK_CODE + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
     }
 
     /**

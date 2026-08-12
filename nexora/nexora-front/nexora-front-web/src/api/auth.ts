@@ -30,9 +30,9 @@ export interface LoginResult {
   userInfo: UserInfo;
 }
 
-/** 获取图形验证码 */
-export function studentCheckCode(): Promise<CheckCodeResult> {
-  return get('/studentInfo/checkCode');
+/** 获取图形验证码（可传入旧 key，刷新时后端先删除旧验证码） */
+export function studentCheckCode(oldCheckCodeKey?: string): Promise<CheckCodeResult> {
+  return get('/studentInfo/checkCode', oldCheckCodeKey ? { oldCheckCodeKey } : undefined);
 }
 
 /** 学生登录 */

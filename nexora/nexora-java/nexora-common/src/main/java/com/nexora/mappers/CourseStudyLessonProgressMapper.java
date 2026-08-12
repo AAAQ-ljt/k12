@@ -28,19 +28,19 @@ public interface CourseStudyLessonProgressMapper<T,P> extends BaseMapper<T,P> {
 	/**
 	 * 根据UserIdAndLessonId更新
 	 */
-	 Integer updateByUserIdAndLessonId(@Param("bean") T t,@Param("userId") Integer userId,@Param("lessonId") String lessonId);
+	 Integer updateByUserIdAndLessonId(@Param("bean") T t,@Param("userId") String userId,@Param("lessonId") String lessonId);
 
 
 	/**
 	 * 根据UserIdAndLessonId删除
 	 */
-	 Integer deleteByUserIdAndLessonId(@Param("userId") Integer userId,@Param("lessonId") String lessonId);
+	 Integer deleteByUserIdAndLessonId(@Param("userId") String userId,@Param("lessonId") String lessonId);
 
 
 	/**
 	 * 根据UserIdAndLessonId获取对象
 	 */
-	 T selectByUserIdAndLessonId(@Param("userId") Integer userId,@Param("lessonId") String lessonId);
+	 T selectByUserIdAndLessonId(@Param("userId") String userId,@Param("lessonId") String lessonId);
 
 
 }

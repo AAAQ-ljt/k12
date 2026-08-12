@@ -44,7 +44,7 @@ public class UserInfoController extends ABaseController {
      * 获取用户详情
      */
     @GetMapping("/getInfo")
-    public ResponseVO<UserInfo> getInfo(@RequestParam Integer userId) {
+    public ResponseVO<UserInfo> getInfo(@RequestParam String userId) {
         UserInfo userInfo = userInfoService.getUserInfoByUserId(userId);
         if (userInfo == null) {
             throw new BusinessException("用户不存在");
@@ -53,22 +53,23 @@ public class UserInfoController extends ABaseController {
     }
 
     /**
-     * 新增用户（密码 MD5，默认启用）
+     * 新增用户（密码 MD5，固定角色为学生、状态为启用）
      */
     @PostMapping("/add")
     public ResponseVO<Void> add(@RequestBody UserInfo userInfo) {
         if (StringTools.isEmpty(userInfo.getUsername())) {
             throw new BusinessException("用户名不能为空");
         }
+        // 用户 ID 不依赖自增，统一使用随机数字字符串
+        userInfo.setUserId(StringTools.getRandomNumber(Constants.LENGTH_10));
         // 密码缺省默认 123456（MD5 存储），前端新增用户不填密码
         if (StringTools.isEmpty(userInfo.getPassword())) {
             userInfo.setPassword("123456");
         }
         userInfo.setPassword(StringTools.encodeByMD5(userInfo.getPassword()));
-        // 默认值：启用、创建时间
-        if (userInfo.getStatus() == null) {
-            userInfo.setStatus(Constants.STATUS_ENABLE);
-        }
+        // 管理端新增用户固定为学生且启用
+        userInfo.setRoleType(Constants.ROLE_STUDENT);
+        userInfo.setStatus(Constants.STATUS_ENABLE);
         // 年级 -> 学段兜底：传了年级但学段为空时自动匹配
         if (StringTools.isEmpty(userInfo.getStage()) && !StringTools.isEmpty(userInfo.getGrade())) {
             userInfo.setStage(StageEnum.matchByGrade(userInfo.getGrade()));
@@ -91,6 +92,9 @@ public class UserInfoController extends ABaseController {
         } else {
             userInfo.setPassword(null);
         }
+        // 编辑表单不再维护角色和状态，状态仅通过 changeStatus 接口变更
+        userInfo.setRoleType(null);
+        userInfo.setStatus(null);
         // 年级 -> 学段兜底：传了年级且学段为空时自动匹配
         if (!StringTools.isEmpty(userInfo.getGrade()) && StringTools.isEmpty(userInfo.getStage())) {
             userInfo.setStage(StageEnum.matchByGrade(userInfo.getGrade()));
@@ -104,7 +108,7 @@ public class UserInfoController extends ABaseController {
      * 删除用户
      */
     @DeleteMapping("/del")
-    public ResponseVO<Void> del(@RequestParam Integer userId) {
+    public ResponseVO<Void> del(@RequestParam String userId) {
         userInfoService.deleteUserInfoByUserId(userId);
         return getSuccessResponseVO(null);
     }
@@ -113,7 +117,7 @@ public class UserInfoController extends ABaseController {
      * 启用 / 禁用用户
      */
     @PutMapping("/changeStatus")
-    public ResponseVO<Void> changeStatus(@RequestParam Integer userId, @RequestParam Integer status) {
+    public ResponseVO<Void> changeStatus(@RequestParam String userId, @RequestParam Integer status) {
         if (!Constants.STATUS_ENABLE.equals(status) && !Constants.STATUS_DISABLE.equals(status)) {
             throw new BusinessException("非法的状态值");
         }

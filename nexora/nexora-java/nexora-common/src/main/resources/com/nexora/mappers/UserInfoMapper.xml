@@ -169,11 +169,11 @@
 
 	<!-- 插入 （匹配有值的字段）-->
 	<insert id="insert" parameterType="com.nexora.entity.po.UserInfo">
-		<selectKey keyProperty="bean.userId" resultType="Integer" order="AFTER">
-			SELECT LAST_INSERT_ID()
-		</selectKey>
 		 INSERT INTO user_info
 		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
 			<if test="bean.username != null">
 				 username,
 			</if>
@@ -221,6 +221,9 @@
 			</if>
 		 </trim>
 		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
 			<if test="bean.username!=null">
 				 #{bean.username},
 			</if>
@@ -423,7 +426,7 @@
 	</insert>
 
 	<!-- 添加 （批量插入）-->
-	<insert id="insertBatch" parameterType="com.nexora.entity.po.UserInfo" useGeneratedKeys="true" keyProperty="userId">
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.UserInfo">
 		 INSERT INTO user_info(
 			 username,
 			 email,

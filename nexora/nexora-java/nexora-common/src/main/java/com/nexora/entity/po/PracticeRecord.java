@@ -23,7 +23,7 @@ public class PracticeRecord implements Serializable {
 	/**
 	 * 学生
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 知识点【冗余快照：提交时从题目复制】
@@ -86,11 +86,11 @@ public class PracticeRecord implements Serializable {
 		return this.recordId;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

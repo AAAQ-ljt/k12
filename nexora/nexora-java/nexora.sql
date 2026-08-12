@@ -23,7 +23,7 @@ SET NAMES utf8mb4;
 -- ------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS user_info (
-  user_id INT NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+  user_id VARCHAR(32) NOT NULL COMMENT '用户ID',
   username VARCHAR(32) NOT NULL COMMENT '登录名',
   email VARCHAR(100) DEFAULT NULL COMMENT '邮箱，登录核心字段，可空（管理员可不填）',
   password VARCHAR(64) NOT NULL COMMENT '密码（MD5存储）',
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS message_info (
 CREATE TABLE IF NOT EXISTS message_user (
   id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
   message_id INT NOT NULL COMMENT '消息ID',
-  user_id INT NOT NULL COMMENT '接收人',
+  user_id VARCHAR(32) NOT NULL COMMENT '接收人',
   read_status TINYINT NOT NULL DEFAULT 0 COMMENT '0未读 1已读',
   read_time DATETIME DEFAULT NULL COMMENT '阅读时间',
   delete_flag TINYINT NOT NULL DEFAULT 0 COMMENT '0正常 1已删除（学生隐藏消息）',
@@ -276,7 +276,7 @@ CREATE TABLE IF NOT EXISTS question_option (
 
 CREATE TABLE IF NOT EXISTS practice_record (
   record_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '记录ID',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   knowledge_point_id VARCHAR(32) NOT NULL COMMENT '知识点【冗余快照：提交时从题目复制】',
   stage VARCHAR(20) NOT NULL COMMENT '学段【冗余快照：按学段分析免join】',
   question_id VARCHAR(32) NOT NULL COMMENT '题目ID',
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS practice_record (
 
 CREATE TABLE IF NOT EXISTS course_study_progress (
   id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   course_id VARCHAR(32) NOT NULL COMMENT '课程',
   studied_lessons INT NOT NULL DEFAULT 0 COMMENT '已学课时数【冗余：Redis缓冲聚合后异步回写】',
   total_lessons INT NOT NULL DEFAULT 0 COMMENT '课时总数【冗余快照】',
@@ -314,7 +314,7 @@ CREATE TABLE IF NOT EXISTS course_study_progress (
 
 CREATE TABLE IF NOT EXISTS course_study_lesson_progress (
   id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   course_id VARCHAR(32) NOT NULL COMMENT '课程【冗余】',
   lesson_id VARCHAR(32) NOT NULL COMMENT '课时',
   play_position INT NOT NULL DEFAULT 0 COMMENT '视频最后播放位置（秒），续播锚点',
@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS course_study_lesson_progress (
 
 CREATE TABLE IF NOT EXISTS course_study_log (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   course_id VARCHAR(32) NOT NULL COMMENT '课程',
   lesson_id VARCHAR(32) NOT NULL COMMENT '课时',
   study_date DATE NOT NULL COMMENT '学习日期【冗余：连续打卡/时长统计按天聚合】',
@@ -345,7 +345,7 @@ CREATE TABLE IF NOT EXISTS course_study_log (
 
 CREATE TABLE IF NOT EXISTS agent_session (
   session_id VARCHAR(32) NOT NULL COMMENT '会话ID',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   title VARCHAR(100) DEFAULT NULL COMMENT '会话标题（首条消息摘要）',
   stage VARCHAR(20) NOT NULL COMMENT '学段【冗余快照：会话创建时学段】',
   knowledge_point_id VARCHAR(32) DEFAULT NULL COMMENT '当前学习知识点，可空',
@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS agent_session (
 CREATE TABLE IF NOT EXISTS agent_message (
   message_id VARCHAR(32) NOT NULL COMMENT '消息ID（HTTP发送接口返回值）',
   session_id VARCHAR(32) NOT NULL COMMENT '会话ID',
-  user_id INT NOT NULL COMMENT '学生【冗余：学习分析免join会话表】',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生【冗余：学习分析免join会话表】',
   stage VARCHAR(20) NOT NULL COMMENT '学段【冗余快照】',
   knowledge_point_id VARCHAR(32) DEFAULT NULL COMMENT '知识点，可空【冗余】',
   user_message TEXT COMMENT '用户消息',
@@ -388,7 +388,7 @@ CREATE TABLE IF NOT EXISTS agent_message (
 
 CREATE TABLE IF NOT EXISTS ai_generation_record (
   record_id VARCHAR(32) NOT NULL COMMENT '记录ID',
-  user_id INT DEFAULT NULL COMMENT '学生，可空（管理员预置无学生）',
+  user_id VARCHAR(32) DEFAULT NULL COMMENT '学生，可空（管理员预置无学生）',
   stage VARCHAR(20) NOT NULL COMMENT '学段【冗余：预置绘本库按学段过滤】',
   knowledge_point_id VARCHAR(32) DEFAULT NULL COMMENT '知识点，可空',
   type VARCHAR(20) NOT NULL COMMENT '类型：ANIMATION/PICTURE_BOOK/DRAW/PPT/WORD/CODE',
@@ -430,7 +430,7 @@ CREATE TABLE IF NOT EXISTS animation_template (
 
 CREATE TABLE IF NOT EXISTS learning_path (
   path_id VARCHAR(32) NOT NULL COMMENT '路径ID',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   title VARCHAR(100) NOT NULL COMMENT '学习分类/目标名（学生自建或AI命名）',
   stage VARCHAR(20) NOT NULL COMMENT '学段【冗余快照】',
   source TINYINT NOT NULL DEFAULT 0 COMMENT '来源：0规则生成 1AI生成',
@@ -448,7 +448,7 @@ CREATE TABLE IF NOT EXISTS learning_path (
 CREATE TABLE IF NOT EXISTS learning_path_item (
   item_id VARCHAR(32) NOT NULL COMMENT '节点ID',
   path_id VARCHAR(32) NOT NULL COMMENT '所属路径',
-  user_id INT NOT NULL COMMENT '学生【冗余：到期复习直查免join路径表】',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生【冗余：到期复习直查免join路径表】',
   knowledge_point_id VARCHAR(32) NOT NULL COMMENT '知识点',
   knowledge_point_name VARCHAR(100) NOT NULL COMMENT '知识点名【冗余快照】',
   branch_type TINYINT NOT NULL DEFAULT 0 COMMENT '0主线 1兴趣分支',
@@ -467,7 +467,7 @@ CREATE TABLE IF NOT EXISTS learning_path_item (
 
 CREATE TABLE IF NOT EXISTS knowledge_mastery (
   id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
-  user_id INT NOT NULL COMMENT '学生',
+  user_id VARCHAR(32) NOT NULL COMMENT '学生',
   knowledge_point_id VARCHAR(32) NOT NULL COMMENT '知识点',
   stage VARCHAR(20) NOT NULL COMMENT '学段【冗余：雷达图按学段聚合免join】',
   mastery_score INT NOT NULL DEFAULT 0 COMMENT '掌握度0-100',
@@ -527,11 +527,11 @@ CREATE TABLE IF NOT EXISTS system_config (
 -- 密码均为 123456 → MD5 = e10adc3949ba59abbe56e057f20f883e
 -- ------------------------------------------------------------
 INSERT INTO user_info (user_id, username, email, password, nick_name, avatar, role_type, stage, grade, interests, learning_style_tags, sex, status, create_time, update_time) VALUES
-(1, 'admin', 'admin@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员', NULL, 0, NULL, NULL, NULL, NULL, 2, 1, NOW(), NOW()),
-(2, 'student_low', 'student_low@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小明（小学低）', NULL, 1, 'PRIMARY_LOW', '三年级', '["AI绘画","动画"]', NULL, 1, 1, NOW(), NOW()),
-(3, 'student_high', 'student_high@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小华（小学高）', NULL, 1, 'PRIMARY_HIGH', '五年级', '["编程","机器人"]', NULL, 1, 1, NOW(), NOW()),
-(4, 'student_junior', 'student_junior@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小李（初中）', NULL, 1, 'JUNIOR', '七年级', '["算法","数据分析"]', NULL, 0, 1, NOW(), NOW()),
-(5, 'student_senior', 'student_senior@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小张（高中）', NULL, 1, 'SENIOR', '高一', '["深度学习","Python"]', NULL, 1, 1, NOW(), NOW());
+('admin_001', 'admin', 'admin@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员', NULL, 0, NULL, NULL, NULL, NULL, 2, 1, NOW(), NOW()),
+('1000000001', 'student_low', 'student_low@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小明（小学低）', NULL, 1, 'PRIMARY_LOW', '三年级', '["AI绘画","动画"]', NULL, 1, 1, NOW(), NOW()),
+('1000000002', 'student_high', 'student_high@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小华（小学高）', NULL, 1, 'PRIMARY_HIGH', '五年级', '["编程","机器人"]', NULL, 1, 1, NOW(), NOW()),
+('1000000003', 'student_junior', 'student_junior@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小李（初中）', NULL, 1, 'JUNIOR', '七年级', '["算法","数据分析"]', NULL, 0, 1, NOW(), NOW()),
+('1000000004', 'student_senior', 'student_senior@nexora.com', 'e10adc3949ba59abbe56e057f20f883e', '小张（高中）', NULL, 1, 'SENIOR', '高一', '["深度学习","Python"]', NULL, 1, 1, NOW(), NOW());
 
 -- ------------------------------------------------------------
 -- 3.B 管理端菜单（system_menu 26条 + system_role_menu 26条）

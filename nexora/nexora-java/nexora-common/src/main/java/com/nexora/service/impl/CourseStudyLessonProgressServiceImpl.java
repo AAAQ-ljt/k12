@@ -132,7 +132,7 @@ public class CourseStudyLessonProgressServiceImpl implements CourseStudyLessonPr
 	 * 根据UserIdAndLessonId获取对象
 	 */
 	@Override
-	public CourseStudyLessonProgress getCourseStudyLessonProgressByUserIdAndLessonId(Integer userId, String lessonId) {
+	public CourseStudyLessonProgress getCourseStudyLessonProgressByUserIdAndLessonId(String userId, String lessonId) {
 		return this.courseStudyLessonProgressMapper.selectByUserIdAndLessonId(userId, lessonId);
 	}
 
@@ -140,7 +140,7 @@ public class CourseStudyLessonProgressServiceImpl implements CourseStudyLessonPr
 	 * 根据UserIdAndLessonId修改
 	 */
 	@Override
-	public Integer updateCourseStudyLessonProgressByUserIdAndLessonId(CourseStudyLessonProgress bean, Integer userId, String lessonId) {
+	public Integer updateCourseStudyLessonProgressByUserIdAndLessonId(CourseStudyLessonProgress bean, String userId, String lessonId) {
 		return this.courseStudyLessonProgressMapper.updateByUserIdAndLessonId(bean, userId, lessonId);
 	}
 
@@ -148,7 +148,7 @@ public class CourseStudyLessonProgressServiceImpl implements CourseStudyLessonPr
 	 * 根据UserIdAndLessonId删除
 	 */
 	@Override
-	public Integer deleteCourseStudyLessonProgressByUserIdAndLessonId(Integer userId, String lessonId) {
+	public Integer deleteCourseStudyLessonProgressByUserIdAndLessonId(String userId, String lessonId) {
 		return this.courseStudyLessonProgressMapper.deleteByUserIdAndLessonId(userId, lessonId);
 	}
 }

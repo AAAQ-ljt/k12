@@ -3,7 +3,7 @@ import type { PageParam, PageResult } from '@/types/common';
 
 /** 用户实体（对应后端 UserInfo PO） */
 export interface UserInfo {
-  userId: number;
+  userId: string;
   username: string;
   email: string;
   password?: string;
@@ -21,8 +21,11 @@ export interface UserInfo {
 
 /** 用户查询参数 */
 export interface UserQuery extends PageParam {
+  /** 用户名模糊查询（后端 LIKE） */
+  usernameFuzzy?: string;
   /** 邮箱模糊查询（后端 LIKE） */
   emailFuzzy?: string;
+  grade?: string;
   stage?: string;
   status?: number;
   roleType?: number;
@@ -34,7 +37,7 @@ export function loadDataList(query: UserQuery): Promise<PageResult<UserInfo>> {
 }
 
 /** 获取用户详情 */
-export function getInfo(userId: number): Promise<UserInfo> {
+export function getInfo(userId: string): Promise<UserInfo> {
   return request.get('/userInfo/getInfo', { params: { userId } });
 }
 
@@ -49,11 +52,11 @@ export function update(data: Partial<UserInfo>): Promise<void> {
 }
 
 /** 删除用户 */
-export function del(userId: number): Promise<void> {
+export function del(userId: string): Promise<void> {
   return request.delete('/userInfo/del', { params: { userId } });
 }
 
 /** 修改用户状态 */
-export function changeStatus(userId: number, status: number): Promise<void> {
+export function changeStatus(userId: string, status: number): Promise<void> {
   return request.put('/userInfo/changeStatus', undefined, { params: { userId, status } });
 }

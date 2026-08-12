@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 
 public class StringTools {
@@ -61,6 +62,21 @@ public class StringTools {
 
     public static String trim(String value) {
         return value == null ? null : value.trim();
+    }
+
+    /**
+     * 生成指定位数的随机数字字符串（参考 easymall 用户 ID 生成方式）
+     */
+    public static String getRandomNumber(Integer count) {
+        if (count == null || count <= 0) {
+            return "";
+        }
+        Random random = new Random();
+        StringBuilder builder = new StringBuilder(count);
+        for (int i = 0; i < count; i++) {
+            builder.append(random.nextInt(10));
+        }
+        return builder.toString();
     }
 
     /**

@@ -18,7 +18,7 @@ public class UserInfo implements Serializable {
 	/**
 	 * 用户ID
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 登录名
@@ -102,11 +102,11 @@ public class UserInfo implements Serializable {
 	private Date updateTime;
 
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

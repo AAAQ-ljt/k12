@@ -19,7 +19,7 @@ public class AiGenerationRecordQuery extends BaseParam {
 	/**
 	 * 学生，可空（管理员预置无学生）
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 学段【冗余：预置绘本库按学段过滤】
@@ -130,11 +130,11 @@ public class AiGenerationRecordQuery extends BaseParam {
 		return this.recordIdFuzzy;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

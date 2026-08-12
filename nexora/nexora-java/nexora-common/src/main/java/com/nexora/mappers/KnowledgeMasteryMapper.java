@@ -28,19 +28,19 @@ public interface KnowledgeMasteryMapper<T,P> extends BaseMapper<T,P> {
 	/**
 	 * 根据UserIdAndKnowledgePointId更新
 	 */
-	 Integer updateByUserIdAndKnowledgePointId(@Param("bean") T t,@Param("userId") Integer userId,@Param("knowledgePointId") String knowledgePointId);
+	 Integer updateByUserIdAndKnowledgePointId(@Param("bean") T t,@Param("userId") String userId,@Param("knowledgePointId") String knowledgePointId);
 
 
 	/**
 	 * 根据UserIdAndKnowledgePointId删除
 	 */
-	 Integer deleteByUserIdAndKnowledgePointId(@Param("userId") Integer userId,@Param("knowledgePointId") String knowledgePointId);
+	 Integer deleteByUserIdAndKnowledgePointId(@Param("userId") String userId,@Param("knowledgePointId") String knowledgePointId);
 
 
 	/**
 	 * 根据UserIdAndKnowledgePointId获取对象
 	 */
-	 T selectByUserIdAndKnowledgePointId(@Param("userId") Integer userId,@Param("knowledgePointId") String knowledgePointId);
+	 T selectByUserIdAndKnowledgePointId(@Param("userId") String userId,@Param("knowledgePointId") String knowledgePointId);
 
 
 }

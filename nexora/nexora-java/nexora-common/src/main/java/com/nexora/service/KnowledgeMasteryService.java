@@ -73,18 +73,18 @@ public interface KnowledgeMasteryService {
 	/**
 	 * 根据UserIdAndKnowledgePointId查询对象
 	 */
-	KnowledgeMastery getKnowledgeMasteryByUserIdAndKnowledgePointId(Integer userId,String knowledgePointId);
+	KnowledgeMastery getKnowledgeMasteryByUserIdAndKnowledgePointId(String userId,String knowledgePointId);
 
 
 	/**
 	 * 根据UserIdAndKnowledgePointId修改
 	 */
-	Integer updateKnowledgeMasteryByUserIdAndKnowledgePointId(KnowledgeMastery bean,Integer userId,String knowledgePointId);
+	Integer updateKnowledgeMasteryByUserIdAndKnowledgePointId(KnowledgeMastery bean,String userId,String knowledgePointId);
 
 
 	/**
 	 * 根据UserIdAndKnowledgePointId删除
 	 */
-	Integer deleteKnowledgeMasteryByUserIdAndKnowledgePointId(Integer userId,String knowledgePointId);
+	Integer deleteKnowledgeMasteryByUserIdAndKnowledgePointId(String userId,String knowledgePointId);
 
 }

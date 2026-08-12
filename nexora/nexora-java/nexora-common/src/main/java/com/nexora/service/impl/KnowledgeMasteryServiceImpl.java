@@ -132,7 +132,7 @@ public class KnowledgeMasteryServiceImpl implements KnowledgeMasteryService {
 	 * 根据UserIdAndKnowledgePointId获取对象
 	 */
 	@Override
-	public KnowledgeMastery getKnowledgeMasteryByUserIdAndKnowledgePointId(Integer userId, String knowledgePointId) {
+	public KnowledgeMastery getKnowledgeMasteryByUserIdAndKnowledgePointId(String userId, String knowledgePointId) {
 		return this.knowledgeMasteryMapper.selectByUserIdAndKnowledgePointId(userId, knowledgePointId);
 	}
 
@@ -140,7 +140,7 @@ public class KnowledgeMasteryServiceImpl implements KnowledgeMasteryService {
 	 * 根据UserIdAndKnowledgePointId修改
 	 */
 	@Override
-	public Integer updateKnowledgeMasteryByUserIdAndKnowledgePointId(KnowledgeMastery bean, Integer userId, String knowledgePointId) {
+	public Integer updateKnowledgeMasteryByUserIdAndKnowledgePointId(KnowledgeMastery bean, String userId, String knowledgePointId) {
 		return this.knowledgeMasteryMapper.updateByUserIdAndKnowledgePointId(bean, userId, knowledgePointId);
 	}
 
@@ -148,7 +148,7 @@ public class KnowledgeMasteryServiceImpl implements KnowledgeMasteryService {
 	 * 根据UserIdAndKnowledgePointId删除
 	 */
 	@Override
-	public Integer deleteKnowledgeMasteryByUserIdAndKnowledgePointId(Integer userId, String knowledgePointId) {
+	public Integer deleteKnowledgeMasteryByUserIdAndKnowledgePointId(String userId, String knowledgePointId) {
 		return this.knowledgeMasteryMapper.deleteByUserIdAndKnowledgePointId(userId, knowledgePointId);
 	}
 }

@@ -52,10 +52,10 @@ public class StudentAccountController extends ABaseController {
      */
     @GetMapping("/checkCode")
     @GlobalInterceptor(checkLogin = false)
-    public ResponseVO<CheckCodeVO> checkCode() {
+    public ResponseVO<CheckCodeVO> checkCode(@RequestParam(required = false) String oldCheckCodeKey) {
         ArithmeticCaptcha captcha = new ArithmeticCaptcha(100, 42);
         String code = captcha.text();
-        String checkCodeKey = redisComponent.saveCheckCode(code);
+        String checkCodeKey = redisComponent.saveCheckCode(code, oldCheckCodeKey);
         return getSuccessResponseVO(new CheckCodeVO(captcha.toBase64(), checkCodeKey));
     }
 
@@ -82,6 +82,8 @@ public class StudentAccountController extends ABaseController {
             }
 
             UserInfo userInfo = new UserInfo();
+            // 用户 ID 不依赖自增，统一使用随机数字字符串
+            userInfo.setUserId(StringTools.getRandomNumber(Constants.LENGTH_10));
             userInfo.setUsername(request.getUsername());
             userInfo.setEmail(request.getEmail());
             userInfo.setPassword(StringTools.encodeByMD5(request.getPassword()));
@@ -169,7 +171,7 @@ public class StudentAccountController extends ABaseController {
         UserInfo updateBean = new UserInfo();
         updateBean.setStage(stage);
         updateBean.setUpdateTime(new Date());
-        userInfoService.updateUserInfoByUserId(updateBean, Integer.valueOf(current.getUserId()));
+        userInfoService.updateUserInfoByUserId(updateBean, current.getUserId());
 
         // 同步 Redis 登录态
         current.setStage(stage);
@@ -184,7 +186,7 @@ public class StudentAccountController extends ABaseController {
         String token = tokenManager.generateToken(String.valueOf(userInfo.getUserId()));
 
         TokenUserInfoDTO tokenUserInfoDTO = new TokenUserInfoDTO();
-        tokenUserInfoDTO.setUserId(String.valueOf(userInfo.getUserId()));
+        tokenUserInfoDTO.setUserId(userInfo.getUserId());
         tokenUserInfoDTO.setUsername(userInfo.getUsername());
         tokenUserInfoDTO.setEmail(userInfo.getEmail());
         tokenUserInfoDTO.setAvatar(userInfo.getAvatar());

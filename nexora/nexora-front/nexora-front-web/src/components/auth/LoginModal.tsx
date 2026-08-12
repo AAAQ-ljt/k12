@@ -24,7 +24,7 @@ export default function LoginModal() {
   /** 拉取图形验证码 */
   const refreshCheckCode = async () => {
     try {
-      const res = await studentCheckCode();
+      const res = await studentCheckCode(checkCodeKey);
       setCheckCodeKey(res.checkCodeKey);
       setCheckCodeBase64(res.checkCodeBase64);
     } catch {

@@ -28,7 +28,7 @@ public class MessageUser implements Serializable {
 	/**
 	 * 接收人
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 0未读 1已读
@@ -71,11 +71,11 @@ public class MessageUser implements Serializable {
 		return this.messageId;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

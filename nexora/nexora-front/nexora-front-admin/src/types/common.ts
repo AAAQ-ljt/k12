@@ -85,6 +85,12 @@ export const ROLE_OPTIONS = [
   { label: '学生', value: 1 },
 ];
 
+/** 性别选项（用户管理只允许男 / 女） */
+export const SEX_OPTIONS = [
+  { label: '男', value: 1 },
+  { label: '女', value: 0 },
+];
+
 /** 用户状态映射：0=禁用 1=启用 */
 export const USER_STATUS_MAP: Record<string, { text: string; color: string }> = {
   '0': { text: '禁用', color: 'red' },

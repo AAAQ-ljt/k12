@@ -12,7 +12,7 @@ public class UserInfoQuery extends BaseParam {
 	/**
 	 * 用户ID
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 登录名
@@ -120,11 +120,11 @@ public class UserInfoQuery extends BaseParam {
 	private String updateTimeEnd;
 
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

@@ -28,7 +28,7 @@ public class AgentMessage implements Serializable {
 	/**
 	 * 学生【冗余：学习分析免join会话表】
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 学段【冗余快照】
@@ -121,11 +121,11 @@ public class AgentMessage implements Serializable {
 		return this.sessionId;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

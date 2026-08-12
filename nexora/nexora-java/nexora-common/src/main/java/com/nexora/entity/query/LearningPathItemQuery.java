@@ -26,7 +26,7 @@ public class LearningPathItemQuery extends BaseParam {
 	/**
 	 * 学生【冗余：到期复习直查免join路径表】
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 知识点
@@ -138,11 +138,11 @@ public class LearningPathItemQuery extends BaseParam {
 		return this.pathIdFuzzy;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

@@ -5,7 +5,7 @@ import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
-import { STAGE_OPTIONS, USER_STATUS_MAP } from '@/types/common';
+import { GRADE_OPTIONS, STAGE_OPTIONS, USER_STATUS_MAP } from '@/types/common';
 import { loadDataList, del, changeStatus } from '@/api/user';
 import type { UserInfo, UserQuery } from '@/api/user';
 import UserFormModal from './UserFormModal';
@@ -21,7 +21,9 @@ export default function UserManagement() {
   });
 
   // 搜索草稿（输入过程中不触发查询）
+  const [usernameInput, setUsernameInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
+  const [draftGrade, setDraftGrade] = useState<string | undefined>(undefined);
   const [draftStage, setDraftStage] = useState<string | undefined>(undefined);
   const [draftStatus, setDraftStatus] = useState<number | undefined>(undefined);
 
@@ -62,7 +64,9 @@ export default function UserManagement() {
   const handleSearch = () => {
     setSearchParams((prev) => ({
       ...prev,
+      usernameFuzzy: usernameInput || undefined,
       emailFuzzy: emailInput || undefined,
+      grade: draftGrade,
       stage: draftStage,
       status: draftStatus,
       pageNo: 1,
@@ -71,7 +75,9 @@ export default function UserManagement() {
 
   /** 重置 */
   const handleReset = () => {
+    setUsernameInput('');
     setEmailInput('');
+    setDraftGrade(undefined);
     setDraftStage(undefined);
     setDraftStatus(undefined);
     setSearchParams({ pageNo: 1, pageSize: 10, roleType: 1 });
@@ -87,7 +93,7 @@ export default function UserManagement() {
   };
 
   /** 删除用户 */
-  const handleDelete = async (userId: number) => {
+  const handleDelete = async (userId: string) => {
     try {
       await del(userId);
       message.success('删除成功');
@@ -98,7 +104,7 @@ export default function UserManagement() {
   };
 
   /** 状态切换 */
-  const handleStatusChange = async (userId: number, status: number) => {
+  const handleStatusChange = async (userId: string, status: number) => {
     try {
       await changeStatus(userId, status);
       message.success(status === 1 ? '已启用' : '已禁用');
@@ -159,7 +165,7 @@ export default function UserManagement() {
       title: '用户 ID',
       dataIndex: 'userId',
       key: 'userId',
-      width: 100,
+      width: 180,
       align: 'center',
     },
     {
@@ -172,6 +178,7 @@ export default function UserManagement() {
       title: '用户名',
       dataIndex: 'username',
       key: 'username',
+      width: 120,
       ellipsis: true,
     },
     {
@@ -250,10 +257,30 @@ export default function UserManagement() {
               <Input
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="请输入邮箱（支持模糊）"
+                placeholder="请输入邮箱"
                 allowClear
                 style={{ width: 220 }}
                 onPressEnter={handleSearch}
+              />
+            </Form.Item>
+            <Form.Item label="用户名">
+              <Input
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                placeholder="请输入用户名"
+                allowClear
+                style={{ width: 180 }}
+                onPressEnter={handleSearch}
+              />
+            </Form.Item>
+            <Form.Item label="年级">
+              <Select
+                value={draftGrade}
+                onChange={setDraftGrade}
+                placeholder="全部"
+                allowClear
+                style={{ width: 150 }}
+                options={GRADE_OPTIONS}
               />
             </Form.Item>
             <Form.Item label="学段">

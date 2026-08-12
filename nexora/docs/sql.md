@@ -6,7 +6,7 @@
 ## 1、设计约定
 
 - 引擎 InnoDB，字符集 utf8mb4（mb4 兼容 emoji，低龄学生 UI 需要）。
-- 主键策略：业务实体 `varchar(32)` UUID（课程 / 章节 / 课时 / 资源 / 知识点 / 文档 / 题目 / 会话 / 消息 / 路径 / 生成记录）；基础数据 `int` 自增（用户 / 菜单 / 通知 / 系统配置 / 动画模板）；高频写入的记录型大表 `bigint` 自增（practice_record / course_study_log）。
+- 主键策略：业务实体 `varchar(32)` UUID（课程 / 章节 / 课时 / 资源 / 知识点 / 文档 / 题目 / 会话 / 消息 / 路径 / 生成记录）；用户 `varchar(32)` 随机数字字符串，不依赖自增；基础数据 `int` 自增（菜单 / 通知 / 系统配置 / 动画模板）；高频写入的记录型大表 `bigint` 自增（practice_record / course_study_log）。
 - 公共字段：`create_time` / `update_time` datetime；序列化统一 `yyyy-MM-dd HH:mm:ss`（GMT+8）。
 - 状态 / 枚举字段统一 `tinyint` 或约定字符串，取值在"说明"列注明；前后端枚举值保持一致，禁止自造同义词。
 - 学段统一 `varchar(20)`：`PRIMARY_LOW` / `PRIMARY_HIGH` / `JUNIOR` / `SENIOR`。
@@ -33,7 +33,7 @@
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| user_id | int PK AI | 用户 ID |
+| user_id | varchar(32) PK | 用户 ID |
 | username | varchar(32) | 登录名，唯一 |
 | email | varchar(100) | 邮箱，登录核心字段，可空（管理员可不填） |
 | password | varchar(64) | 密码（MD5 存储） |
@@ -95,7 +95,7 @@
 |---|---|---|
 | id | int PK AI | 主键 |
 | message_id | int | 消息 ID |
-| user_id | int | 接收人 |
+| user_id | varchar(32) | 接收人 |
 | read_status | tinyint | 0 未读 / 1 已读 |
 | read_time | datetime | 阅读时间 |
 | delete_flag | tinyint | 0 正常 / 1 已删除（学生隐藏消息） |
@@ -287,7 +287,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | record_id | bigint PK AI | 记录 ID |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | knowledge_point_id | varchar(32) | 知识点【冗余快照：提交时从题目复制，掌握度聚合免 join】 |
 | stage | varchar(20) | 学段【冗余快照：按学段分析免 join】 |
 | question_id | varchar(32) | 题目 ID |
@@ -308,7 +308,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | int PK AI | 主键 |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | course_id | varchar(32) | 课程 |
 | studied_lessons | int | 已学课时数【冗余：Redis 缓冲聚合后异步回写】 |
 | total_lessons | int | 课时总数【冗余快照：课时增删时刷新】 |
@@ -325,7 +325,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | int PK AI | 主键 |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | course_id | varchar(32) | 课程【冗余】 |
 | lesson_id | varchar(32) | 课时 |
 | play_position | int | 视频最后播放位置（秒），续播锚点 |
@@ -341,7 +341,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | bigint PK AI | 主键 |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | course_id | varchar(32) | 课程 |
 | lesson_id | varchar(32) | 课时 |
 | study_date | date | 学习日期【冗余：连续打卡 / 时长统计按天聚合，免函数索引】 |
@@ -357,7 +357,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | session_id | varchar(32) PK | 会话 ID |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | title | varchar(100) | 会话标题（首条消息摘要） |
 | stage | varchar(20) | 学段【冗余快照：会话创建时学段，学生后续切换学段不影响旧会话】 |
 | knowledge_point_id | varchar(32) | 当前学习知识点，可空 |
@@ -375,7 +375,7 @@
 |---|---|---|
 | message_id | varchar(32) PK | 消息 ID（HTTP 发送接口返回值） |
 | session_id | varchar(32) | 会话 ID |
-| user_id | int | 学生【冗余：学习分析免 join 会话表】 |
+| user_id | varchar(32) | 学生【冗余：学习分析免 join 会话表】 |
 | stage | varchar(20) | 学段【冗余快照】 |
 | knowledge_point_id | varchar(32) | 知识点，可空【冗余】 |
 | user_message | text | 用户消息 |
@@ -399,7 +399,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | record_id | varchar(32) PK | 记录 ID |
-| user_id | int | 学生，可空（管理员预置无学生） |
+| user_id | varchar(32) | 学生，可空（管理员预置无学生） |
 | stage | varchar(20) | 学段【冗余：预置绘本库按学段过滤】 |
 | knowledge_point_id | varchar(32) | 知识点，可空 |
 | type | varchar(20) | ANIMATION / PICTURE_BOOK / DRAW / PPT / WORD / CODE |
@@ -440,7 +440,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | path_id | varchar(32) PK | 路径 ID |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | title | varchar(100) | 学习分类 / 目标名（学生自建或 AI 命名） |
 | stage | varchar(20) | 学段【冗余快照】 |
 | source | tinyint | 0 规则生成 / 1 AI 生成 |
@@ -459,7 +459,7 @@
 |---|---|---|
 | item_id | varchar(32) PK | 节点 ID |
 | path_id | varchar(32) | 所属路径 |
-| user_id | int | 学生【冗余：到期复习直查免 join 路径表】 |
+| user_id | varchar(32) | 学生【冗余：到期复习直查免 join 路径表】 |
 | knowledge_point_id | varchar(32) | 知识点 |
 | knowledge_point_name | varchar(100) | 知识点名【冗余快照：知识点改名 / 删除不影响历史路径】 |
 | branch_type | tinyint | 0 主线 / 1 兴趣分支 |
@@ -478,7 +478,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | int PK AI | 主键 |
-| user_id | int | 学生 |
+| user_id | varchar(32) | 学生 |
 | knowledge_point_id | varchar(32) | 知识点 |
 | stage | varchar(20) | 学段【冗余：雷达图按学段聚合免 join】 |
 | mastery_score | int | 掌握度 0-100 |

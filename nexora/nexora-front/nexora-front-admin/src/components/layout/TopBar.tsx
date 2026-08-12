@@ -1,5 +1,5 @@
-import { Avatar, Dropdown, App } from 'antd';
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { Button, Dropdown, App, Tooltip } from 'antd';
+import { ChevronDown, Sparkles, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import { adminLogout } from '@/api/auth';
@@ -44,15 +44,20 @@ export default function TopBar() {
           <span className="top-bar-logo-text">Nexora AI 教学助手后台</span>
         </div>
       </div>
-      <div className="top-bar-right-area">
+      <div className="top-bar-right-area" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Tooltip title="切换主题">
+          <Button
+            type="text"
+            aria-label="切换主题"
+            icon={<Sun size={16} />}
+            onClick={() => message.info('主题切换功能开发中')}
+          />
+        </Tooltip>
         <Dropdown
           menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
           placement="bottomRight"
         >
           <div className="top-bar-user-info">
-            <Avatar size={28} className="top-bar-user-avatar">
-              {username.charAt(0).toUpperCase()}
-            </Avatar>
             <span className="top-bar-username">{username}</span>
             <ChevronDown size={14} className="top-bar-user-info-icon" />
           </div>

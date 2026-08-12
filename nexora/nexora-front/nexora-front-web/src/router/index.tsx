@@ -23,10 +23,38 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="/ai-tutor" replace /> },
       { path: 'ai-tutor', element: <AiTutor /> },
-      { path: 'learning-path', element: <ProtectedRoute><LearningPath /></ProtectedRoute> },
-      { path: 'course-material', element: <ProtectedRoute><CourseMaterial /></ProtectedRoute> },
-      { path: 'coding', element: <Coding /> },
-      { path: 'profile', element: <ProtectedRoute><Profile /></ProtectedRoute> },
+      {
+        path: 'learning-path',
+        element: (
+          <ProtectedRoute title="个性化学习路径" description="登录后查看你的个性化学习路径">
+            <LearningPath />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'course-material',
+        element: (
+          <ProtectedRoute title="课程教材" description="登录后查看课程教材">
+            <CourseMaterial />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'coding',
+        element: (
+          <ProtectedRoute title="编程环境" description="登录后使用在线编程环境">
+            <Coding />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'profile',
+        element: (
+          <ProtectedRoute title="我的" description="登录后查看个人中心">
+            <Profile />
+          </ProtectedRoute>
+        ),
+      },
       { path: '*', element: <Navigate to="/ai-tutor" replace /> },
     ],
   },

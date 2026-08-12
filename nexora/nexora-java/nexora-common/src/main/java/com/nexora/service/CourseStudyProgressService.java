@@ -73,18 +73,18 @@ public interface CourseStudyProgressService {
 	/**
 	 * 根据UserIdAndCourseId查询对象
 	 */
-	CourseStudyProgress getCourseStudyProgressByUserIdAndCourseId(Integer userId,String courseId);
+	CourseStudyProgress getCourseStudyProgressByUserIdAndCourseId(String userId,String courseId);
 
 
 	/**
 	 * 根据UserIdAndCourseId修改
 	 */
-	Integer updateCourseStudyProgressByUserIdAndCourseId(CourseStudyProgress bean,Integer userId,String courseId);
+	Integer updateCourseStudyProgressByUserIdAndCourseId(CourseStudyProgress bean,String userId,String courseId);
 
 
 	/**
 	 * 根据UserIdAndCourseId删除
 	 */
-	Integer deleteCourseStudyProgressByUserIdAndCourseId(Integer userId,String courseId);
+	Integer deleteCourseStudyProgressByUserIdAndCourseId(String userId,String courseId);
 
 }

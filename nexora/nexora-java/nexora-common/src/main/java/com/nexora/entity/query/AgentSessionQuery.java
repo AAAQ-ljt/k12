@@ -19,7 +19,7 @@ public class AgentSessionQuery extends BaseParam {
 	/**
 	 * 学生
 	 */
-	private Integer userId;
+	private String userId;
 
 	/**
 	 * 会话标题（首条消息摘要）
@@ -101,11 +101,11 @@ public class AgentSessionQuery extends BaseParam {
 		return this.sessionIdFuzzy;
 	}
 
-	public void setUserId(Integer userId){
+	public void setUserId(String userId){
 		this.userId = userId;
 	}
 
-	public Integer getUserId(){
+	public String getUserId(){
 		return this.userId;
 	}
 

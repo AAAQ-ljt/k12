@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Button, Form, Input, Select, App } from 'antd';
 import BaseDialog from '@/components/BaseDialog';
-import { GRADE_OPTIONS, STAGE_OPTIONS, ROLE_OPTIONS, gradeToStage } from '@/types/common';
+import { GRADE_OPTIONS, STAGE_OPTIONS, SEX_OPTIONS, gradeToStage } from '@/types/common';
 import { add, update } from '@/api/user';
 import type { UserInfo } from '@/api/user';
 
@@ -32,8 +32,6 @@ export default function UserFormModal({
         form.setFieldsValue(initialValues);
       } else {
         form.resetFields();
-        // 默认值：角色=学生、状态=启用
-        form.setFieldsValue({ roleType: 1, status: 1 });
       }
     }
   }, [open, initialValues, form]);
@@ -106,20 +104,13 @@ export default function UserFormModal({
         </Form.Item>
 
         <Form.Item
-          name="roleType"
-          label="角色"
-          rules={[{ required: true, message: '请选择角色' }]}
+          name="sex"
+          label="性别"
+          rules={[{ required: true, message: '请选择性别' }]}
         >
-          <Select placeholder="请选择角色" options={ROLE_OPTIONS} />
-        </Form.Item>
-
-        <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
           <Select
-            placeholder="请选择状态"
-            options={[
-              { label: '启用', value: 1 },
-              { label: '禁用', value: 0 },
-            ]}
+            placeholder="请选择性别"
+            options={SEX_OPTIONS}
           />
         </Form.Item>
       </Form>
