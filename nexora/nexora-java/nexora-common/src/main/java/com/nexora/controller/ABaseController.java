@@ -1,27 +1,25 @@
-package com.nexora.admin.controller;
-
+package com.nexora.controller;
 
 import com.nexora.entity.enums.ResponseCodeEnum;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 
+/**
+ * 公共基础 Controller：提供统一成功 / 业务错误 / 服务器错误响应方法
+ * admin / web 两端控制器统一继承
+ */
 public class ABaseController {
 
     protected static final String STATUC_SUCCESS = "success";
 
     protected static final String STATUC_ERROR = "error";
 
-    protected <T> ResponseVO getSuccessResponseVO(T t) {
-        ResponseVO<T> responseVO = new ResponseVO<>();
-        responseVO.setStatus(STATUC_SUCCESS);
-        responseVO.setCode(ResponseCodeEnum.CODE_200.getCode());
-        responseVO.setInfo(ResponseCodeEnum.CODE_200.getMsg());
-        responseVO.setData(t);
-        return responseVO;
+    protected <T> ResponseVO<T> getSuccessResponseVO(T t) {
+        return ResponseVO.success(t);
     }
 
-    protected <T> ResponseVO getBusinessErrorResponseVO(BusinessException e, T t) {
-        ResponseVO vo = new ResponseVO();
+    protected <T> ResponseVO<T> getBusinessErrorResponseVO(BusinessException e, T t) {
+        ResponseVO<T> vo = new ResponseVO<>();
         vo.setStatus(STATUC_ERROR);
         if (e.getCode() == null) {
             vo.setCode(ResponseCodeEnum.CODE_600.getCode());
@@ -33,8 +31,8 @@ public class ABaseController {
         return vo;
     }
 
-    protected <T> ResponseVO getServerErrorResponseVO(T t) {
-        ResponseVO vo = new ResponseVO();
+    protected <T> ResponseVO<T> getServerErrorResponseVO(T t) {
+        ResponseVO<T> vo = new ResponseVO<>();
         vo.setStatus(STATUC_ERROR);
         vo.setCode(ResponseCodeEnum.CODE_500.getCode());
         vo.setInfo(ResponseCodeEnum.CODE_500.getMsg());

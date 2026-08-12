@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -55,5 +56,35 @@ public class RedisComponent {
      */
     public void removeToken(String token) {
         redisTemplate.delete(Constants.REDIS_KEY_TOKEN + token);
+    }
+
+    /**
+     * 保存图形验证码（10 分钟有效），返回验证码 key
+     */
+    public String saveCheckCode(String code) {
+        String checkCodeKey = UUID.randomUUID().toString().replace("-", "");
+        redisTemplate.opsForValue().set(Constants.REDIS_KEY_CHECK_CODE + checkCodeKey, code,
+                Constants.CHECK_CODE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+        return checkCodeKey;
+    }
+
+    /**
+     * 获取图形验证码
+     */
+    public String getCheckCode(String checkCodeKey) {
+        if (checkCodeKey == null || checkCodeKey.isEmpty()) {
+            return null;
+        }
+        Object code = redisTemplate.opsForValue().get(Constants.REDIS_KEY_CHECK_CODE + checkCodeKey);
+        return code == null ? null : code.toString();
+    }
+
+    /**
+     * 清除图形验证码（登录/注册后无论成败都清理，防止复用）
+     */
+    public void cleanCheckCode(String checkCodeKey) {
+        if (checkCodeKey != null && !checkCodeKey.isEmpty()) {
+            redisTemplate.delete(Constants.REDIS_KEY_CHECK_CODE + checkCodeKey);
+        }
     }
 }

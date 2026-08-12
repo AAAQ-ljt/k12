@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import AutoLogin from '@/components/layout/AutoLogin';
 import MainLayout from '@/components/layout/MainLayout';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import AiTutor from '@/views/ai-tutor';
 import LearningPath from '@/views/learning-path';
 import CourseMaterial from '@/views/course-material';
@@ -22,10 +23,10 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="/ai-tutor" replace /> },
       { path: 'ai-tutor', element: <AiTutor /> },
-      { path: 'learning-path', element: <LearningPath /> },
-      { path: 'course-material', element: <CourseMaterial /> },
+      { path: 'learning-path', element: <ProtectedRoute><LearningPath /></ProtectedRoute> },
+      { path: 'course-material', element: <ProtectedRoute><CourseMaterial /></ProtectedRoute> },
       { path: 'coding', element: <Coding /> },
-      { path: 'profile', element: <Profile /> },
+      { path: 'profile', element: <ProtectedRoute><Profile /></ProtectedRoute> },
       { path: '*', element: <Navigate to="/ai-tutor" replace /> },
     ],
   },

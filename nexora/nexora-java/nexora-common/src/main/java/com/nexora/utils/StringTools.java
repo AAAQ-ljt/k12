@@ -5,6 +5,7 @@ import com.nexora.exception.BusinessException;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
 
@@ -60,6 +61,26 @@ public class StringTools {
 
     public static String trim(String value) {
         return value == null ? null : value.trim();
+    }
+
+    /**
+     * MD5 加密（密码统一存储方式）
+     */
+    public static String encodeByMD5(String str) {
+        if (str == null) {
+            return null;
+        }
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] bytes = md.digest(str.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new BusinessException("MD5 加密失败");
+        }
     }
 
     public static List<Integer> convertIds2List(String ids) {

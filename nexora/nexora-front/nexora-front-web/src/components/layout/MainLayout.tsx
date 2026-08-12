@@ -1,8 +1,10 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { Avatar } from 'antd';
-import { Sparkles, MessageSquare, Route, BookOpen, Code, User } from 'lucide-react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { App, Avatar, Button, Dropdown } from 'antd';
+import { Sparkles, MessageSquare, Route, BookOpen, Code, User, LogOut } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
+import { studentLogout } from '@/api/auth';
 import { getStageOption } from '@/types/common';
 
 interface TabItem {
@@ -20,8 +22,31 @@ const TABS: TabItem[] = [
 ];
 
 export default function MainLayout() {
+  const navigate = useNavigate();
+  const { message } = App.useApp();
+  const token = useAuthStore((state) => state.token);
   const userInfo = useAuthStore((state) => state.userInfo);
+  const clear = useAuthStore((state) => state.clear);
+  const openLoginModal = useUiStore((state) => state.openLoginModal);
   const stageOption = userInfo ? getStageOption(userInfo.stage) : undefined;
+
+  /** 退出登录 */
+  const handleLogout = async () => {
+    try {
+      await studentLogout();
+    } finally {
+      clear();
+      message.success('已退出登录');
+      navigate('/ai-tutor');
+    }
+  };
+
+  /** 用户下拉菜单 */
+  const userMenuItems = [
+    { key: 'profile', icon: <User size={14} />, label: '个人中心' },
+    { type: 'divider' as const },
+    { key: 'logout', icon: <LogOut size={14} />, label: '退出登录' },
+  ];
 
   return (
     <div className="main-layout">
@@ -60,17 +85,37 @@ export default function MainLayout() {
           </div>
         </nav>
 
-        {/* C. Bottom User Area (底部用户区) */}
+        {/* C. Bottom User Area (底部用户区，Codex 模式登录入口) */}
         <div className="user-section">
-          <div className="user-card">
-            <Avatar src={userInfo?.avatar} size={36} className="user-avatar">
-              {userInfo?.username?.[0]?.toUpperCase()}
-            </Avatar>
-            <div className="user-info">
-              <div className="user-name">{userInfo?.username ?? '同学'}</div>
-              <div className="user-name">{stageOption?.label || ''}</div>
-            </div>
-          </div>
+          {token ? (
+            <Dropdown
+              menu={{
+                items: userMenuItems,
+                onClick: ({ key }) => {
+                  if (key === 'profile') {
+                    navigate('/profile');
+                  } else if (key === 'logout') {
+                    void handleLogout();
+                  }
+                },
+              }}
+              placement="topLeft"
+            >
+              <div className="user-card">
+                <Avatar src={userInfo?.avatar} size={36} className="user-avatar">
+                  {userInfo?.username?.[0]?.toUpperCase()}
+                </Avatar>
+                <div className="user-info">
+                  <div className="user-name">{userInfo?.username ?? '同学'}</div>
+                  <div className="user-stage">{stageOption?.label || ''}</div>
+                </div>
+              </div>
+            </Dropdown>
+          ) : (
+            <Button type="primary" block onClick={openLoginModal} className="user-login-btn">
+              登录
+            </Button>
+          )}
         </div>
       </aside>
 

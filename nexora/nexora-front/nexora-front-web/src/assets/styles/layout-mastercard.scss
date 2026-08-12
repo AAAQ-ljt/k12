@@ -166,7 +166,15 @@
   }
 }
 
-/* C. Bottom User Area (底部用户区) */
+/* C. Bottom User Area (底部用户区，Codex 模式登录入口) */
+.user-section {
+  .user-login-btn {
+    border-radius: var(--radius-lg, 12px);
+    height: 44px;
+    font-weight: 600;
+  }
+}
+
 .user-section {
   padding: var(--space-md);
   border-top: 1px solid var(--warm-bg-dark);

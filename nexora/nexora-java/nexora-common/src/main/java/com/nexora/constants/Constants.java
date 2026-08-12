@@ -32,11 +32,21 @@ public class Constants {
      */
     public static final String REDIS_KEY_TOKEN = "token:";
 
+    /**
+     * Redis key 前缀：图形验证码
+     */
+    public static final String REDIS_KEY_CHECK_CODE = "check_code:";
+
 
     /**
      * 心跳超时时间（秒）
      */
     public static final int HEART_BEAT_TIMEOUT = 30;
+
+    /**
+     * 图形验证码有效期（秒）
+     */
+    public static final int CHECK_CODE_EXPIRE_SECONDS = 600;
 
     /**
      * 请求 attribute 中用户信息的 key

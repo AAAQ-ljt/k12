@@ -1,0 +1,22 @@
+/* 我的页面 */
+.profileWrapper {
+  max-width: 640px;
+  padding: 24px;
+}
+
+.userHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.userName {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.userEmail {
+  color: var(--text-tertiary, #999);
+  font-size: 13px;
+}

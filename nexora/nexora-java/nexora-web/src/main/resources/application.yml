@@ -69,6 +69,10 @@ spring:
           connections:
             nexora-mcp:
               url: http://localhost:8084
+# 登录 Token 派生密钥（与 admin 一致，生产环境建议通过环境变量覆盖）
+login:
+  token-secret: ${NEXORA_TOKEN_SECRET:nexora-default-token-secret}
+
 mybatis:
   mapper-locations: classpath*:/com/nexora/mappers/*.xml
   configuration:

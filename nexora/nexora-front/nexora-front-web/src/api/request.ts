@@ -1,6 +1,8 @@
 import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { message } from 'antd';
-import { getToken, removeToken } from '@/utils/token';
+import { getToken } from '@/utils/token';
+import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
 import type { ResponseVO } from '@/types/common';
 
 const instance = axios.create({
@@ -20,11 +22,10 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-/** 跳转登录页（携带 redirect） */
-function redirectToLogin() {
-  removeToken();
-  const redirect = window.location.pathname + window.location.search;
-  window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
+/** 登录失效：清登录态并弹出全局登录弹窗（Codex 模式，不跳转） */
+function handleUnauthorized() {
+  useAuthStore.getState().clear();
+  useUiStore.getState().openLoginModal();
 }
 
 /** 响应拦截器：统一处理业务码 */
@@ -39,7 +40,7 @@ instance.interceptors.response.use(
       return res.data;
     }
     if (res.code === 401) {
-      redirectToLogin();
+      handleUnauthorized();
       return Promise.reject(new Error(res.info || '登录已失效'));
     }
     message.error(res.info || '请求失败');
@@ -47,7 +48,7 @@ instance.interceptors.response.use(
   },
   (error) => {
     if (error?.response?.status === 401) {
-      redirectToLogin();
+      handleUnauthorized();
     } else if (error?.code === 'ECONNABORTED') {
       message.error('请求超时，请稍后重试');
     } else {

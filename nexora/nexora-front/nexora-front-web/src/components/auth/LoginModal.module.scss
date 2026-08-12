@@ -1,0 +1,17 @@
+/* 全局登录 / 注册弹窗样式 */
+.checkCodeImg {
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.switchRow {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+
+  a {
+    color: var(--color-primary, #1677ff);
+  }
+}
