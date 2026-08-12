@@ -23,6 +23,7 @@ dist-ssr/
 # ===== 环境变量（.env.development / .env.production 含代理与端口、无密钥，提交；本地覆盖文件不提交）=====
 .env.local
 .env.*.local
+skills
 
 # ===== 日志 =====
 logs/
