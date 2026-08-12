@@ -1,5 +1,29 @@
-import { Table } from 'antd';
+import { Select, Table } from 'antd';
 import type { TableProps, TablePaginationConfig } from 'antd';
+
+/**
+ * 自定义每页条数选择器：渲染到 body，避免被 layout-content 的 overflow 裁剪
+ */
+function PageSizeChanger(props: {
+  value?: number;
+  onChange?: (value: number) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const { value, onChange, disabled, className } = props;
+  return (
+    <Select
+      value={value}
+      onChange={(v) => onChange?.(v as number)}
+      disabled={disabled}
+      className={className}
+      showSearch={false}
+      style={{ width: 100 }}
+      options={[10, 15, 20, 50].map((n) => ({ label: `${n} 条/页`, value: n }))}
+      getPopupContainer={() => document.body}
+    />
+  );
+}
 
 export type PaginationConfig = TablePaginationConfig;
 
@@ -26,6 +50,7 @@ export default function BaseTable<T extends Record<string, any>>(
           showQuickJumper: true,
           pageSizeOptions: [10, 15, 20, 50],
           showTotal: (total: number) => `共 ${total} 条`,
+          components: { sizeChanger: PageSizeChanger },
           ...(pagination ?? {}),
         };
 
