@@ -22,8 +22,9 @@ export default function BaseTable<T extends Record<string, any>>(
     pagination === false
       ? false
       : {
-          showSizeChanger: true,
+          showSizeChanger: { showSearch: false },
           showQuickJumper: true,
+          pageSizeOptions: [10, 15, 20, 50],
           showTotal: (total: number) => `共 ${total} 条`,
           ...(pagination ?? {}),
         };

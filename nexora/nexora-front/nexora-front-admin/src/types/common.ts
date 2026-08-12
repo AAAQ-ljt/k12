@@ -24,6 +24,42 @@ export interface UserInfo {
   avatar?: string;
 }
 
+/** 年级选项（K12：一年级 ~ 高三） */
+export const GRADE_OPTIONS = [
+  { label: '一年级', value: '一年级' },
+  { label: '二年级', value: '二年级' },
+  { label: '三年级', value: '三年级' },
+  { label: '四年级', value: '四年级' },
+  { label: '五年级', value: '五年级' },
+  { label: '六年级', value: '六年级' },
+  { label: '初一', value: '初一' },
+  { label: '初二', value: '初二' },
+  { label: '初三', value: '初三' },
+  { label: '高一', value: '高一' },
+  { label: '高二', value: '高二' },
+  { label: '高三', value: '高三' },
+];
+
+/** 年级 -> 学段 映射（按 K12 惯例，如需调整只改这里） */
+export function gradeToStage(grade?: string): string | undefined {
+  if (!grade) return undefined;
+  const map: Record<string, string> = {
+    一年级: 'PRIMARY_LOW',
+    二年级: 'PRIMARY_LOW',
+    三年级: 'PRIMARY_HIGH',
+    四年级: 'PRIMARY_HIGH',
+    五年级: 'PRIMARY_HIGH',
+    六年级: 'PRIMARY_HIGH',
+    初一: 'JUNIOR',
+    初二: 'JUNIOR',
+    初三: 'JUNIOR',
+    高一: 'SENIOR',
+    高二: 'SENIOR',
+    高三: 'SENIOR',
+  };
+  return map[grade];
+}
+
 /** 学段选项 */
 export const STAGE_OPTIONS = [
   { label: '小学低年级', value: 'PRIMARY_LOW', color: '#52c41a' },

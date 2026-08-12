@@ -5,7 +5,7 @@ import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
-import { STAGE_OPTIONS, ROLE_OPTIONS, USER_STATUS_MAP } from '@/types/common';
+import { STAGE_OPTIONS, USER_STATUS_MAP } from '@/types/common';
 import { loadDataList, del, changeStatus } from '@/api/user';
 import type { UserInfo, UserQuery } from '@/api/user';
 import UserFormModal from './UserFormModal';
@@ -13,15 +13,17 @@ import UserFormModal from './UserFormModal';
 export default function UserManagement() {
   const { message } = App.useApp();
 
-  // 搜索参数状态
+  // 搜索参数状态（点击“查询”后才生效，不做实时搜索）
   const [searchParams, setSearchParams] = useState<UserQuery>({
     pageNo: 1,
     pageSize: 10,
     roleType: 1,
   });
 
-  // 邮箱搜索输入
+  // 搜索草稿（输入过程中不触发查询）
   const [emailInput, setEmailInput] = useState('');
+  const [draftStage, setDraftStage] = useState<string | undefined>(undefined);
+  const [draftStatus, setDraftStatus] = useState<number | undefined>(undefined);
 
   // 表格数据
   const [data, setData] = useState<UserInfo[]>([]);
@@ -33,7 +35,7 @@ export default function UserManagement() {
   // 弹窗状态
   const [modalState, setModalState] = useState<{
     open: boolean;
-    mode: 'create' | 'edit' | 'view';
+    mode: 'create' | 'edit';
     initialValues?: Partial<UserInfo>;
   }>({ open: false, mode: 'create' });
 
@@ -56,11 +58,13 @@ export default function UserManagement() {
     fetchData();
   }, [fetchData]);
 
-  /** 搜索 */
+  /** 点击查询：草稿合并进搜索参数 */
   const handleSearch = () => {
     setSearchParams((prev) => ({
       ...prev,
-      email: emailInput || undefined,
+      emailFuzzy: emailInput || undefined,
+      stage: draftStage,
+      status: draftStatus,
       pageNo: 1,
     }));
   };
@@ -68,6 +72,8 @@ export default function UserManagement() {
   /** 重置 */
   const handleReset = () => {
     setEmailInput('');
+    setDraftStage(undefined);
+    setDraftStatus(undefined);
     setSearchParams({ pageNo: 1, pageSize: 10, roleType: 1 });
   };
 
@@ -102,12 +108,9 @@ export default function UserManagement() {
     }
   };
 
-  /** 操作列渲染 */
+  /** 操作列渲染（查看按钮已按要求移除） */
   const renderActions = (record: UserInfo) => {
     const actions = [
-      <Button key="view" type="link" size="small" onClick={() => handleView(record)}>
-        查看
-      </Button>,
       <Button key="edit" type="link" size="small" onClick={() => handleEdit(record)}>
         编辑
       </Button>,
@@ -172,23 +175,18 @@ export default function UserManagement() {
       ellipsis: true,
     },
     {
+      title: '年级',
+      dataIndex: 'grade',
+      key: 'grade',
+      width: 100,
+      align: 'center',
+    },
+    {
       title: '学段',
       dataIndex: 'stage',
       key: 'stage',
       width: 120,
       render: (_, record) => <StageTag stage={record.stage ?? ''} />,
-    },
-    {
-      title: '角色',
-      dataIndex: 'roleType',
-      key: 'roleType',
-      width: 100,
-      align: 'center',
-      render: (_, record) => (
-        <span style={{ color: record.roleType === 0 ? '#722ed1' : '#1677ff' }}>
-          {record.roleType === 0 ? '管理员' : '学生'}
-        </span>
-      ),
     },
     {
       title: '状态',
@@ -209,7 +207,7 @@ export default function UserManagement() {
     {
       title: '操作',
       key: 'action',
-      width: 260,
+      width: 220,
       render: (_, record) => renderActions(record),
     },
   ];
@@ -222,11 +220,6 @@ export default function UserManagement() {
   /** 打开编辑弹窗 */
   const handleEdit = (record: UserInfo) => {
     setModalState({ open: true, mode: 'edit', initialValues: { ...record, password: '' } });
-  };
-
-  /** 打开查看弹窗 */
-  const handleView = (record: UserInfo) => {
-    setModalState({ open: true, mode: 'view', initialValues: record });
   };
 
   /** 关闭弹窗 */
@@ -242,52 +235,52 @@ export default function UserManagement() {
 
   return (
     <div>
-      <SearchForm onSearch={handleSearch} onReset={handleReset}>
-        <Form.Item label="邮箱">
-          <Input
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            placeholder="请输入邮箱"
-            allowClear
-            style={{ width: 200 }}
-          />
-        </Form.Item>
-        <Form.Item label="学段">
-          <Select
-            value={searchParams.stage}
-            onChange={(v) => setSearchParams((prev) => ({ ...prev, stage: v, pageNo: 1 }))}
-            placeholder="全部"
-            allowClear
-            style={{ width: 150 }}
-            options={STAGE_OPTIONS}
-          />
-        </Form.Item>
-        <Form.Item label="角色">
-          <Select
-            value={searchParams.roleType}
-            onChange={(v) => setSearchParams((prev) => ({ ...prev, roleType: v, pageNo: 1 }))}
-            placeholder="全部"
-            allowClear
-            style={{ width: 120 }}
-            options={ROLE_OPTIONS}
-          />
-        </Form.Item>
-        <Form.Item label="状态">
-          <Select
-            value={searchParams.status}
-            onChange={(v) => setSearchParams((prev) => ({ ...prev, status: v, pageNo: 1 }))}
-            placeholder="全部"
-            allowClear
-            style={{ width: 120 }}
-            options={[
-              { label: '启用', value: 1 },
-              { label: '禁用', value: 0 },
-            ]}
-          />
-        </Form.Item>
-      </SearchForm>
-
-      <div style={{ marginBottom: 16 }}>
+      {/* 搜索卡片 + 右侧新增按钮（中间留空） */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 24,
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <SearchForm onSearch={handleSearch} onReset={handleReset}>
+            <Form.Item label="邮箱">
+              <Input
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="请输入邮箱（支持模糊）"
+                allowClear
+                style={{ width: 220 }}
+                onPressEnter={handleSearch}
+              />
+            </Form.Item>
+            <Form.Item label="学段">
+              <Select
+                value={draftStage}
+                onChange={setDraftStage}
+                placeholder="全部"
+                allowClear
+                style={{ width: 150 }}
+                options={STAGE_OPTIONS}
+              />
+            </Form.Item>
+            <Form.Item label="状态">
+              <Select
+                value={draftStatus}
+                onChange={setDraftStatus}
+                placeholder="全部"
+                allowClear
+                style={{ width: 120 }}
+                options={[
+                  { label: '启用', value: 1 },
+                  { label: '禁用', value: 0 },
+                ]}
+              />
+            </Form.Item>
+          </SearchForm>
+        </div>
         <Button type="primary" icon={<Plus size={14} />} onClick={handleAdd}>
           新增用户
         </Button>

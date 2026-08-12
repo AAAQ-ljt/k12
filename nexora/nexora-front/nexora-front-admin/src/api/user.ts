@@ -21,7 +21,8 @@ export interface UserInfo {
 
 /** 用户查询参数 */
 export interface UserQuery extends PageParam {
-  email?: string;
+  /** 邮箱模糊查询（后端 LIKE） */
+  emailFuzzy?: string;
   stage?: string;
   status?: number;
   roleType?: number;

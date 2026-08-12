@@ -40,4 +40,21 @@ public enum StageEnum {
         }
         return false;
     }
+
+    /**
+     * 根据年级匹配学段（K12 惯例，映射规则如需调整只改这里）
+     * 一年级/二年级 -> 小学低；三年级~六年级 -> 小学高；初一~初三 -> 初中；高一~高三 -> 高中
+     */
+    public static String matchByGrade(String grade) {
+        if (grade == null || grade.isEmpty()) {
+            return null;
+        }
+        return switch (grade) {
+            case "一年级", "二年级" -> PRIMARY_LOW.code;
+            case "三年级", "四年级", "五年级", "六年级" -> PRIMARY_HIGH.code;
+            case "初一", "初二", "初三" -> JUNIOR.code;
+            case "高一", "高二", "高三" -> SENIOR.code;
+            default -> null;
+        };
+    }
 }

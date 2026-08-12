@@ -2,6 +2,7 @@ package com.nexora.admin.controller;
 
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
+import com.nexora.entity.enums.StageEnum;
 import com.nexora.entity.po.UserInfo;
 import com.nexora.entity.query.UserInfoQuery;
 import com.nexora.entity.vo.PaginationResultVO;
@@ -68,6 +69,10 @@ public class UserInfoController extends ABaseController {
         if (userInfo.getStatus() == null) {
             userInfo.setStatus(Constants.STATUS_ENABLE);
         }
+        // 年级 -> 学段兜底：传了年级但学段为空时自动匹配
+        if (StringTools.isEmpty(userInfo.getStage()) && !StringTools.isEmpty(userInfo.getGrade())) {
+            userInfo.setStage(StageEnum.matchByGrade(userInfo.getGrade()));
+        }
         userInfo.setCreateTime(new Date());
         userInfoService.add(userInfo);
         return getSuccessResponseVO(null);
@@ -85,6 +90,10 @@ public class UserInfoController extends ABaseController {
             userInfo.setPassword(StringTools.encodeByMD5(userInfo.getPassword()));
         } else {
             userInfo.setPassword(null);
+        }
+        // 年级 -> 学段兜底：传了年级且学段为空时自动匹配
+        if (!StringTools.isEmpty(userInfo.getGrade()) && StringTools.isEmpty(userInfo.getStage())) {
+            userInfo.setStage(StageEnum.matchByGrade(userInfo.getGrade()));
         }
         userInfo.setUpdateTime(new Date());
         userInfoService.updateUserInfoByUserId(userInfo, userInfo.getUserId());
