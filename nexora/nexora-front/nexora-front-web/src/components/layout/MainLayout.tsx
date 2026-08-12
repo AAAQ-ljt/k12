@@ -4,7 +4,6 @@ import { Sparkles, MessageSquare, Route, BookOpen, Code, User } from 'lucide-rea
 import type { ComponentType } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { getStageOption } from '@/types/common';
-import styles from '@/assets/styles/layout.module.scss';
 
 interface TabItem {
   path: string;
@@ -22,55 +21,80 @@ const TABS: TabItem[] = [
 
 export default function MainLayout() {
   const userInfo = useAuthStore((state) => state.userInfo);
-
   const stageOption = userInfo ? getStageOption(userInfo.stage) : undefined;
 
   return (
-    <div className={styles.layout}>
-      {/* 顶部导航 */}
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          <span className={styles.logoIcon}>
-            <Sparkles size={24} strokeWidth={2.2} />
-          </span>
-          <span className={styles.brandName}>Nexora AI 教学助手</span>
-        </div>
-        <div className={styles.userArea}>
-          {stageOption && (
-            <span className={styles.stageTag} style={{ color: stageOption.color, borderColor: stageOption.color }}>
-              {stageOption.label}
+    <div className="main-layout">
+      {/* Left Sidebar */}
+      <aside className="sidebar-wrapper">
+        {/* A. Top Brand Area (顶部品牌区) */}
+        <div className="brand-section">
+          <div className="brand-logo">
+            <span className="logo-icon">
+              <Sparkles size={20} strokeWidth={2.2} />
             </span>
-          )}
-          <Avatar src={userInfo?.avatar} size={32} className={styles.avatar}>
-            {userInfo?.username?.[0]?.toUpperCase()}
-          </Avatar>
-          <span className={styles.username}>{userInfo?.username ?? '同学'}</span>
+            <span className="brand-name">K12 AI 通识课</span>
+          </div>
         </div>
-      </header>
 
-      {/* 内容区 */}
-      <main className={styles.content}>
-        <Outlet />
-      </main>
+        {/* B. Middle Navigation Area (中部导航区) */}
+        <nav className="nav-section">
+          <div className="nav-menu-list">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <NavLink
+                  key={tab.path}
+                  to={tab.path}
+                  className={({ isActive }) =>
+                    isActive ? `nav-item active` : 'nav-item'
+                  }
+                >
+                  <span className="nav-icon">
+                    <Icon size={20} strokeWidth={2} />
+                  </span>
+                  <span className="nav-label">{tab.label}</span>
+                </NavLink>
+              );
+            })}
+          </div>
+        </nav>
 
-      {/* 底部 Tab 栏 */}
-      <nav className={styles.tabBar}>
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <NavLink
-              key={tab.path}
-              to={tab.path}
-              className={({ isActive }) =>
-                isActive ? `${styles.tabItem} ${styles.tabItemActive}` : styles.tabItem
-              }
-            >
-              <Icon size={22} strokeWidth={2} />
-              <span className={styles.tabLabel}>{tab.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
+        {/* C. Bottom User Area (底部用户区) */}
+        <div className="user-section">
+          <div className="user-card">
+            <Avatar src={userInfo?.avatar} size={36} className="user-avatar">
+              {userInfo?.username?.[0]?.toUpperCase()}
+            </Avatar>
+            <div className="user-info">
+              <div className="user-name">{userInfo?.username ?? '同学'}</div>
+              <div className="user-name">{stageOption?.label || ''}</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Right Content Section */}
+      <div className="content-wrapper">
+        {/* Header Bar (顶部通栏) */}
+        <header className="header-bar">
+          <div className="breadcrumb-area">
+            K12 AI 通识课教学平台
+          </div>
+          <div className="header-actions">
+            {stageOption && (
+              <span className="stage-badge" style={{ '--stage-color': stageOption.color } as React.CSSProperties}>
+                {stageOption.label}
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* Main Content Area (核心功能区) */}
+        <main className="main-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 package com.nexora.entity.po;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Date;
 import com.nexora.entity.enums.DateTimePatternEnum;
 import com.nexora.utils.DateUtil;

@@ -5,6 +5,13 @@ package com.nexora.constants;
  */
 public class Constants {
 
+    public static final String REGEX_PASSWORD = "^(?=.*\\d)(?=.*[a-zA-Z])[\\da-zA-Z~!@#$%^&*_]{8,18}$";
+    public static final String ZERO_STR = "0";
+    public static final Integer LENGTH_5 = 5;
+    public static final Integer LENGTH_10 = 10;
+    public static final Integer LENGTH_15 = 15;
+    public static final Integer LENGTH_30 = 30;
+
     /**
      * WebSocket 心跳消息
      */

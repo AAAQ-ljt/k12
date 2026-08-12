@@ -3,6 +3,7 @@ import { Space, Button, Popconfirm, App, Input, Select, Form, type TableProps } 
 import { Plus } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
+import styles from '@/assets/styles/utilities.module.scss';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
 import {
@@ -187,7 +188,7 @@ export default function ResourceManagement() {
             onChange={(e) => setNameInput(e.target.value)}
             placeholder="请输入资源名称"
             allowClear
-            style={{ width: 200 }}
+            className={styles.width200}
           />
         </Form.Item>
         <Form.Item label="资源类型">
@@ -196,7 +197,7 @@ export default function ResourceManagement() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, resourceType: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 150 }}
+            className={styles.width150}
             options={RESOURCE_TYPE_OPTIONS}
           />
         </Form.Item>
@@ -206,7 +207,7 @@ export default function ResourceManagement() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, stage: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 150 }}
+            className={styles.width150}
             options={STAGE_OPTIONS}
           />
         </Form.Item>

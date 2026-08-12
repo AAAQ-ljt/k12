@@ -3,6 +3,7 @@ import { Space, Button, Popconfirm, App, Input, Select, Form, type TableProps } 
 import { Plus } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
+import styles from '@/assets/styles/utilities.module.scss';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
 import { STAGE_OPTIONS, COURSE_STATUS_MAP } from '@/types/common';
@@ -173,7 +174,7 @@ export default function CourseManagement() {
             onChange={(e) => setNameInput(e.target.value)}
             placeholder="请输入课程名称"
             allowClear
-            style={{ width: 200 }}
+            className={styles.width200}
           />
         </Form.Item>
         <Form.Item label="学段">
@@ -182,7 +183,7 @@ export default function CourseManagement() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, stage: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 150 }}
+            className={styles.width150}
             options={STAGE_OPTIONS}
           />
         </Form.Item>
@@ -192,7 +193,7 @@ export default function CourseManagement() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, status: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 120 }}
+            className={styles.width120}
             options={[
               { label: '上架', value: 1 },
               { label: '下架', value: 0 },

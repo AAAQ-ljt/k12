@@ -1,0 +1,64 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #fff;
+}
+
+.header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #26272a;
+  line-height: 24px;
+}
+
+.tableWrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableContent {
+  flex: 1;
+  overflow: auto;
+  min-height: 0; // 关键：让 table 可以正确计算滚动
+}
+
+// 自定义分页样式
+.pagination {
+  padding: 12px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  background-color: #fff;
+}
+
+.paginationComponent {
+  :global {
+    .ant-pagination {
+      font-size: 14px;
+    }
+
+    .ant-pagination-options {
+      margin-right: auto;
+    }
+  }
+}
+
+// 无边框模式
+&.no-border {
+  .header {
+    border-bottom: none;
+  }
+
+  .pagination {
+    border-top: none;
+  }
+}

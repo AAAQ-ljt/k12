@@ -1,0 +1,40 @@
+.pagePlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-lg);
+  text-align: center;
+}
+
+.chartPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-base);
+}
+
+.width200 {
+  width: 200px;
+}
+
+.width150 {
+  width: 150px;
+}
+
+.width120 {
+  width: 120px;
+}
+
+.mb16 {
+  margin-bottom: 16px;
+}
+
+.mt16 {
+  margin-top: 16px;
+}

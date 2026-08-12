@@ -1,0 +1,100 @@
+/* ============================================================
+ * K12 Student Frontend - Mastercard Warm Theme Tokens
+ * K12 AI 通识课学生端设计令牌 — Mastercard 暖色调系统
+ * 
+ * 设计理念:
+ * - 护眼暖米色调 (#F9F8F6) 作为全局底色
+ * - 纯白卡片 (纯白 #FFFFFF) 承载内容
+ * - 暖棕/暖橙作为点缀色和交互色
+ * - 统一色调基准，不随学段变色
+ * ============================================================ */
+
+:root {
+  /* Layer 1: Primitive — 原始色值 */
+  
+  /* Warm Background Palette (暖色背景系列) */
+  --warm-bg-ultimate: #FDFBF7;      /* 极浅暖白 — 主内容区背景 */
+  --warm-bg-light: #F9F8F6;         /* 护眼暖米 — 侧边栏背景 */
+  --warm-bg-mid: #F5F3EF;           /* 中等暖灰 — Hover/辅助背景 */
+  --warm-bg-dark: #EDE8E1;          /* 深暖灰 — 边框/分隔线 */
+  
+  /* Warm Accent Palette (暖棕色系列) */
+  --warm-brown-50: #FAF7F2;
+  --warm-brown-100: #F3ECE2;
+  --warm-brown-200: #E8DDCC;
+  --warm-brown-300: #D4C5A8;
+  --warm-brown-400: #C4B08C;        /* 主品牌色 */
+  --warm-brown-500: #B09A6F;
+  --warm-brown-600: #9A8258;
+  --warm-brown-700: #846D45;
+  --warm-brown-800: #705A3A;
+  --warm-brown-900: #5C4A30;
+  
+  /* Warm Orange Accent (暖橙色点缀) */
+  --warm-orange-100: #FFF6EB;
+  --warm-orange-200: #FFEFD9;
+  --warm-orange-300: #FFDDC0;
+  --warm-orange-400: #FFC69B;       /* 次要点缀色 */
+  --warm-orange-500: #FFA970;
+  --warm-orange-600: #FF8C4D;
+  
+  /* Text Colors (文字色系) */
+  --text-primary: #333333;          /* 标题文字 */
+  --text-secondary: #666666;        /* 正文字体 */
+  --text-tertiary: #999999;         /* 辅助信息 */
+  --text-disabled: #CCCCCC;
+  
+  /* Card & Surface */
+  --card-white: #FFFFFF;            /* 纯白卡片 */
+  --card-shadow-light: rgba(168, 154, 138, 0.06);
+  --card-shadow-medium: rgba(168, 154, 138, 0.10);
+  --card-shadow-heavy: rgba(168, 154, 138, 0.15);
+  
+  /* Status Colors (保持语义化状态色) */
+  --color-success: #52C41A;
+  --color-warning: #FAAD14;
+  --color-error: #FF4D4F;
+  --color-info: #1890FF;
+  
+  /* Gradients (渐变) */
+  --gradient-brand-warm: linear-gradient(135deg, var(--warm-brown-400) 0%, var(--warm-brown-600) 100%);
+  --gradient-card-hover: linear-gradient(135deg, #FFFFFF 0%, var(--warm-bg-ultimate) 100%);
+  --gradient-selected-nav: linear-gradient(135deg, var(--warm-orange-100) 0%, var(--warm-orange-200) 100%);
+  --gradient-badge: linear-gradient(135deg, var(--warm-brown-400) 0%, var(--warm-orange-400) 100%);
+  
+  /* Shadow System */
+  --shadow-xs: 0 1px 2px var(--card-shadow-light);
+  --shadow-sm: 0 2px 8px var(--card-shadow-medium);
+  --shadow-md: 0 4px 16px var(--card-shadow-heavy);
+  --shadow-lg: 0 8px 32px var(--card-shadow-heavy);
+  
+  /* Layout Dimensions */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  
+  /* Border Radius (圆角) */
+  --radius-sm: 4px;                 /* 小圆角 - 严谨 */
+  --radius-md: 8px;                 /* 中圆角 - 亲和力 */
+  --radius-lg: 12px;                /* 大圆角 - 卡片 */
+  --radius-xl: 16px;                /* 超大圆角 - 强调元素 */
+  
+  /* Typography */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  
+  --line-height-tight: 1.3;
+  --line-height-base: 1.6;
+  --line-height-relaxed: 1.8;
+  
+  /* Motion */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}

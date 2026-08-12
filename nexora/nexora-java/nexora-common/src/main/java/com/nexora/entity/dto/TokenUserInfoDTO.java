@@ -15,6 +15,11 @@ public class TokenUserInfoDTO implements Serializable {
     private String username;
 
     /**
+     * Token 值
+     */
+    private String token;
+
+    /**
      * 学段：PRIMARY_LOW / PRIMARY_HIGH / JUNIOR / SENIOR
      */
     private String stage;

@@ -20,7 +20,7 @@ export default function StatCard({
   return (
     <Card>
       <div className={styles.statCard}>
-        <div className={styles.statIcon} style={{ backgroundColor: `${color}1a`, color }}>
+        <div className={styles.statIcon} style={{ '--stat-color': color } as React.CSSProperties}>
           {icon}
         </div>
         <div className={styles.statContent}>

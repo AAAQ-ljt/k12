@@ -74,6 +74,7 @@ export const request = {
     return instance.get(url, config) as unknown as Promise<T>;
   },
   post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    // 自动将对象数据转换为 application/json (保持默认行为)
     return instance.post(url, data, config) as unknown as Promise<T>;
   },
   put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {

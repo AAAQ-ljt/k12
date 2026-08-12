@@ -7,6 +7,9 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 10MB
+    # 启用 form-urlencoded 请求体支持
+    encoding: UTF-8
+    load-parameters-directly: true
   datasource:
     url: jdbc:mysql://localhost:3306/nexora?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
     username: root
@@ -35,6 +38,12 @@ spring:
           auth: true
           starttls:
             enable: true
+
+# 管理端管理员账号（初始账号，首次登录后建议修改密码）
+admin:
+  account:
+    username: admin
+    password: e10adc3949ba59abbe56e057f20f883e  # MD5 加密的 "123456"
 mybatis:
   mapper-locations: classpath*:/com/nexora/mappers/*.xml
   configuration:

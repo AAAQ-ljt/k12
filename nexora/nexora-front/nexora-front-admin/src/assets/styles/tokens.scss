@@ -1,0 +1,120 @@
+/* ============================================================
+ * Nexora Design Tokens — 三层 Token 体系
+ * Layer 1: Primitive — 原始色值（唯一允许 hex 的地方）
+ * Layer 2: Semantic — 语义别名（SCSS 和 antd 共同消费）
+ * Layer 3: Component — 组件级 token
+ * 
+ * 规则：组件 SCSS 中只允许使用 Semantic 和 Component 层 token，
+ *       禁止直接引用 Primitive 层或硬编码 hex 值。
+ *       antd ConfigProvider 中的 token 值需与此处保持视觉对齐。
+ * 
+ * 向后兼容别名：旧变量名指向新 token，确保平滑迁移。
+ * ============================================================ */
+
+:root {
+  /* Layer 1: Primitive — 原始色值 */
+  --indigo-400: #8a9af9;
+  --indigo-500: #5b6ef5;
+  --indigo-600: #4456e0;
+  --indigo-700: #4f46e5;
+
+  --green-500: #52c41a;
+  --amber-500: #faad14;
+  --red-500: #ff4d4f;
+  --purple-500: #722ed1;
+  --cyan-600: #0891b2;
+
+  --gray-50: #f5f5f7;
+  --gray-100: #f0f0f0;
+  --gray-200: #e8e8ef;
+  --gray-300: #d9d9d9;
+  --gray-500: #8c8c99;
+  --gray-600: #666666;
+  --gray-800: #333333;
+  --gray-900: #1f1f2c;
+  --white: #ffffff;
+
+  /* Aurora accent colors (登录页装饰光斑) */
+  --color-accent-blue: #4facfe;
+  --color-accent-pink: #f093fb;
+
+  /* Layer 2: Semantic — 语义别名 */
+  --color-primary: var(--indigo-500);
+  --color-primary-light: var(--indigo-400);
+  --color-primary-dark: var(--indigo-600);
+
+  --color-success: var(--green-500);
+  --color-warning: var(--amber-500);
+  --color-error: var(--red-500);
+  --color-info: var(--cyan-600);
+
+  --color-text: var(--gray-900);
+  --color-text-secondary: var(--gray-500);
+  --color-text-tertiary: #999999;
+
+  --color-bg: var(--gray-50);
+  --color-bg-surface: var(--white);
+  --color-bg-hover: var(--gray-100);
+  --color-border: var(--gray-200);
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-aurora: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  --gradient-selected: linear-gradient(135deg, #eef0fe, #f0f2ff);
+
+  /* Stage colors (学段色) */
+  --color-stage-primary-low: var(--green-500);
+  --color-stage-primary-high: var(--indigo-500);
+  --color-stage-junior: var(--amber-500);
+  --color-stage-senior: var(--purple-500);
+
+  /* Layer 3: Component — 组件级 token */
+  --header-height: 56px;
+  --tabbar-height: 56px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-tab: 0 -2px 12px rgba(0, 0, 0, 0.05);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  /* Typography */
+  --font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-size-base: 14px;
+  --font-size-sm: 12px;
+  --font-size-lg: 16px;
+  --line-height-base: 1.6;
+
+  /* Motion */
+  --motion-duration-fast: 150ms;
+  --motion-duration-base: 250ms;
+  --motion-duration-slow: 400ms;
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ===== 向后兼容别名 ===== */
+  --primary-color: var(--color-primary);
+  --bg-color: var(--color-bg);
+  --card-bg: var(--color-bg-surface);
+  --border-color: var(--color-border);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --selected-gradient: var(--gradient-selected);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

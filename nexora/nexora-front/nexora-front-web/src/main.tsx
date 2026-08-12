@@ -10,9 +10,20 @@ createRoot(document.getElementById('root')!).render(
     <ConfigProvider
       locale={zhCN}
       theme={{
+        hashed: false,
         token: {
-          colorPrimary: '#5b6ef5',
-          borderRadius: 12,
+          colorPrimary: '#C4B08C',
+          colorSuccess: '#52C41A',
+          colorWarning: '#FAAD14',
+          colorError: '#FF4D4F',
+          colorInfo: '#1890FF',
+          colorText: '#333333',
+          colorTextSecondary: '#666666',
+          colorBgLayout: '#FDFBF7',
+          colorBorder: '#EDE8E1',
+          borderRadius: 8,
+          fontFamily: "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+          fontSize: 14,
         },
       }}
     >

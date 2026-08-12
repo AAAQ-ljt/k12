@@ -12,6 +12,8 @@
   height: 48px;
   border-radius: 8px;
   flex-shrink: 0;
+  background: color-mix(in srgb, var(--stat-color) 10%, transparent);
+  color: var(--stat-color);
 }
 
 .statContent {
@@ -22,13 +24,13 @@
 .statValue {
   font-size: 24px;
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
   line-height: 1.2;
 }
 
 .statTitle {
   font-size: 14px;
-  color: #999;
+  color: var(--color-text-tertiary);
   margin-top: 4px;
 }
 
@@ -38,9 +40,9 @@
 }
 
 .trendUp {
-  color: #52c41a;
+  color: var(--color-success);
 }
 
 .trendDown {
-  color: #ff4d4f;
+  color: var(--color-error);
 }

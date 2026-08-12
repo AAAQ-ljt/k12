@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { MenuConfig } from '@/router/menus';
-import styles from '@/assets/styles/sidemenu.module.scss';
+import { getIcon } from './iconMap';
 
 interface SideMenuProps {
   title: string;
@@ -12,22 +12,25 @@ export default function SideMenu({ title, menus: items }: SideMenuProps) {
   const navigate = useNavigate();
 
   return (
-    <div className={styles.sideMenu}>
-      <div className={styles.title}>{title}</div>
-      <div className={styles.menuList}>
+    <div className="side-menu">
+      <div className="side-menu-title">{title}</div>
+      <div className="menu-list">
         {items.map((item) => {
           const isActive = location.pathname === item.path;
+          const IconComponent = getIcon(item.icon);
           return (
             <div
               key={item.key}
               className={
                 isActive
-                  ? `${styles.menuItem} ${styles.menuItemActive}`
-                  : styles.menuItem
+                  ? 'menu-item menu-item-active'
+                  : 'menu-item'
               }
               onClick={() => navigate(item.path)}
             >
-              {item.label}
+              {IconComponent && <IconComponent size={18} className="menu-icon" />}
+              <span className="menu-label">{item.label}</span>
+              {isActive && <span className="menu-indicator" />}
             </div>
           );
         })}

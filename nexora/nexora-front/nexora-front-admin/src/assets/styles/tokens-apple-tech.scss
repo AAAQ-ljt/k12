@@ -1,0 +1,211 @@
+/* ============================================================
+ * Nexora Design Tokens - Tech Apple Theme
+ * 科技风 × Apple 极简风格的视觉系统
+ * 
+ * 设计理念:
+ * 1. 配色：以科技蓝为主色，结合 Apple 的 surfaces 体系
+ * 2. 字体：采用 SF Pro 字体系列，负字间距标题，17px 正文
+ * 3. 间距：8px 基准单位，大留白创造呼吸感
+ * 4. 组件：Pill 形状按钮，Lg 圆角卡片，微阴影 elevation
+ * 5. 布局：左侧侧边栏 + 右侧内容区的经典后台架构
+ * ============================================================ */
+
+:root {
+  /* ========== Layer 1: Primitive Colors ========== */
+  
+  /* Brand - Tech Blue (主色调：科技蓝) */
+  --tech-blue-50: #e8f0fe;
+  --tech-blue-100: #c3d4fb;
+  --tech-blue-200: #a0bdf9;
+  --tech-blue-300: #7da0f6;
+  --tech-blue-400: #5b7bf2;
+  --tech-blue-500: #5b6ef5;  /* Aurora Indigo - Primary brand color */
+  --tech-blue-600: #4456e0;
+  --tech-blue-700: #3642b8;
+  --tech-blue-800: #2f3794;
+  --tech-blue-900: #293170;
+
+  /* Semantic Action Colors (对标 Apple Action Blue) */
+  --action-blue: #0066cc;      /* Apple-style primary action */
+  --action-focus: #0071e3;     /* Focus ring */
+  --action-dark: #2997ff;      /* On dark surfaces */
+
+  /* Neutrals (Apple Ink System) */
+  --ink: #1d1d1f;              /* Primary text/headlines */
+  --ink-muted-80: #333333;     /* Secondary text */
+  --ink-muted-48: #7a7a7a;     /* Disabled/tertiary */
+  --hairline: #e0e0e0;         /* 1px borders */
+  --divider-soft: #f0f0f0;     /* Soft dividers */
+
+  /* Surfaces (Light Canvas) */
+  --canvas: #ffffff;           /* Pure white canvas */
+  --canvas-parchment: #f5f5f7; /* Apple off-white */
+  --surface-pearl: #fafafc;    /* Pearl button background */
+  --surface-tile-1: #272729;   /* Dark tile 1 */
+  --surface-tile-2: #2a2a2c;   /* Dark tile 2 */
+  --surface-black: #000000;    /* True black */
+
+  /* Status Colors */
+  --success-500: #52c41a;
+  --warning-500: #faad14;
+  --error-500: #ff4d4f;
+  --info-500: #1890ff;
+
+  /* Side Menu Specific */
+  --sidebar-bg: var(--surface-black);
+  --sidebar-text: var(--on-dark);
+  --sidebar-active: var(--canvas);
+  --sidebar-active-text: var(--ink);
+
+  /* ========== Layer 2: Semantic Aliases ========== */
+
+  /* Primary Actions */
+  --color-primary: var(--tech-blue-500);
+  --color-primary-light: var(--tech-blue-400);
+  --color-primary-dark: var(--tech-blue-600);
+  --color-action: var(--action-blue);
+  --color-action-hover: #0056b3;
+
+  /* Text Colors */
+  --color-text: var(--ink);
+  --color-text-strong: var(--ink);
+  --color-text-secondary: var(--ink-muted-80);
+  --color-text-tertiary: var(--ink-muted-48);
+  --color-text-on-dark: #ffffff;
+  --color-text-link: var(--action-blue);
+  --color-text-link-hover: #0056b3;
+
+  /* Background Colors */
+  --color-bg: var(--canvas-parchment);
+  --color-bg-surface: var(--canvas);
+  --color-bg-hover: var(--divider-soft);
+  --color-border: var(--hairline);
+  --color-divider: var(--divider-soft);
+
+  /* Feedback Colors */
+  --color-success: var(--success-500);
+  --color-warning: var(--warning-500);
+  --color-error: var(--error-500);
+  --color-info: var(--info-500);
+
+  /* Elevation */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-sidebar-active: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  /* Gradients (Minimalist - No decorative gradients) */
+  --gradient-brand-subtle: linear-gradient(135deg, var(--tech-blue-50) 0%, var(--tech-blue-100) 100%);
+  --gradient-surface-to-white: linear-gradient(180deg, var(--surface-pearl) 0%, var(--canvas) 100%);
+
+  /* ========== Layer 3: Component Tokens ========== */
+
+  /* Typography Scale (Apple-inspired) */
+  --font-family-display: 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-ui: 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* Display Sizes (with negative letter-spacing) */
+  --font-size-hero: 56px;
+  --font-size-hero-weight: 600;
+  --font-size-hero-tracking: -0.28px;
+  
+  --font-size-display-lg: 40px;
+  --font-size-display-lg-weight: 600;
+  
+  --font-size-display-md: 34px;
+  --font-size-display-md-weight: 600;
+  --font-size-display-md-tracking: -0.374px;
+  
+  --font-size-lead: 28px;
+  --font-size-lead-weight: 400;
+  
+  --font-size-tagline: 21px;
+  --font-size-tagline-weight: 600;
+
+  /* Body & UI Sizes */
+  --font-size-body-strong: 17px;
+  --font-size-body-strong-weight: 600;
+  --font-size-body-strong-tracking: -0.374px;
+  
+  --font-size-body: 17px;          /* Apple standard: 17px not 16px */
+  --font-size-body-weight: 400;
+  --font-size-body-tracking: -0.374px;
+  
+  --font-size-caption: 14px;
+  --font-size-caption-weight: 400;
+  --font-size-caption-tracking: -0.224px;
+  
+  --font-size-caption-strong: 14px;
+  --font-size-caption-strong-weight: 600;
+  
+  --font-size-button-utility: 14px;
+  --font-size-button-utility-weight: 400;
+  
+  --font-size-fine-print: 12px;
+  --font-size-nav-link: 12px;
+  --font-size-nav-link-tracking: -0.12px;
+
+  /* Line Heights */
+  --line-height-hero: 1.07;
+  --line-height-display: 1.1;
+  --line-body: 1.47;
+  --line-body-relaxed: 1.6;
+  --line-dense-link: 2.41;
+
+  /* Spacing System (8px base unit) */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 17px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --space-section: 80px;
+
+  /* Border Radius (Apple Grammar) */
+  --radius-none: 0px;
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Component Dimensions */
+  --header-height: 60px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 80px;
+  --card-padding: 24px;
+  --container-max: 1440px;
+
+  /* Motion (Respect user preferences) */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ========== Backward Compatibility ========== */
+  --primary-color: var(--color-primary);
+  --bg-color: var(--color-bg);
+  --card-bg: var(--color-bg-surface);
+  --border-color: var(--color-border);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

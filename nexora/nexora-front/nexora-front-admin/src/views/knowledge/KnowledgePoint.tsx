@@ -3,6 +3,7 @@ import { Space, Button, Popconfirm, App, Input, Select, Form, type TableProps } 
 import { Plus } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
+import styles from '@/assets/styles/utilities.module.scss';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
 import {
@@ -175,7 +176,7 @@ export default function KnowledgePoint() {
             onChange={(e) => setNameInput(e.target.value)}
             placeholder="请输入知识点名称"
             allowClear
-            style={{ width: 200 }}
+            className={styles.width200}
           />
         </Form.Item>
         <Form.Item label="学段">
@@ -184,7 +185,7 @@ export default function KnowledgePoint() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, stage: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 150 }}
+            className={styles.width150}
             options={STAGE_OPTIONS}
           />
         </Form.Item>
@@ -194,7 +195,7 @@ export default function KnowledgePoint() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, subject: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 150 }}
+            className={styles.width150}
             options={SUBJECT_OPTIONS}
           />
         </Form.Item>
@@ -204,7 +205,7 @@ export default function KnowledgePoint() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, difficulty: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            style={{ width: 120 }}
+            className={styles.width120}
             options={DIFFICULTY_OPTIONS}
           />
         </Form.Item>

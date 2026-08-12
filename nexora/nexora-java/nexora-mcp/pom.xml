@@ -43,7 +43,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.nexora.mcp.NexoraMcpServerApplication</mainClass>
+                    <mainClass>com.nexora.NexoraMcpServerApplication</mainClass>
                     <includeSystemScope>true</includeSystemScope>
                 </configuration>
             </plugin>

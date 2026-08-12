@@ -40,20 +40,19 @@ export default function Login() {
         </div>
         <Form<LoginParams> onFinish={handleLogin} size="large" autoComplete="off">
           <Form.Item
-            name="email"
+            name="username"
             rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '邮箱格式不正确' },
+              { required: true, message: '请输入用户名' },
             ]}
           >
-            <Input prefix={<User size={16} color="#999" />} placeholder="请输入邮箱" />
+            <Input prefix={<User size={16} color="var(--color-text-secondary)" />} placeholder="请输入用户名" />
           </Form.Item>
           <Form.Item
             name="password"
             rules={[{ required: true, message: '请输入密码' }]}
           >
             <Input.Password
-              prefix={<Lock size={16} color="#999" />}
+              prefix={<Lock size={16} color="var(--color-text-secondary)" />}
               placeholder="请输入密码"
             />
           </Form.Item>

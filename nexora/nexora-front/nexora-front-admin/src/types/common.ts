@@ -32,6 +32,11 @@ export const STAGE_OPTIONS = [
   { label: '高中', value: 'SENIOR', color: '#722ed1' },
 ];
 
+/** 获取学段选项（含颜色） */
+export function getStageOption(stage?: string) {
+  return STAGE_OPTIONS.find((opt) => opt.value === stage);
+}
+
 /** 分页参数 */
 export interface PageParam {
   pageNo: number;

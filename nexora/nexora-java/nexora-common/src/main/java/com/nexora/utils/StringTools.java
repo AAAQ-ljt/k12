@@ -1,10 +1,16 @@
 package com.nexora.utils;
+
+
 import com.nexora.exception.BusinessException;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
 
 
 public class StringTools {
+
 
     public static void checkParam(Object param) {
         try {
@@ -14,8 +20,8 @@ public class StringTools {
                 String methodName = "get" + StringTools.upperCaseFirstLetter(field.getName());
                 Method method = param.getClass().getMethod(methodName);
                 Object object = method.invoke(param);
-                if (object != null && object instanceof java.lang.String && !StringTools.isEmpty(object.toString())
-                        || object != null && !(object instanceof java.lang.String)) {
+                if (object != null && object instanceof String && !StringTools.isEmpty(object.toString())
+                        || object != null && !(object instanceof String)) {
                     notEmpty = true;
                     break;
                 }
@@ -50,4 +56,22 @@ public class StringTools {
         }
         return false;
     }
+
+
+    public static String trim(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    public static List<Integer> convertIds2List(String ids) {
+        if (StringTools.isEmpty(ids)) {
+            return List.of();
+        }
+        return Arrays.stream(ids.split(","))
+                .map(item -> item.trim())
+                .filter(value -> value != null && !value.isEmpty())
+                .distinct()
+                .map((item) -> Integer.parseInt(item))
+                .toList();
+    }
+
 }

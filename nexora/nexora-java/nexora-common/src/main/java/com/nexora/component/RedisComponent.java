@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.nexora.constants.Constants;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 public class RedisComponent {
 
     @Autowired
-    private StringRedisTemplate redisTemplate;
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 保存用户心跳
@@ -32,11 +32,11 @@ public class RedisComponent {
      */
     public TokenUserInfoDTO getTokenInfo(String token) {
         String key = Constants.REDIS_KEY_TOKEN + token;
-        String tokenInfo = redisTemplate.opsForValue().get(key);
+        Object tokenInfo = redisTemplate.opsForValue().get(key);
         if (tokenInfo == null) {
             return null;
         }
-        return JSON.parseObject(tokenInfo, TokenUserInfoDTO.class);
+        return com.alibaba.fastjson2.JSON.parseObject(tokenInfo.toString(), TokenUserInfoDTO.class);
     }
 
     /**
@@ -44,7 +44,7 @@ public class RedisComponent {
      */
     public void saveTokenInfo(String token, TokenUserInfoDTO tokenUserInfoDTO) {
         String key = Constants.REDIS_KEY_TOKEN + token;
-        redisTemplate.opsForValue().set(key, JSON.toJSONString(tokenUserInfoDTO),
+        redisTemplate.opsForValue().set(key, tokenUserInfoDTO,
                 7, TimeUnit.DAYS);
     }
 
