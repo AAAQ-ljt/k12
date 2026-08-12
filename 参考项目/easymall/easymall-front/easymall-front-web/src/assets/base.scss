@@ -1,0 +1,104 @@
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    /**/
+}
+
+::-webkit-scrollbar-track {
+    background: rgb(239, 239, 239);
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #bfbfbf;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #bfbfbf;
+}
+
+::-webkit-scrollbar-corner {
+    background: #bfbfbf;
+}
+
+:root {
+    //重写element-ui主题色
+    --el-color-primary: #FF6B6B !important;
+    --el-color-primary-light-3: #ff9d9d !important;
+    --el-color-primary-light-5: #ffc9c9 !important;
+    --el-color-primary-light-7: #ffe0e0 !important;
+    --el-color-primary-light-8: #fff0f0 !important;
+    --el-color-primary-light-9: #fff9f9 !important;
+    --el-color-primary-dark-2: #ff3a3a !important;
+
+    /* 其他颜色 */
+    --el-color-success: #67c23a !important;
+    --el-color-warning: #e6a23c !important;
+    --el-color-danger: #f56c6c !important;
+    --el-color-error: #f56c6c !important;
+    --el-color-info: #909399 !important;
+
+    --text: #1f1f1f;
+    --text2: #61666d;
+    --text3: #a7a8aa;
+    --pink: #FF6B6B;
+    --red: #ff5000;
+    --link: #007fff;
+    --link2: #409eff;
+    --green: #14b8a6;
+
+
+}
+
+body {
+    padding: 0px;
+    margin: 0px;
+    font-size: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.a-link {
+    text-decoration: none;
+    color: var(--pink);
+    cursor: pointer;
+}
+
+.el-form-item {
+    align-items: center;
+}
+
+//重写tab
+.my-tab {
+    .el-tabs__nav-wrap {
+        &::after {
+            background: none;
+        }
+    }
+
+    .el-tabs__header {
+        margin: 0px;
+    }
+}
+
+.el-popper {
+    outline: none;
+}
+
+.el-popper.is-light {
+    border: none !important
+}
+
+.el-tooltip__trigger:focus-visible {
+    outline: unset;
+}
+
+.el-menu--horizontal .el-menu-item:not(.is-disabled):focus,
+.el-menu--horizontal .el-menu-item:not(.is-disabled):hover {
+    background-color: #fff !important;
+    color: var(--pink) !important;
+    outline: none;
+}
