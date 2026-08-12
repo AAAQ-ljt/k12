@@ -45,6 +45,10 @@ admin:
   account:
     username: admin
     password: e10adc3949ba59abbe56e057f20f883e  # MD5 加密的 "123456"
+
+# 登录 Token 派生密钥（生产环境建议通过环境变量覆盖）
+login:
+  token-secret: ${NEXORA_TOKEN_SECRET:nexora-default-token-secret}
 mybatis:
   mapper-locations: classpath*:/com/nexora/mappers/*.xml
   configuration:

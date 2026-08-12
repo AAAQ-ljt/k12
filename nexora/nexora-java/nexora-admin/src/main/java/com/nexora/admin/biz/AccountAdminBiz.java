@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.MessageDigest;
-import java.util.Random;
 
 /**
  * 管理员账号管理 Biz
@@ -25,6 +24,9 @@ public class AccountAdminBiz {
 
     @Value("${admin.account.email:admin@nexora.com}")
     private String adminEmail;
+
+    @Value("${login.token-secret:nexora-default-token-secret}")
+    private String tokenSecret;
 
     @Resource
     private RedisComponent redisComponent;
@@ -48,8 +50,8 @@ public class AccountAdminBiz {
             throw new BusinessException("密码错误");
         }
 
-        // 2. 生成 Token（32 位随机字符串）
-        String token = generateToken();
+        // 2. 生成 Token（由 userId 派生，同一用户重复登录覆盖同一条 Redis 记录）
+        String token = generateToken("admin_001");
 
         // 3. 构建用户信息
         TokenUserInfoDTO userInfo = new TokenUserInfoDTO();
@@ -108,14 +110,26 @@ public class AccountAdminBiz {
     }
 
     /**
-     * 生成随机 Token（32 位）
+     * 生成 Token：userId + secret 派生（不可预测，同一用户始终同一 token）
      */
-    private String generateToken() {
-        Random random = new Random();
-        StringBuilder sb = new StringBuilder(32);
-        for (int i = 0; i < 32; i++) {
-            sb.append(random.nextInt(10));
+    private String generateToken(String userId) {
+        return sha256Hex(userId + tokenSecret);
+    }
+
+    /**
+     * SHA-256 十六进制编码（JDK 自带，避免额外依赖）
+     */
+    private String sha256Hex(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = md.digest(input.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Token 生成失败", e);
         }
-        return sb.toString();
     }
 }

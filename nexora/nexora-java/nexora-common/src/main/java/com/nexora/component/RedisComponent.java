@@ -43,43 +43,17 @@ public class RedisComponent {
 
     /**
      * 保存 Token 信息
-     * 同一用户只保留一条登录记录：先踢掉该用户旧会话，再写入新 token 与 userId -> token 映射
+     * token 由 userId 派生（见 AccountAdminBiz.generateToken），同一用户重复登录会覆盖同一条记录
      */
     public void saveTokenInfo(String token, TokenUserInfoDTO tokenUserInfoDTO) {
-        // 先清理该用户旧的登录记录（重复登录时旧 token 失效）
-        removeUserToken(tokenUserInfoDTO.getUserId());
-
-        // 写入新 token
         String key = Constants.REDIS_KEY_TOKEN + token;
         redisTemplate.opsForValue().set(key, tokenUserInfoDTO, 7, TimeUnit.DAYS);
-
-        // 维护 userId -> token 映射，便于按用户清理
-        redisTemplate.opsForValue().set(Constants.REDIS_KEY_USER_TOKEN + tokenUserInfoDTO.getUserId(),
-                token, 7, TimeUnit.DAYS);
     }
 
     /**
-     * 移除 Token（登录退出时调用，连带清理 userId -> token 映射）
+     * 移除 Token（登录退出时调用）
      */
     public void removeToken(String token) {
-        TokenUserInfoDTO userInfo = getTokenInfo(token);
-        if (userInfo != null && userInfo.getUserId() != null) {
-            redisTemplate.delete(Constants.REDIS_KEY_USER_TOKEN + userInfo.getUserId());
-        }
         redisTemplate.delete(Constants.REDIS_KEY_TOKEN + token);
-    }
-
-    /**
-     * 清理指定用户的全部登录记录（同一用户只保留一条）
-     */
-    public void removeUserToken(String userId) {
-        if (userId == null || userId.isEmpty()) {
-            return;
-        }
-        Object oldToken = redisTemplate.opsForValue().get(Constants.REDIS_KEY_USER_TOKEN + userId);
-        if (oldToken != null) {
-            redisTemplate.delete(Constants.REDIS_KEY_TOKEN + oldToken.toString());
-        }
-        redisTemplate.delete(Constants.REDIS_KEY_USER_TOKEN + userId);
     }
 }
