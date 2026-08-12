@@ -33,6 +33,11 @@ public class Constants {
     public static final String REDIS_KEY_TOKEN = "token:";
 
     /**
+     * Redis key 前缀：userId -> 当前 token 映射（保证同一用户只保留一条登录记录）
+     */
+    public static final String REDIS_KEY_USER_TOKEN = "user_token:";
+
+    /**
      * 心跳超时时间（秒）
      */
     public static final int HEART_BEAT_TIMEOUT = 30;

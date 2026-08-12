@@ -10,7 +10,6 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.NoHandlerFoundException;
 
 /**
  * 全局异常处理器：统一把异常转为 ResponseVO，禁止默认 500 页面
@@ -65,14 +64,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MissingServletRequestParameterException.class, MissingRequestHeaderException.class})
     public ResponseVO<Void> handleMissingParam(Exception e) {
         return ResponseVO.error(ResponseCodeEnum.CODE_600.getCode(), e.getMessage());
-    }
-
-    /**
-     * 路径不存在
-     */
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseVO<Void> handleNoHandler(NoHandlerFoundException e) {
-        return ResponseVO.error(ResponseCodeEnum.CODE_404.getCode(), ResponseCodeEnum.CODE_404.getMsg());
     }
 
     /**
