@@ -36,7 +36,9 @@ public class RedisComponent {
         if (tokenInfo == null) {
             return null;
         }
-        return com.alibaba.fastjson2.JSON.parseObject(tokenInfo.toString(), TokenUserInfoDTO.class);
+        // Jackson 反序列化返回的是 Map/String，统一转成 JSON 字符串再解析为 DTO
+        String json = tokenInfo instanceof String stringValue ? stringValue : JSON.toJSONString(tokenInfo);
+        return JSON.parseObject(json, TokenUserInfoDTO.class);
     }
 
     /**

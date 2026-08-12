@@ -21,15 +21,7 @@ export function adminLogout(): Promise<void> {
   return request.post('/account/logout');
 }
 
-/** 获取当前登录管理员信息 - 返回默认值（已在登录时获取）*/
+/** 获取当前登录管理员信息（刷新页面后拉取） */
 export function getAdminInfo(): Promise<UserInfo> {
-  // 登录后前端已有用户信息，这里返回一个默认的 UserInfo
-  return Promise.resolve({
-    userId: 'admin_001',
-    username: 'admin',
-    email: 'admin@example.com',
-    stage: '',
-    roleType: 0, // 0=admin
-    avatar: '',
-  });
+  return request.get('/account/getUserInfo');
 }

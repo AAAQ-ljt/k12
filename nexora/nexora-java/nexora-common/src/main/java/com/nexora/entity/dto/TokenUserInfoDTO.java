@@ -28,4 +28,14 @@ public class TokenUserInfoDTO implements Serializable {
      * 角色类型：0 管理员 / 1 学生
      */
     private Integer roleType;
+
+    /**
+     * 邮箱（登录核心字段，管理员可为空）
+     */
+    private String email;
+
+    /**
+     * 头像 URL
+     */
+    private String avatar;
 }
