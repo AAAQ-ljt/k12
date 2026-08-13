@@ -124,4 +124,19 @@ public class RedisComponent {
         String key = Constants.REDIS_KEY_AI_CANCEL + userId + ":" + messageId;
         redisTemplate.delete(key);
     }
+
+    /**
+     * 读取字符串值（提示词等覆盖配置）
+     */
+    public String getString(String key) {
+        Object value = redisTemplate.opsForValue().get(key);
+        return value == null ? null : value.toString();
+    }
+
+    /**
+     * 写入字符串值（提示词等覆盖配置）
+     */
+    public void setString(String key, String value, long timeout, TimeUnit unit) {
+        redisTemplate.opsForValue().set(key, value, timeout, unit);
+    }
 }

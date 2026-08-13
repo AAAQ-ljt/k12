@@ -43,6 +43,11 @@ public class Constants {
     public static final String REDIS_KEY_AI_CANCEL = "ai_cancel:";
 
     /**
+     * Redis key 前缀：提示词模板覆盖
+     */
+    public static final String REDIS_KEY_PROMPT_TEMPLATE = "prompt_template:";
+
+    /**
      * 心跳超时时间（秒）
      */
     public static final int HEART_BEAT_TIMEOUT = 30;

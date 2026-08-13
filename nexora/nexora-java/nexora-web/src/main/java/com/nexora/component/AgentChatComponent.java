@@ -3,7 +3,6 @@ package com.nexora.component;
 import com.alibaba.fastjson2.JSON;
 import com.nexora.dto.AgentMessagePushDTO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
-import com.nexora.entity.enums.StageEnum;
 import com.nexora.entity.po.AgentMessage;
 import com.nexora.entity.po.AgentSession;
 import com.nexora.entity.query.AgentMessageQuery;
@@ -19,6 +18,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AI 对话核心组件：落库、组装上下文、DeepSeek 流式回复、WebSocket 推送、取消与错误处理
@@ -55,6 +56,12 @@ public class AgentChatComponent {
 
     @Resource
     private RedisComponent redisComponent;
+
+    @Resource
+    private IntentAnalyzerComponent intentAnalyzerComponent;
+
+    @Resource
+    private PromptTemplateComponent promptTemplateComponent;
 
     @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
     private String chatModel;
@@ -152,6 +159,31 @@ public class AgentChatComponent {
         push.setSessionId(session.getSessionId());
         StringBuilder answer = new StringBuilder();
         try {
+            if (redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId())) {
+                finishMessage(user, message, "", false, null, 0, 0);
+                return;
+            }
+
+            IntentAnalyzerComponent.IntentResult intentResult = intentAnalyzerComponent.analyze(message.getUserMessage());
+            String intent = intentResult.intent();
+            String bizType = mapIntentToBizType(intent);
+            String bizData = intentResult.data() == null ? null : JSON.toJSONString(intentResult.data());
+
+            AgentMessage intentUpdate = new AgentMessage();
+            intentUpdate.setIntent(intent);
+            intentUpdate.setBizType(bizType);
+            intentUpdate.setBizData(bizData);
+            intentUpdate.setPromptTokens(intentResult.promptTokens());
+            intentUpdate.setCompletionTokens(intentResult.completionTokens());
+            intentUpdate.setUpdateTime(new Date());
+            agentMessageService.updateAgentMessageByMessageId(intentUpdate, message.getMessageId());
+
+            if (redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId())) {
+                finishMessage(user, message, "", false, null,
+                        intentResult.promptTokens(), intentResult.completionTokens());
+                return;
+            }
+
             List<Message> historyMessages = buildHistory(user.getUserId(), session.getSessionId(), message.getMessageId());
             historyMessages.add(new UserMessage(message.getUserMessage()));
 
@@ -160,8 +192,12 @@ public class AgentChatComponent {
                     .reasoningEffort(reasoningEffort)
                     .build();
 
+            String systemPrompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
+            AtomicInteger promptTokens = new AtomicInteger(intentResult.promptTokens());
+            AtomicInteger completionTokens = new AtomicInteger(intentResult.completionTokens());
+
             chatClient.prompt()
-                    .system(buildSystemPrompt(user.getStage()))
+                    .system(systemPrompt)
                     .messages(historyMessages)
                     .options(options)
                     .stream()
@@ -173,6 +209,15 @@ public class AgentChatComponent {
                         if (response.getResults() == null || response.getResults().isEmpty()) {
                             return;
                         }
+                        if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
+                            Usage usage = response.getMetadata().getUsage();
+                            if (usage.getPromptTokens() != null) {
+                                promptTokens.set(usage.getPromptTokens());
+                            }
+                            if (usage.getCompletionTokens() != null) {
+                                completionTokens.set(usage.getCompletionTokens());
+                            }
+                        }
                         String content = response.getResults().get(0).getOutput().getText();
                         if (!StringTools.isEmpty(content)) {
                             answer.append(content);
@@ -181,16 +226,19 @@ public class AgentChatComponent {
                             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
                         }
                     })
-                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true, null))
-                    .doOnError(error -> finishMessage(user, message, answer.toString(), false, error))
+                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true, null,
+                            promptTokens.get(), completionTokens.get()))
+                    .doOnError(error -> finishMessage(user, message, answer.toString(), false, error,
+                            promptTokens.get(), completionTokens.get()))
                     .subscribe();
         } catch (Exception e) {
             log.error("AI 对话流式调用失败", e);
-            finishMessage(user, message, answer.toString(), false, e);
+            finishMessage(user, message, answer.toString(), false, e, 0, 0);
         }
     }
 
-    private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error) {
+    private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
+                               int promptTokens, int completionTokens) {
         boolean cancelled = redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId());
         AgentMessagePushDTO push = new AgentMessagePushDTO();
         push.setMessageId(message.getMessageId());
@@ -198,6 +246,8 @@ public class AgentChatComponent {
 
         AgentMessage updateBean = new AgentMessage();
         updateBean.setAssistantMessage(answer);
+        updateBean.setPromptTokens(promptTokens);
+        updateBean.setCompletionTokens(completionTokens);
         updateBean.setUpdateTime(new Date());
         String errorInfo = extractError(error);
 
@@ -280,16 +330,18 @@ public class AgentChatComponent {
         agentSessionService.updateAgentSessionBySessionId(updateBean, session.getSessionId());
     }
 
-    private String buildSystemPrompt(String stage) {
-        String stageDesc = "未知学段";
-        for (StageEnum item : StageEnum.values()) {
-            if (item.getCode().equals(stage)) {
-                stageDesc = item.getDesc();
-                break;
-            }
+    private String mapIntentToBizType(String intent) {
+        if (intent == null) {
+            return null;
         }
-        return "你是 K12 人工智能通识课的 AI 助教。学生当前学段：" + stageDesc
-                + "。请使用适合该学段的语言和深度回答，讲解清晰、鼓励式、不编造知识，始终使用中文回答。";
+        return switch (intent) {
+            case "RECOMMEND" -> "RESOURCE_LIST";
+            case "QUIZ" -> "QUIZ";
+            case "PICTURE_BOOK" -> "PICTURE_BOOK";
+            case "ANIMATION" -> "ANIMATION";
+            case "CODING" -> "CODE";
+            default -> null;
+        };
     }
 
     private String generateId() {
