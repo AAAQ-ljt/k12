@@ -1,6 +1,8 @@
 package com.nexora.admin.controller;
 
 import com.nexora.admin.dto.ResourceMoveDTO;
+import com.nexora.admin.service.ResourceUploadService;
+import com.nexora.admin.vo.ResourceUploadSessionVO;
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.po.ResourceInfo;
@@ -40,6 +42,9 @@ public class ResourceInfoController extends ABaseController {
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private ResourceUploadService resourceUploadService;
 
     @Value("${project.folder}")
     private String projectFolder;
@@ -93,6 +98,31 @@ public class ResourceInfoController extends ABaseController {
         bean.setCreateTime(new Date());
         bean.setUpdateTime(new Date());
         resourceInfoService.add(bean);
+        return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 创建分片上传会话
+     */
+    @PostMapping("/prepareUpload")
+    public ResponseVO<ResourceUploadSessionVO> prepareUpload(@RequestParam String resourceName,
+                                                             @RequestParam String resourceType,
+                                                             @RequestParam String fileName,
+                                                             @RequestParam Long fileSize,
+                                                             @RequestParam(required = false) String directoryId,
+                                                             @RequestParam(required = false) String stage) {
+        return getSuccessResponseVO(resourceUploadService.prepare(resourceName, resourceType, fileName,
+                fileSize, directoryId, stage));
+    }
+
+    /**
+     * 上传分片，最后一片由后端自动触发合并
+     */
+    @PostMapping("/uploadShard")
+    public ResponseVO<Void> uploadShard(@RequestParam String uploadId,
+                                        @RequestParam Integer shardIndex,
+                                        @RequestParam("file") MultipartFile file) {
+        resourceUploadService.uploadShard(uploadId, shardIndex, file);
         return getSuccessResponseVO(null);
     }
 

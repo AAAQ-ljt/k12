@@ -139,4 +139,60 @@ public class RedisComponent {
     public void setString(String key, String value, long timeout, TimeUnit unit) {
         redisTemplate.opsForValue().set(key, value, timeout, unit);
     }
+
+    /**
+     * 保存对象（统一 JSON 序列化）
+     */
+    public void setObject(String key, Object value, long timeout, TimeUnit unit) {
+        redisTemplate.opsForValue().set(key, value, timeout, unit);
+    }
+
+    /**
+     * 读取对象
+     */
+    public Object getObject(String key) {
+        return redisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * 不存在时写入并返回 true，用于分片合并等幂等标记
+     */
+    public boolean setIfAbsent(String key, Object value, long timeout, TimeUnit unit) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, value, timeout, unit));
+    }
+
+    /**
+     * 删除指定 key
+     */
+    public void removeKey(String key) {
+        redisTemplate.delete(key);
+    }
+
+    /**
+     * 集合新增
+     */
+    public void addToSet(String key, Object value) {
+        redisTemplate.opsForSet().add(key, value);
+    }
+
+    /**
+     * 读取集合全部成员
+     */
+    public Set<Object> getSetMembers(String key) {
+        return redisTemplate.opsForSet().members(key);
+    }
+
+    /**
+     * 队列左侧写入
+     */
+    public void leftPush(String key, Object value) {
+        redisTemplate.opsForList().leftPush(key, value);
+    }
+
+    /**
+     * 队列右侧弹出
+     */
+    public Object rightPop(String key) {
+        return redisTemplate.opsForList().rightPop(key);
+    }
 }

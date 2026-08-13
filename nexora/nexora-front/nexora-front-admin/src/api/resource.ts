@@ -40,6 +40,25 @@ export interface ResourceAddMetadata {
   directoryId?: string;
 }
 
+/** 分片上传会话 */
+export interface ResourceUploadSession {
+  uploadId: string;
+  resourceId: string;
+  shardSize: number;
+  totalShards: number;
+  uploadedShardIndexes: number[];
+}
+
+/** 创建分片上传会话参数 */
+export interface ResourcePrepareUploadParams {
+  resourceName: string;
+  resourceType: string;
+  fileName: string;
+  fileSize: number;
+  stage?: string;
+  directoryId?: string;
+}
+
 /** 分页加载资源列表 */
 export function loadDataList(query: ResourceInfoQuery): Promise<PageResult<ResourceInfo>> {
   return request.get('/resourceInfo/loadDataList', { params: query });
@@ -60,6 +79,22 @@ export function add(file: File, metadata: ResourceAddMetadata): Promise<void> {
   if (metadata.knowledgePointId) formData.append('knowledgePointId', metadata.knowledgePointId);
   if (metadata.directoryId) formData.append('directoryId', metadata.directoryId);
   return request.post('/resourceInfo/add', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
+/** 创建分片上传会话 */
+export function prepareUpload(params: ResourcePrepareUploadParams): Promise<ResourceUploadSession> {
+  return request.post('/resourceInfo/prepareUpload', null, { params });
+}
+
+/** 上传单个分片 */
+export function uploadShard(uploadId: string, shardIndex: number, file: Blob, fileName: string): Promise<void> {
+  const formData = new FormData();
+  formData.append('uploadId', uploadId);
+  formData.append('shardIndex', String(shardIndex));
+  formData.append('file', file, fileName);
+  return request.post('/resourceInfo/uploadShard', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 }

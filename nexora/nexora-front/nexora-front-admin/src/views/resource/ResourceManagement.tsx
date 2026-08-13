@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
 import {
   App,
@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Progress,
   Select,
   Space,
   Table,
@@ -20,6 +21,12 @@ import {
 } from 'antd';
 import {
   BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  Clock3,
+  CloudUpload,
   Download,
   Eye,
   FileText,
@@ -52,10 +59,11 @@ import {
   type ResourceDirectory,
 } from '@/api/resourceDirectory';
 import {
-  add as addResource,
   del as delResource,
   loadDataList,
   moveResources,
+  prepareUpload,
+  uploadShard,
   type ResourceInfo,
   type ResourceInfoQuery,
 } from '@/api/resource';
@@ -66,6 +74,20 @@ interface DirNode {
   title: string;
   sort: number;
   children?: DirNode[];
+}
+
+interface UploadJob {
+  id: string;
+  file: File;
+  resourceName: string;
+  resourceType: string;
+  stage?: string;
+  directoryId?: string;
+  status: 'waiting' | 'uploading' | 'done' | 'error';
+  progress: number;
+  uploadedShards: number;
+  totalShards: number;
+  error?: string;
 }
 
 function formatBytes(bytes?: number): string {
@@ -147,6 +169,9 @@ export default function ResourceManagement() {
   const [moveForm] = Form.useForm();
   const [uploadForm] = Form.useForm();
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
+  const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(true);
+  const activeUploadsRef = useRef(0);
 
   const treeData = useMemo<DirNode[]>(() => {
     const roots = buildTree(dirList);
@@ -348,27 +373,106 @@ export default function ResourceManagement() {
     setUploadModalOpen(true);
   };
 
+  const updateUploadJob = (id: string, patch: Partial<UploadJob>) => {
+    setUploadJobs((prev) => prev.map((job) => (job.id === id ? { ...job, ...patch } : job)));
+  };
+
+  const uploadOneJob = async (job: UploadJob) => {
+    try {
+      updateUploadJob(job.id, { status: 'uploading', progress: 0 });
+      const session = await prepareUpload({
+        resourceName: job.resourceName,
+        resourceType: job.resourceType,
+        fileName: job.file.name,
+        fileSize: job.file.size,
+        directoryId: job.directoryId,
+        stage: job.stage,
+      });
+      await loadFiles();
+      const uploaded = new Set(session.uploadedShardIndexes ?? []);
+      let done = uploaded.size;
+      updateUploadJob(job.id, {
+        uploadedShards: done,
+        totalShards: session.totalShards,
+        progress: session.totalShards > 0 ? Math.round((done / session.totalShards) * 100) : 100,
+      });
+      for (let index = 0; index < session.totalShards; index += 1) {
+        if (uploaded.has(index)) continue;
+        const start = index * session.shardSize;
+        const end = Math.min(job.file.size, start + session.shardSize);
+        await uploadShard(
+          session.uploadId,
+          index,
+          job.file.slice(start, end),
+          `${job.file.name}.part${index}`,
+        );
+        done += 1;
+        updateUploadJob(job.id, {
+          uploadedShards: done,
+          progress: Math.round((done / session.totalShards) * 100),
+        });
+      }
+      updateUploadJob(job.id, { status: 'done', progress: 100 });
+      await loadFiles();
+    } catch (error) {
+      updateUploadJob(job.id, {
+        status: 'error',
+        error: error instanceof Error ? error.message : '上传失败',
+      });
+    }
+  };
+
+  const startUploadQueue = (jobs: UploadJob[]) => {
+    setUploadJobs((prev) => [...prev, ...jobs]);
+    setUploadPanelOpen(true);
+    const pending = [...jobs];
+    const pump = () => {
+      while (activeUploadsRef.current < 5 && pending.length > 0) {
+        const job = pending.shift();
+        if (!job) break;
+        activeUploadsRef.current += 1;
+        void uploadOneJob(job).finally(() => {
+          activeUploadsRef.current -= 1;
+          pump();
+        });
+      }
+    };
+    pump();
+  };
+
   const handleUpload = async () => {
     try {
       const values = await uploadForm.validateFields();
-      const file = uploadFileList[0]?.originFileObj as File | undefined;
-      if (!file) {
+      const files = uploadFileList
+        .map((item) => item.originFileObj)
+        .filter((file): file is NonNullable<typeof file> => file != null);
+      if (files.length === 0) {
         message.warning('请先选择文件');
         return;
       }
-      await addResource(file, {
-        resourceName: values.fileName || file.name,
+      const jobs: UploadJob[] = files.map((file, index) => ({
+        id: `${Date.now()}-${index}`,
+        file,
+        resourceName: file.name,
         resourceType: values.fileType,
         directoryId: values.dir,
         stage: values.stage,
-      });
-      message.success('资源已上传');
+        status: 'waiting',
+        progress: 0,
+        uploadedShards: 0,
+        totalShards: 0,
+      }));
+      startUploadQueue(jobs);
       setUploadModalOpen(false);
       setUploadFileList([]);
-      await loadFiles();
+      message.success(`已开始上传 ${jobs.length} 个文件`);
     } catch {
       // 表单校验失败或接口错误时不关闭
     }
+  };
+
+  const clearFinishedUploads = () => {
+    setUploadJobs((prev) => prev.filter((job) => job.status === 'waiting' || job.status === 'uploading'));
   };
 
   const handleDeleteFile = async (resourceId: string) => {
@@ -650,7 +754,7 @@ export default function ResourceManagement() {
         <Form form={uploadForm} layout="vertical">
           <Form.Item label="选择文件" required>
             <Upload.Dragger
-              multiple={false}
+              multiple
               fileList={uploadFileList}
               beforeUpload={() => false}
               onChange={({ fileList }) => setUploadFileList(fileList)}
@@ -660,9 +764,6 @@ export default function ResourceManagement() {
               </p>
               <p className={styles.uploadText}>点击或拖拽文件到此处</p>
             </Upload.Dragger>
-          </Form.Item>
-          <Form.Item label="资源名称" name="fileName">
-            <Input placeholder="留空则使用文件名" maxLength={100} />
           </Form.Item>
           <Form.Item label="文件类型" name="fileType" rules={[{ required: true, message: '请选择文件类型' }]}>
             <Select options={RESOURCE_TYPE_OPTIONS} />
@@ -675,6 +776,76 @@ export default function ResourceManagement() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {uploadJobs.length > 0 && (
+        <div className={styles.uploadPanel}>
+          <div className={styles.uploadPanelHeader}>
+            <div className={styles.uploadPanelSummary}>
+              <CloudUpload size={15} />
+              <span>上传任务</span>
+              <span className={styles.uploadPanelCount}>
+                {uploadJobs.filter((job) => job.status === 'uploading' || job.status === 'waiting').length}
+                {' / '}
+                {uploadJobs.length}
+              </span>
+            </div>
+            <Space size={2}>
+              <Tooltip title="清理已完成">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<Trash2 size={14} />}
+                  onClick={clearFinishedUploads}
+                />
+              </Tooltip>
+              <Button
+                type="text"
+                size="small"
+                icon={uploadPanelOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                onClick={() => setUploadPanelOpen((open) => !open)}
+              />
+            </Space>
+          </div>
+          {uploadPanelOpen && (
+            <div className={styles.uploadPanelBody}>
+              {uploadJobs.map((job) => (
+                <div key={job.id} className={styles.uploadJob}>
+                  <div className={styles.uploadJobTitleRow}>
+                    {job.status === 'done' && (
+                      <CheckCircle2 size={14} className={styles.uploadStatusDone} />
+                    )}
+                    {job.status === 'error' && (
+                      <CircleAlert size={14} className={styles.uploadStatusError} />
+                    )}
+                    {(job.status === 'uploading' || job.status === 'waiting') && (
+                      <Clock3 size={14} className={styles.uploadStatusWaiting} />
+                    )}
+                    <span className={styles.uploadJobName}>{job.resourceName}</span>
+                    <span className={styles.uploadJobPercent}>{job.progress}%</span>
+                  </div>
+                  <Progress
+                    percent={job.progress}
+                    size="small"
+                    status={
+                      job.status === 'error'
+                        ? 'exception'
+                        : job.status === 'done'
+                          ? 'success'
+                          : 'active'
+                    }
+                  />
+                  <div className={styles.uploadJobMeta}>
+                    {job.status === 'waiting' && '等待上传'}
+                    {job.status === 'uploading' && `上传中 ${job.uploadedShards}/${job.totalShards} 分片`}
+                    {job.status === 'done' && '已完成'}
+                    {job.status === 'error' && (job.error ?? '上传失败')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

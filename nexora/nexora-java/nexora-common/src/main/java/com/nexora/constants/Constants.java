@@ -48,6 +48,26 @@ public class Constants {
     public static final String REDIS_KEY_PROMPT_TEMPLATE = "prompt_template:";
 
     /**
+     * Redis key 前缀：资源分片上传会话
+     */
+    public static final String REDIS_KEY_RESOURCE_UPLOAD_SESSION = "resource:upload:session:";
+
+    /**
+     * Redis key 前缀：资源分片上传已收分片集合
+     */
+    public static final String REDIS_KEY_RESOURCE_UPLOAD_SHARDS = "resource:upload:shards:";
+
+    /**
+     * Redis key 前缀：资源分片合并标记
+     */
+    public static final String REDIS_KEY_RESOURCE_UPLOAD_MERGED = "resource:upload:merged:";
+
+    /**
+     * Redis key：资源异步处理队列
+     */
+    public static final String REDIS_KEY_RESOURCE_UPLOAD_QUEUE = "resource:upload:queue";
+
+    /**
      * 心跳超时时间（秒）
      */
     public static final int HEART_BEAT_TIMEOUT = 30;
