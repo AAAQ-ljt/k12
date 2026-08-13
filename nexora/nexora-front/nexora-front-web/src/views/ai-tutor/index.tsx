@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Input, Segmented, Tag, Tooltip } from 'antd';
 import {
   BookOpen,
@@ -16,19 +16,33 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import {
+  cancelAgentMessage,
+  createAgentSession,
+  deleteAgentSession,
+  loadAgentHistory,
+  loadAgentSessionList,
+  sendAgentMessage,
+  type AgentMessageInfo,
+  type AgentPushMessage,
+  type AgentSessionInfo,
+} from '@/api/agent';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { getStageOption } from '@/types/common';
+import websocket from '@/utils/websocket';
 import styles from './index.module.scss';
 
 type MessageRole = 'user' | 'assistant';
-type ChatMode = 'chat' | 'animation' | 'picture_book';
+type ChatMode = 'chat' | 'animation';
 
 interface ChatMessage {
   id: string;
   role: MessageRole;
   content: string;
   time: string;
+  pending?: boolean;
+  cancelled?: boolean;
 }
 
 interface SessionItem {
@@ -56,6 +70,48 @@ function createMessage(role: MessageRole, content: string): ChatMessage {
   };
 }
 
+function formatTime(value?: string): string {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function mapSession(item: AgentSessionInfo): SessionItem {
+  return {
+    id: item.sessionId,
+    title: item.title || '新对话',
+    time: formatTime(item.lastMessageTime) || '刚刚',
+  };
+}
+
+function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
+  const result: ChatMessage[] = [];
+  list.forEach((item) => {
+    if (item.userMessage) {
+      result.push({
+        id: `${item.messageId}-user`,
+        role: 'user',
+        content: item.userMessage,
+        time: formatTime(item.createTime),
+      });
+    }
+    if (item.assistantMessage) {
+      result.push({
+        id: item.messageId,
+        role: 'assistant',
+        content: item.assistantMessage,
+        time: formatTime(item.updateTime || item.createTime),
+      });
+    }
+  });
+  return result;
+}
+
 export default function AiTutor() {
   const { message } = App.useApp();
   const token = useAuthStore((state) => state.token);
@@ -65,16 +121,80 @@ export default function AiTutor() {
   const [mode, setMode] = useState<ChatMode>('chat');
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [sessions, setSessions] = useState<SessionItem[]>([
-    { id: 'session-1', title: '新对话', time: '刚刚' },
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState('session-1');
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState('');
   const messagesRef = useRef<HTMLDivElement>(null);
 
   const stageOption = useMemo(() => {
     return userInfo?.stage ? getStageOption(userInfo.stage) : undefined;
   }, [userInfo?.stage]);
+
+  const handleAgentPush = useCallback((data: AgentPushMessage) => {
+    if (!data?.messageId) {
+      return;
+    }
+    setMessages((prev) =>
+      prev.map((item) => {
+        if (item.id !== data.messageId || item.role !== 'assistant' || item.cancelled) {
+          return item;
+        }
+        if (data.type === 'outputting') {
+          return { ...item, content: item.content + (data.content ?? ''), pending: false };
+        }
+        if (data.type === 'done') {
+          const nextContent = data.content && !item.content ? data.content : item.content;
+          return { ...item, content: nextContent, pending: false };
+        }
+        return {
+          ...item,
+          content: item.content || data.content || 'AI 生成失败，请稍后重试',
+          pending: false,
+        };
+      }),
+    );
+    if (data.type !== 'outputting') {
+      setStreaming(false);
+      setStreamingMessageId('');
+    }
+  }, []);
+
+  const loadSessionList = useCallback(async () => {
+    try {
+      const list = await loadAgentSessionList();
+      const items = list.map(mapSession);
+      setSessions(items);
+      if (items.length > 0) {
+        setActiveSessionId(items[0].id);
+        const history = await loadAgentHistory(items[0].id);
+        setMessages(mapHistory(history));
+      } else {
+        setActiveSessionId('');
+        setMessages([]);
+      }
+    } catch {
+      // 请求层已统一提示
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setSessions([]);
+      setMessages([]);
+      setActiveSessionId('');
+      setStreaming(false);
+      setStreamingMessageId('');
+      return;
+    }
+    websocket.connect(token);
+    websocket.onMessage('*', handleAgentPush);
+    void loadSessionList();
+    return () => {
+      websocket.offMessage('*', handleAgentPush);
+      websocket.disconnect();
+    };
+  }, [token, handleAgentPush, loadSessionList]);
 
   useEffect(() => {
     messagesRef.current?.scrollTo({
@@ -83,7 +203,7 @@ export default function AiTutor() {
     });
   }, [messages]);
 
-  const handleSend = (content?: string) => {
+  const handleSend = async (content?: string) => {
     const text = (content ?? input).trim();
     if (!text || streaming) {
       return;
@@ -93,38 +213,102 @@ export default function AiTutor() {
       return;
     }
 
-    setMessages((prev) => [...prev, createMessage('user', text)]);
     setInput('');
     setStreaming(true);
-
-    // TODO: 接入 /api/agent/sendMessage + websocket 流式增量
-    // 当前后端对话链路未完成，先用占位回复保证页面可交互
-    window.setTimeout(() => {
+    setMessages((prev) => [...prev, createMessage('user', text)]);
+    try {
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        const session = await createAgentSession();
+        sessionId = session.sessionId;
+        setActiveSessionId(sessionId);
+        setSessions((prev) => [mapSession(session), ...prev]);
+      }
+      const result = await sendAgentMessage({ sessionId, message: text });
+      setActiveSessionId(result.sessionId);
+      setStreamingMessageId(result.messageId);
       setMessages((prev) => [
         ...prev,
-        createMessage(
-          'assistant',
-          'AI 对话服务正在接入中。这里将展示流式回复、推荐材料卡片、动画讲解和练习卡片。',
-        ),
+        { id: result.messageId, role: 'assistant', content: '', time: '', pending: true },
       ]);
+    } catch {
       setStreaming(false);
-    }, 700);
+      setStreamingMessageId('');
+    }
   };
 
-  const handleNewChat = () => {
+  const handleCancel = async () => {
+    const messageId = streamingMessageId;
+    if (!messageId) {
+      setStreaming(false);
+      return;
+    }
+    try {
+      await cancelAgentMessage(messageId);
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === messageId
+            ? {
+                ...item,
+                pending: false,
+                cancelled: true,
+                content: item.content + (item.content ? '\n\n（已停止生成）' : '已停止生成'),
+              }
+            : item,
+        ),
+      );
+      message.info('已停止生成');
+    } catch {
+      setStreaming(false);
+      setStreamingMessageId('');
+    }
+  };
+
+  const handleNewChat = async () => {
+    if (!token) {
+      openLoginModal();
+      return;
+    }
+    if (streaming) {
+      return;
+    }
+    try {
+      const session = await createAgentSession();
+      setSessions((prev) => [mapSession(session), ...prev]);
+      setActiveSessionId(session.sessionId);
+      setMessages([]);
+    } catch {
+      // 请求层已统一提示
+    }
+  };
+
+  const handleSelectSession = async (sessionId: string) => {
+    if (streaming || sessionId === activeSessionId) {
+      return;
+    }
+    setActiveSessionId(sessionId);
     setMessages([]);
-    setActiveSessionId(`session-${Date.now()}`);
-    setSessions((prev) => [
-      { id: `session-${Date.now()}`, title: '新对话', time: '刚刚' },
-      ...prev,
-    ]);
+    try {
+      const history = await loadAgentHistory(sessionId);
+      setMessages(mapHistory(history));
+    } catch {
+      setMessages([]);
+    }
   };
 
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
+    if (streaming && sessionId === activeSessionId) {
+      return;
+    }
+    try {
+      await deleteAgentSession(sessionId);
+    } catch {
+      return;
+    }
     setSessions((prev) => prev.filter((item) => item.id !== sessionId));
     if (activeSessionId === sessionId) {
       setMessages([]);
-      setActiveSessionId(sessions[0]?.id ?? '');
+      setActiveSessionId('');
     }
   };
 
@@ -137,7 +321,7 @@ export default function AiTutor() {
             <span>对话记录</span>
           </div>
           <Tooltip title="新建对话">
-            <Button type="text" icon={<Plus size={16} />} onClick={handleNewChat} />
+            <Button type="text" icon={<Plus size={16} />} onClick={() => void handleNewChat()} />
           </Tooltip>
         </div>
 
@@ -145,7 +329,7 @@ export default function AiTutor() {
           type="primary"
           block
           icon={<MessageSquare size={15} />}
-          onClick={handleNewChat}
+          onClick={() => void handleNewChat()}
           className={styles.newChatButton}
         >
           新建对话
@@ -159,7 +343,7 @@ export default function AiTutor() {
               <div
                 key={session.id}
                 className={`${styles.sessionItem} ${session.id === activeSessionId ? styles.sessionItemActive : ''}`}
-                onClick={() => setActiveSessionId(session.id)}
+                onClick={() => void handleSelectSession(session.id)}
               >
                 <MessageSquare size={15} />
                 <div className={styles.sessionMeta}>
@@ -173,7 +357,7 @@ export default function AiTutor() {
                     icon={<Trash2 size={14} />}
                     onClick={(event) => {
                       event.stopPropagation();
-                      handleDeleteSession(session.id);
+                      void handleDeleteSession(session.id);
                     }}
                   />
                 </Tooltip>
@@ -196,12 +380,12 @@ export default function AiTutor() {
             </div>
             <div>
               <div className={styles.modelName}>Nexora AI 助教</div>
-              <div className={styles.modelDesc}>K12 人工智能通识课智能教师</div>
+              <div className={styles.modelDesc}>K12 人工智能通识课智能教师 · 流式输出</div>
             </div>
           </div>
           <div className={styles.headerActions}>
             {stageOption ? <Tag color={stageOption.color}>{stageOption.label}</Tag> : null}
-            <Tag color="processing">流式对话待接入</Tag>
+            <Tag color="success">DeepSeek V4 Flash</Tag>
           </div>
         </header>
 
@@ -220,7 +404,7 @@ export default function AiTutor() {
                     className={styles.suggestionChip}
                     onClick={() => {
                       setMode(item.mode);
-                      handleSend(item.label);
+                      void handleSend(item.label);
                     }}
                   >
                     {item.mode === 'animation' ? <BookOpen size={15} /> : <Sparkles size={15} />}
@@ -241,6 +425,8 @@ export default function AiTutor() {
                   <div className={`${styles.messageBubble} ${item.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant}`}>
                     {item.role === 'user' ? (
                       <span className={styles.plainText}>{item.content}</span>
+                    ) : item.pending ? (
+                      <span className={styles.typingHint}>正在思考...</span>
                     ) : (
                       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                         {item.content}
@@ -267,11 +453,10 @@ export default function AiTutor() {
               options={[
                 { label: '自由对话', value: 'chat' },
                 { label: '动画讲解', value: 'animation' },
-                { label: '绘本', value: 'picture_book' },
               ]}
             />
             <div className={styles.composerHint}>
-              {mode === 'animation' ? '输入概念后将生成 SVG 动画讲解' : mode === 'picture_book' ? '输入主题后将生成互动绘本' : '输入问题开始学习'}
+              {mode === 'animation' ? '输入概念后将生成 SVG 动画讲解' : '输入问题开始学习'}
             </div>
           </div>
 
@@ -283,10 +468,10 @@ export default function AiTutor() {
                 onPressEnter={(event) => {
                   if (!event.shiftKey) {
                     event.preventDefault();
-                    handleSend();
+                    void handleSend();
                   }
                 }}
-                placeholder={mode === 'animation' ? '例如：冒泡排序' : mode === 'picture_book' ? '例如：太阳系之旅' : '输入你的问题...'}
+                placeholder={mode === 'animation' ? '例如：冒泡排序' : '输入你的问题...'}
                 autoSize={{ minRows: 1, maxRows: 5 }}
                 variant="borderless"
                 className={styles.composerInput}
@@ -296,10 +481,7 @@ export default function AiTutor() {
                   <Button
                     type="text"
                     icon={<Square size={18} />}
-                    onClick={() => {
-                      setStreaming(false);
-                      message.info('停止生成（待接入取消接口）');
-                    }}
+                    onClick={() => void handleCancel()}
                     className={styles.sendButton}
                   />
                 </Tooltip>
@@ -308,7 +490,7 @@ export default function AiTutor() {
                   <Button
                     type="primary"
                     icon={<Send size={17} />}
-                    onClick={() => handleSend()}
+                    onClick={() => void handleSend()}
                     className={styles.sendButton}
                   />
                 </Tooltip>

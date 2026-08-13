@@ -286,6 +286,11 @@
   white-space: pre-wrap;
 }
 
+.typingHint {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
 .messageTime {
   margin-top: 4px;
   font-size: var(--font-size-xs);

@@ -52,10 +52,16 @@ spring:
       api-key: ${NEXORA_AI_API_KEY:sk-xxx}   # 环境变量注入，禁止硬编码
       base-url: https://dashscope.aliyuncs.com/compatible-mode/
       chat:
-        completions-path: v1/chat/completions
+        api-key: ${NEXORA_DEEPSEEK_API_KEY:${NEXORA_AI_API_KEY:sk-xxx}}
+        base-url: https://api.deepseek.com
+        completions-path: /chat/completions
         options:
-          model: qwen3-32b
+          model: deepseek-v4-flash
+          reasoning-effort: high
       embedding:
+        api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_AI_API_KEY:sk-xxx}}
+        base-url: https://dashscope.aliyuncs.com/compatible-mode/
+        embeddings-path: /v1/embeddings
         options:
           model: text-embedding-v4
     mcp:

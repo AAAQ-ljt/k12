@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { App, Avatar, Button, Dropdown } from 'antd';
-import { Sparkles, MessageSquare, Route, BookOpen, Code, User, LogOut } from 'lucide-react';
+import { Sparkles, MessageSquare, Route, BookOpen, BookImage, Code, User, LogOut } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
@@ -21,6 +21,8 @@ const TABS: TabItem[] = [
   { path: '/profile', label: '我的', icon: User },
 ];
 
+const PICTURE_BOOK_TAB: TabItem = { path: '/picture-book', label: '绘本', icon: BookImage };
+
 export default function MainLayout() {
   const navigate = useNavigate();
   const { message } = App.useApp();
@@ -29,6 +31,7 @@ export default function MainLayout() {
   const clear = useAuthStore((state) => state.clear);
   const openLoginModal = useUiStore((state) => state.openLoginModal);
   const stageOption = userInfo ? getStageOption(userInfo.stage) : undefined;
+  const visibleTabs = userInfo?.stage === 'PRIMARY_LOW' ? [...TABS, PICTURE_BOOK_TAB] : TABS;
 
   /** 退出登录 */
   const handleLogout = async () => {
@@ -65,7 +68,7 @@ export default function MainLayout() {
         {/* B. Middle Navigation Area (中部导航区) */}
         <nav className="nav-section">
           <div className="nav-menu-list">
-            {TABS.map((tab) => {
+            {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <NavLink

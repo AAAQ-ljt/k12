@@ -7,6 +7,7 @@ import LearningPath from '@/views/learning-path';
 import CourseMaterial from '@/views/course-material';
 import Coding from '@/views/coding';
 import Profile from '@/views/profile';
+import PictureBook from '@/views/picture-book';
 
 const routes: RouteObject[] = [
   {
@@ -55,6 +56,7 @@ const routes: RouteObject[] = [
           </ProtectedRoute>
         ),
       },
+      { path: 'picture-book', element: <PictureBook /> },
       { path: '*', element: <Navigate to="/ai-tutor" replace /> },
     ],
   },

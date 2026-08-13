@@ -37,6 +37,10 @@ public class Constants {
      */
     public static final String REDIS_KEY_CHECK_CODE = "check_code:";
 
+    /**
+     * Redis key 前缀：AI 消息取消标记
+     */
+    public static final String REDIS_KEY_AI_CANCEL = "ai_cancel:";
 
     /**
      * 心跳超时时间（秒）

@@ -100,4 +100,28 @@ public class RedisComponent {
             redisTemplate.delete(Constants.REDIS_KEY_CHECK_CODE + checkCodeKey);
         }
     }
+
+    /**
+     * 保存 AI 消息取消标记（取消后异步流式任务会尽快停止）
+     */
+    public void saveCancelMessage(String userId, String messageId) {
+        String key = Constants.REDIS_KEY_AI_CANCEL + userId + ":" + messageId;
+        redisTemplate.opsForValue().set(key, "1", 30, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 判断 AI 消息是否已被取消
+     */
+    public boolean hasCancelMessage(String userId, String messageId) {
+        String key = Constants.REDIS_KEY_AI_CANCEL + userId + ":" + messageId;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    /**
+     * 清除 AI 消息取消标记
+     */
+    public void removeCancelMessage(String userId, String messageId) {
+        String key = Constants.REDIS_KEY_AI_CANCEL + userId + ":" + messageId;
+        redisTemplate.delete(key);
+    }
 }
