@@ -69,4 +69,9 @@ public interface ResourceInfoService {
 	 */
 	Integer deleteResourceInfoByResourceId(String resourceId);
 
+	/**
+	 * 批量更新所属目录
+	 */
+	Integer updateDirectoryBatch(List<ResourceInfo> list);
+
 }

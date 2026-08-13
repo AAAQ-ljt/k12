@@ -76,6 +76,11 @@ public class ResourceInfo implements Serializable {
 	private String knowledgePointId;
 
 	/**
+	 * 所属资源目录ID
+	 */
+	private String directoryId;
+
+	/**
 	 * 来源：0后台上传 1AI生成
 	 */
 	private Integer source;
@@ -199,6 +204,14 @@ public class ResourceInfo implements Serializable {
 
 	public String getKnowledgePointId(){
 		return this.knowledgePointId;
+	}
+
+	public void setDirectoryId(String directoryId){
+		this.directoryId = directoryId;
+	}
+
+	public String getDirectoryId(){
+		return this.directoryId;
 	}
 
 	public void setSource(Integer source){

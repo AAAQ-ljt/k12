@@ -10,6 +10,7 @@ export interface ResourceInfo {
   description?: string;
   filePath?: string;
   fileSize?: number;
+  directoryId?: string;
   cover?: string;
   duration?: number;
   hlsPath?: string;
@@ -27,6 +28,7 @@ export interface ResourceInfoQuery extends PageParam {
   resourceName?: string;
   resourceType?: string;
   stage?: string;
+  directoryId?: string;
 }
 
 /** 资源新增元数据 */
@@ -35,6 +37,7 @@ export interface ResourceAddMetadata {
   resourceType: string;
   stage?: string;
   knowledgePointId?: string;
+  directoryId?: string;
 }
 
 /** 分页加载资源列表 */
@@ -55,6 +58,7 @@ export function add(file: File, metadata: ResourceAddMetadata): Promise<void> {
   formData.append('resourceType', metadata.resourceType);
   if (metadata.stage) formData.append('stage', metadata.stage);
   if (metadata.knowledgePointId) formData.append('knowledgePointId', metadata.knowledgePointId);
+  if (metadata.directoryId) formData.append('directoryId', metadata.directoryId);
   return request.post('/resourceInfo/add', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
@@ -68,4 +72,9 @@ export function update(data: Partial<ResourceInfo>): Promise<void> {
 /** 删除资源 */
 export function del(resourceId: string): Promise<void> {
   return request.delete('/resourceInfo/del', { params: { resourceId } });
+}
+
+/** 批量转移文件目录 */
+export function moveResources(resourceIds: string[], directoryId: string): Promise<void> {
+  return request.put('/resourceInfo/move', { resourceIds, directoryId });
 }

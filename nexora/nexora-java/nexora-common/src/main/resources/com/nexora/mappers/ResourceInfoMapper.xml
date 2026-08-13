@@ -29,6 +29,8 @@
 		<result column="stage" property="stage"  />
 		<!--关联知识点【冗余：recommendResource工具按知识点直查】-->
 		<result column="knowledge_point_id" property="knowledgePointId"  />
+		<!--所属资源目录ID-->
+		<result column="directory_id" property="directoryId"  />
 		<!--来源：0后台上传 1AI生成-->
 		<result column="source" property="source"  />
 		<!--状态：0处理中 1可用 2失败-->
@@ -46,7 +48,7 @@
 	<sql id="base_column_list">
 		 r.resource_id,r.resource_name,r.resource_type,r.tags,r.description,
 		 r.file_path,r.file_size,r.cover,r.duration,r.hls_path,
-		 r.stage,r.knowledge_point_id,r.source,r.status,r.create_by,
+		 r.stage,r.knowledge_point_id,r.directory_id,r.source,r.status,r.create_by,
 		 r.create_time,r.update_time
 	</sql>
 
@@ -86,6 +88,9 @@
 			</if>
 			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
 				 and  r.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<if test="query.directoryId != null and query.directoryId!=''">
+				 and  r.directory_id = #{query.directoryId}
 			</if>
 			<if test="query.source != null">
 				 and  r.source = #{query.source}
@@ -209,6 +214,9 @@
 			<if test="bean.knowledgePointId != null">
 				 knowledge_point_id,
 			</if>
+			<if test="bean.directoryId != null">
+				 directory_id,
+			</if>
 			<if test="bean.source != null">
 				 source,
 			</if>
@@ -261,6 +269,9 @@
 			</if>
 			<if test="bean.knowledgePointId!=null">
 				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.directoryId!=null">
+				 #{bean.directoryId},
 			</if>
 			<if test="bean.source!=null">
 				 #{bean.source},
@@ -320,6 +331,9 @@
 			<if test="bean.knowledgePointId != null">
 				 knowledge_point_id,
 			</if>
+			<if test="bean.directoryId != null">
+				 directory_id,
+			</if>
 			<if test="bean.source != null">
 				 source,
 			</if>
@@ -372,6 +386,9 @@
 			</if>
 			<if test="bean.knowledgePointId!=null">
 				 #{bean.knowledgePointId},
+			</if>
+			<if test="bean.directoryId!=null">
+				 #{bean.directoryId},
 			</if>
 			<if test="bean.source!=null">
 				 #{bean.source},
@@ -427,6 +444,9 @@
 			<if test="bean.knowledgePointId!=null">
 				 knowledge_point_id = VALUES(knowledge_point_id),
 			</if>
+			<if test="bean.directoryId!=null">
+				 directory_id = VALUES(directory_id),
+			</if>
 			<if test="bean.source!=null">
 				 source = VALUES(source),
 			</if>
@@ -460,6 +480,7 @@
 			 hls_path,
 			 stage,
 			 knowledge_point_id,
+			 directory_id,
 			 source,
 			 status,
 			 create_by,
@@ -480,6 +501,7 @@
 				 #{item.hlsPath},
 				 #{item.stage},
 				 #{item.knowledgePointId},
+				 #{item.directoryId},
 				 #{item.source},
 				 #{item.status},
 				 #{item.createBy},
@@ -504,6 +526,7 @@
 			 hls_path,
 			 stage,
 			 knowledge_point_id,
+			 directory_id,
 			 source,
 			 status,
 			 create_by,
@@ -524,6 +547,7 @@
 				 #{item.hlsPath},
 				 #{item.stage},
 				 #{item.knowledgePointId},
+				 #{item.directoryId},
 				 #{item.source},
 				 #{item.status},
 				 #{item.createBy},
@@ -544,6 +568,7 @@
 			hls_path = VALUES(hls_path),
 			stage = VALUES(stage),
 			knowledge_point_id = VALUES(knowledge_point_id),
+			directory_id = VALUES(directory_id),
 			source = VALUES(source),
 			status = VALUES(status),
 			create_by = VALUES(create_by),
@@ -590,6 +615,9 @@
 			</if>
 			<if test="bean.knowledgePointId != null">
 				 knowledge_point_id = #{bean.knowledgePointId},
+			</if>
+			<if test="bean.directoryId != null">
+				 directory_id = #{bean.directoryId},
 			</if>
 			<if test="bean.source != null">
 				 source = #{bean.source},
@@ -653,6 +681,9 @@
 			<if test="bean.knowledgePointId != null">
 				 knowledge_point_id = #{bean.knowledgePointId},
 			</if>
+			<if test="bean.directoryId != null">
+				 directory_id = #{bean.directoryId},
+			</if>
 			<if test="bean.source != null">
 				 source = #{bean.source},
 			</if>
@@ -676,6 +707,13 @@
 	<delete id="deleteByResourceId">
 		delete from resource_info where resource_id=#{resourceId}
 	</delete>
+
+	<update id="updateDirectoryBatch">
+		<foreach collection="list" item="item" separator=";">
+			UPDATE resource_info SET directory_id = #{item.directoryId}, update_time = #{item.updateTime}
+			WHERE resource_id = #{item.resourceId}
+		</foreach>
+	</update>
 
 	<!-- 根据PrimaryKey获取对象-->
 	<select id="selectByResourceId" resultMap="base_result_map" >

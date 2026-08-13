@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.ResourceDirectoryMapper">
+
+    <resultMap id="base_result_map" type="com.nexora.entity.po.ResourceDirectory">
+        <id column="dir_id" property="dirId"/>
+        <result column="dir_name" property="dirName"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="sort" property="sort"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        d.dir_id,d.dir_name,d.parent_id,d.sort,
+        d.create_time,d.update_time
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.dirId != null and query.dirId!=''">
+            and d.dir_id = #{query.dirId}
+        </if>
+        <if test="query.dirName != null and query.dirName!=''">
+            and d.dir_name = #{query.dirName}
+        </if>
+        <if test="query.parentId != null and query.parentId!=''">
+            and d.parent_id = #{query.parentId}
+        </if>
+        <if test="query.sort != null">
+            and d.sort = #{query.sort}
+        </if>
+    </sql>
+
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.dirNameFuzzy!= null and query.dirNameFuzzy!=''">
+                and d.dir_name like concat('%', #{query.dirNameFuzzy}, '%')
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/> FROM resource_directory d
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM resource_directory d
+        <include refid="query_condition"/>
+    </select>
+
+    <insert id="insert" parameterType="com.nexora.entity.po.ResourceDirectory">
+        INSERT INTO resource_directory
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.dirId != null">dir_id,</if>
+            <if test="bean.dirName != null">dir_name,</if>
+            <if test="bean.parentId != null">parent_id,</if>
+            <if test="bean.sort != null">sort,</if>
+            <if test="bean.createTime != null">create_time,</if>
+            <if test="bean.updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.dirId!=null">#{bean.dirId},</if>
+            <if test="bean.dirName!=null">#{bean.dirName},</if>
+            <if test="bean.parentId!=null">#{bean.parentId},</if>
+            <if test="bean.sort!=null">#{bean.sort},</if>
+            <if test="bean.createTime!=null">#{bean.createTime},</if>
+            <if test="bean.updateTime!=null">#{bean.updateTime},</if>
+        </trim>
+    </insert>
+
+    <insert id="insertOrUpdate" parameterType="com.nexora.entity.po.ResourceDirectory">
+        INSERT INTO resource_directory
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.dirId != null">dir_id,</if>
+            <if test="bean.dirName != null">dir_name,</if>
+            <if test="bean.parentId != null">parent_id,</if>
+            <if test="bean.sort != null">sort,</if>
+            <if test="bean.createTime != null">create_time,</if>
+            <if test="bean.updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.dirId!=null">#{bean.dirId},</if>
+            <if test="bean.dirName!=null">#{bean.dirName},</if>
+            <if test="bean.parentId!=null">#{bean.parentId},</if>
+            <if test="bean.sort!=null">#{bean.sort},</if>
+            <if test="bean.createTime!=null">#{bean.createTime},</if>
+            <if test="bean.updateTime!=null">#{bean.updateTime},</if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.dirName!=null">dir_name = VALUES(dir_name),</if>
+            <if test="bean.parentId!=null">parent_id = VALUES(parent_id),</if>
+            <if test="bean.sort!=null">sort = VALUES(sort),</if>
+            <if test="bean.updateTime!=null">update_time = VALUES(update_time),</if>
+        </trim>
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO resource_directory (dir_id, dir_name, parent_id, sort, create_time, update_time) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.dirId},#{item.dirName},#{item.parentId},#{item.sort},#{item.createTime},#{item.updateTime})
+        </foreach>
+    </insert>
+
+    <insert id="insertOrUpdateBatch">
+        INSERT INTO resource_directory (dir_id, dir_name, parent_id, sort, create_time, update_time) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.dirId},#{item.dirName},#{item.parentId},#{item.sort},#{item.createTime},#{item.updateTime})
+        </foreach>
+        ON DUPLICATE KEY UPDATE dir_name = VALUES(dir_name), parent_id = VALUES(parent_id),
+        sort = VALUES(sort), update_time = VALUES(update_time)
+    </insert>
+
+    <update id="updateByParam">
+        UPDATE resource_directory d
+        <set>
+            <if test="bean.dirName != null">d.dir_name = #{bean.dirName},</if>
+            <if test="bean.parentId != null">d.parent_id = #{bean.parentId},</if>
+            <if test="bean.sort != null">d.sort = #{bean.sort},</if>
+            <if test="bean.updateTime != null">d.update_time = #{bean.updateTime},</if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <delete id="deleteByParam">
+        DELETE FROM resource_directory d
+        <include refid="query_condition"/>
+    </delete>
+
+    <select id="selectByDirId" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/> FROM resource_directory d WHERE d.dir_id = #{dirId}
+    </select>
+
+    <update id="updateByDirId">
+        UPDATE resource_directory d
+        <set>
+            <if test="bean.dirName != null">d.dir_name = #{bean.dirName},</if>
+            <if test="bean.parentId != null">d.parent_id = #{bean.parentId},</if>
+            <if test="bean.sort != null">d.sort = #{bean.sort},</if>
+            <if test="bean.updateTime != null">d.update_time = #{bean.updateTime},</if>
+        </set>
+        WHERE d.dir_id = #{dirId}
+    </update>
+
+    <delete id="deleteByDirId">
+        DELETE FROM resource_directory WHERE dir_id = #{dirId}
+    </delete>
+
+    <update id="updateSortBatch">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE resource_directory SET sort = #{item.sort} WHERE dir_id = #{item.dirId}
+        </foreach>
+    </update>
+</mapper>

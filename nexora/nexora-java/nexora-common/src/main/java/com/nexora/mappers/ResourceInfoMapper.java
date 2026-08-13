@@ -1,6 +1,9 @@
 package com.nexora.mappers;
 
+import com.nexora.entity.po.ResourceInfo;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * 资源信息表 数据库操作接口
@@ -24,5 +27,9 @@ public interface ResourceInfoMapper<T,P> extends BaseMapper<T,P> {
 	 */
 	 T selectByResourceId(@Param("resourceId") String resourceId);
 
+	/**
+	 * 批量更新所属目录
+	 */
+	 Integer updateDirectoryBatch(@Param("list") List<ResourceInfo> list);
 
 }

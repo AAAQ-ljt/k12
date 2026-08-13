@@ -91,6 +91,33 @@
   padding: 8px;
 }
 
+.dirTitle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.dirName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.dirTitle:hover .dirActions {
+  opacity: 1;
+}
+
 .tableWrap {
   flex: 1;
   min-height: 0;

@@ -1,17 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import {
   App,
+  Breadcrumb,
   Button,
   Form,
   Input,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Table,
+  Tooltip,
   Tree,
   Upload,
   type TableProps,
+  type TreeProps,
   type UploadFile,
 } from 'antd';
 import {
@@ -24,9 +28,11 @@ import {
   FolderPlus,
   Image,
   Move,
+  Pencil,
   Presentation,
   RotateCcw,
   Search,
+  Trash2,
   Upload as UploadIcon,
 } from 'lucide-react';
 import StageTag from '@/components/StageTag';
@@ -37,6 +43,22 @@ import {
   RESOURCE_TYPE_OPTIONS,
   STAGE_OPTIONS,
 } from '@/types/common';
+import {
+  addDirectory,
+  delDirectory,
+  getTree,
+  sortDirectory,
+  updateDirectory,
+  type ResourceDirectory,
+} from '@/api/resourceDirectory';
+import {
+  add as addResource,
+  del as delResource,
+  loadDataList,
+  moveResources,
+  type ResourceInfo,
+  type ResourceInfoQuery,
+} from '@/api/resource';
 import styles from './index.module.scss';
 
 interface DirNode {
@@ -45,204 +67,38 @@ interface DirNode {
   children?: DirNode[];
 }
 
-interface ResourceFile {
-  id: string;
-  name: string;
-  type: string;
-  dir: string;
-  sizeText: string;
-  stage: string;
-  status: number;
-  updateTime: string;
-  uploader: string;
-}
-
-const MOCK_DIRS: DirNode[] = [
-  {
-    key: 'root',
-    title: '全部资源',
-    children: [
-      {
-        key: 'primary-low',
-        title: '小学低年级',
-        children: [
-          { key: 'primary-low-picture', title: '绘本素材' },
-          { key: 'primary-low-animation', title: '趣味动画' },
-        ],
-      },
-      {
-        key: 'primary-high',
-        title: '小学高年级',
-        children: [
-          { key: 'primary-high-ppt', title: '课件PPT' },
-          { key: 'primary-high-doc', title: '知识文档' },
-        ],
-      },
-      {
-        key: 'junior',
-        title: '初中',
-        children: [
-          { key: 'junior-video', title: '视频课程' },
-          { key: 'junior-exercise', title: '习题资源' },
-        ],
-      },
-      {
-        key: 'senior',
-        title: '高中',
-        children: [
-          { key: 'senior-ppt', title: '神经网络课件' },
-          { key: 'senior-video', title: '视频课程' },
-          { key: 'senior-doc', title: '知识文档' },
-        ],
-      },
-      {
-        key: 'common',
-        title: '通用资料',
-        children: [
-          { key: 'common-manual', title: '操作手册' },
-          { key: 'common-template', title: '模板文件' },
-        ],
-      },
-    ],
-  },
-];
-
-const MOCK_FILES: ResourceFile[] = [
-  {
-    id: 'r001',
-    name: '神经网络入门.pptx',
-    type: 'PPT',
-    dir: 'senior-ppt',
-    sizeText: '18.6 MB',
-    stage: 'SENIOR',
-    status: 1,
-    updateTime: '2026-08-12 14:30',
-    uploader: 'admin',
-  },
-  {
-    id: 'r002',
-    name: '冒泡排序讲解.pptx',
-    type: 'PPT',
-    dir: 'senior-ppt',
-    sizeText: '12.2 MB',
-    stage: 'SENIOR',
-    status: 1,
-    updateTime: '2026-08-11 10:05',
-    uploader: 'admin',
-  },
-  {
-    id: 'r003',
-    name: 'AI 伦理案例集.pdf',
-    type: 'DOCUMENT',
-    dir: 'senior-doc',
-    sizeText: '3.8 MB',
-    stage: 'SENIOR',
-    status: 1,
-    updateTime: '2026-08-10 16:42',
-    uploader: 'admin',
-  },
-  {
-    id: 'r004',
-    name: '机器学习概念.pdf',
-    type: 'DOCUMENT',
-    dir: 'senior-doc',
-    sizeText: '5.1 MB',
-    stage: 'SENIOR',
-    status: 1,
-    updateTime: '2026-08-09 09:18',
-    uploader: 'admin',
-  },
-  {
-    id: 'r005',
-    name: 'Python 基础练习.docx',
-    type: 'WORD',
-    dir: 'junior-exercise',
-    sizeText: '1.4 MB',
-    stage: 'JUNIOR',
-    status: 1,
-    updateTime: '2026-08-08 11:26',
-    uploader: 'admin',
-  },
-  {
-    id: 'r006',
-    name: '计算机视觉导学.mp4',
-    type: 'VIDEO',
-    dir: 'senior-video',
-    sizeText: '256 MB',
-    stage: 'SENIOR',
-    status: 1,
-    updateTime: '2026-08-07 15:50',
-    uploader: 'admin',
-  },
-  {
-    id: 'r007',
-    name: '动画：感知机.mp4',
-    type: 'VIDEO',
-    dir: 'senior-video',
-    sizeText: '188 MB',
-    stage: 'SENIOR',
-    status: 0,
-    updateTime: '2026-08-06 17:12',
-    uploader: 'admin',
-  },
-  {
-    id: 'r008',
-    name: '小学 AI 启蒙绘本.pdf',
-    type: 'PICTURE_BOOK',
-    dir: 'primary-low-picture',
-    sizeText: '22.3 MB',
-    stage: 'PRIMARY_LOW',
-    status: 1,
-    updateTime: '2026-08-05 10:40',
-    uploader: 'admin',
-  },
-  {
-    id: 'r009',
-    name: '人脸识别原理.docx',
-    type: 'WORD',
-    dir: 'senior-doc',
-    sizeText: '2.6 MB',
-    stage: 'SENIOR',
-    status: 1,
-    updateTime: '2026-08-04 13:08',
-    uploader: 'admin',
-  },
-  {
-    id: 'r010',
-    name: '资源上传操作手册.md',
-    type: 'DOCUMENT',
-    dir: 'common-manual',
-    sizeText: '86 KB',
-    stage: '',
-    status: 1,
-    updateTime: '2026-08-03 09:30',
-    uploader: 'admin',
-  },
-];
-
-function formatBytes(bytes: number): string {
-  if (!bytes) return '0 B';
+function formatBytes(bytes?: number): string {
+  if (!bytes) return '-';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-function collectDirKeys(node: DirNode, result: string[] = []): string[] {
-  result.push(node.key);
-  node.children?.forEach((child) => collectDirKeys(child, result));
-  return result;
+function buildTree(list: ResourceDirectory[]): DirNode[] {
+  const map = new Map<string, DirNode>();
+  list.forEach((item) => {
+    map.set(item.dirId, { key: item.dirId, title: item.dirName, children: [] });
+  });
+  const roots: DirNode[] = [];
+  list.forEach((item) => {
+    const node = map.get(item.dirId);
+    if (!node) return;
+    if (item.parentId === '0' || !map.has(item.parentId)) {
+      roots.push(node);
+    } else {
+      map.get(item.parentId)?.children?.push(node);
+    }
+  });
+  return roots;
 }
 
-function findDirTitle(nodes: DirNode[], key: string): string {
-  for (const node of nodes) {
-    if (node.key === key) return node.title;
-    if (node.children) {
-      const child = findDirTitle(node.children, key);
-      if (child) return child;
-    }
-  }
-  return '全部资源';
+function findDirPath(list: ResourceDirectory[], dirId: string): ResourceDirectory[] {
+  if (!dirId || dirId === 'root') return [];
+  const current = list.find((item) => item.dirId === dirId);
+  if (!current) return [];
+  const parentPath = current.parentId === '0' ? [] : findDirPath(list, current.parentId);
+  return [...parentPath, current];
 }
 
 function typeIcon(type: string) {
@@ -265,13 +121,18 @@ function typeIcon(type: string) {
 
 export default function ResourceManagement() {
   const { message } = App.useApp();
-  const [dirs, setDirs] = useState<DirNode[]>(MOCK_DIRS);
-  const [files, setFiles] = useState<ResourceFile[]>(MOCK_FILES);
+  const [dirList, setDirList] = useState<ResourceDirectory[]>([]);
+  const [files, setFiles] = useState<ResourceInfo[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
   const [selectedDir, setSelectedDir] = useState('root');
-  const [nameKeyword, setNameKeyword] = useState('');
-  const [typeKeyword, setTypeKeyword] = useState<string | undefined>(undefined);
+  const [nameInput, setNameInput] = useState('');
+  const [typeDraft, setTypeDraft] = useState<string | undefined>(undefined);
+  const [appliedName, setAppliedName] = useState('');
+  const [appliedType, setAppliedType] = useState<string | undefined>(undefined);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [dirModalOpen, setDirModalOpen] = useState(false);
+  const [dirModalMode, setDirModalMode] = useState<'create' | 'rename' | 'createSub'>('create');
+  const [editingDir, setEditingDir] = useState<ResourceDirectory | null>(null);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [dirForm] = Form.useForm();
@@ -279,30 +140,10 @@ export default function ResourceManagement() {
   const [uploadForm] = Form.useForm();
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
 
-  const allDirKeys = useMemo(() => collectDirKeys({ key: 'root', title: '全部资源', children: dirs[0]?.children }), [dirs]);
-  const scopedDirKeys = useMemo(() => {
-    const findNode = (nodes: DirNode[], key: string): DirNode | null => {
-      for (const node of nodes) {
-        if (node.key === key) return node;
-        if (node.children) {
-          const found = findNode(node.children, key);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-    const node = findNode(dirs, selectedDir);
-    return node ? collectDirKeys(node) : [selectedDir];
-  }, [dirs, selectedDir]);
-
-  const filteredFiles = useMemo(() => {
-    return files.filter((file) => {
-      const inDir = selectedDir === 'root' || scopedDirKeys.includes(file.dir);
-      const nameMatched = !nameKeyword || file.name.toLowerCase().includes(nameKeyword.toLowerCase());
-      const typeMatched = !typeKeyword || file.type === typeKeyword;
-      return inDir && nameMatched && typeMatched;
-    });
-  }, [files, nameKeyword, scopedDirKeys, selectedDir, typeKeyword]);
+  const treeData = useMemo<DirNode[]>(() => {
+    const roots = buildTree(dirList);
+    return [{ key: 'root', title: '全部资源', children: roots }];
+  }, [dirList]);
 
   const dirOptions = useMemo(() => {
     const flat: { label: string; value: string }[] = [];
@@ -313,44 +154,143 @@ export default function ResourceManagement() {
         if (node.children) walk(node.children, label);
       });
     };
-    walk(dirs);
+    walk(treeData);
     return flat;
-  }, [dirs]);
+  }, [treeData]);
 
-  const currentDirTitle = findDirTitle(dirs, selectedDir);
+  const breadcrumbItems = useMemo(() => {
+    const items = [{ title: '全部资源' }];
+    findDirPath(dirList, selectedDir).forEach((dir) => items.push({ title: dir.dirName }));
+    return items;
+  }, [dirList, selectedDir]);
+
+  const loadTree = useCallback(async () => {
+    try {
+      const list = await getTree();
+      setDirList(list);
+    } catch {
+      // 错误已由请求拦截器统一提示
+    }
+  }, []);
+
+  const loadFiles = useCallback(async () => {
+    setLoadingFiles(true);
+    try {
+      const query: ResourceInfoQuery = {
+        pageNo: 1,
+        pageSize: 100,
+        resourceName: appliedName || undefined,
+        resourceType: appliedType,
+        directoryId: selectedDir === 'root' ? undefined : selectedDir,
+      };
+      const result = await loadDataList(query);
+      setFiles(result.list);
+    } catch {
+      // 错误已由请求拦截器统一提示
+    } finally {
+      setLoadingFiles(false);
+    }
+  }, [appliedName, appliedType, selectedDir]);
+
+  useEffect(() => {
+    loadTree();
+  }, [loadTree]);
+
+  useEffect(() => {
+    loadFiles();
+  }, [loadFiles]);
+
+  const handleSearch = () => {
+    setAppliedName(nameInput.trim());
+    setAppliedType(typeDraft);
+  };
 
   const handleReset = () => {
-    setNameKeyword('');
-    setTypeKeyword(undefined);
+    setNameInput('');
+    setTypeDraft(undefined);
+    setAppliedName('');
+    setAppliedType(undefined);
     setSelectedDir('root');
   };
 
-  const openCreateDir = () => {
+  const openCreateDir = (parentId = selectedDir) => {
+    setDirModalMode(parentId === selectedDir ? 'create' : 'createSub');
+    setEditingDir(null);
     dirForm.resetFields();
-    dirForm.setFieldsValue({ parentDir: selectedDir });
+    dirForm.setFieldsValue({ dirName: '', parentDir: parentId });
     setDirModalOpen(true);
   };
 
-  const handleCreateDir = async () => {
+  const openRenameDir = (dir: ResourceDirectory) => {
+    setDirModalMode('rename');
+    setEditingDir(dir);
+    dirForm.resetFields();
+    dirForm.setFieldsValue({ dirName: dir.dirName });
+    setDirModalOpen(true);
+  };
+
+  const handleDirOk = async () => {
     try {
       const values = await dirForm.validateFields();
-      const key = `dir-${Date.now()}`;
-      const addNode = (nodes: DirNode[], parentKey: string): DirNode[] => {
-        return nodes.map((node) => {
-          if (node.key === parentKey) {
-            return {
-              ...node,
-              children: [...(node.children ?? []), { key, title: values.dirName }],
-            };
-          }
-          return node.children ? { ...node, children: addNode(node.children, parentKey) } : node;
-        });
-      };
-      setDirs((prev) => addNode(prev, values.parentDir));
+      if (dirModalMode === 'rename' && editingDir) {
+        await updateDirectory({ dirId: editingDir.dirId, dirName: values.dirName });
+        message.success('目录已重命名');
+      } else {
+        await addDirectory({ dirName: values.dirName, parentId: values.parentDir || '0' });
+        message.success(`目录「${values.dirName}」已创建`);
+      }
       setDirModalOpen(false);
-      message.success(`目录「${values.dirName}」已创建`);
+      await loadTree();
     } catch {
-      // 表单校验失败时不关闭弹窗
+      // 表单校验失败或接口错误时不关闭
+    }
+  };
+
+  const handleDeleteDir = async (dirId: string) => {
+    try {
+      await delDirectory(dirId);
+      message.success('目录已删除');
+      if (selectedDir === dirId) {
+        setSelectedDir('root');
+      }
+      await loadTree();
+    } catch {
+      // 错误已由请求拦截器统一提示
+    }
+  };
+
+  const handleTreeDrop: TreeProps['onDrop'] = async (info) => {
+    const dragKey = String(info.dragNode.key);
+    const dropKey = String(info.node.key);
+    if (!info.dropToGap) {
+      message.warning('仅支持同级排序，不能放入目录内部');
+      return;
+    }
+    const dragDir = dirList.find((item) => item.dirId === dragKey);
+    const dropDir = dirList.find((item) => item.dirId === dropKey);
+    const parentId = dragDir?.parentId ?? '0';
+    if (!dragDir || !dropDir || dropDir.parentId !== parentId) {
+      message.warning('仅支持同级排序，不能跨级别拖拽');
+      return;
+    }
+    const siblings = dirList
+      .filter((item) => item.parentId === parentId)
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+      .map((item) => item.dirId);
+    const from = siblings.indexOf(dragKey);
+    if (from >= 0) siblings.splice(from, 1);
+    const to = siblings.indexOf(dropKey);
+    if (info.dropPosition === -1) {
+      siblings.splice(to, 0, dragKey);
+    } else {
+      siblings.splice(to + 1, 0, dragKey);
+    }
+    try {
+      await sortDirectory(parentId, siblings);
+      message.success('目录排序已保存');
+      await loadTree();
+    } catch {
+      // 错误已由请求拦截器统一提示
     }
   };
 
@@ -367,14 +307,13 @@ export default function ResourceManagement() {
   const handleMove = async () => {
     try {
       const values = await moveForm.validateFields();
-      setFiles((prev) => prev.map((file) => (
-        selectedRowKeys.includes(file.id) ? { ...file, dir: values.targetDir } : file
-      )));
+      await moveResources(selectedRowKeys.map(String), values.targetDir);
+      message.success(`已转移 ${selectedRowKeys.length} 个文件`);
       setMoveModalOpen(false);
       setSelectedRowKeys([]);
-      message.success(`已转移 ${selectedRowKeys.length} 个文件`);
+      await loadFiles();
     } catch {
-      // 表单校验失败时不关闭弹窗
+      // 表单校验失败或接口错误时不关闭
     }
   };
 
@@ -389,61 +328,74 @@ export default function ResourceManagement() {
     try {
       const values = await uploadForm.validateFields();
       const file = uploadFileList[0]?.originFileObj as File | undefined;
-      const newFile: ResourceFile = {
-        id: `r-${Date.now()}`,
-        name: values.fileName || file?.name || '未命名资源',
-        type: values.fileType,
-        dir: values.dir,
-        sizeText: file ? formatBytes(file.size) : '0 KB',
-        stage: values.stage ?? '',
-        status: 1,
-        updateTime: '2026-08-13 20:00',
-        uploader: 'admin',
-      };
-      setFiles((prev) => [newFile, ...prev]);
+      if (!file) {
+        message.warning('请先选择文件');
+        return;
+      }
+      await addResource(file, {
+        resourceName: values.fileName || file.name,
+        resourceType: values.fileType,
+        directoryId: values.dir,
+        stage: values.stage,
+      });
+      message.success('资源已上传');
       setUploadModalOpen(false);
       setUploadFileList([]);
-      message.success(`资源「${newFile.name}」已上传`);
+      await loadFiles();
     } catch {
-      // 表单校验失败时不关闭弹窗
+      // 表单校验失败或接口错误时不关闭
     }
   };
 
-  const columns: TableProps<ResourceFile>['columns'] = [
+  const handleDeleteFile = async (resourceId: string) => {
+    try {
+      await delResource(resourceId);
+      message.success('资源已删除');
+      await loadFiles();
+    } catch {
+      // 错误已由请求拦截器统一提示
+    }
+  };
+
+  const columns: TableProps<ResourceInfo>['columns'] = [
     {
       title: '资源名称',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'resourceName',
+      key: 'resourceName',
       ellipsis: true,
       render: (_, record) => (
         <span className={styles.typeCell}>
-          {typeIcon(record.type)}
-          <span>{record.name}</span>
+          {typeIcon(record.resourceType)}
+          <span>{record.resourceName}</span>
         </span>
       ),
     },
     {
       title: '类型',
-      dataIndex: 'type',
-      key: 'type',
+      dataIndex: 'resourceType',
+      key: 'resourceType',
       width: 110,
       render: (_, record) => (
-        <StatusTag status={record.type} statusMap={RESOURCE_TYPE_MAP} />
+        <StatusTag status={record.resourceType} statusMap={RESOURCE_TYPE_MAP} />
       ),
     },
     {
       title: '大小',
-      dataIndex: 'sizeText',
-      key: 'sizeText',
+      dataIndex: 'fileSize',
+      key: 'fileSize',
       width: 110,
+      render: (_, record) => formatBytes(record.fileSize),
     },
     {
       title: '所属目录',
-      dataIndex: 'dir',
-      key: 'dir',
+      dataIndex: 'directoryId',
+      key: 'directoryId',
       width: 170,
       ellipsis: true,
-      render: (_, record) => findDirTitle(dirs, record.dir),
+      render: (_, record) => {
+        const dir = dirList.find((item) => item.dirId === record.directoryId);
+        return dir?.dirName ?? '未分类';
+      },
     },
     {
       title: '学段',
@@ -470,8 +422,8 @@ export default function ResourceManagement() {
     {
       title: '操作',
       key: 'action',
-      width: 130,
-      render: () => (
+      width: 170,
+      render: (_, record) => (
         <Space size="small">
           <Button type="link" size="small" icon={<Eye size={13} />} onClick={() => message.info('静态演示：预览')}>
             预览
@@ -479,6 +431,11 @@ export default function ResourceManagement() {
           <Button type="link" size="small" icon={<Download size={13} />} onClick={() => message.info('静态演示：下载')}>
             下载
           </Button>
+          <Popconfirm title="确认删除该资源？" onConfirm={() => handleDeleteFile(record.resourceId)}>
+            <Button type="link" size="small" danger icon={<Trash2 size={13} />}>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -489,22 +446,22 @@ export default function ResourceManagement() {
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <Input
-            value={nameKeyword}
-            onChange={(e) => setNameKeyword(e.target.value)}
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
             placeholder="资源名称"
             allowClear
             prefix={<Search size={14} />}
             className={styles.nameInput}
           />
           <Select
-            value={typeKeyword}
-            onChange={setTypeKeyword}
+            value={typeDraft}
+            onChange={setTypeDraft}
             placeholder="文件类型"
             allowClear
             options={RESOURCE_TYPE_OPTIONS}
             className={styles.typeSelect}
           />
-          <Button type="primary" icon={<Search size={14} />} onClick={() => message.success('筛选已生效')}>
+          <Button type="primary" icon={<Search size={14} />} onClick={handleSearch}>
             查询
           </Button>
           <Button icon={<RotateCcw size={14} />} onClick={handleReset}>
@@ -512,7 +469,7 @@ export default function ResourceManagement() {
           </Button>
         </div>
         <div className={styles.toolbarRight}>
-          <Button icon={<FolderPlus size={14} />} onClick={openCreateDir}>
+          <Button icon={<FolderPlus size={14} />} onClick={() => openCreateDir()}>
             新建目录
           </Button>
           <Button icon={<Move size={14} />} onClick={openMove}>
@@ -528,17 +485,73 @@ export default function ResourceManagement() {
         <aside className={styles.treePanel}>
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>目录结构</span>
-            <span className={styles.panelMeta}>{allDirKeys.length - 1} 个目录</span>
+            <span className={styles.panelMeta}>{dirList.length} 个目录</span>
           </div>
           <div className={styles.treeContent}>
             <Tree.DirectoryTree
-              treeData={dirs}
+              treeData={treeData}
               selectedKeys={[selectedDir]}
               onSelect={(keys) => {
                 if (keys.length > 0) setSelectedDir(String(keys[0]));
               }}
               defaultExpandAll
-              showIcon
+              draggable
+              allowDrop={({ dropNode, dragNode, dropPosition }) => {
+                if (dropPosition === 0 || String(dropNode.key) === 'root') return false;
+                const drag = dirList.find((item) => item.dirId === String(dragNode.key));
+                const drop = dirList.find((item) => item.dirId === String(dropNode.key));
+                return !!drag && !!drop && drag.parentId === drop.parentId;
+              }}
+              onDrop={handleTreeDrop}
+              titleRender={(node) => {
+                if (String(node.key) === 'root') {
+                  return <span>{node.title as string}</span>;
+                }
+                return (
+                  <span className={styles.dirTitle}>
+                    <span className={styles.dirName}>{node.title as string}</span>
+                    <span className={styles.dirActions}>
+                      <Tooltip title="新建子目录">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<FolderPlus size={13} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCreateDir(String(node.key));
+                          }}
+                        />
+                      </Tooltip>
+                      <Tooltip title="重命名">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Pencil size={13} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const dir = dirList.find((item) => item.dirId === String(node.key));
+                            if (dir) openRenameDir(dir);
+                          }}
+                        />
+                      </Tooltip>
+                      <Popconfirm
+                        title="确认删除该目录？"
+                        onConfirm={() => handleDeleteDir(String(node.key))}
+                      >
+                        <Tooltip title="删除">
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<Trash2 size={13} />}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Tooltip>
+                      </Popconfirm>
+                    </span>
+                  </span>
+                );
+              }}
             />
           </div>
         </aside>
@@ -547,18 +560,19 @@ export default function ResourceManagement() {
           <div className={styles.fileHeader}>
             <div className={styles.fileHeaderLeft}>
               <span className={styles.panelTitle}>文件列表</span>
-              <span className={styles.panelMeta}>{filteredFiles.length} 个文件</span>
+              <span className={styles.panelMeta}>{files.length} 个文件</span>
             </div>
             <div className={styles.fileHeaderRight}>
               <FolderOpen size={14} />
-              <span>当前目录：{currentDirTitle}</span>
+              <Breadcrumb items={breadcrumbItems} />
             </div>
           </div>
           <div className={styles.tableWrap}>
-            <Table<ResourceFile>
+            <Table<ResourceInfo>
               columns={columns}
-              dataSource={filteredFiles}
-              rowKey="id"
+              dataSource={files}
+              loading={loadingFiles}
+              rowKey="resourceId"
               pagination={false}
               rowSelection={{
                 selectedRowKeys,
@@ -571,18 +585,20 @@ export default function ResourceManagement() {
       </div>
 
       <Modal
-        title="新建目录"
+        title={dirModalMode === 'rename' ? '重命名目录' : '新建目录'}
         open={dirModalOpen}
         onCancel={() => setDirModalOpen(false)}
-        onOk={() => void handleCreateDir()}
+        onOk={() => void handleDirOk()}
       >
         <Form form={dirForm} layout="vertical">
           <Form.Item label="目录名称" name="dirName" rules={[{ required: true, message: '请输入目录名称' }]}>
             <Input placeholder="例如：机器学习课件" maxLength={50} />
           </Form.Item>
-          <Form.Item label="上级目录" name="parentDir" rules={[{ required: true, message: '请选择上级目录' }]}>
-            <Select options={dirOptions} />
-          </Form.Item>
+          {dirModalMode !== 'rename' && (
+            <Form.Item label="上级目录" name="parentDir" rules={[{ required: true, message: '请选择上级目录' }]}>
+              <Select options={dirOptions} />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
 
@@ -608,11 +624,7 @@ export default function ResourceManagement() {
         width={560}
       >
         <Form form={uploadForm} layout="vertical">
-          <Form.Item
-            label="选择文件"
-            required
-            extra="静态演示阶段仅记录文件信息，不会真正上传"
-          >
+          <Form.Item label="选择文件" required>
             <Upload.Dragger
               multiple={false}
               fileList={uploadFileList}

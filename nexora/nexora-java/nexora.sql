@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS resource_info (
   hls_path VARCHAR(255) DEFAULT NULL COMMENT 'HLS转码产物地址',
   stage VARCHAR(20) DEFAULT NULL COMMENT '归属学段，可空',
   knowledge_point_id VARCHAR(32) DEFAULT NULL COMMENT '关联知识点【冗余：recommendResource工具按知识点直查】',
+  directory_id VARCHAR(32) DEFAULT NULL COMMENT '所属资源目录ID',
   source TINYINT NOT NULL DEFAULT 0 COMMENT '来源：0后台上传 1AI生成',
   status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0处理中 1可用 2失败',
   create_by INT DEFAULT NULL COMMENT '上传人',
@@ -190,8 +191,20 @@ CREATE TABLE IF NOT EXISTS resource_info (
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (resource_id),
   KEY idx_type_status (resource_type, status),
-  KEY idx_knowledge_point_id (knowledge_point_id)
+  KEY idx_knowledge_point_id (knowledge_point_id),
+  KEY idx_directory_id (directory_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='资源信息表';
+
+CREATE TABLE IF NOT EXISTS resource_directory (
+  dir_id VARCHAR(32) NOT NULL COMMENT '目录ID',
+  dir_name VARCHAR(100) NOT NULL COMMENT '目录名称',
+  parent_id VARCHAR(32) NOT NULL DEFAULT '0' COMMENT '上级目录ID，0表示顶级目录',
+  sort INT NOT NULL DEFAULT 0 COMMENT '同级排序',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (dir_id),
+  KEY idx_parent_sort (parent_id, sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='资源目录表';
 
 -- ------------------------------------------------------------
 -- 2.4 知识点域（2表）

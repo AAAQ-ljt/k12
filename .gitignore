@@ -47,6 +47,7 @@ desktop.ini
 # ===== 运行时产物（资源上传临时目录 / 分片文件 / 转码产物）=====
 resource/temp/
 resource/files/
+nexora/resource/
 
 # ===== 注意：以下内容需要提交，勿加入忽略 =====
 # AGENTS.md、.codex/skills/（项目约束体系）、nexora/docs/（设计文档）、

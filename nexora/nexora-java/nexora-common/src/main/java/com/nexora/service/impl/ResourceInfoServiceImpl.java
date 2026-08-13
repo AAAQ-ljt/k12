@@ -127,4 +127,15 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
 	public Integer deleteResourceInfoByResourceId(String resourceId) {
 		return this.resourceInfoMapper.deleteByResourceId(resourceId);
 	}
+
+	/**
+	 * 批量更新所属目录
+	 */
+	@Override
+	public Integer updateDirectoryBatch(List<ResourceInfo> list) {
+		if (list == null || list.isEmpty()) {
+			return 0;
+		}
+		return this.resourceInfoMapper.updateDirectoryBatch(list);
+	}
 }
