@@ -57,7 +57,7 @@ public class ResourceDirectoryController extends ABaseController {
         if (StringTools.isEmpty(bean.getDirName())) {
             throw new BusinessException("目录名称不能为空");
         }
-        if (StringTools.isEmpty(bean.getParentId())) {
+        if (StringTools.isEmpty(bean.getParentId()) || "root".equals(bean.getParentId())) {
             bean.setParentId("0");
         }
         ResourceDirectoryQuery query = new ResourceDirectoryQuery();

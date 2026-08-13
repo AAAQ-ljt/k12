@@ -244,7 +244,8 @@ export default function ResourceManagement() {
         await updateDirectory({ dirId: editingDir.dirId, dirName: values.dirName });
         message.success('目录已重命名');
       } else {
-        await addDirectory({ dirName: values.dirName, parentId: values.parentDir || '0' });
+        const parentId = values.parentDir === 'root' ? '0' : values.parentDir;
+        await addDirectory({ dirName: values.dirName, parentId });
         message.success(`目录「${values.dirName}」已创建`);
       }
       setDirModalOpen(false);
@@ -281,6 +282,9 @@ export default function ResourceManagement() {
       message.warning('仅支持同级排序，不能跨级别拖拽');
       return;
     }
+    const posParts = String(info.node.pos ?? '').split('-');
+    const dropIndex = Number(posParts[posParts.length - 1] ?? 0);
+    const relativeDropPosition = info.dropPosition - dropIndex;
     const siblings = dirList
       .filter((item) => item.parentId === parentId)
       .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
@@ -288,7 +292,7 @@ export default function ResourceManagement() {
     const from = siblings.indexOf(dragKey);
     if (from >= 0) siblings.splice(from, 1);
     const to = siblings.indexOf(dropKey);
-    if (info.dropPosition === -1) {
+    if (relativeDropPosition <= 0) {
       siblings.splice(to, 0, dragKey);
     } else {
       siblings.splice(to + 1, 0, dragKey);
