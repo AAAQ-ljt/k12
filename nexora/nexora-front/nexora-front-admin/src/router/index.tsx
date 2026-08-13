@@ -5,7 +5,7 @@ import Login from '@/views/login';
 import Dashboard from '@/views/dashboard';
 import UserManagement from '@/views/user/UserManagement';
 import CourseManagement from '@/views/course/CourseManagement';
-import ResourceManagement from '@/views/course/ResourceManagement';
+import ResourceManagement from '@/views/resource/ResourceManagement';
 import KnowledgeDoc from '@/views/knowledge/KnowledgeDoc';
 import KnowledgePoint from '@/views/knowledge/KnowledgePoint';
 import VectorStatus from '@/views/knowledge/VectorStatus';
@@ -49,6 +49,10 @@ export const router = createBrowserRouter([
         element: <UserManagement />,
       },
       {
+        path: 'resource',
+        element: <ResourceManagement />,
+      },
+      {
         path: 'course',
         children: [
           {
@@ -61,7 +65,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'resource',
-            element: <ResourceManagement />,
+            element: <Navigate to="/resource" replace />,
           },
         ],
       },

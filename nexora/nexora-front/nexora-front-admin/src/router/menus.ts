@@ -22,13 +22,19 @@ export const menus: MenuConfig[] = [
     menuCode: 'user',
   },
   {
+    key: 'resource',
+    label: '资源管理',
+    icon: 'FolderOpen',
+    path: '/resource',
+    menuCode: 'resource',
+  },
+  {
     key: 'course',
     label: '课程管理',
     icon: 'BookOpen',
     path: '/course',
     children: [
       { key: 'course:list', label: '课程体系', path: '/course/list', menuCode: 'course:list' },
-      { key: 'course:resource', label: '资源管理', path: '/course/resource', menuCode: 'course:resource' },
     ],
   },
   {
