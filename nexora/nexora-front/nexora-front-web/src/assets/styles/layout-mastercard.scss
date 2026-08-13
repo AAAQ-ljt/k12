@@ -214,10 +214,6 @@
       margin-bottom: 2px;
     }
     
-    .user-stage {
-      font-size: var(--font-size-xs);
-      color: var(--text-tertiary);
-    }
   }
 }
 
@@ -251,7 +247,7 @@
     align-items: center;
     gap: var(--space-md);
     
-    .stage-badge {
+    .grade-badge {
       display: inline-flex;
       align-items: center;
       padding: 4px 12px;

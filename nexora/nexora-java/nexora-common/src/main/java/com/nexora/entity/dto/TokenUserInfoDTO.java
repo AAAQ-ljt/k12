@@ -25,6 +25,11 @@ public class TokenUserInfoDTO implements Serializable {
     private String stage;
 
     /**
+     * 年级（如三年级）
+     */
+    private String grade;
+
+    /**
      * 角色类型：0 管理员 / 1 学生
      */
     private Integer roleType;

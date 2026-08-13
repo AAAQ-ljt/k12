@@ -1,7 +1,7 @@
 import { Avatar, Card, Descriptions, Select, App } from 'antd';
 import { useAuthStore } from '@/stores/auth';
-import { STAGE_OPTIONS } from '@/types/common';
-import { updateStudentStage } from '@/api/auth';
+import { GRADE_OPTIONS, gradeToStage } from '@/types/common';
+import { updateStudentGrade } from '@/api/auth';
 import styles from './index.module.scss';
 
 export default function Profile() {
@@ -9,14 +9,14 @@ export default function Profile() {
   const setUserInfo = useAuthStore((state) => state.setUserInfo);
   const { message } = App.useApp();
 
-  /** 修改学段（方案 B） */
-  const handleStageChange = async (stage: string) => {
+  /** 修改年级（学段由年级推导） */
+  const handleGradeChange = async (grade: string) => {
     try {
-      await updateStudentStage(stage);
+      await updateStudentGrade(grade);
       if (userInfo) {
-        setUserInfo({ ...userInfo, stage });
+        setUserInfo({ ...userInfo, grade, stage: gradeToStage(grade) ?? userInfo.stage });
       }
-      message.success('学段已更新');
+      message.success('年级已更新');
     } catch {
       // 错误已由请求拦截器统一提示
     }
@@ -35,12 +35,12 @@ export default function Profile() {
           </div>
         </div>
         <Descriptions column={1} bordered size="small">
-          <Descriptions.Item label="学段">
+          <Descriptions.Item label="年级">
             <Select
-              value={userInfo?.stage}
-              onChange={handleStageChange}
+              value={userInfo?.grade}
+              onChange={handleGradeChange}
               style={{ width: 200 }}
-              options={[...STAGE_OPTIONS]}
+              options={[...GRADE_OPTIONS]}
             />
           </Descriptions.Item>
           <Descriptions.Item label="角色">学生</Descriptions.Item>

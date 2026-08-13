@@ -1,1 +1,9 @@
-trusted_projects = ["d:\dev\ai\k12"]
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+web_search = "live"
+model_verbosity = "high"
+[projects.'d:\dev\ai\k12']
+trust_level = "trusted"
+
+[sandbox_workspace_write]
+network_access = true

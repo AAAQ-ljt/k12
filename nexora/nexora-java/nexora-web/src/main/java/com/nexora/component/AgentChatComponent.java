@@ -181,16 +181,16 @@ public class AgentChatComponent {
                             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
                         }
                     })
-                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true))
-                    .doOnError(error -> finishMessage(user, message, answer.toString(), false))
+                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true, null))
+                    .doOnError(error -> finishMessage(user, message, answer.toString(), false, error))
                     .subscribe();
         } catch (Exception e) {
             log.error("AI 对话流式调用失败", e);
-            finishMessage(user, message, answer.toString(), false);
+            finishMessage(user, message, answer.toString(), false, e);
         }
     }
 
-    private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed) {
+    private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error) {
         boolean cancelled = redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId());
         AgentMessagePushDTO push = new AgentMessagePushDTO();
         push.setMessageId(message.getMessageId());
@@ -199,6 +199,7 @@ public class AgentChatComponent {
         AgentMessage updateBean = new AgentMessage();
         updateBean.setAssistantMessage(answer);
         updateBean.setUpdateTime(new Date());
+        String errorInfo = extractError(error);
 
         if (cancelled) {
             push.setType("done");
@@ -214,12 +215,23 @@ public class AgentChatComponent {
             updateBean.setStatus(1);
         } else {
             push.setType("error");
-            push.setContent(StringTools.isEmpty(answer) ? "AI 生成失败，请稍后重试" : answer);
+            push.setContent(StringTools.isEmpty(answer) ? "AI 生成失败：" + errorInfo : answer);
             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
             updateBean.setStatus(3);
-            updateBean.setErrorInfo("AI 调用失败");
+            updateBean.setErrorInfo(errorInfo);
         }
         agentMessageService.updateAgentMessageByMessageId(updateBean, message.getMessageId());
+    }
+
+    private String extractError(Throwable error) {
+        if (error == null) {
+            return "AI 调用失败";
+        }
+        String detail = error.getMessage();
+        if (StringTools.isEmpty(detail)) {
+            return "AI 调用失败";
+        }
+        return detail.length() > 200 ? detail.substring(0, 200) : detail;
     }
 
     private List<Message> buildHistory(String userId, String sessionId, String currentMessageId) {

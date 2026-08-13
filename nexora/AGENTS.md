@@ -71,7 +71,7 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 - 学习记录：服务端记录学习时长、视频时间点；前端按课时恢复播放进度。
 - 学习路径：学生可自建学习分类，AI 生成主线 + 兴趣分支路径；已掌握知识点按遗忘曲线间隔（1/3/7/15 天）自动排复习节点，快测未过回炉"进行中"。
 - AI 回复链路：先意图路由 → 教学动作走 MCP 工具 → 知识问答走 RAG → 其余走通用对话；回复必须流式。
-- AI 模型分工（已确认）：对话 / 意图路由 / SVG 动画 / 编程辅助 / 学习路径生成 = DeepSeek API（`NEXORA_DEEPSEEK_API_KEY`）；知识向量化 = 阿里百炼 text-embedding-v4（`NEXORA_DASHSCOPE_API_KEY`）；绘本插图 = 阿里百炼文生图（`NEXORA_DASHSCOPE_API_KEY`）。
+- AI 模型分工（已确认）：对话 / 意图路由 / SVG 动画 / 编程辅助 / 学习路径生成 = DeepSeek API（`NEXORA_DEEPSEEK_API_KEY`）；知识向量化 = 阿里百炼 qwen3.7-text-embedding（`NEXORA_DASHSCOPE_API_KEY`）；绘本插图 = 阿里百炼 qwen-image-3.0（`NEXORA_DASHSCOPE_API_KEY`）。
 - MCP 工具：只做教学域操作（查课程 / 查进度 / 查掌握度 / 出题 / 批改 / 记录进度 / 规划路径 / 推荐资源），入参校验，返回结构化字符串。
 
 # 字段与返回约定

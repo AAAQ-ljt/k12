@@ -11,6 +11,8 @@ public class StudentRegisterRequest {
 
     private String password;
 
+    private String grade;
+
     private String checkCodeKey;
 
     private String checkCode;
@@ -37,6 +39,14 @@ public class StudentRegisterRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getGrade() {
+        return grade;
+    }
+
+    public void setGrade(String grade) {
+        this.grade = grade;
     }
 
     public String getCheckCodeKey() {

@@ -53,8 +53,8 @@ Controller → Biz → Service → Mapper → 数据库
 # AI 调用规范（nexora-web）
 
 - **模型接入**：Spring AI ChatClient（OpenAI 兼容协议）。对话模型 = DeepSeek API（`NEXORA_DEEPSEEK_API_KEY`，负责对话 / RAG 回答 / SVG 动画 / 编程辅助 / 学习路径生成）；api-key / base-url 走环境变量或外部配置，禁止硬编码。
-- **Embedding**：阿里百炼 text-embedding-v4（`NEXORA_DASHSCOPE_API_KEY`，维度与 ES 索引一致，默认 1024）；向量库用 ES VectorStore。
-- **文生图（绘本）**：阿里百炼文生图（`NEXORA_DASHSCOPE_API_KEY`），低年级绘本插图。
+- **Embedding**：阿里百炼 qwen3.7-text-embedding（`NEXORA_DASHSCOPE_API_KEY`，维度与 ES 索引一致，默认 1024）；向量库用 ES VectorStore。
+- **文生图（绘本）**：阿里百炼 qwen-image-3.0（`NEXORA_DASHSCOPE_API_KEY`），低年级绘本插图。
 - **意图路由**：统一 `UserIntent` 结构（intent / data / stage），先路由再执行；路由失败兜底 CHAT。
 - **流式输出**：回复必须流式，经 Netty WebSocket 消息推送组件（MessageHandler / ChannelContextUtils，借鉴 easymall）下发增量；前端可取消（`cancelMessage`）。
 - **WebSocket 推送**：学生端 Netty WebSocket 服务（独立端口 6062），登录后携带 token 连接，按 userId 路由消息；发送消息走 HTTP，回复经 WS 推送。

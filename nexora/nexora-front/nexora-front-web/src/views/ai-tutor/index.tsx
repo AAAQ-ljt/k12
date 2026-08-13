@@ -29,7 +29,7 @@ import {
 } from '@/api/agent';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
-import { getStageOption } from '@/types/common';
+import { getGradeText, getStageOption } from '@/types/common';
 import websocket from '@/utils/websocket';
 import styles from './index.module.scss';
 
@@ -384,7 +384,7 @@ export default function AiTutor() {
             </div>
           </div>
           <div className={styles.headerActions}>
-            {stageOption ? <Tag color={stageOption.color}>{stageOption.label}</Tag> : null}
+            {userInfo ? <Tag color={stageOption?.color}>{getGradeText(userInfo)}</Tag> : null}
             <Tag color="success">DeepSeek V4 Flash</Tag>
           </div>
         </header>

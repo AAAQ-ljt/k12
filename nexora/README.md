@@ -78,9 +78,13 @@ npm install && npm run dev    # http://localhost:3000
 
 | 变量名 | 说明 |
 |--------|------|
-| `NEXORA_AI_API_KEY` | 阿里百炼 API Key（大模型调用） |
+| `NEXORA_DEEPSEEK_API_KEY` | DeepSeek API Key（日常对话） |
+| `NEXORA_EMBEDDING_API_KEY` | 阿里百炼 API Key（知识向量化，qwen3.7-text-embedding） |
+| `NEXORA_IMAGE_API_KEY` | 阿里百炼 API Key（绘本插图，qwen-image-3.0） |
 | `NEXORA_MAIL_USERNAME` | 邮箱账号 |
 | `NEXORA_MAIL_PASSWORD` | 邮箱授权码 |
+
+详细配置方法见 `docs/AI环境变量配置.md`。
 
 ## 演示账号
 

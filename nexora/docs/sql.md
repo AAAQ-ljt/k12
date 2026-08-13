@@ -559,7 +559,7 @@
 - system_menu / system_role_menu：管理端菜单与权限编码。
 - prompt_template：各学段 × 各意图的默认提示词。
 - system_config 默认配置项：
-  - AI_MODEL 组：`text_image_model` = `wanx-v1`、`embedding_model` = `text-embedding-v4`
+  - AI_MODEL 组：`text_image_model` = `qwen-image-3.0`、`embedding_model` = `qwen3.7-text-embedding`
   - RAG 组：`top_k` = `5`（INT）、`similarity_threshold` = `0.7`（FLOAT）
   - PYODIDE 组：`pyodide_packages` = `pandas,numpy,matplotlib`（STRING）
   - SYSTEM 组：`intent_route_rules` = JSON（意图路由规则）

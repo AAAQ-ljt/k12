@@ -67,9 +67,18 @@ class WebSocketManager {
     this.manualClose = true;
     this.stopHeartbeat();
     this.clearReconnectTimer();
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    const socket = this.ws;
+    this.ws = null;
+    if (!socket) {
+      return;
+    }
+    if (socket.readyState === WebSocket.CONNECTING) {
+      socket.onopen = () => socket.close();
+      socket.onerror = null;
+      socket.onclose = null;
+      socket.onmessage = null;
+    } else {
+      socket.close();
     }
   }
 

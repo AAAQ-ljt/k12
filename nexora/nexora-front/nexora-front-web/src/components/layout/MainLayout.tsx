@@ -5,7 +5,7 @@ import type { ComponentType } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { studentLogout } from '@/api/auth';
-import { getStageOption } from '@/types/common';
+import { getGradeText, getStageOption } from '@/types/common';
 
 interface TabItem {
   path: string;
@@ -31,7 +31,9 @@ export default function MainLayout() {
   const clear = useAuthStore((state) => state.clear);
   const openLoginModal = useUiStore((state) => state.openLoginModal);
   const stageOption = userInfo ? getStageOption(userInfo.stage) : undefined;
-  const visibleTabs = userInfo?.stage === 'PRIMARY_LOW' ? [...TABS, PICTURE_BOOK_TAB] : TABS;
+  const visibleTabs = userInfo?.stage === 'PRIMARY_LOW'
+    ? [TABS[0], PICTURE_BOOK_TAB, ...TABS.slice(1)]
+    : TABS;
 
   /** 退出登录 */
   const handleLogout = async () => {
@@ -110,7 +112,6 @@ export default function MainLayout() {
                 </Avatar>
                 <div className="user-info">
                   <div className="user-name">{userInfo?.username ?? '同学'}</div>
-                  <div className="user-stage">{stageOption?.label || ''}</div>
                 </div>
               </div>
             </Dropdown>
@@ -130,9 +131,9 @@ export default function MainLayout() {
             K12 AI 通识课教学平台
           </div>
           <div className="header-actions">
-            {stageOption && (
-              <span className="stage-badge" style={{ '--stage-color': stageOption.color } as React.CSSProperties}>
-                {stageOption.label}
+            {(userInfo?.grade || stageOption) && (
+              <span className="grade-badge" style={{ '--stage-color': stageOption?.color } as React.CSSProperties}>
+                {getGradeText(userInfo)}
               </span>
             )}
           </div>

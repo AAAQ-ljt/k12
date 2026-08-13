@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Modal, Form, Input, Button, App } from 'antd';
+import { Modal, Form, Input, Select, Button, App } from 'antd';
 import { useUiStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
 import { studentCheckCode, studentLogin, studentRegister } from '@/api/auth';
 import type { LoginParams, RegisterParams } from '@/api/auth';
+import { GRADE_OPTIONS } from '@/types/common';
 import styles from './LoginModal.module.scss';
 
 type Mode = 'login' | 'register';
@@ -77,6 +78,7 @@ export default function LoginModal() {
         username: values.username,
         email: values.email,
         password: values.password,
+        grade: values.grade,
         checkCodeKey,
         checkCode: values.checkCode,
       };
@@ -105,6 +107,11 @@ export default function LoginModal() {
         {mode === 'register' && (
           <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
             <Input placeholder="请输入用户名" maxLength={50} />
+          </Form.Item>
+        )}
+        {mode === 'register' && (
+          <Form.Item name="grade" label="年级" rules={[{ required: true, message: '请选择年级' }]}>
+            <Select placeholder="请选择年级" options={GRADE_OPTIONS} />
           </Form.Item>
         )}
         <Form.Item

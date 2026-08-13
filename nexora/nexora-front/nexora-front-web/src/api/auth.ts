@@ -20,6 +20,7 @@ export interface RegisterParams {
   username: string;
   email: string;
   password: string;
+  grade: string;
   checkCodeKey: string;
   checkCode: string;
 }
@@ -55,7 +56,7 @@ export function getStudentInfo(): Promise<UserInfo> {
   return get('/studentInfo/getUserInfo');
 }
 
-/** 修改学段 */
-export function updateStudentStage(stage: string): Promise<void> {
-  return put('/studentInfo/updateStage', undefined, { params: { stage } });
+/** 修改年级 */
+export function updateStudentGrade(grade: string): Promise<void> {
+  return put('/studentInfo/updateGrade', undefined, { params: { grade } });
 }

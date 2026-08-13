@@ -89,8 +89,16 @@ public class StudentAccountController extends ABaseController {
             userInfo.setPassword(StringTools.encodeByMD5(request.getPassword()));
             userInfo.setNickName(request.getUsername());
             userInfo.setRoleType(Constants.ROLE_STUDENT);
-            // 注册默认小学低年级，可在「我的」页修改（方案 B）
-            userInfo.setStage(StageEnum.PRIMARY_LOW.getCode());
+            // 注册通过年级推导学段，与后台新增用户规则一致
+            if (StringTools.isEmpty(request.getGrade())) {
+                throw new BusinessException("请选择年级");
+            }
+            String stage = StageEnum.matchByGrade(request.getGrade());
+            if (stage == null) {
+                throw new BusinessException("非法的年级");
+            }
+            userInfo.setGrade(request.getGrade());
+            userInfo.setStage(stage);
             userInfo.setStatus(Constants.STATUS_ENABLE);
             userInfo.setCreateTime(new Date());
             userInfoService.add(userInfo);
@@ -151,16 +159,28 @@ public class StudentAccountController extends ABaseController {
      */
     @GetMapping("/getUserInfo")
     public ResponseVO<TokenUserInfoDTO> getUserInfo() {
-        return getSuccessResponseVO(LoginUserContext.get());
+        TokenUserInfoDTO current = LoginUserContext.get();
+        if (current != null && current.getUserId() != null) {
+            UserInfo userInfo = userInfoService.getUserInfoByUserId(current.getUserId());
+            if (userInfo != null) {
+                current.setGrade(userInfo.getGrade());
+                current.setStage(userInfo.getStage());
+                if (current.getToken() != null) {
+                    redisComponent.saveTokenInfo(current.getToken(), current);
+                }
+            }
+        }
+        return getSuccessResponseVO(current);
     }
 
     /**
-     * 修改学段（方案 B：默认小学低年级，可在「我的」页修改）
+     * 修改年级（学段由年级推导，与注册/后台新增规则一致）
      */
-    @PutMapping("/updateStage")
-    public ResponseVO<Void> updateStage(@RequestParam String stage) {
-        if (!StageEnum.isValid(stage)) {
-            throw new BusinessException("非法的学段");
+    @PutMapping("/updateGrade")
+    public ResponseVO<Void> updateGrade(@RequestParam String grade) {
+        String stage = StageEnum.matchByGrade(grade);
+        if (stage == null) {
+            throw new BusinessException("非法的年级");
         }
         TokenUserInfoDTO current = LoginUserContext.get();
         if (current == null) {
@@ -169,11 +189,13 @@ public class StudentAccountController extends ABaseController {
 
         // 更新数据库
         UserInfo updateBean = new UserInfo();
+        updateBean.setGrade(grade);
         updateBean.setStage(stage);
         updateBean.setUpdateTime(new Date());
         userInfoService.updateUserInfoByUserId(updateBean, current.getUserId());
 
         // 同步 Redis 登录态
+        current.setGrade(grade);
         current.setStage(stage);
         redisComponent.saveTokenInfo(current.getToken(), current);
         return getSuccessResponseVO(null);
@@ -191,6 +213,7 @@ public class StudentAccountController extends ABaseController {
         tokenUserInfoDTO.setEmail(userInfo.getEmail());
         tokenUserInfoDTO.setAvatar(userInfo.getAvatar());
         tokenUserInfoDTO.setStage(userInfo.getStage());
+        tokenUserInfoDTO.setGrade(userInfo.getGrade());
         tokenUserInfoDTO.setRoleType(userInfo.getRoleType());
         tokenUserInfoDTO.setToken(token);
         redisComponent.saveTokenInfo(token, tokenUserInfoDTO);
