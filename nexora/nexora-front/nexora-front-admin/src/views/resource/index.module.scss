@@ -98,9 +98,12 @@
   width: 100%;
   min-width: 0;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .dirName {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -109,6 +112,7 @@
 .dirActions {
   display: inline-flex;
   align-items: center;
+  flex: none;
   gap: 2px;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -116,6 +120,23 @@
 
 .dirTitle:hover .dirActions {
   opacity: 1;
+}
+
+.treeContent :global(.ant-tree-node-content-wrapper) {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.treeContent :global(.ant-tree-iconEle) {
+  flex: none;
+}
+
+.treeContent :global(.ant-tree-title) {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .tableWrap {

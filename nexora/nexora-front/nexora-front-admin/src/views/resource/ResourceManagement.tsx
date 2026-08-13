@@ -64,6 +64,7 @@ import styles from './index.module.scss';
 interface DirNode {
   key: string;
   title: string;
+  sort: number;
   children?: DirNode[];
 }
 
@@ -78,7 +79,12 @@ function formatBytes(bytes?: number): string {
 function buildTree(list: ResourceDirectory[]): DirNode[] {
   const map = new Map<string, DirNode>();
   list.forEach((item) => {
-    map.set(item.dirId, { key: item.dirId, title: item.dirName, children: [] });
+    map.set(item.dirId, {
+      key: item.dirId,
+      title: item.dirName,
+      sort: item.sort ?? 0,
+      children: [],
+    });
   });
   const roots: DirNode[] = [];
   list.forEach((item) => {
@@ -90,6 +96,8 @@ function buildTree(list: ResourceDirectory[]): DirNode[] {
       map.get(item.parentId)?.children?.push(node);
     }
   });
+  roots.sort((a, b) => a.sort - b.sort);
+  map.forEach((node) => node.children?.sort((a, b) => a.sort - b.sort));
   return roots;
 }
 
@@ -142,7 +150,7 @@ export default function ResourceManagement() {
 
   const treeData = useMemo<DirNode[]>(() => {
     const roots = buildTree(dirList);
-    return [{ key: 'root', title: '全部资源', children: roots }];
+    return [{ key: 'root', title: '全部资源', sort: 0, children: roots }];
   }, [dirList]);
 
   const dirOptions = useMemo(() => {
@@ -285,12 +293,24 @@ export default function ResourceManagement() {
     } else {
       siblings.splice(to + 1, 0, dragKey);
     }
+    const oldOrder = dirList
+      .filter((item) => item.parentId === parentId)
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+      .map((item) => item.dirId)
+      .join('|');
+    if (oldOrder === siblings.join('|')) {
+      return;
+    }
+    const sortMap = new Map<string, number>();
+    siblings.forEach((dirId, index) => sortMap.set(dirId, index));
+    setDirList((prev) => prev.map((item) => (
+      sortMap.has(item.dirId) ? { ...item, sort: sortMap.get(item.dirId)! } : item
+    )));
     try {
       await sortDirectory(parentId, siblings);
       message.success('目录排序已保存');
-      await loadTree();
     } catch {
-      // 错误已由请求拦截器统一提示
+      await loadTree();
     }
   };
 
