@@ -6,9 +6,9 @@ import Dashboard from '@/views/dashboard';
 import UserManagement from '@/views/user/UserManagement';
 import CourseManagement from '@/views/course/CourseManagement';
 import ResourceManagement from '@/views/resource/ResourceManagement';
-import KnowledgeDoc from '@/views/knowledge/KnowledgeDoc';
-import KnowledgePoint from '@/views/knowledge/KnowledgePoint';
-import VectorStatus from '@/views/knowledge/VectorStatus';
+import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
+import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
+import KnowledgeTest from '@/views/knowledge/KnowledgeTest';
 import QuestionList from '@/views/question/QuestionList';
 import QuestionReview from '@/views/question/QuestionReview';
 import TemplateLibrary from '@/views/animation/TemplateLibrary';
@@ -74,19 +74,19 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/knowledge/doc" replace />,
+            element: <Navigate to="/knowledge/overview" replace />,
           },
           {
-            path: 'doc',
-            element: <KnowledgeDoc />,
+            path: 'overview',
+            element: <KnowledgeOverview />,
           },
           {
-            path: 'point',
-            element: <KnowledgePoint />,
+            path: 'catalog',
+            element: <KnowledgeCatalog />,
           },
           {
-            path: 'vector',
-            element: <VectorStatus />,
+            path: 'test',
+            element: <KnowledgeTest />,
           },
         ],
       },

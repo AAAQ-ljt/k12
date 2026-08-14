@@ -1,51 +1,145 @@
 import { request } from './request';
 import type { PageParam, PageResult } from '@/types/common';
 
-/** 知识点实体（对应后端 KnowledgePoint PO） */
+/** 知识点 */
 export interface KnowledgePoint {
   knowledgePointId: string;
   name: string;
   stage: string;
   subject: string;
-  difficulty: number; // 1-3
+  difficulty: number;
   description?: string;
   cover?: string;
   lessonId?: string;
   sort?: number;
-  status: number; // 0=停用 1=启用
+  status: number;
   createTime?: string;
   updateTime?: string;
 }
 
-/** 知识点查询参数 */
-export interface KnowledgePointQuery extends PageParam {
-  nameFuzzy?: string;
+/** 知识文档 */
+export interface KnowledgeDoc {
+  docId: string;
+  title: string;
+  stage: string;
+  knowledgePointId: string;
+  difficulty: number;
+  dataType: string;
+  content?: string;
+  sourceType?: number;
+  sourceResourceId?: string;
+  vectorStatus: number;
+  vectorError?: string;
+  chunkCount?: number;
+  status: number;
+  createBy?: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface KnowledgeDocQuery extends PageParam {
+  titleFuzzy?: string;
+  stage?: string;
+  knowledgePointId?: string;
+  difficulty?: number;
+  vectorStatus?: number;
+  status?: number;
+}
+
+export interface KnowledgeTreeNode {
+  key: string;
+  label: string;
+  type: 'stage' | 'subject' | 'point';
   stage?: string;
   subject?: string;
+  knowledgePointId?: string;
   difficulty?: number;
+  docCount?: number;
+  children?: KnowledgeTreeNode[];
 }
 
-/** 分页加载知识点列表 */
-export function loadDataList(query: KnowledgePointQuery): Promise<PageResult<KnowledgePoint>> {
-  return request.get('/knowledgePoint/loadDataList', { params: query });
+export interface KnowledgeOverview {
+  totalDocs: number;
+  totalPoints: number;
+  totalChunks: number;
+  readyDocs: number;
+  failedDocs: number;
+  expiredDocs: number;
+  stageDistribution: Record<string, number>;
+  vectorStatusDistribution: Record<string, number>;
 }
 
-/** 获取知识点详情 */
-export function getInfo(knowledgePointId: string): Promise<KnowledgePoint> {
-  return request.get('/knowledgePoint/getInfo', { params: { knowledgePointId } });
+export interface KnowledgeSearchResult {
+  docId: string;
+  title: string;
+  stage: string;
+  knowledgePointId: string;
+  difficulty: number;
+  chunkIndex: number;
+  content: string;
+  score: number;
+  searchMode: string;
 }
 
-/** 新增知识点 */
-export function add(data: Partial<KnowledgePoint>): Promise<void> {
-  return request.post('/knowledgePoint/add', data);
+export interface KnowledgeSearchTestParams {
+  question: string;
+  stage?: string;
+  knowledgePointId?: string;
+  difficulty?: number;
+  topK?: number;
+  threshold?: number;
 }
 
-/** 修改知识点 */
-export function update(data: Partial<KnowledgePoint>): Promise<void> {
-  return request.put('/knowledgePoint/update', data);
+export interface KnowledgeImportResult {
+  successCount: number;
+  failedCount: number;
+  errors: string[];
 }
 
-/** 删除知识点 */
-export function del(knowledgePointId: string): Promise<void> {
-  return request.delete('/knowledgePoint/del', { params: { knowledgePointId } });
+export function loadOverview(): Promise<KnowledgeOverview> {
+  return request.get('/knowledgeBase/overview');
+}
+
+export function loadTree(): Promise<KnowledgeTreeNode[]> {
+  return request.get('/knowledgeBase/tree');
+}
+
+export function loadDocList(query: KnowledgeDocQuery): Promise<PageResult<KnowledgeDoc>> {
+  return request.get('/knowledgeBase/docList', { params: query });
+}
+
+export function addDoc(data: Partial<KnowledgeDoc>): Promise<void> {
+  return request.post('/knowledgeBase/docAdd', data);
+}
+
+export function updateDoc(data: Partial<KnowledgeDoc>): Promise<void> {
+  return request.put('/knowledgeBase/docUpdate', data);
+}
+
+export function delDoc(docId: string): Promise<void> {
+  return request.delete('/knowledgeBase/docDel', { params: { docId } });
+}
+
+export function addPoint(data: Partial<KnowledgePoint>): Promise<void> {
+  return request.post('/knowledgeBase/pointAdd', data);
+}
+
+export function updatePoint(data: Partial<KnowledgePoint>): Promise<void> {
+  return request.put('/knowledgeBase/pointUpdate', data);
+}
+
+export function delPoint(knowledgePointId: string): Promise<void> {
+  return request.delete('/knowledgeBase/pointDel', { params: { knowledgePointId } });
+}
+
+export function importDir(): Promise<KnowledgeImportResult> {
+  return request.post('/knowledgeBase/importDir');
+}
+
+export function vectorize(docId: string): Promise<void> {
+  return request.post('/knowledgeBase/vectorize', null, { params: { docId } });
+}
+
+export function searchTest(params: KnowledgeSearchTestParams): Promise<KnowledgeSearchResult[]> {
+  return request.post('/knowledgeBase/searchTest', params);
 }

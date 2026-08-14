@@ -26,6 +26,24 @@ spring:
       database: 1
   elasticsearch:
     uris: http://localhost:9200
+  ai:
+    model:
+      embedding: openai
+    vectorstore:
+      elasticsearch:
+        initialize-schema: true
+        index-name: nexora-index-vectorstore
+        dimensions: 1024
+    openai:
+      api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
+      base-url: ${NEXORA_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/}
+      embedding:
+        api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
+        base-url: ${NEXORA_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/}
+        embeddings-path: ${NEXORA_EMBEDDINGS_PATH:/v1/embeddings}
+        options:
+          model: ${NEXORA_EMBEDDING_MODEL:qwen3.7-text-embedding}
+          dimensions: ${NEXORA_EMBEDDING_DIMENSIONS:1024}
   mail:
     host: smtp.qq.com
     port: 465

@@ -4,8 +4,8 @@ import BaseFormModal from '@/components/BaseFormModal';
 import { STAGE_OPTIONS, RESOURCE_TYPE_OPTIONS } from '@/types/common';
 import { add, update } from '@/api/resource';
 import type { ResourceInfo } from '@/api/resource';
-import { loadDataList as loadKnowledgePointList } from '@/api/knowledge';
-import type { KnowledgePoint as KnowledgePointEntity } from '@/api/knowledge';
+import { loadTree } from '@/api/knowledge';
+import type { KnowledgeTreeNode } from '@/api/knowledge';
 
 interface ResourceFormModalProps {
   open: boolean;
@@ -24,12 +24,26 @@ export default function ResourceFormModal({
 }: ResourceFormModalProps) {
   const { message } = App.useApp();
   const isCreate = mode === 'create';
-  const [kpOptions, setKpOptions] = useState<KnowledgePointEntity[]>([]);
+  const [kpOptions, setKpOptions] = useState<{ label: string; value: string }[]>([]);
 
   useEffect(() => {
     if (open) {
-      loadKnowledgePointList({ pageNo: 1, pageSize: 1000 })
-        .then((result) => setKpOptions(result.list))
+      loadTree()
+        .then((tree) => {
+          const options: { label: string; value: string }[] = [];
+          const walk = (nodes: KnowledgeTreeNode[]) => {
+            nodes.forEach((node) => {
+              if (node.type === 'point' && node.knowledgePointId) {
+                options.push({ label: `${node.label}（${node.stage}）`, value: node.knowledgePointId });
+              }
+              if (node.children) {
+                walk(node.children);
+              }
+            });
+          };
+          walk(tree);
+          setKpOptions(options);
+        })
         .catch(() => {
           // 知识点选项加载失败不阻塞表单
         });
@@ -100,10 +114,7 @@ export default function ResourceFormModal({
           allowClear
           optionFilterProp="label"
           placeholder="请选择关联知识点（可选）"
-          options={kpOptions.map((kp) => ({
-            label: `${kp.name}（${kp.stage}）`,
-            value: kp.knowledgePointId,
-          }))}
+          options={kpOptions}
         />
       </Form.Item>
 

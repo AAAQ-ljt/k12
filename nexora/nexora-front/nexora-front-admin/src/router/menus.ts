@@ -43,9 +43,9 @@ export const menus: MenuConfig[] = [
     icon: 'Database',
     path: '/knowledge',
     children: [
-      { key: 'knowledge:doc', label: '知识文档', path: '/knowledge/doc', menuCode: 'knowledge:doc' },
-      { key: 'knowledge:point', label: '知识点管理', path: '/knowledge/point', menuCode: 'knowledge:point' },
-      { key: 'knowledge:vector', label: '入库状态', path: '/knowledge/vector', menuCode: 'knowledge:vector' },
+      { key: 'knowledge:overview', label: '知识总览', path: '/knowledge/overview', menuCode: 'knowledge:overview' },
+      { key: 'knowledge:catalog', label: '知识目录', path: '/knowledge/catalog', menuCode: 'knowledge:catalog' },
+      { key: 'knowledge:test', label: '问答测试', path: '/knowledge/test', menuCode: 'knowledge:test' },
     ],
   },
   {

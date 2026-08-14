@@ -63,6 +63,9 @@ public class AgentChatComponent {
     @Resource
     private PromptTemplateComponent promptTemplateComponent;
 
+    @Resource
+    private RagSearchComponent ragSearchComponent;
+
     @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
     private String chatModel;
 
@@ -192,7 +195,7 @@ public class AgentChatComponent {
                     .reasoningEffort(reasoningEffort)
                     .build();
 
-            String systemPrompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
+            String systemPrompt = resolvePromptWithRag(user, intent, message.getUserMessage());
             AtomicInteger promptTokens = new AtomicInteger(intentResult.promptTokens());
             AtomicInteger completionTokens = new AtomicInteger(intentResult.completionTokens());
 
@@ -341,6 +344,32 @@ public class AgentChatComponent {
             case "ANIMATION" -> "ANIMATION";
             case "CODING" -> "CODE";
             default -> null;
+        };
+    }
+
+    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String question) {
+        String prompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
+        if (!shouldSearch(intent)) {
+            return prompt;
+        }
+        String ragData = ragSearchComponent.buildRagData(user.getStage(), question);
+        if (ragData == null || ragData.isBlank()) {
+            return prompt;
+        }
+        if (prompt.contains("{{ragData}}")) {
+            return prompt.replace("{{ragData}}", ragData);
+        }
+        return prompt + "\n\n## 知识库参考内容\n" + ragData
+                + "\n\n回答时优先基于以上内容，并标注来源；如果知识库没有相关内容，明确告知用户，不要编造。";
+    }
+
+    private boolean shouldSearch(String intent) {
+        if (intent == null) {
+            return true;
+        }
+        return switch (intent) {
+            case "PICTURE_BOOK", "DRAW", "ANIMATION", "CODING" -> false;
+            default -> true;
         };
     }
 
