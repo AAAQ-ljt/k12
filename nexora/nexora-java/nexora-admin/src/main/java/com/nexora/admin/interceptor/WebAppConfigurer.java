@@ -22,7 +22,16 @@ public class WebAppConfigurer implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(appInterceptor).addPathPatterns("/**");
+        registry.addInterceptor(appInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/account/login",
+                        "/account/logout",
+                        "/error",
+                        "/resourceInfo/video/**",
+                        "/resourceInfo/image/**",
+                        "/resourceInfo/download/**"
+                );
     }
 
     /**

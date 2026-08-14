@@ -14,8 +14,14 @@ import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,13 +31,17 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * 资源文件管理 Controller
@@ -39,6 +49,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/resourceInfo")
 public class ResourceInfoController extends ABaseController {
+
+    private static final Pattern VIDEO_SEGMENT_PATTERN = Pattern.compile("^segment_\\d{3}\\.ts$");
 
     @Resource
     private ResourceInfoService resourceInfoService;
@@ -58,6 +70,96 @@ public class ResourceInfoController extends ABaseController {
     @GetMapping("/loadDataList")
     public ResponseVO<PaginationResultVO<ResourceInfo>> loadDataList(ResourceInfoQuery query) {
         return getSuccessResponseVO(resourceInfoService.findListByPage(query));
+    }
+
+    /**
+     * 获取 HLS 播放列表
+     */
+    @GetMapping("/video/{resourceId}/index.m3u8")
+    public ResponseEntity<FileSystemResource> videoPlaylist(@PathVariable String resourceId) throws IOException {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getHlsPath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path playlist = resolveResourcePath(resource.getHlsPath());
+        if (!Files.exists(playlist)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(playlist));
+    }
+
+    /**
+     * 获取 HLS 视频分片
+     */
+    @GetMapping("/video/{resourceId}/{segment}")
+    public ResponseEntity<FileSystemResource> videoSegment(@PathVariable String resourceId,
+                                                          @PathVariable String segment) throws IOException {
+        if (!VIDEO_SEGMENT_PATTERN.matcher(segment).matches()) {
+            return ResponseEntity.notFound().build();
+        }
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getHlsPath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path hlsFile = resolveResourcePath(resource.getHlsPath());
+        Path hlsDir = hlsFile.getParent();
+        if (hlsDir == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Path segmentFile = hlsDir.resolve(segment).normalize();
+        if (!segmentFile.startsWith(hlsDir) || !Files.exists(segmentFile)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("video/mp2t"))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(segmentFile));
+    }
+
+    /**
+     * 图片预览
+     */
+    @GetMapping("/image/{resourceId}")
+    public ResponseEntity<FileSystemResource> image(@PathVariable String resourceId) throws IOException {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imageFile = resolveResourcePath(resource.getFilePath());
+        if (!Files.exists(imageFile)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(resolveImageMediaType(imageFile))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(imageFile));
+    }
+
+    /**
+     * 下载原始文件
+     */
+    @GetMapping("/download/{resourceId}")
+    public ResponseEntity<FileSystemResource> download(@PathVariable String resourceId) throws IOException {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path file = resolveResourcePath(resource.getFilePath());
+        if (!Files.exists(file)) {
+            return ResponseEntity.notFound().build();
+        }
+        String fileName = StringTools.isEmpty(resource.getResourceName())
+                ? file.getFileName().toString()
+                : resource.getResourceName();
+        String encodedName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedName)
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(Files.size(file))
+                .body(new FileSystemResource(file));
     }
 
     /**
@@ -169,5 +271,45 @@ public class ResourceInfoController extends ABaseController {
     public ResponseVO<Void> del(@RequestParam String resourceId) {
         resourceInfoService.deleteResourceInfoByResourceId(resourceId);
         return getSuccessResponseVO(null);
+    }
+
+    private ResourceInfo getReadyResource(String resourceId) {
+        if (StringTools.isEmpty(resourceId)) {
+            return null;
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
+            return null;
+        }
+        return resource;
+    }
+
+    private Path resolveResourcePath(String relativePath) throws IOException {
+        Path root = Paths.get(projectFolder).toAbsolutePath().normalize();
+        Path path = Paths.get(projectFolder, relativePath).toAbsolutePath().normalize();
+        if (!path.startsWith(root)) {
+            throw new IOException("非法文件路径");
+        }
+        return path;
+    }
+
+    private MediaType resolveImageMediaType(Path imageFile) {
+        String name = imageFile.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
+            return MediaType.IMAGE_JPEG;
+        }
+        if (name.endsWith(".png")) {
+            return MediaType.IMAGE_PNG;
+        }
+        if (name.endsWith(".gif")) {
+            return MediaType.IMAGE_GIF;
+        }
+        if (name.endsWith(".webp")) {
+            return MediaType.parseMediaType("image/webp");
+        }
+        if (name.endsWith(".bmp")) {
+            return MediaType.parseMediaType("image/bmp");
+        }
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

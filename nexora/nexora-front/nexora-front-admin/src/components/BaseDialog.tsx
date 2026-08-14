@@ -1,8 +1,10 @@
 import { Modal } from 'antd';
 import { Button, Space } from 'antd';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 interface BaseDialogProps {
+  /** 自定义弹窗类名（用于覆盖 antd Modal 样式） */
+  className?: string;
   /** 是否显示 */
   open: boolean;
   /** 标题 */
@@ -21,6 +23,8 @@ interface BaseDialogProps {
   showClose?: boolean;
   /** 内容区域 padding */
   contentPadding?: number | string;
+  /** 内容区域额外样式（可覆盖默认 maxHeight/padding） */
+  bodyStyle?: CSSProperties;
   /** 确认按钮 loading */
   loading?: boolean;
   /** 取消回调 */
@@ -41,6 +45,7 @@ interface BaseDialogProps {
  * - 右上角关闭按钮可配置
  */
 export default function BaseDialog({
+  className,
   open,
   title,
   width = 520,
@@ -50,6 +55,7 @@ export default function BaseDialog({
   okText = '确定',
   showClose = true,
   contentPadding = 24,
+  bodyStyle,
   loading = false,
   onCancel,
   onOk,
@@ -58,6 +64,7 @@ export default function BaseDialog({
 }: BaseDialogProps) {
   return (
     <Modal
+      className={className}
       open={open}
       title={title}
       width={width}
@@ -66,7 +73,7 @@ export default function BaseDialog({
       closable={showClose}
       onCancel={onCancel}
       footer={
-        footer ?? (
+        footer === undefined ? (
           <Space>
             {showCancel && (
               <Button type="link" onClick={onCancel}>
@@ -77,6 +84,8 @@ export default function BaseDialog({
               {okText}
             </Button>
           </Space>
+        ) : (
+          footer
         )
       }
       styles={{
@@ -84,6 +93,7 @@ export default function BaseDialog({
           padding: contentPadding,
           maxHeight: `calc(100vh - ${typeof top === 'number' ? top : 30}px - 120px)`,
           overflowY: 'auto',
+          ...bodyStyle,
         },
       }}
     >

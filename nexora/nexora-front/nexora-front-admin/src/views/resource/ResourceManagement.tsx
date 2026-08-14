@@ -60,13 +60,17 @@ import {
 } from '@/api/resourceDirectory';
 import {
   del as delResource,
+  getDownloadUrl,
   loadDataList,
   moveResources,
   prepareUpload,
+  update as updateResource,
   uploadShard,
   type ResourceInfo,
   type ResourceInfoQuery,
 } from '@/api/resource';
+import ImagePreviewModal from './ImagePreviewModal';
+import VideoPreviewModal from './VideoPreviewModal';
 import styles from './index.module.scss';
 
 interface DirNode {
@@ -149,6 +153,14 @@ function typeIcon(type: string) {
   }
 }
 
+function splitFileName(fileName: string): { base: string; ext: string } {
+  const dot = fileName.lastIndexOf('.');
+  if (dot <= 0) {
+    return { base: fileName, ext: '' };
+  }
+  return { base: fileName.slice(0, dot), ext: fileName.slice(dot) };
+}
+
 export default function ResourceManagement() {
   const { message } = App.useApp();
   const [dirList, setDirList] = useState<ResourceDirectory[]>([]);
@@ -168,6 +180,11 @@ export default function ResourceManagement() {
   const [dirForm] = Form.useForm();
   const [moveForm] = Form.useForm();
   const [uploadForm] = Form.useForm();
+  const [renameForm] = Form.useForm();
+  const [previewVideo, setPreviewVideo] = useState<ResourceInfo | null>(null);
+  const [previewImage, setPreviewImage] = useState<ResourceInfo | null>(null);
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [renameResource, setRenameResource] = useState<ResourceInfo | null>(null);
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(true);
@@ -485,6 +502,46 @@ export default function ResourceManagement() {
     }
   };
 
+  const handlePreview = (record: ResourceInfo) => {
+    if (record.status !== 1) {
+      message.warning(record.status === 0 ? '资源处理中，请稍后再试' : '资源处理失败，无法预览');
+      return;
+    }
+    if (record.resourceType === 'VIDEO') {
+      setPreviewVideo(record);
+      return;
+    }
+    if (record.resourceType === 'IMAGE') {
+      setPreviewImage(record);
+      return;
+    }
+    message.info('该类型暂不支持预览');
+  };
+
+  const openRenameFile = (record: ResourceInfo) => {
+    setRenameResource(record);
+    renameForm.resetFields();
+    renameForm.setFieldsValue({ fileName: splitFileName(record.resourceName).base });
+    setRenameModalOpen(true);
+  };
+
+  const handleRenameFile = async () => {
+    if (!renameResource) return;
+    try {
+      const values = await renameForm.validateFields();
+      const { ext } = splitFileName(renameResource.resourceName);
+      await updateResource({
+        resourceId: renameResource.resourceId,
+        resourceName: `${values.fileName}${ext}`,
+      });
+      message.success('资源已重命名');
+      setRenameModalOpen(false);
+      await loadFiles();
+    } catch {
+      // 表单校验失败或接口错误时不关闭
+    }
+  };
+
   const columns: TableProps<ResourceInfo>['columns'] = [
     {
       title: '资源名称',
@@ -550,13 +607,21 @@ export default function ResourceManagement() {
     {
       title: '操作',
       key: 'action',
-      width: 170,
+      width: 240,
       render: (_, record) => (
         <Space size="small">
-          <Button type="link" size="small" icon={<Eye size={13} />} onClick={() => message.info('静态演示：预览')}>
+          <Button type="link" size="small" icon={<Eye size={13} />} onClick={() => handlePreview(record)}>
             预览
           </Button>
-          <Button type="link" size="small" icon={<Download size={13} />} onClick={() => message.info('静态演示：下载')}>
+          <Button type="link" size="small" icon={<Pencil size={13} />} onClick={() => openRenameFile(record)}>
+            重命名
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<Download size={13} />}
+            onClick={() => window.open(getDownloadUrl(record.resourceId), '_blank')}
+          >
             下载
           </Button>
           <Popconfirm title="确认删除该资源？" onConfirm={() => handleDeleteFile(record.resourceId)}>
@@ -731,6 +796,27 @@ export default function ResourceManagement() {
       </Modal>
 
       <Modal
+        title="重命名资源"
+        open={renameModalOpen}
+        onCancel={() => setRenameModalOpen(false)}
+        onOk={() => void handleRenameFile()}
+      >
+        <Form form={renameForm} layout="vertical">
+          <Form.Item
+            label="文件名称"
+            name="fileName"
+            rules={[{ required: true, message: '请输入文件名称' }]}
+          >
+            <Input
+              maxLength={100}
+              placeholder="请输入文件名称"
+              addonAfter={renameResource ? splitFileName(renameResource.resourceName).ext : undefined}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
         title="转移文件"
         open={moveModalOpen}
         onCancel={() => setMoveModalOpen(false)}
@@ -846,6 +932,17 @@ export default function ResourceManagement() {
           )}
         </div>
       )}
+
+      <VideoPreviewModal
+        open={previewVideo !== null}
+        resource={previewVideo}
+        onClose={() => setPreviewVideo(null)}
+      />
+      <ImagePreviewModal
+        open={previewImage !== null}
+        resource={previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

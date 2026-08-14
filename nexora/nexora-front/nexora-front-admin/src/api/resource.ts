@@ -113,3 +113,18 @@ export function del(resourceId: string): Promise<void> {
 export function moveResources(resourceIds: string[], directoryId: string): Promise<void> {
   return request.put('/resourceInfo/move', { resourceIds, directoryId });
 }
+
+/** 视频播放地址（HLS 播放列表） */
+export function getVideoPlaylistUrl(resourceId: string): string {
+  return `/api/resourceInfo/video/${resourceId}/index.m3u8`;
+}
+
+/** 图片预览地址 */
+export function getImagePreviewUrl(resourceId: string): string {
+  return `/api/resourceInfo/image/${resourceId}`;
+}
+
+/** 文件下载地址（下载原始文件） */
+export function getDownloadUrl(resourceId: string): string {
+  return `/api/resourceInfo/download/${resourceId}`;
+}
