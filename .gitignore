@@ -49,7 +49,9 @@ resource/temp/
 resource/files/
 nexora/resource/
 
+# ===== 参考资料（本地只读，不入库）=====
+参考项目/
+
 # ===== 注意：以下内容需要提交，勿加入忽略 =====
 # AGENTS.md、.codex/skills/（项目约束体系）、nexora/docs/（设计文档）、
-# nexora-java/nexora.sql（版本化 DDL）、knowledge/（知识库源文件）、
-# 参考项目/ 与 smart-campus提示词记录/（本仓库已跟踪的参考资料）
+# nexora-java/nexora.sql（版本化 DDL）、knowledge/（知识库源文件）
