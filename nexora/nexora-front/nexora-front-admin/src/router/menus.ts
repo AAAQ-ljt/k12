@@ -29,15 +29,6 @@ export const menus: MenuConfig[] = [
     menuCode: 'resource',
   },
   {
-    key: 'course',
-    label: '课程管理',
-    icon: 'BookOpen',
-    path: '/course',
-    children: [
-      { key: 'course:list', label: '课程体系', path: '/course/list', menuCode: 'course:list' },
-    ],
-  },
-  {
     key: 'knowledge',
     label: '知识库管理',
     icon: 'Database',
@@ -49,13 +40,15 @@ export const menus: MenuConfig[] = [
     ],
   },
   {
-    key: 'question',
-    label: '题库管理',
-    icon: 'FileQuestion',
-    path: '/question',
+    key: 'teaching',
+    label: '教学业务',
+    icon: 'GraduationCap',
+    path: '/teaching',
     children: [
-      { key: 'question:list', label: '题目列表', path: '/question/list', menuCode: 'question:list' },
-      { key: 'question:review', label: 'AI出题审核', path: '/question/review', menuCode: 'question:review' },
+      { key: 'teaching:course', label: '课程管理', path: '/teaching/course', menuCode: 'teaching:course' },
+      { key: 'teaching:question', label: '习题管理', path: '/teaching/question', menuCode: 'teaching:question' },
+      { key: 'teaching:paper', label: '试卷管理', path: '/teaching/paper', menuCode: 'teaching:paper' },
+      { key: 'teaching:exam', label: '考试管理', path: '/teaching/exam', menuCode: 'teaching:exam' },
     ],
   },
   {

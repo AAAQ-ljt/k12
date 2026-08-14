@@ -11,6 +11,9 @@ import {
   BarChart3,
   Settings,
   Sparkles,
+  GraduationCap,
+  ClipboardList,
+  CalendarCheck,
 } from 'lucide-react';
 
 export const iconMap: Record<string, ElementType> = {
@@ -25,6 +28,9 @@ export const iconMap: Record<string, ElementType> = {
   BarChart3,
   Settings,
   Sparkles,
+  GraduationCap,
+  ClipboardList,
+  CalendarCheck,
 };
 
 /** 根据图标名称获取 lucide-react 图标组件 */

@@ -5,12 +5,13 @@ import Login from '@/views/login';
 import Dashboard from '@/views/dashboard';
 import UserManagement from '@/views/user/UserManagement';
 import CourseManagement from '@/views/course/CourseManagement';
+import QuestionManagement from '@/views/question/QuestionManagement';
+import PaperManagement from '@/views/paper/PaperManagement';
+import ExamManagement from '@/views/exam/ExamManagement';
 import ResourceManagement from '@/views/resource/ResourceManagement';
 import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
 import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
 import KnowledgeTest from '@/views/knowledge/KnowledgeTest';
-import QuestionList from '@/views/question/QuestionList';
-import QuestionReview from '@/views/question/QuestionReview';
 import TemplateLibrary from '@/views/animation/TemplateLibrary';
 import GenerationRecord from '@/views/animation/GenerationRecord';
 import AnimationReview from '@/views/animation/AnimationReview';
@@ -53,23 +54,6 @@ export const router = createBrowserRouter([
         element: <ResourceManagement />,
       },
       {
-        path: 'course',
-        children: [
-          {
-            index: true,
-            element: <Navigate to="/course/list" replace />,
-          },
-          {
-            path: 'list',
-            element: <CourseManagement />,
-          },
-          {
-            path: 'resource',
-            element: <Navigate to="/resource" replace />,
-          },
-        ],
-      },
-      {
         path: 'knowledge',
         children: [
           {
@@ -91,19 +75,27 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        path: 'question',
+        path: 'teaching',
         children: [
           {
             index: true,
-            element: <Navigate to="/question/list" replace />,
+            element: <Navigate to="/teaching/course" replace />,
           },
           {
-            path: 'list',
-            element: <QuestionList />,
+            path: 'course',
+            element: <CourseManagement />,
           },
           {
-            path: 'review',
-            element: <QuestionReview />,
+            path: 'question',
+            element: <QuestionManagement />,
+          },
+          {
+            path: 'paper',
+            element: <PaperManagement />,
+          },
+          {
+            path: 'exam',
+            element: <ExamManagement />,
           },
         ],
       },

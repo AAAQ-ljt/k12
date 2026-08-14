@@ -14,8 +14,10 @@ function MenuItem({ menu, depth = 0 }: MenuItemProps) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   
-  const isActive = location.pathname === menu.path;
   const hasChildren = menu.children && menu.children.length > 0;
+  const isActive =
+    location.pathname === menu.path ||
+    (hasChildren && location.pathname.startsWith(`${menu.path}/`));
   
   // Auto-expand if current page is under this menu
   useEffect(() => {
