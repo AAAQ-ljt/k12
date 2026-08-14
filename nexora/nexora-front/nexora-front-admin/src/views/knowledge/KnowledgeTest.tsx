@@ -115,7 +115,7 @@ export default function KnowledgeTest() {
                 <div style={{ width: '100%' }}>
                   <Space wrap>
                     <Tag color="blue">{item.title}</Tag>
-                    <Tag>{item.stage}</Tag>
+                    <Tag>{STAGE_OPTIONS.find((option) => option.value === item.stage)?.label ?? item.stage}</Tag>
                     <Tag color={item.searchMode === 'vector' ? 'green' : 'orange'}>
                       {item.searchMode === 'vector' ? '向量' : '关键词'}
                     </Tag>

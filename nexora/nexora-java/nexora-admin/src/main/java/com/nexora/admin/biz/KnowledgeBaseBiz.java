@@ -107,7 +107,7 @@ public class KnowledgeBaseBiz {
             KnowledgeTreeNodeVO stageNode = stageMap.computeIfAbsent(stageKey, k -> {
                 KnowledgeTreeNodeVO node = new KnowledgeTreeNodeVO();
                 node.setKey(stageKey);
-                node.setLabel(stage);
+                node.setLabel(stageLabel(stage));
                 node.setType("stage");
                 node.setStage(stage);
                 return node;
@@ -115,7 +115,7 @@ public class KnowledgeBaseBiz {
             KnowledgeTreeNodeVO subjectNode = subjectMap.computeIfAbsent(subjectKey, k -> {
                 KnowledgeTreeNodeVO node = new KnowledgeTreeNodeVO();
                 node.setKey(subjectKey);
-                node.setLabel(subject);
+                node.setLabel(subjectLabel(subject));
                 node.setType("subject");
                 node.setStage(stage);
                 node.setSubject(subject);
@@ -505,6 +505,33 @@ public class KnowledgeBaseBiz {
             return "SENIOR";
         }
         return "JUNIOR";
+    }
+
+    private String stageLabel(String stage) {
+        if (stage == null) {
+            return "未知学段";
+        }
+        return switch (stage) {
+            case "PRIMARY_LOW" -> "小学低年级";
+            case "PRIMARY_HIGH" -> "小学高年级";
+            case "JUNIOR" -> "初中";
+            case "SENIOR" -> "高中";
+            default -> stage;
+        };
+    }
+
+    private String subjectLabel(String subject) {
+        if (subject == null) {
+            return "人工智能";
+        }
+        return switch (subject) {
+            case "AI" -> "人工智能";
+            case "MATH" -> "数学";
+            case "CHINESE" -> "语文";
+            case "ENGLISH" -> "英语";
+            case "SCIENCE" -> "科学";
+            default -> subject;
+        };
     }
 
     private void validateDoc(KnowledgeDoc bean) {
