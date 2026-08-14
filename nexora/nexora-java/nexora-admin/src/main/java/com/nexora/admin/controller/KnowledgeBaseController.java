@@ -2,9 +2,11 @@ package com.nexora.admin.controller;
 
 import com.nexora.admin.biz.KnowledgeBaseBiz;
 import com.nexora.admin.dto.KnowledgeSearchTestRequest;
+import com.nexora.admin.dto.ResourceKnowledgeImportRequest;
 import com.nexora.admin.vo.KnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeOverviewVO;
 import com.nexora.admin.vo.KnowledgeSearchResultVO;
+import com.nexora.admin.vo.ResourceKnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeTreeNodeVO;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.po.KnowledgeDoc;
@@ -90,9 +92,15 @@ public class KnowledgeBaseController extends ABaseController {
         return getSuccessResponseVO(knowledgeBaseBiz.importDir());
     }
 
+    @PostMapping("/resourceImport")
+    public ResponseVO<ResourceKnowledgeImportResultVO> resourceImport(
+            @RequestBody ResourceKnowledgeImportRequest request) {
+        return getSuccessResponseVO(knowledgeBaseBiz.resourceImport(request));
+    }
+
     @PostMapping("/vectorize")
     public ResponseVO<Void> vectorize(@RequestParam String docId) {
-        knowledgeBaseBiz.vectorize(docId);
+        knowledgeBaseBiz.submitVectorize(docId);
         return getSuccessResponseVO(null);
     }
 

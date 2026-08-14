@@ -17,11 +17,16 @@ import java.util.Map;
 @Component
 public class KnowledgeVectorComponent {
 
+    /**
+     * 向量化接口单批上限建议 10-15 条，避开 20 条限制并留余量。
+     */
+    private static final int EMBEDDING_BATCH_SIZE = 15;
+
     @Resource
     private VectorStore vectorStore;
 
     public void saveChunks(String docId, String title, String stage, String knowledgePointId,
-                           Integer difficulty, List<String> chunks) {
+                           Integer difficulty, String sourceUrl, List<String> chunks) {
         List<Document> documents = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             Map<String, Object> metadata = new LinkedHashMap<>();
@@ -32,6 +37,9 @@ public class KnowledgeVectorComponent {
             metadata.put("stage", stage == null ? "" : stage);
             metadata.put("knowledgePointId", knowledgePointId == null ? "" : knowledgePointId);
             metadata.put("difficulty", difficulty == null ? 1 : difficulty);
+            if (sourceUrl != null && !sourceUrl.isBlank()) {
+                metadata.put("sourceUrl", sourceUrl);
+            }
             documents.add(Document.builder()
                     .id(docId + "_" + i)
                     .text(chunks.get(i))
@@ -39,7 +47,10 @@ public class KnowledgeVectorComponent {
                     .build());
         }
         if (!documents.isEmpty()) {
-            vectorStore.add(documents);
+            for (int i = 0; i < documents.size(); i += EMBEDDING_BATCH_SIZE) {
+                int end = Math.min(i + EMBEDDING_BATCH_SIZE, documents.size());
+                vectorStore.add(new ArrayList<>(documents.subList(i, end)));
+            }
         }
     }
 

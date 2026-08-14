@@ -14,6 +14,7 @@ public class KnowledgeSearchResultVO {
     private String content;
     private Double score;
     private String searchMode;
+    private String sourceUrl;
 
     public String getDocId() {
         return docId;
@@ -85,5 +86,13 @@ public class KnowledgeSearchResultVO {
 
     public void setSearchMode(String searchMode) {
         this.searchMode = searchMode;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    public void setSourceUrl(String sourceUrl) {
+        this.sourceUrl = sourceUrl;
     }
 }

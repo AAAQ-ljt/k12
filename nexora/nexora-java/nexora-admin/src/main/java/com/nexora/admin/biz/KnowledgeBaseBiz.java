@@ -1,19 +1,26 @@
 package com.nexora.admin.biz;
 
 import com.nexora.admin.component.KnowledgeVectorComponent;
+import com.nexora.admin.component.ResourceKnowledgeParser;
 import com.nexora.admin.dto.KnowledgeSearchTestRequest;
+import com.nexora.admin.dto.ResourceKnowledgeImportRequest;
 import com.nexora.admin.vo.KnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeOverviewVO;
 import com.nexora.admin.vo.KnowledgeSearchResultVO;
+import com.nexora.admin.vo.ResourceKnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeTreeNodeVO;
+import com.nexora.component.RedisComponent;
+import com.nexora.constants.Constants;
 import com.nexora.entity.po.KnowledgeDoc;
 import com.nexora.entity.po.KnowledgePoint;
+import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.KnowledgeDocQuery;
 import com.nexora.entity.query.KnowledgePointQuery;
 import com.nexora.entity.vo.PaginationResultVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.KnowledgeDocService;
 import com.nexora.service.KnowledgePointService;
+import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.StringTools;
 import com.nexora.utils.TextChunker;
 import jakarta.annotation.Resource;
@@ -55,6 +62,15 @@ public class KnowledgeBaseBiz {
 
     @Resource
     private KnowledgeVectorComponent knowledgeVectorComponent;
+
+    @Resource
+    private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private ResourceKnowledgeParser resourceKnowledgeParser;
+
+    @Resource
+    private RedisComponent redisComponent;
 
     @Value("${project.folder}")
     private String projectFolder;
@@ -148,8 +164,13 @@ public class KnowledgeBaseBiz {
 
     public void docAdd(KnowledgeDoc bean) {
         validateDoc(bean);
+        if (bean.getSourceUrl() != null && !bean.getSourceUrl().isBlank()
+                && StringTools.isEmpty(bean.getContent())) {
+            bean.setContent("原文链接：" + bean.getSourceUrl().trim());
+        }
         bean.setDocId(UUID.randomUUID().toString().replace("-", ""));
-        bean.setDataType(bean.getDataType() == null ? "KNOWLEDGE" : bean.getDataType());
+        bean.setDataType(bean.getSourceUrl() != null && !bean.getSourceUrl().isBlank()
+                ? "LINK" : "KNOWLEDGE");
         bean.setSourceType(bean.getSourceType() == null ? 0 : bean.getSourceType());
         bean.setVectorStatus(bean.getVectorStatus() == null ? 0 : bean.getVectorStatus());
         bean.setChunkCount(bean.getChunkCount() == null ? 0 : bean.getChunkCount());
@@ -183,6 +204,9 @@ public class KnowledgeBaseBiz {
         if (bean.getDifficulty() != null && !bean.getDifficulty().equals(exist.getDifficulty())) {
             bean.setVectorStatus(4);
         }
+        if (bean.getSourceUrl() != null && !bean.getSourceUrl().equals(exist.getSourceUrl())) {
+            bean.setVectorStatus(4);
+        }
         bean.setUpdateTime(new Date());
         knowledgeDocService.updateKnowledgeDocByDocId(bean, bean.getDocId());
     }
@@ -197,6 +221,150 @@ public class KnowledgeBaseBiz {
             safeDeleteChunks(docId, count);
         }
         knowledgeDocService.deleteKnowledgeDocByDocId(docId);
+    }
+
+    public ResourceKnowledgeImportResultVO resourceImport(ResourceKnowledgeImportRequest request) {
+        if (request == null || StringTools.isEmpty(request.getResourceId())) {
+            throw new BusinessException("请选择要导入的资源");
+        }
+        if (StringTools.isEmpty(request.getStage()) || StringTools.isEmpty(request.getKnowledgePointId())) {
+            throw new BusinessException("学段和知识点不能为空");
+        }
+        if (request.getDifficulty() == null || request.getDifficulty() < 1 || request.getDifficulty() > 3) {
+            throw new BusinessException("难度必须在 1-3 之间");
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(request.getResourceId());
+        if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+
+        boolean manual = request.getSourceType() != null && request.getSourceType() == 2
+                || request.getContent() != null && !request.getContent().isBlank();
+        if (manual && StringTools.isEmpty(request.getContent())) {
+            throw new BusinessException("资源说明不能为空");
+        }
+        int sourceType = manual ? 2 : 1;
+        String content = manual ? request.getContent() : "";
+
+        String title = StringTools.isEmpty(request.getTitle())
+                ? resource.getResourceName()
+                : request.getTitle().trim();
+        String docId = findDocIdByResource(resource.getResourceId());
+        boolean exists = docId != null;
+        if (docId == null) {
+            docId = UUID.randomUUID().toString().replace("-", "");
+        }
+        Date now = new Date();
+        if (exists) {
+            KnowledgeDoc update = new KnowledgeDoc();
+            update.setTitle(title);
+            update.setStage(request.getStage());
+            update.setKnowledgePointId(request.getKnowledgePointId());
+            update.setDifficulty(request.getDifficulty());
+            update.setDataType("KNOWLEDGE");
+            update.setContent(content);
+            update.setSourceType(sourceType);
+            update.setSourceResourceId(resource.getResourceId());
+            update.setStatus(1);
+            update.setVectorStatus(1);
+            update.setVectorError(null);
+            update.setChunkCount(0);
+            update.setUpdateTime(now);
+            knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
+        } else {
+            KnowledgeDoc bean = new KnowledgeDoc();
+            bean.setDocId(docId);
+            bean.setTitle(title);
+            bean.setStage(request.getStage());
+            bean.setKnowledgePointId(request.getKnowledgePointId());
+            bean.setDifficulty(request.getDifficulty());
+            bean.setDataType("KNOWLEDGE");
+            bean.setContent(content);
+            bean.setSourceType(sourceType);
+            bean.setSourceResourceId(resource.getResourceId());
+            bean.setVectorStatus(1);
+            bean.setChunkCount(0);
+            bean.setStatus(1);
+            bean.setCreateBy(resource.getCreateBy());
+            bean.setCreateTime(now);
+            bean.setUpdateTime(now);
+            knowledgeDocService.add(bean);
+        }
+
+        redisComponent.leftPush(Constants.REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE, docId);
+        ResourceKnowledgeImportResultVO result = new ResourceKnowledgeImportResultVO();
+        result.setDocId(docId);
+        result.setTitle(title);
+        result.setStage(request.getStage());
+        result.setKnowledgePointId(request.getKnowledgePointId());
+        result.setDifficulty(request.getDifficulty());
+        result.setSourceType(sourceType);
+        result.setSourceResourceId(resource.getResourceId());
+        result.setContentLength(content.length());
+        result.setChunkCount(0);
+        result.setVectorStatus(1);
+        result.setAsync(true);
+        return result;
+    }
+
+    public void submitVectorize(String docId) {
+        if (StringTools.isEmpty(docId)) {
+            throw new BusinessException("文档ID不能为空");
+        }
+        KnowledgeDoc doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
+        if (doc == null) {
+            throw new BusinessException("文档不存在");
+        }
+        KnowledgeDoc update = new KnowledgeDoc();
+        update.setVectorStatus(1);
+        update.setVectorError(null);
+        update.setUpdateTime(new Date());
+        knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
+        redisComponent.leftPush(Constants.REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE, docId);
+    }
+
+    public void processKnowledgeImport(String docId) {
+        if (StringTools.isEmpty(docId)) {
+            return;
+        }
+        KnowledgeDoc doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
+        if (doc == null) {
+            return;
+        }
+        List<String> warnings = new ArrayList<>();
+        try {
+            if (doc.getSourceType() != null && doc.getSourceType() == 1) {
+                ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(doc.getSourceResourceId());
+                if (resource == null) {
+                    throw new BusinessException("源资源不存在或已删除");
+                }
+                ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
+                warnings.addAll(parsed.getWarnings());
+                KnowledgeDoc update = new KnowledgeDoc();
+                update.setContent(parsed.getText());
+                update.setUpdateTime(new Date());
+                knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
+            }
+            processVectorize(docId);
+            if (!warnings.isEmpty()) {
+                KnowledgeDoc warn = new KnowledgeDoc();
+                warn.setVectorError(String.join("；", warnings));
+                knowledgeDocService.updateKnowledgeDocByDocId(warn, docId);
+            }
+        } catch (Exception e) {
+            KnowledgeDoc failed = new KnowledgeDoc();
+            failed.setVectorStatus(3);
+            failed.setVectorError(e.getMessage() == null ? "解析入库失败" : e.getMessage());
+            failed.setUpdateTime(new Date());
+            knowledgeDocService.updateKnowledgeDocByDocId(failed, docId);
+        }
+    }
+
+    private String findDocIdByResource(String sourceResourceId) {
+        KnowledgeDocQuery query = new KnowledgeDocQuery();
+        query.setSourceResourceId(sourceResourceId);
+        List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
+        return docs.isEmpty() ? null : docs.get(0).getDocId();
     }
 
     public void pointAdd(KnowledgePoint bean) {
@@ -297,7 +465,7 @@ public class KnowledgeBaseBiz {
                     update.setUpdateTime(new Date());
                     knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
                 }
-                vectorize(docId);
+                processVectorize(docId);
                 result.setSuccessCount(result.getSuccessCount() + 1);
             } catch (Exception e) {
                 result.setFailedCount(result.getFailedCount() + 1);
@@ -307,7 +475,7 @@ public class KnowledgeBaseBiz {
         return result;
     }
 
-    public void vectorize(String docId) {
+    public void processVectorize(String docId) {
         if (StringTools.isEmpty(docId)) {
             throw new BusinessException("文档ID不能为空");
         }
@@ -331,7 +499,7 @@ public class KnowledgeBaseBiz {
             }
             knowledgeVectorComponent.deleteChunks(docId, Math.max(oldCount, chunks.size()));
             knowledgeVectorComponent.saveChunks(docId, doc.getTitle(), doc.getStage(),
-                    doc.getKnowledgePointId(), doc.getDifficulty(), chunks);
+                    doc.getKnowledgePointId(), doc.getDifficulty(), doc.getSourceUrl(), chunks);
             KnowledgeDoc done = new KnowledgeDoc();
             done.setVectorStatus(2);
             done.setVectorError(null);
@@ -375,6 +543,7 @@ public class KnowledgeBaseBiz {
         vo.setContent(document.getText());
         vo.setScore(document.getScore());
         vo.setSearchMode("vector");
+        vo.setSourceUrl(asString(metadata.get("sourceUrl")));
         return vo;
     }
 
@@ -409,6 +578,7 @@ public class KnowledgeBaseBiz {
                 vo.setContent(chunk);
                 vo.setScore(score);
                 vo.setSearchMode("keyword");
+                vo.setSourceUrl(doc.getSourceUrl());
                 results.add(vo);
             }
         }
@@ -535,9 +705,11 @@ public class KnowledgeBaseBiz {
     }
 
     private void validateDoc(KnowledgeDoc bean) {
+        boolean hasContent = bean.getContent() != null && !bean.getContent().isBlank();
+        boolean hasUrl = bean.getSourceUrl() != null && !bean.getSourceUrl().isBlank();
         if (StringTools.isEmpty(bean.getTitle()) || StringTools.isEmpty(bean.getStage())
-                || StringTools.isEmpty(bean.getKnowledgePointId()) || StringTools.isEmpty(bean.getContent())) {
-            throw new BusinessException("标题、学段、知识点和正文不能为空");
+                || StringTools.isEmpty(bean.getKnowledgePointId()) || (!hasContent && !hasUrl)) {
+            throw new BusinessException("标题、学段、知识点和正文（或资料链接）不能为空");
         }
         if (bean.getDifficulty() == null || bean.getDifficulty() < 1 || bean.getDifficulty() > 3) {
             throw new BusinessException("难度必须在 1-3 之间");

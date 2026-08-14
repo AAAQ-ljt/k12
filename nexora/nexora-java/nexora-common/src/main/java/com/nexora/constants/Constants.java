@@ -68,6 +68,11 @@ public class Constants {
     public static final String REDIS_KEY_RESOURCE_UPLOAD_QUEUE = "resource:upload:queue";
 
     /**
+     * Redis key：知识库解析入库异步队列
+     */
+    public static final String REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE = "knowledge:import:queue";
+
+    /**
      * 心跳超时时间（秒）
      */
     public static final int HEART_BEAT_TIMEOUT = 30;

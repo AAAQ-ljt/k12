@@ -120,6 +120,17 @@ export default function KnowledgeTest() {
                       {item.searchMode === 'vector' ? '向量' : '关键词'}
                     </Tag>
                     <Tag color="purple">相似度 {(item.score ?? 0).toFixed(3)}</Tag>
+                    {item.sourceUrl && (
+                      <Button
+                        type="link"
+                        size="small"
+                        href={item.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        原文链接
+                      </Button>
+                    )}
                   </Space>
                   <div style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: '#666' }}>
                     {item.content}

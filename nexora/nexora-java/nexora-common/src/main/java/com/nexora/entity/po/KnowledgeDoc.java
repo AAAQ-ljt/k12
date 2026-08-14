@@ -61,6 +61,11 @@ public class KnowledgeDoc implements Serializable {
 	private String sourceResourceId;
 
 	/**
+	 * 资料链接（超链接文档），可空
+	 */
+	private String sourceUrl;
+
+	/**
 	 * 向量状态：0待处理 1处理中 2已完成 3失败 4过期
 	 */
 	private Integer vectorStatus;
@@ -172,6 +177,14 @@ public class KnowledgeDoc implements Serializable {
 		return this.sourceResourceId;
 	}
 
+	public void setSourceUrl(String sourceUrl){
+		this.sourceUrl = sourceUrl;
+	}
+
+	public String getSourceUrl(){
+		return this.sourceUrl;
+	}
+
 	public void setVectorStatus(Integer vectorStatus){
 		this.vectorStatus = vectorStatus;
 	}
@@ -230,6 +243,6 @@ public class KnowledgeDoc implements Serializable {
 
 	@Override
 	public String toString (){
-		return "文档ID:"+(docId == null ? "空" : docId)+"，标题:"+(title == null ? "空" : title)+"，学段【冗余：与ES metadata双写一致】:"+(stage == null ? "空" : stage)+"，知识点【冗余：检索过滤/管理筛选免join】:"+(knowledgePointId == null ? "空" : knowledgePointId)+"，难度：1-3:"+(difficulty == null ? "空" : difficulty)+"，数据类型，默认KNOWLEDGE:"+(dataType == null ? "空" : dataType)+"，正文（Markdown）:"+(content == null ? "空" : content)+"，来源：0手动维护 1资料解析:"+(sourceType == null ? "空" : sourceType)+"，来源资源ID（解析入库时回填），可空:"+(sourceResourceId == null ? "空" : sourceResourceId)+"，向量状态：0待处理 1处理中 2已完成 3失败 4过期:"+(vectorStatus == null ? "空" : vectorStatus)+"，向量化失败时的错误原因，可空:"+(vectorError == null ? "空" : vectorError)+"，入库分块数:"+(chunkCount == null ? "空" : chunkCount)+"，状态：0下架 1上架:"+(status == null ? "空" : status)+"，维护人:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+		return "文档ID:"+(docId == null ? "空" : docId)+"，标题:"+(title == null ? "空" : title)+"，学段【冗余：与ES metadata双写一致】:"+(stage == null ? "空" : stage)+"，知识点【冗余：检索过滤/管理筛选免join】:"+(knowledgePointId == null ? "空" : knowledgePointId)+"，难度：1-3:"+(difficulty == null ? "空" : difficulty)+"，数据类型，默认KNOWLEDGE:"+(dataType == null ? "空" : dataType)+"，正文（Markdown）:"+(content == null ? "空" : content)+"，来源：0手动维护 1资料解析:"+(sourceType == null ? "空" : sourceType)+"，来源资源ID（解析入库时回填），可空:"+(sourceResourceId == null ? "空" : sourceResourceId)+"，资料链接（超链接文档），可空:"+(sourceUrl == null ? "空" : sourceUrl)+"，向量状态：0待处理 1处理中 2已完成 3失败 4过期:"+(vectorStatus == null ? "空" : vectorStatus)+"，向量化失败时的错误原因，可空:"+(vectorError == null ? "空" : vectorError)+"，入库分块数:"+(chunkCount == null ? "空" : chunkCount)+"，状态：0下架 1上架:"+(status == null ? "空" : status)+"，维护人:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
 	}
 }

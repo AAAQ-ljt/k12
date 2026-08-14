@@ -13,12 +13,13 @@ import {
   type TreeDataNode,
   type TreeProps,
 } from 'antd';
-import { Database, FolderOpen, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { FileText, FileUp, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import BaseFormModal from '@/components/BaseFormModal';
 import SearchForm from '@/components/SearchForm';
 import StageTag from '@/components/StageTag';
 import styles from '@/assets/styles/utilities.module.scss';
+import ResourceImportDrawer from './ResourceImportDrawer';
 import {
   DIFFICULTY_OPTIONS,
   STAGE_OPTIONS,
@@ -29,7 +30,6 @@ import {
   addPoint,
   delDoc,
   delPoint,
-  importDir,
   loadDocList,
   loadTree,
   updateDoc,
@@ -49,6 +49,12 @@ const VECTOR_STATUS_MAP: Record<number, { color: string; text: string }> = {
   4: { color: 'warning', text: '已过期' },
 };
 
+const SOURCE_TYPE_MAP: Record<number, string> = {
+  0: '手动维护',
+  1: '资料解析',
+  2: '资源说明',
+};
+
 interface ModalState<T> {
   open: boolean;
   mode: 'create' | 'edit' | 'view';
@@ -65,9 +71,9 @@ export default function KnowledgeCatalog() {
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [docModal, setDocModal] = useState<ModalState<KnowledgeDoc>>({ open: false, mode: 'create' });
   const [pointModal, setPointModal] = useState<ModalState<KnowledgePoint>>({ open: false, mode: 'create' });
+  const [resourceImportOpen, setResourceImportOpen] = useState(false);
 
   const fetchTree = useCallback(async () => {
     try {
@@ -170,28 +176,10 @@ export default function KnowledgeCatalog() {
     setQuery((prev) => ({ ...prev, pageNo: pag.current ?? 1, pageSize: pag.pageSize ?? 10 }));
   };
 
-  const handleImport = async () => {
-    setImporting(true);
-    try {
-      const result = await importDir();
-      if (result.failedCount > 0) {
-        message.warning(`导入完成：成功 ${result.successCount}，失败 ${result.failedCount}`);
-      } else {
-        message.success(`导入完成：${result.successCount} 篇`);
-      }
-      fetchTree();
-      fetchDocs();
-    } catch {
-      // 错误已由请求拦截器统一提示
-    } finally {
-      setImporting(false);
-    }
-  };
-
   const handleVectorize = async (docId: string) => {
     try {
       await vectorize(docId);
-      message.success('入库成功');
+      message.success('已提交入库，正在后台处理');
       fetchDocs();
     } catch {
       fetchDocs();
@@ -327,6 +315,13 @@ export default function KnowledgeCatalog() {
       width: 90,
     },
     {
+      title: '来源',
+      dataIndex: 'sourceType',
+      key: 'sourceType',
+      width: 100,
+      render: (_: unknown, record: KnowledgeDoc) => SOURCE_TYPE_MAP[record.sourceType ?? 0] ?? '-',
+    },
+    {
       title: '更新时间',
       dataIndex: 'updateTime',
       key: 'updateTime',
@@ -359,17 +354,28 @@ export default function KnowledgeCatalog() {
 
   return (
     <div>
-      <Space style={{ marginBottom: 12 }} wrap>
-        <Button type="primary" icon={<Plus size={14} />} onClick={() => setDocModal({ open: true, mode: 'create' })}>
-          新增文档
-        </Button>
-        <Button icon={<Database size={14} />} onClick={() => setPointModal({ open: true, mode: 'create' })}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          marginBottom: 12,
+        }}
+      >
+        <Button type="primary" icon={<Plus size={14} />} onClick={() => setPointModal({ open: true, mode: 'create' })}>
           新增知识点
         </Button>
-        <Button icon={<Upload size={14} />} loading={importing} onClick={handleImport}>
-          导入 knowledge 目录
-        </Button>
-      </Space>
+        <Space wrap>
+          <Button icon={<FileUp size={14} />} onClick={() => setResourceImportOpen(true)}>
+            从资源导入
+          </Button>
+          <Button icon={<FileText size={14} />} onClick={() => setDocModal({ open: true, mode: 'create' })}>
+            文档录入
+          </Button>
+        </Space>
+      </div>
 
       <SearchForm onSearch={handleSearch} onReset={handleReset}>
         <Form.Item label="文档标题">
@@ -450,6 +456,15 @@ export default function KnowledgeCatalog() {
           fetchTree();
         }}
       />
+      <ResourceImportDrawer
+        open={resourceImportOpen}
+        pointOptions={pointOptions}
+        onClose={() => setResourceImportOpen(false)}
+        onSuccess={() => {
+          fetchDocs();
+          fetchTree();
+        }}
+      />
     </div>
   );
 }
@@ -481,9 +496,13 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
   const isCreate = state.mode === 'create';
 
   const handleSubmit = async (values: Record<string, any>) => {
+    if (!values.content?.trim() && !values.sourceUrl?.trim()) {
+      message.warning('正文或资料链接至少填写一项');
+      throw new Error('正文或资料链接不能为空');
+    }
     if (isCreate) {
       await addDoc(values);
-      message.success('新增文档成功');
+      message.success('文档录入成功');
     } else {
       await updateDoc({ ...values, docId: state.initialValues?.docId });
       message.success('修改文档成功，请重新入库');
@@ -493,7 +512,7 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
   return (
     <BaseFormModal
       open={state.open}
-      title={isCreate ? '新增文档' : state.mode === 'edit' ? '编辑文档' : '查看文档'}
+      title={isCreate ? '文档录入' : state.mode === 'edit' ? '编辑文档' : '查看文档'}
       mode={state.mode}
       initialValues={state.initialValues}
       onCancel={onCancel}
@@ -512,7 +531,14 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
       <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
         <Select placeholder="请选择难度" options={DIFFICULTY_OPTIONS} />
       </Form.Item>
-      <Form.Item name="content" label="正文" rules={[{ required: true, message: '请输入正文' }]}>
+      <Form.Item
+        name="sourceUrl"
+        label="资料链接"
+        rules={[{ type: 'url', message: '请输入正确的链接' }]}
+      >
+        <Input placeholder="https://...（超链接文档可只填链接）" maxLength={500} />
+      </Form.Item>
+      <Form.Item name="content" label="正文">
         <Input.TextArea rows={12} placeholder="支持 Markdown" />
       </Form.Item>
       <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>

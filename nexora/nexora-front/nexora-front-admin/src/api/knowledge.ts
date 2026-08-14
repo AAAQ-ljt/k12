@@ -28,6 +28,7 @@ export interface KnowledgeDoc {
   content?: string;
   sourceType?: number;
   sourceResourceId?: string;
+  sourceUrl?: string;
   vectorStatus: number;
   vectorError?: string;
   chunkCount?: number;
@@ -38,6 +39,7 @@ export interface KnowledgeDoc {
 }
 
 export interface KnowledgeDocQuery extends PageParam {
+  docId?: string;
   titleFuzzy?: string;
   stage?: string;
   knowledgePointId?: string;
@@ -79,6 +81,7 @@ export interface KnowledgeSearchResult {
   content: string;
   score: number;
   searchMode: string;
+  sourceUrl?: string;
 }
 
 export interface KnowledgeSearchTestParams {
@@ -94,6 +97,33 @@ export interface KnowledgeImportResult {
   successCount: number;
   failedCount: number;
   errors: string[];
+}
+
+/** 从资源导入知识文档参数 */
+export interface ResourceKnowledgeImportParams {
+  resourceId: string;
+  title?: string;
+  stage: string;
+  knowledgePointId: string;
+  difficulty: number;
+  sourceType?: number; // 1=资料解析 2=手动填写资源说明
+  content?: string;
+}
+
+/** 从资源导入知识文档结果 */
+export interface ResourceKnowledgeImportResult {
+  docId: string;
+  title: string;
+  stage: string;
+  knowledgePointId: string;
+  difficulty: number;
+  sourceType: number;
+  sourceResourceId: string;
+  contentLength: number;
+  chunkCount: number;
+  vectorStatus: number;
+  warnings: string[];
+  async?: boolean;
 }
 
 export function loadOverview(): Promise<KnowledgeOverview> {
@@ -134,6 +164,10 @@ export function delPoint(knowledgePointId: string): Promise<void> {
 
 export function importDir(): Promise<KnowledgeImportResult> {
   return request.post('/knowledgeBase/importDir');
+}
+
+export function resourceImport(data: ResourceKnowledgeImportParams): Promise<ResourceKnowledgeImportResult> {
+  return request.post('/knowledgeBase/resourceImport', data);
 }
 
 export function vectorize(docId: string): Promise<void> {

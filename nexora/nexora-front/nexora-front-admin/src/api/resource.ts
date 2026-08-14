@@ -29,6 +29,7 @@ export interface ResourceInfoQuery extends PageParam {
   resourceType?: string;
   stage?: string;
   directoryId?: string;
+  status?: number;
 }
 
 /** 资源新增元数据 */

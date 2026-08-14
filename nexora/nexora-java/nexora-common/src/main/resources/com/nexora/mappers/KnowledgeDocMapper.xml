@@ -23,6 +23,8 @@
 		<result column="source_type" property="sourceType"  />
 		<!--来源资源ID（解析入库时回填），可空-->
 		<result column="source_resource_id" property="sourceResourceId"  />
+		<!--资料链接（超链接文档），可空-->
+		<result column="source_url" property="sourceUrl"  />
 		<!--向量状态：0待处理 1处理中 2已完成 3失败 4过期-->
 		<result column="vector_status" property="vectorStatus"  />
 		<!--向量化失败时的错误原因，可空-->
@@ -43,9 +45,9 @@
 	<!-- 通用查询结果列-->
 	<sql id="base_column_list">
 		 k.doc_id,k.title,k.stage,k.knowledge_point_id,k.difficulty,
-		 k.data_type,k.content,k.source_type,k.source_resource_id,k.vector_status,
-		 k.vector_error,k.chunk_count,k.status,k.create_by,k.create_time,
-		 k.update_time
+		 k.data_type,k.content,k.source_type,k.source_resource_id,k.source_url,
+		 k.vector_status,k.vector_error,k.chunk_count,k.status,k.create_by,
+		 k.create_time,k.update_time
 	</sql>
 
 	<sql id="base_condition_filed">
@@ -189,6 +191,9 @@
 			<if test="bean.sourceResourceId != null">
 				 source_resource_id,
 			</if>
+			<if test="bean.sourceUrl != null">
+				 source_url,
+			</if>
 			<if test="bean.vectorStatus != null">
 				 vector_status,
 			</if>
@@ -238,6 +243,9 @@
 			</if>
 			<if test="bean.sourceResourceId!=null">
 				 #{bean.sourceResourceId},
+			</if>
+			<if test="bean.sourceUrl!=null">
+				 #{bean.sourceUrl},
 			</if>
 			<if test="bean.vectorStatus!=null">
 				 #{bean.vectorStatus},
@@ -294,6 +302,9 @@
 			<if test="bean.sourceResourceId != null">
 				 source_resource_id,
 			</if>
+			<if test="bean.sourceUrl != null">
+				 source_url,
+			</if>
 			<if test="bean.vectorStatus != null">
 				 vector_status,
 			</if>
@@ -343,6 +354,9 @@
 			</if>
 			<if test="bean.sourceResourceId!=null">
 				 #{bean.sourceResourceId},
+			</if>
+			<if test="bean.sourceUrl!=null">
+				 #{bean.sourceUrl},
 			</if>
 			<if test="bean.vectorStatus!=null">
 				 #{bean.vectorStatus},
@@ -395,6 +409,9 @@
 			<if test="bean.sourceResourceId!=null">
 				 source_resource_id = VALUES(source_resource_id),
 			</if>
+			<if test="bean.sourceUrl!=null">
+				 source_url = VALUES(source_url),
+			</if>
 			<if test="bean.vectorStatus!=null">
 				 vector_status = VALUES(vector_status),
 			</if>
@@ -431,6 +448,7 @@
 			 content,
 			 source_type,
 			 source_resource_id,
+			 source_url,
 			 vector_status,
 			 vector_error,
 			 chunk_count,
@@ -450,6 +468,7 @@
 				 #{item.content},
 				 #{item.sourceType},
 				 #{item.sourceResourceId},
+				 #{item.sourceUrl},
 				 #{item.vectorStatus},
 				 #{item.vectorError},
 				 #{item.chunkCount},
@@ -473,6 +492,7 @@
 			 content,
 			 source_type,
 			 source_resource_id,
+			 source_url,
 			 vector_status,
 			 vector_error,
 			 chunk_count,
@@ -492,6 +512,7 @@
 				 #{item.content},
 				 #{item.sourceType},
 				 #{item.sourceResourceId},
+				 #{item.sourceUrl},
 				 #{item.vectorStatus},
 				 #{item.vectorError},
 				 #{item.chunkCount},
@@ -511,6 +532,7 @@
 			content = VALUES(content),
 			source_type = VALUES(source_type),
 			source_resource_id = VALUES(source_resource_id),
+			source_url = VALUES(source_url),
 			vector_status = VALUES(vector_status),
 			vector_error = VALUES(vector_error),
 			chunk_count = VALUES(chunk_count),
@@ -550,6 +572,9 @@
 			</if>
 			<if test="bean.sourceResourceId != null">
 				 source_resource_id = #{bean.sourceResourceId},
+			</if>
+			<if test="bean.sourceUrl != null">
+				 source_url = #{bean.sourceUrl},
 			</if>
 			<if test="bean.vectorStatus != null">
 				 vector_status = #{bean.vectorStatus},
@@ -609,6 +634,9 @@
 			</if>
 			<if test="bean.sourceResourceId != null">
 				 source_resource_id = #{bean.sourceResourceId},
+			</if>
+			<if test="bean.sourceUrl != null">
+				 source_url = #{bean.sourceUrl},
 			</if>
 			<if test="bean.vectorStatus != null">
 				 vector_status = #{bean.vectorStatus},
