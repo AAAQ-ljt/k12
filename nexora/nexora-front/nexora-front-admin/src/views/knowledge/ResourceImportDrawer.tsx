@@ -18,6 +18,7 @@ import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
 import {
   DIFFICULTY_OPTIONS,
+  RESOURCE_TYPE_OPTIONS,
   RESOURCE_TYPE_MAP,
   STAGE_OPTIONS,
 } from '@/types/common';
@@ -102,7 +103,7 @@ export default function ResourceImportDrawer({
     setQuery((prev) => ({
       ...prev,
       pageNo: 1,
-      resourceName: nameDraft.trim() || undefined,
+      resourceNameFuzzy: nameDraft.trim() || undefined,
       resourceType: typeDraft,
     }));
   };
@@ -290,10 +291,7 @@ export default function ResourceImportDrawer({
               placeholder="文件类型"
               allowClear
               style={{ width: 130 }}
-              options={Object.entries(RESOURCE_TYPE_MAP).map(([value, item]) => ({
-                label: item.text,
-                value,
-              }))}
+              options={RESOURCE_TYPE_OPTIONS}
             />
             <Button type="primary" icon={<Search size={14} />} onClick={handleSearch}>
               查询

@@ -26,6 +26,7 @@ export interface ResourceInfo {
 /** 资源查询参数 */
 export interface ResourceInfoQuery extends PageParam {
   resourceName?: string;
+  resourceNameFuzzy?: string;
   resourceType?: string;
   stage?: string;
   directoryId?: string;
