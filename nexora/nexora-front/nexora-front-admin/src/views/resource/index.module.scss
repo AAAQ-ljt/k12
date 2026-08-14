@@ -156,6 +156,33 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.typeCell > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderNameButton {
+  padding: 0;
+  height: auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderType {
+  color: var(--color-text-secondary);
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .modalTip {

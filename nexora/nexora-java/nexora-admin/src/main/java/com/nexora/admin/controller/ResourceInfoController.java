@@ -1,16 +1,19 @@
 package com.nexora.admin.controller;
 
 import com.nexora.admin.dto.ResourceMoveDTO;
+import com.nexora.admin.dto.ResourceBatchDeleteDTO;
 import com.nexora.admin.service.ResourceUploadService;
 import com.nexora.admin.vo.ResourceUploadSessionVO;
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.ResourceInfoQuery;
+import com.nexora.entity.query.ResourceDirectoryQuery;
 import com.nexora.entity.vo.PaginationResultVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.ResourceInfoService;
+import com.nexora.service.ResourceDirectoryService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +57,9 @@ public class ResourceInfoController extends ABaseController {
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private ResourceDirectoryService resourceDirectoryService;
 
     @Resource
     private ResourceUploadService resourceUploadService;
@@ -292,6 +298,40 @@ public class ResourceInfoController extends ABaseController {
         return getSuccessResponseVO(null);
     }
 
+    /**
+     * 批量删除文件和空目录
+     */
+    @DeleteMapping("/batchDel")
+    public ResponseVO<Void> batchDel(@RequestBody ResourceBatchDeleteDTO dto) {
+        List<String> resourceIds = dto == null ? null : dto.getResourceIds();
+        List<String> dirIds = dto == null ? null : dto.getDirIds();
+        boolean hasResource = resourceIds != null && !resourceIds.isEmpty();
+        boolean hasDir = dirIds != null && !dirIds.isEmpty();
+        if (!hasResource && !hasDir) {
+            throw new BusinessException("请选择要删除的资源");
+        }
+        if (dirIds != null) {
+            for (String dirId : dirIds) {
+                assertDirectoryDeletable(dirId);
+            }
+        }
+        if (resourceIds != null) {
+            for (String resourceId : resourceIds) {
+                if (!StringTools.isEmpty(resourceId)) {
+                    resourceInfoService.deleteResourceInfoByResourceId(resourceId);
+                }
+            }
+        }
+        if (dirIds != null) {
+            for (String dirId : dirIds) {
+                if (!StringTools.isEmpty(dirId)) {
+                    resourceDirectoryService.deleteResourceDirectoryByDirId(dirId);
+                }
+            }
+        }
+        return getSuccessResponseVO(null);
+    }
+
     private ResourceInfo getReadyResource(String resourceId) {
         if (StringTools.isEmpty(resourceId)) {
             return null;
@@ -301,6 +341,22 @@ public class ResourceInfoController extends ABaseController {
             return null;
         }
         return resource;
+    }
+
+    private void assertDirectoryDeletable(String dirId) {
+        if (StringTools.isEmpty(dirId) || "0".equals(dirId) || "root".equals(dirId)) {
+            throw new BusinessException("根目录不能删除");
+        }
+        ResourceDirectoryQuery childQuery = new ResourceDirectoryQuery();
+        childQuery.setParentId(dirId);
+        if (resourceDirectoryService.findCountByParam(childQuery) > 0) {
+            throw new BusinessException("目录下存在子目录，不能删除");
+        }
+        ResourceInfoQuery fileQuery = new ResourceInfoQuery();
+        fileQuery.setDirectoryId(dirId);
+        if (resourceInfoService.findCountByParam(fileQuery) > 0) {
+            throw new BusinessException("目录下存在文件，不能删除");
+        }
     }
 
     private Path resolveResourcePath(String relativePath) throws IOException {

@@ -133,3 +133,14 @@ export function getFilePreviewUrl(resourceId: string): string {
 export function getDownloadUrl(resourceId: string): string {
   return `/api/resourceInfo/download/${resourceId}`;
 }
+
+/** 批量删除参数 */
+export interface ResourceBatchDeleteParams {
+  resourceIds: string[];
+  dirIds: string[];
+}
+
+/** 批量删除文件和空目录 */
+export function batchDeleteResources(data: ResourceBatchDeleteParams): Promise<void> {
+  return request.delete('/resourceInfo/batchDel', { data });
+}

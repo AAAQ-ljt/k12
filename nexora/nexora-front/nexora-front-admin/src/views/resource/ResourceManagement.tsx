@@ -57,6 +57,7 @@ import {
   type ResourceDirectory,
 } from '@/api/resourceDirectory';
 import {
+  batchDeleteResources,
   del as delResource,
   getDownloadUrl,
   loadDataList,
@@ -93,6 +94,10 @@ interface UploadJob {
   totalShards: number;
   error?: string;
 }
+
+type ResourceTableRow =
+  | (ResourceInfo & { key: string; kind: 'file' })
+  | (ResourceDirectory & { key: string; kind: 'dir' });
 
 function formatBytes(bytes?: number): string {
   if (!bytes) return '-';
@@ -156,7 +161,7 @@ function splitFileName(fileName: string): { base: string; ext: string } {
 }
 
 export default function ResourceManagement() {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [dirList, setDirList] = useState<ResourceDirectory[]>([]);
   const [files, setFiles] = useState<ResourceInfo[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
@@ -208,6 +213,21 @@ export default function ResourceManagement() {
     findDirPath(dirList, selectedDir).forEach((dir) => items.push({ title: dir.dirName }));
     return items;
   }, [dirList, selectedDir]);
+
+  const tableData = useMemo<ResourceTableRow[]>(() => {
+    const parentId = selectedDir === 'root' ? '0' : selectedDir;
+    const dirRows: ResourceTableRow[] = dirList
+      .filter((dir) => dir.parentId === parentId)
+      .map((dir) => ({ ...dir, key: `dir:${dir.dirId}`, kind: 'dir' }));
+    const fileRows: ResourceTableRow[] = files.map((file) => ({
+      ...file,
+      key: file.resourceId,
+      kind: 'file',
+    }));
+    return [...dirRows, ...fileRows];
+  }, [dirList, files, selectedDir]);
+
+  const selectedFileCount = selectedRowKeys.filter((key) => !String(key).startsWith('dir:')).length;
 
   const loadTree = useCallback(async () => {
     try {
@@ -355,8 +375,13 @@ export default function ResourceManagement() {
     }
   };
 
+  const openFolder = (dirId: string) => {
+    setSelectedDir(dirId);
+  };
+
   const openMove = () => {
-    if (selectedRowKeys.length === 0) {
+    const fileKeys = selectedRowKeys.filter((key) => !String(key).startsWith('dir:'));
+    if (fileKeys.length === 0) {
       message.warning('请先在文件列表中选择要转移的文件');
       return;
     }
@@ -368,8 +393,9 @@ export default function ResourceManagement() {
   const handleMove = async () => {
     try {
       const values = await moveForm.validateFields();
-      await moveResources(selectedRowKeys.map(String), values.targetDir);
-      message.success(`已转移 ${selectedRowKeys.length} 个文件`);
+      const fileKeys = selectedRowKeys.filter((key) => !String(key).startsWith('dir:'));
+      await moveResources(fileKeys.map(String), values.targetDir);
+      message.success(`已转移 ${fileKeys.length} 个文件`);
       setMoveModalOpen(false);
       setSelectedRowKeys([]);
       await loadFiles();
@@ -497,6 +523,39 @@ export default function ResourceManagement() {
     }
   };
 
+  const handleBatchDelete = () => {
+    const fileKeys = selectedRowKeys
+      .filter((key) => !String(key).startsWith('dir:'))
+      .map(String);
+    const dirKeys = selectedRowKeys
+      .filter((key) => String(key).startsWith('dir:'))
+      .map((key) => String(key).slice(4));
+    if (fileKeys.length === 0 && dirKeys.length === 0) {
+      message.warning('请先选择要删除的资源');
+      return;
+    }
+    modal.confirm({
+      title: '确认批量删除？',
+      content: `已选择 ${fileKeys.length} 个文件、${dirKeys.length} 个目录，非空目录不能删除。`,
+      okText: '删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await batchDeleteResources({ resourceIds: fileKeys, dirIds: dirKeys });
+          message.success('批量删除成功');
+          setSelectedRowKeys([]);
+          if (dirKeys.includes(selectedDir)) {
+            setSelectedDir('root');
+          }
+          await loadTree();
+          await loadFiles();
+        } catch {
+          // 错误已由请求拦截器统一提示
+        }
+      },
+    });
+  };
+
   const handlePreview = (record: ResourceInfo) => {
     if (record.status !== 1) {
       message.warning(record.status === 0 ? '资源处理中，请稍后再试' : '资源处理失败，无法预览');
@@ -546,34 +605,51 @@ export default function ResourceManagement() {
     }
   };
 
-  const columns: TableProps<ResourceInfo>['columns'] = [
+  const columns: TableProps<ResourceTableRow>['columns'] = [
     {
       title: '资源名称',
       dataIndex: 'resourceName',
       key: 'resourceName',
+      width: 320,
       ellipsis: true,
-      render: (_, record) => (
-        <span className={styles.typeCell}>
-          {typeIcon(record.resourceType)}
-          <span>{record.resourceName}</span>
-        </span>
-      ),
+      render: (_, record) =>
+        record.kind === 'dir' ? (
+          <span className={styles.typeCell}>
+            <FolderOpen size={16} />
+            <Button
+              type="link"
+              size="small"
+              className={styles.folderNameButton}
+              onClick={() => openFolder(record.dirId)}
+            >
+              {record.dirName}
+            </Button>
+          </span>
+        ) : (
+          <span className={styles.typeCell}>
+            {typeIcon(record.resourceType)}
+            <span>{record.resourceName}</span>
+          </span>
+        ),
     },
     {
       title: '类型',
       dataIndex: 'resourceType',
       key: 'resourceType',
       width: 110,
-      render: (_, record) => (
-        <StatusTag status={record.resourceType} statusMap={RESOURCE_TYPE_MAP} />
-      ),
+      render: (_, record) =>
+        record.kind === 'dir' ? (
+          <span className={styles.folderType}>文件夹</span>
+        ) : (
+          <StatusTag status={record.resourceType} statusMap={RESOURCE_TYPE_MAP} />
+        ),
     },
     {
       title: '大小',
       dataIndex: 'fileSize',
       key: 'fileSize',
       width: 110,
-      render: (_, record) => formatBytes(record.fileSize),
+      render: (_, record) => (record.kind === 'dir' ? '-' : formatBytes(record.fileSize)),
     },
     {
       title: '所属目录',
@@ -582,6 +658,7 @@ export default function ResourceManagement() {
       width: 170,
       ellipsis: true,
       render: (_, record) => {
+        if (record.kind === 'dir') return '-';
         const dir = dirList.find((item) => item.dirId === record.directoryId);
         return dir?.dirName ?? '未分类';
       },
@@ -591,50 +668,68 @@ export default function ResourceManagement() {
       dataIndex: 'stage',
       key: 'stage',
       width: 110,
-      render: (_, record) => <StageTag stage={record.stage ?? ''} />,
+      render: (_, record) =>
+        record.kind === 'dir' ? '-' : <StageTag stage={record.stage ?? ''} />,
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (_, record) => (
-        <StatusTag status={String(record.status)} statusMap={RESOURCE_STATUS_MAP} />
-      ),
+      render: (_, record) =>
+        record.kind === 'dir' ? (
+          '-'
+        ) : (
+          <StatusTag status={String(record.status)} statusMap={RESOURCE_STATUS_MAP} />
+        ),
     },
     {
       title: '更新时间',
       dataIndex: 'updateTime',
       key: 'updateTime',
-      width: 160,
+      width: 170,
+      ellipsis: true,
+      render: (_, record) => <span className={styles.nowrap}>{record.updateTime || '-'}</span>,
     },
     {
       title: '操作',
       key: 'action',
       width: 240,
-      render: (_, record) => (
-        <Space size="small">
-          <Button type="link" size="small" icon={<Eye size={13} />} onClick={() => handlePreview(record)}>
-            预览
-          </Button>
-          <Button type="link" size="small" icon={<Pencil size={13} />} onClick={() => openRenameFile(record)}>
-            重命名
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<Download size={13} />}
-            onClick={() => window.open(getDownloadUrl(record.resourceId), '_blank')}
-          >
-            下载
-          </Button>
-          <Popconfirm title="确认删除该资源？" onConfirm={() => handleDeleteFile(record.resourceId)}>
-            <Button type="link" size="small" danger icon={<Trash2 size={13} />}>
-              删除
+      render: (_, record) =>
+        record.kind === 'dir' ? (
+          <Space size="small">
+            <Button
+              type="link"
+              size="small"
+              icon={<FolderOpen size={13} />}
+              onClick={() => openFolder(record.dirId)}
+            >
+              打开
             </Button>
-          </Popconfirm>
-        </Space>
-      ),
+          </Space>
+        ) : (
+          <Space size="small">
+            <Button type="link" size="small" icon={<Eye size={13} />} onClick={() => handlePreview(record)}>
+              预览
+            </Button>
+            <Button type="link" size="small" icon={<Pencil size={13} />} onClick={() => openRenameFile(record)}>
+              重命名
+            </Button>
+            <Button
+              type="link"
+              size="small"
+              icon={<Download size={13} />}
+              onClick={() => window.open(getDownloadUrl(record.resourceId), '_blank')}
+            >
+              下载
+            </Button>
+            <Popconfirm title="确认删除该资源？" onConfirm={() => handleDeleteFile(record.resourceId)}>
+              <Button type="link" size="small" danger icon={<Trash2 size={13} />}>
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
+        ),
     },
   ];
 
@@ -671,6 +766,14 @@ export default function ResourceManagement() {
           </Button>
           <Button icon={<Move size={14} />} onClick={openMove}>
             转移文件
+          </Button>
+          <Button
+            danger
+            icon={<Trash2 size={14} />}
+            disabled={selectedRowKeys.length === 0}
+            onClick={handleBatchDelete}
+          >
+            批量删除
           </Button>
           <Button type="primary" icon={<UploadIcon size={14} />} onClick={openUpload}>
             上传资源
@@ -757,7 +860,7 @@ export default function ResourceManagement() {
           <div className={styles.fileHeader}>
             <div className={styles.fileHeaderLeft}>
               <span className={styles.panelTitle}>文件列表</span>
-              <span className={styles.panelMeta}>{files.length} 个文件</span>
+              <span className={styles.panelMeta}>{tableData.length} 个项目</span>
             </div>
             <div className={styles.fileHeaderRight}>
               <FolderOpen size={14} />
@@ -765,17 +868,17 @@ export default function ResourceManagement() {
             </div>
           </div>
           <div className={styles.tableWrap}>
-            <Table<ResourceInfo>
+            <Table<ResourceTableRow>
+              dataSource={tableData}
               columns={columns}
-              dataSource={files}
               loading={loadingFiles}
-              rowKey="resourceId"
+              rowKey="key"
               pagination={false}
               rowSelection={{
                 selectedRowKeys,
                 onChange: (keys) => setSelectedRowKeys(keys),
               }}
-              scroll={{ y: 'calc(100vh - 320px)' }}
+              scroll={{ x: 1200, y: 'calc(100vh - 320px)' }}
             />
           </div>
         </section>
@@ -826,7 +929,7 @@ export default function ResourceManagement() {
         onCancel={() => setMoveModalOpen(false)}
         onOk={() => void handleMove()}
       >
-        <p className={styles.modalTip}>已选择 {selectedRowKeys.length} 个文件</p>
+        <p className={styles.modalTip}>已选择 {selectedFileCount} 个文件</p>
         <Form form={moveForm} layout="vertical">
           <Form.Item label="目标目录" name="targetDir" rules={[{ required: true, message: '请选择目标目录' }]}>
             <Select options={dirOptions} />
