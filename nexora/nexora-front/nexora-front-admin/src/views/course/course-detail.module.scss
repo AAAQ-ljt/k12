@@ -1,0 +1,62 @@
+.loadingBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+.drawerLayout {
+  display: grid;
+  grid-template-columns: 260px 1fr 1fr;
+  gap: 16px;
+  height: calc(100vh - 110px);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+}
+
+.panelHeader span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.listPanel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px;
+}
+
+.itemActive {
+  background: #e6f4ff;
+  border-radius: 6px;
+}
+
+.emptyBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

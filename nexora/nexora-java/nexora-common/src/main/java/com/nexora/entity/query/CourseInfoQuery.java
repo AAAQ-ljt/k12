@@ -38,6 +38,13 @@ public class CourseInfoQuery extends BaseParam {
 	private String stageFuzzy;
 
 	/**
+	 * 年级【学生端按年级过滤主筛选键】
+	 */
+	private String grade;
+
+	private String gradeFuzzy;
+
+	/**
 	 * 学科
 	 */
 	private String subject;
@@ -169,6 +176,22 @@ public class CourseInfoQuery extends BaseParam {
 
 	public String getStageFuzzy(){
 		return this.stageFuzzy;
+	}
+
+	public void setGrade(String grade){
+		this.grade = grade;
+	}
+
+	public String getGrade(){
+		return this.grade;
+	}
+
+	public void setGradeFuzzy(String gradeFuzzy){
+		this.gradeFuzzy = gradeFuzzy;
+	}
+
+	public String getGradeFuzzy(){
+		return this.gradeFuzzy;
 	}
 
 	public void setSubject(String subject){

@@ -1,6 +1,6 @@
 import { Form, Input, Select, App } from 'antd';
 import BaseFormModal from '@/components/BaseFormModal';
-import { STAGE_OPTIONS, SUBJECT_OPTIONS } from '@/types/common';
+import { GRADE_OPTIONS, SUBJECT_OPTIONS, gradeToStage } from '@/types/common';
 import { add, update } from '@/api/course';
 import type { CourseInfo } from '@/api/course';
 
@@ -23,11 +23,15 @@ export default function CourseFormModal({
   const isCreate = mode === 'create';
 
   const handleSubmit = async (values: Record<string, any>) => {
+    const payload = {
+      ...values,
+      stage: gradeToStage(values.grade) ?? initialValues?.stage,
+    };
     if (isCreate) {
-      await add(values);
+      await add(payload);
       message.success('新增课程成功');
     } else {
-      await update({ ...values, courseId: initialValues?.courseId });
+      await update({ ...payload, courseId: initialValues?.courseId });
       message.success('修改课程成功');
     }
   };
@@ -53,11 +57,11 @@ export default function CourseFormModal({
       </Form.Item>
 
       <Form.Item
-        name="stage"
-        label="学段"
-        rules={[{ required: true, message: '请选择学段' }]}
+        name="grade"
+        label="年级"
+        rules={[{ required: true, message: '请选择年级' }]}
       >
-        <Select placeholder="请选择学段" options={STAGE_OPTIONS} />
+        <Select placeholder="请选择年级" options={GRADE_OPTIONS} />
       </Form.Item>
 
       <Form.Item

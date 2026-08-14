@@ -31,6 +31,13 @@ public class QuestionInfoQuery extends BaseParam {
 	private String stageFuzzy;
 
 	/**
+	 * 年级【按年级抽题免join】
+	 */
+	private String grade;
+
+	private String gradeFuzzy;
+
+	/**
 	 * 难度：1-3
 	 */
 	private Integer difficulty;
@@ -158,6 +165,22 @@ public class QuestionInfoQuery extends BaseParam {
 
 	public String getStageFuzzy(){
 		return this.stageFuzzy;
+	}
+
+	public void setGrade(String grade){
+		this.grade = grade;
+	}
+
+	public String getGrade(){
+		return this.grade;
+	}
+
+	public void setGradeFuzzy(String gradeFuzzy){
+		this.gradeFuzzy = gradeFuzzy;
+	}
+
+	public String getGradeFuzzy(){
+		return this.gradeFuzzy;
 	}
 
 	public void setDifficulty(Integer difficulty){

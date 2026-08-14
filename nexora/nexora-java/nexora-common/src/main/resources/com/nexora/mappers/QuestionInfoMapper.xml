@@ -11,6 +11,8 @@
 		<result column="knowledge_point_id" property="knowledgePointId"  />
 		<!--学段【冗余：按学段抽题免join】-->
 		<result column="stage" property="stage"  />
+		<!--年级【按年级抽题免join】-->
+		<result column="grade" property="grade"  />
 		<!--难度：1-3-->
 		<result column="difficulty" property="difficulty"  />
 		<!--题型：0单选 1多选 2判断 3填空-->
@@ -42,7 +44,7 @@
 
 	<!-- 通用查询结果列-->
 	<sql id="base_column_list">
-		 q.question_id,q.knowledge_point_id,q.stage,q.difficulty,q.question_type,
+		 q.question_id,q.knowledge_point_id,q.stage,q.grade,q.difficulty,q.question_type,
 		 q.title,q.question_image,q.answer,q.analysis,q.source,
 		 q.audit_status,q.score,q.status,q.create_by,q.create_time,
 		 q.update_time
@@ -57,6 +59,9 @@
 			</if>
 			<if test="query.stage != null and query.stage!=''">
 				 and  q.stage = #{query.stage}
+			</if>
+			<if test="query.grade != null and query.grade!=''">
+				 and  q.grade = #{query.grade}
 			</if>
 			<if test="query.difficulty != null">
 				 and  q.difficulty = #{query.difficulty}
@@ -111,6 +116,9 @@
 			</if>
 			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
 				 and  q.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.gradeFuzzy!= null  and query.gradeFuzzy!=''">
+				 and  q.grade like concat('%', #{query.gradeFuzzy}, '%')
 			</if>
 			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
 				 and  q.title like concat('%', #{query.titleFuzzy}, '%')
@@ -168,6 +176,9 @@
 			<if test="bean.stage != null">
 				 stage,
 			</if>
+			<if test="bean.grade != null">
+				 grade,
+			</if>
 			<if test="bean.difficulty != null">
 				 difficulty,
 			</if>
@@ -217,6 +228,9 @@
 			</if>
 			<if test="bean.stage!=null">
 				 #{bean.stage},
+			</if>
+			<if test="bean.grade!=null">
+				 #{bean.grade},
 			</if>
 			<if test="bean.difficulty!=null">
 				 #{bean.difficulty},
@@ -273,6 +287,9 @@
 			<if test="bean.stage != null">
 				 stage,
 			</if>
+			<if test="bean.grade != null">
+				 grade,
+			</if>
 			<if test="bean.difficulty != null">
 				 difficulty,
 			</if>
@@ -322,6 +339,9 @@
 			</if>
 			<if test="bean.stage!=null">
 				 #{bean.stage},
+			</if>
+			<if test="bean.grade!=null">
+				 #{bean.grade},
 			</if>
 			<if test="bean.difficulty!=null">
 				 #{bean.difficulty},
@@ -374,6 +394,9 @@
 			<if test="bean.stage!=null">
 				 stage = VALUES(stage),
 			</if>
+			<if test="bean.grade!=null">
+				 grade = VALUES(grade),
+			</if>
 			<if test="bean.difficulty!=null">
 				 difficulty = VALUES(difficulty),
 			</if>
@@ -422,6 +445,7 @@
 			 question_id,
 			 knowledge_point_id,
 			 stage,
+			 grade,
 			 difficulty,
 			 question_type,
 			 title,
@@ -441,6 +465,7 @@
 				 #{item.questionId},
 				 #{item.knowledgePointId},
 				 #{item.stage},
+				 #{item.grade},
 				 #{item.difficulty},
 				 #{item.questionType},
 				 #{item.title},
@@ -464,6 +489,7 @@
 			 question_id,
 			 knowledge_point_id,
 			 stage,
+			 grade,
 			 difficulty,
 			 question_type,
 			 title,
@@ -483,6 +509,7 @@
 				 #{item.questionId},
 				 #{item.knowledgePointId},
 				 #{item.stage},
+				 #{item.grade},
 				 #{item.difficulty},
 				 #{item.questionType},
 				 #{item.title},
@@ -502,6 +529,7 @@
 			question_id = VALUES(question_id),
 			knowledge_point_id = VALUES(knowledge_point_id),
 			stage = VALUES(stage),
+			grade = VALUES(grade),
 			difficulty = VALUES(difficulty),
 			question_type = VALUES(question_type),
 			title = VALUES(title),
@@ -529,6 +557,9 @@
 			</if>
 			<if test="bean.stage != null">
 				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
 			</if>
 			<if test="bean.difficulty != null">
 				 difficulty = #{bean.difficulty},
@@ -588,6 +619,9 @@
 			</if>
 			<if test="bean.stage != null">
 				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
 			</if>
 			<if test="bean.difficulty != null">
 				 difficulty = #{bean.difficulty},

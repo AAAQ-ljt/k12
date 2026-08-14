@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Space, Button, Popconfirm, App, Input, Select, Form, type TableProps } from 'antd';
-import { Plus } from 'lucide-react';
+import { Plus, FolderTree } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
 import styles from '@/assets/styles/utilities.module.scss';
-import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
-import { STAGE_OPTIONS, COURSE_STATUS_MAP } from '@/types/common';
+import { GRADE_OPTIONS, COURSE_STATUS_MAP } from '@/types/common';
 import { loadDataList, del } from '@/api/course';
 import type { CourseInfo, CourseInfoQuery } from '@/api/course';
 import CourseFormModal from './CourseFormModal';
+import CourseDetailDrawer from './CourseDetailDrawer';
 
 export default function CourseManagement() {
   const { message } = App.useApp();
@@ -26,6 +26,9 @@ export default function CourseManagement() {
     mode: 'create' | 'edit' | 'view';
     initialValues?: Partial<CourseInfo>;
   }>({ open: false, mode: 'create' });
+  const [detailState, setDetailState] = useState<{ open: boolean; course?: CourseInfo }>({
+    open: false,
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -96,6 +99,14 @@ export default function CourseManagement() {
     fetchData();
   };
 
+  const handleManageDetail = (record: CourseInfo) => {
+    setDetailState({ open: true, course: record });
+  };
+
+  const handleDetailSuccess = () => {
+    fetchData();
+  };
+
   const columns: TableProps<CourseInfo>['columns'] = [
     {
       title: '课程名称',
@@ -104,10 +115,10 @@ export default function CourseManagement() {
       ellipsis: true,
     },
     {
-      title: '学段',
-      dataIndex: 'stage',
-      key: 'stage',
-      render: (_, record) => <StageTag stage={record.stage ?? ''} />,
+      title: '年级',
+      dataIndex: 'grade',
+      key: 'grade',
+      render: (_, record) => record.grade || record.stage || '-',
     },
     {
       title: '学科',
@@ -143,9 +154,12 @@ export default function CourseManagement() {
     {
       title: '操作',
       key: 'action',
-      width: 180,
+      width: 260,
       render: (_, record) => (
         <Space size="small">
+          <Button type="link" size="small" icon={<FolderTree size={14} />} onClick={() => handleManageDetail(record)}>
+            章节管理
+          </Button>
           <Button type="link" size="small" onClick={() => handleView(record)}>
             查看
           </Button>
@@ -177,14 +191,14 @@ export default function CourseManagement() {
             className={styles.width200}
           />
         </Form.Item>
-        <Form.Item label="学段">
+        <Form.Item label="年级">
           <Select
-            value={searchParams.stage}
-            onChange={(v) => setSearchParams((prev) => ({ ...prev, stage: v, pageNo: 1 }))}
+            value={searchParams.grade}
+            onChange={(v) => setSearchParams((prev) => ({ ...prev, grade: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
             className={styles.width150}
-            options={STAGE_OPTIONS}
+            options={GRADE_OPTIONS}
           />
         </Form.Item>
         <Form.Item label="状态">
@@ -227,6 +241,13 @@ export default function CourseManagement() {
         initialValues={modalState.initialValues}
         onCancel={handleModalCancel}
         onSuccess={handleModalSuccess}
+      />
+
+      <CourseDetailDrawer
+        open={detailState.open}
+        course={detailState.course}
+        onClose={() => setDetailState((prev) => ({ ...prev, open: false }))}
+        onChanged={handleDetailSuccess}
       />
     </div>
   );

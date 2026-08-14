@@ -13,6 +13,8 @@
 		<result column="cover" property="cover"  />
 		<!--学段【冗余：学生端按学段过滤主筛选键】-->
 		<result column="stage" property="stage"  />
+		<!--年级【学生端按年级过滤主筛选键】-->
+		<result column="grade" property="grade"  />
 		<!--学科-->
 		<result column="subject" property="subject"  />
 		<!--难度：1-3星-->
@@ -40,7 +42,7 @@
 
 	<!-- 通用查询结果列-->
 	<sql id="base_column_list">
-		 c.course_id,c.course_name,c.cover,c.stage,c.subject,
+		 c.course_id,c.course_name,c.cover,c.stage,c.grade,c.subject,
 		 c.difficulty,c.description,c.intro,c.lesson_count,c.study_count,
 		 c.sort,c.status,c.create_by,c.create_time,c.update_time
 		 
@@ -58,6 +60,9 @@
 			</if>
 			<if test="query.stage != null and query.stage!=''">
 				 and  c.stage = #{query.stage}
+			</if>
+			<if test="query.grade != null and query.grade!=''">
+				 and  c.grade = #{query.grade}
 			</if>
 			<if test="query.subject != null and query.subject!=''">
 				 and  c.subject = #{query.subject}
@@ -109,6 +114,9 @@
 			</if>
 			<if test="query.stageFuzzy!= null  and query.stageFuzzy!=''">
 				 and  c.stage like concat('%', #{query.stageFuzzy}, '%')
+			</if>
+			<if test="query.gradeFuzzy!= null  and query.gradeFuzzy!=''">
+				 and  c.grade like concat('%', #{query.gradeFuzzy}, '%')
 			</if>
 			<if test="query.subjectFuzzy!= null  and query.subjectFuzzy!=''">
 				 and  c.subject like concat('%', #{query.subjectFuzzy}, '%')
@@ -166,6 +174,9 @@
 			<if test="bean.stage != null">
 				 stage,
 			</if>
+			<if test="bean.grade != null">
+				 grade,
+			</if>
 			<if test="bean.subject != null">
 				 subject,
 			</if>
@@ -212,6 +223,9 @@
 			</if>
 			<if test="bean.stage!=null">
 				 #{bean.stage},
+			</if>
+			<if test="bean.grade!=null">
+				 #{bean.grade},
 			</if>
 			<if test="bean.subject!=null">
 				 #{bean.subject},
@@ -265,6 +279,9 @@
 			<if test="bean.stage != null">
 				 stage,
 			</if>
+			<if test="bean.grade != null">
+				 grade,
+			</if>
 			<if test="bean.subject != null">
 				 subject,
 			</if>
@@ -311,6 +328,9 @@
 			</if>
 			<if test="bean.stage!=null">
 				 #{bean.stage},
+			</if>
+			<if test="bean.grade!=null">
+				 #{bean.grade},
 			</if>
 			<if test="bean.subject!=null">
 				 #{bean.subject},
@@ -360,6 +380,9 @@
 			<if test="bean.stage!=null">
 				 stage = VALUES(stage),
 			</if>
+			<if test="bean.grade!=null">
+				 grade = VALUES(grade),
+			</if>
 			<if test="bean.subject!=null">
 				 subject = VALUES(subject),
 			</if>
@@ -403,6 +426,7 @@
 			 course_name,
 			 cover,
 			 stage,
+			 grade,
 			 subject,
 			 difficulty,
 			 description,
@@ -421,6 +445,7 @@
 				 #{item.courseName},
 				 #{item.cover},
 				 #{item.stage},
+				 #{item.grade},
 				 #{item.subject},
 				 #{item.difficulty},
 				 #{item.description},
@@ -443,6 +468,7 @@
 			 course_name,
 			 cover,
 			 stage,
+			 grade,
 			 subject,
 			 difficulty,
 			 description,
@@ -461,6 +487,7 @@
 				 #{item.courseName},
 				 #{item.cover},
 				 #{item.stage},
+				 #{item.grade},
 				 #{item.subject},
 				 #{item.difficulty},
 				 #{item.description},
@@ -479,6 +506,7 @@
 			course_name = VALUES(course_name),
 			cover = VALUES(cover),
 			stage = VALUES(stage),
+			grade = VALUES(grade),
 			subject = VALUES(subject),
 			difficulty = VALUES(difficulty),
 			description = VALUES(description),
@@ -507,6 +535,9 @@
 			</if>
 			<if test="bean.stage != null">
 				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
 			</if>
 			<if test="bean.subject != null">
 				 subject = #{bean.subject},
@@ -563,6 +594,9 @@
 			</if>
 			<if test="bean.stage != null">
 				 stage = #{bean.stage},
+			</if>
+			<if test="bean.grade != null">
+				 grade = #{bean.grade},
 			</if>
 			<if test="bean.subject != null">
 				 subject = #{bean.subject},

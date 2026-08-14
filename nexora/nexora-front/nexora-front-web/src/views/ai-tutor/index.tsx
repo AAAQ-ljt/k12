@@ -401,7 +401,7 @@ export default function AiTutor() {
 
   const handleOpenRecommend = (item: ResourceRecommendItem) => {
     if (item.resourceId) {
-      navigate(`/course-material/${item.resourceId}`);
+    navigate(`/course-material/resource/${item.resourceId}`);
       return;
     }
     if (item.sourceUrl) {

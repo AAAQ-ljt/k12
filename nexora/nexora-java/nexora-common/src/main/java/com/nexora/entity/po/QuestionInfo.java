@@ -31,6 +31,11 @@ public class QuestionInfo implements Serializable {
 	private String stage;
 
 	/**
+	 * 年级【按年级抽题免join】
+	 */
+	private String grade;
+
+	/**
 	 * 难度：1-3
 	 */
 	private Integer difficulty;
@@ -122,6 +127,14 @@ public class QuestionInfo implements Serializable {
 
 	public String getStage(){
 		return this.stage;
+	}
+
+	public void setGrade(String grade){
+		this.grade = grade;
+	}
+
+	public String getGrade(){
+		return this.grade;
 	}
 
 	public void setDifficulty(Integer difficulty){
@@ -230,6 +243,6 @@ public class QuestionInfo implements Serializable {
 
 	@Override
 	public String toString (){
-		return "题目ID:"+(questionId == null ? "空" : questionId)+"，知识点【冗余：出题/练习主筛选键】:"+(knowledgePointId == null ? "空" : knowledgePointId)+"，学段【冗余：按学段抽题免join】:"+(stage == null ? "空" : stage)+"，难度：1-3:"+(difficulty == null ? "空" : difficulty)+"，题型：0单选 1多选 2判断 3填空:"+(questionType == null ? "空" : questionType)+"，题干:"+(title == null ? "空" : title)+"，题目配图，关联resource_info.resource_id，多个逗号分隔，可空:"+(questionImage == null ? "空" : questionImage)+"，判断/填空答案；选择题答案在选项表:"+(answer == null ? "空" : answer)+"，解析:"+(analysis == null ? "空" : analysis)+"，来源：0管理员录入 1AI生成:"+(source == null ? "空" : source)+"，审核：0待审核 1已上架 2已驳回:"+(auditStatus == null ? "空" : auditStatus)+"，默认分值:"+(score == null ? "空" : score)+"，状态：0停用 1启用:"+(status == null ? "空" : status)+"，录入人，可空（AI生成为空）:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+		return "题目ID:"+(questionId == null ? "空" : questionId)+"，知识点【冗余：出题/练习主筛选键】:"+(knowledgePointId == null ? "空" : knowledgePointId)+"，学段【冗余：按学段抽题免join】:"+(stage == null ? "空" : stage)+"，年级【按年级抽题免join】:"+(grade == null ? "空" : grade)+"，难度：1-3:"+(difficulty == null ? "空" : difficulty)+"，题型：0单选 1多选 2判断 3填空:"+(questionType == null ? "空" : questionType)+"，题干:"+(title == null ? "空" : title)+"，题目配图，关联resource_info.resource_id，多个逗号分隔，可空:"+(questionImage == null ? "空" : questionImage)+"，判断/填空答案；选择题答案在选项表:"+(answer == null ? "空" : answer)+"，解析:"+(analysis == null ? "空" : analysis)+"，来源：0管理员录入 1AI生成:"+(source == null ? "空" : source)+"，审核：0待审核 1已上架 2已驳回:"+(auditStatus == null ? "空" : auditStatus)+"，默认分值:"+(score == null ? "空" : score)+"，状态：0停用 1启用:"+(status == null ? "空" : status)+"，录入人，可空（AI生成为空）:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
 	}
 }

@@ -36,6 +36,11 @@ public class CourseInfo implements Serializable {
 	private String stage;
 
 	/**
+	 * 年级【学生端按年级过滤主筛选键】
+	 */
+	private String grade;
+
+	/**
 	 * 学科
 	 */
 	private String subject;
@@ -125,6 +130,14 @@ public class CourseInfo implements Serializable {
 
 	public String getStage(){
 		return this.stage;
+	}
+
+	public void setGrade(String grade){
+		this.grade = grade;
+	}
+
+	public String getGrade(){
+		return this.grade;
 	}
 
 	public void setSubject(String subject){
@@ -217,6 +230,6 @@ public class CourseInfo implements Serializable {
 
 	@Override
 	public String toString (){
-		return "课程ID:"+(courseId == null ? "空" : courseId)+"，课程名:"+(courseName == null ? "空" : courseName)+"，封面URL:"+(cover == null ? "空" : cover)+"，学段【冗余：学生端按学段过滤主筛选键】:"+(stage == null ? "空" : stage)+"，学科:"+(subject == null ? "空" : subject)+"，难度：1-3星:"+(difficulty == null ? "空" : difficulty)+"，简介:"+(description == null ? "空" : description)+"，详细介绍:"+(intro == null ? "空" : intro)+"，课时总数【冗余：课时增删时同事务维护】:"+(lessonCount == null ? "空" : lessonCount)+"，学习人数【冗余：学习行为触发计数】:"+(studyCount == null ? "空" : studyCount)+"，排序:"+(sort == null ? "空" : sort)+"，状态：1上架 0下架:"+(status == null ? "空" : status)+"，创建人（管理员）:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+		return "课程ID:"+(courseId == null ? "空" : courseId)+"，课程名:"+(courseName == null ? "空" : courseName)+"，封面URL:"+(cover == null ? "空" : cover)+"，学段【冗余：学生端按学段过滤主筛选键】:"+(stage == null ? "空" : stage)+"，年级【学生端按年级过滤主筛选键】:"+(grade == null ? "空" : grade)+"，学科:"+(subject == null ? "空" : subject)+"，难度：1-3星:"+(difficulty == null ? "空" : difficulty)+"，简介:"+(description == null ? "空" : description)+"，详细介绍:"+(intro == null ? "空" : intro)+"，课时总数【冗余：课时增删时同事务维护】:"+(lessonCount == null ? "空" : lessonCount)+"，学习人数【冗余：学习行为触发计数】:"+(studyCount == null ? "空" : studyCount)+"，排序:"+(sort == null ? "空" : sort)+"，状态：1上架 0下架:"+(status == null ? "空" : status)+"，创建人（管理员）:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
 	}
 }
