@@ -43,11 +43,20 @@ export interface AgentSendResult {
   sessionId: string;
 }
 
+/** AI 助教资料推荐卡片 */
+export interface ResourceRecommendItem {
+  docId: string;
+  title: string;
+  resourceId?: string;
+  resourceType?: string;
+  sourceUrl?: string;
+}
+
 /** WebSocket 流式推送消息 */
 export interface AgentPushMessage {
   messageId: string;
   sessionId?: string;
-  type: 'outputting' | 'done' | 'error';
+  type: 'outputting' | 'done' | 'error' | 'recommend';
   content?: string;
   bizType?: string;
   bizData?: string;

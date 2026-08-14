@@ -116,6 +116,12 @@
 			<if test="query.resourceIdFuzzy!= null  and query.resourceIdFuzzy!=''">
 				 and  r.resource_id like concat('%', #{query.resourceIdFuzzy}, '%')
 			</if>
+			<if test="query.resourceIds != null and query.resourceIds.size() > 0">
+				 and r.resource_id in
+				 <foreach collection="query.resourceIds" item="item" open="(" separator="," close=")">
+					 #{item}
+				 </foreach>
+			</if>
 			<if test="query.resourceNameFuzzy!= null  and query.resourceNameFuzzy!=''">
 				 and  r.resource_name like concat('%', #{query.resourceNameFuzzy}, '%')
 			</if>

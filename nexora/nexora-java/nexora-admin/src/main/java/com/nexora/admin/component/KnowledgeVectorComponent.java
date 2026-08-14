@@ -26,7 +26,7 @@ public class KnowledgeVectorComponent {
     private VectorStore vectorStore;
 
     public void saveChunks(String docId, String title, String stage, String knowledgePointId,
-                           Integer difficulty, String sourceUrl, List<String> chunks) {
+                           Integer difficulty, String sourceUrl, String sourceResourceId, List<String> chunks) {
         List<Document> documents = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             Map<String, Object> metadata = new LinkedHashMap<>();
@@ -39,6 +39,9 @@ public class KnowledgeVectorComponent {
             metadata.put("difficulty", difficulty == null ? 1 : difficulty);
             if (sourceUrl != null && !sourceUrl.isBlank()) {
                 metadata.put("sourceUrl", sourceUrl);
+            }
+            if (sourceResourceId != null && !sourceResourceId.isBlank()) {
+                metadata.put("sourceResourceId", sourceResourceId);
             }
             documents.add(Document.builder()
                     .id(docId + "_" + i)

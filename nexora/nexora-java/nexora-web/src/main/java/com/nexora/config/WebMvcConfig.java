@@ -17,6 +17,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(studentInterceptor).addPathPatterns("/**");
+        registry.addInterceptor(studentInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/resourceInfo/video/**",
+                        "/resourceInfo/image/**",
+                        "/resourceInfo/file/**",
+                        "/resourceInfo/download/**"
+                );
     }
 }

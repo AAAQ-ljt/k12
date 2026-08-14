@@ -1,6 +1,7 @@
 package com.nexora.entity.query;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -15,6 +16,11 @@ public class ResourceInfoQuery extends BaseParam {
 	private String resourceId;
 
 	private String resourceIdFuzzy;
+
+	/**
+	 * 资源ID集合（批量查询）
+	 */
+	private List<String> resourceIds;
 
 	/**
 	 * 资源名
@@ -142,6 +148,14 @@ public class ResourceInfoQuery extends BaseParam {
 
 	public String getResourceIdFuzzy(){
 		return this.resourceIdFuzzy;
+	}
+
+	public List<String> getResourceIds() {
+		return resourceIds;
+	}
+
+	public void setResourceIds(List<String> resourceIds) {
+		this.resourceIds = resourceIds;
 	}
 
 	public void setResourceName(String resourceName){

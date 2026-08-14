@@ -1,0 +1,8 @@
+.viewerBox {
+  width: 100%;
+  height: calc(100vh - var(--header-height) - 260px);
+  min-height: 520px;
+  background: #f7f8fa;
+  border-radius: 12px;
+  overflow: hidden;
+}

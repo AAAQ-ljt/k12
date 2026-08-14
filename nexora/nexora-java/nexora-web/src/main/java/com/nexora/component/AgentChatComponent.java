@@ -11,6 +11,7 @@ import com.nexora.exception.BusinessException;
 import com.nexora.service.AgentMessageService;
 import com.nexora.service.AgentSessionService;
 import com.nexora.utils.StringTools;
+import com.nexora.vo.ResourceRecommendVO;
 import com.nexora.websocket.ChannelContextUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -163,7 +164,7 @@ public class AgentChatComponent {
         StringBuilder answer = new StringBuilder();
         try {
             if (redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId())) {
-                finishMessage(user, message, "", false, null, 0, 0);
+                finishMessage(user, message, "", false, null, List.of(), 0, 0);
                 return;
             }
 
@@ -182,7 +183,7 @@ public class AgentChatComponent {
             agentMessageService.updateAgentMessageByMessageId(intentUpdate, message.getMessageId());
 
             if (redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId())) {
-                finishMessage(user, message, "", false, null,
+                finishMessage(user, message, "", false, null, List.of(),
                         intentResult.promptTokens(), intentResult.completionTokens());
                 return;
             }
@@ -195,7 +196,11 @@ public class AgentChatComponent {
                     .reasoningEffort(reasoningEffort)
                     .build();
 
-            String systemPrompt = resolvePromptWithRag(user, intent, message.getUserMessage());
+            RagSearchComponent.RagSearchResult ragResult =
+                    ragSearchComponent.buildRagResult(user.getStage(), message.getUserMessage());
+            List<ResourceRecommendVO> recommends = ragResult.recommendations();
+            String systemPrompt = resolvePromptWithRag(user, intent, ragResult.ragData());
+            sendRecommendPush(user, message, recommends);
             AtomicInteger promptTokens = new AtomicInteger(intentResult.promptTokens());
             AtomicInteger completionTokens = new AtomicInteger(intentResult.completionTokens());
 
@@ -229,19 +234,19 @@ public class AgentChatComponent {
                             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
                         }
                     })
-                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true, null,
+                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true, null, recommends,
                             promptTokens.get(), completionTokens.get()))
-                    .doOnError(error -> finishMessage(user, message, answer.toString(), false, error,
+                    .doOnError(error -> finishMessage(user, message, answer.toString(), false, error, List.of(),
                             promptTokens.get(), completionTokens.get()))
                     .subscribe();
         } catch (Exception e) {
             log.error("AI 对话流式调用失败", e);
-            finishMessage(user, message, answer.toString(), false, e, 0, 0);
+            finishMessage(user, message, answer.toString(), false, e, List.of(), 0, 0);
         }
     }
 
     private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
-                               int promptTokens, int completionTokens) {
+                               List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens) {
         boolean cancelled = redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId());
         AgentMessagePushDTO push = new AgentMessagePushDTO();
         push.setMessageId(message.getMessageId());
@@ -264,8 +269,16 @@ public class AgentChatComponent {
         } else if (completed) {
             push.setType("done");
             push.setContent(answer);
+            if (recommends != null && !recommends.isEmpty()) {
+                push.setBizType("RESOURCE_RECOMMEND");
+                push.setBizData(JSON.toJSONString(recommends));
+            }
             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
             updateBean.setStatus(1);
+            if (recommends != null && !recommends.isEmpty()) {
+                updateBean.setBizType("RESOURCE_RECOMMEND");
+                updateBean.setBizData(JSON.toJSONString(recommends));
+            }
         } else {
             push.setType("error");
             push.setContent(StringTools.isEmpty(answer) ? "AI 生成失败：" + errorInfo : answer);
@@ -347,13 +360,9 @@ public class AgentChatComponent {
         };
     }
 
-    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String question) {
+    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String ragData) {
         String prompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
-        if (!shouldSearch(intent)) {
-            return prompt;
-        }
-        String ragData = ragSearchComponent.buildRagData(user.getStage(), question);
-        if (ragData == null || ragData.isBlank()) {
+        if (!shouldSearch(intent) || ragData == null || ragData.isBlank()) {
             return prompt;
         }
         if (prompt.contains("{{ragData}}")) {
@@ -361,6 +370,20 @@ public class AgentChatComponent {
         }
         return prompt + "\n\n## 知识库参考内容\n" + ragData
                 + "\n\n回答时优先基于以上内容，并标注来源；如果知识库没有相关内容，明确告知用户，不要编造。";
+    }
+
+    private void sendRecommendPush(TokenUserInfoDTO user, AgentMessage message,
+                                   List<ResourceRecommendVO> recommends) {
+        if (recommends == null || recommends.isEmpty()) {
+            return;
+        }
+        AgentMessagePushDTO push = new AgentMessagePushDTO();
+        push.setMessageId(message.getMessageId());
+        push.setSessionId(message.getSessionId());
+        push.setType("recommend");
+        push.setBizType("RESOURCE_RECOMMEND");
+        push.setBizData(JSON.toJSONString(recommends));
+        channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
     }
 
     private boolean shouldSearch(String intent) {

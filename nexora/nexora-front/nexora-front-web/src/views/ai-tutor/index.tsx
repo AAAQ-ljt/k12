@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { App, Button, Input, Segmented, Tag, Tooltip } from 'antd';
 import {
   BookOpen,
   Bot,
+  ChevronRight,
+  FileText,
+  Film,
   History,
+  Image as ImageIcon,
+  Link2,
   MessageSquare,
   Plus,
   Send,
@@ -26,6 +32,7 @@ import {
   type AgentMessageInfo,
   type AgentPushMessage,
   type AgentSessionInfo,
+  type ResourceRecommendItem,
 } from '@/api/agent';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
@@ -43,6 +50,7 @@ interface ChatMessage {
   time: string;
   pending?: boolean;
   cancelled?: boolean;
+  recommends?: ResourceRecommendItem[];
 }
 
 interface SessionItem {
@@ -68,6 +76,31 @@ function createMessage(role: MessageRole, content: string): ChatMessage {
     content,
     time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
   };
+}
+
+function parseRecommends(bizData?: string): ResourceRecommendItem[] {
+  if (!bizData) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(bizData);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function recommendTypeLabel(type?: string): string {
+  if (type === 'VIDEO') {
+    return '视频';
+  }
+  if (type === 'IMAGE') {
+    return '图片';
+  }
+  if (type === 'LINK') {
+    return '链接';
+  }
+  return '文档';
 }
 
 function formatTime(value?: string): string {
@@ -106,6 +139,7 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
         role: 'assistant',
         content: item.assistantMessage,
         time: formatTime(item.updateTime || item.createTime),
+        recommends: item.bizType === 'RESOURCE_RECOMMEND' ? parseRecommends(item.bizData) : [],
       });
     }
   });
@@ -114,6 +148,7 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
 
 export default function AiTutor() {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const userInfo = useAuthStore((state) => state.userInfo);
   const openLoginModal = useUiStore((state) => state.openLoginModal);
@@ -126,6 +161,8 @@ export default function AiTutor() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
   const messagesRef = useRef<HTMLDivElement>(null);
+  const messagesStateRef = useRef<ChatMessage[]>([]);
+  const pendingRecommendsRef = useRef<Record<string, ResourceRecommendItem[]>>({});
 
   const stageOption = useMemo(() => {
     return userInfo?.stage ? getStageOption(userInfo.stage) : undefined;
@@ -133,6 +170,30 @@ export default function AiTutor() {
 
   const handleAgentPush = useCallback((data: AgentPushMessage) => {
     if (!data?.messageId) {
+      return;
+    }
+    if (data.type === 'recommend') {
+      const items = parseRecommends(data.bizData);
+      if (items.length === 0) {
+        return;
+      }
+      const hasMessage = messagesStateRef.current.some(
+        (item) => item.id === data.messageId && item.role === 'assistant',
+      );
+      if (hasMessage) {
+        setMessages((prev) =>
+          prev.map((item) =>
+            item.id === data.messageId && item.role === 'assistant'
+              ? { ...item, recommends: [...(item.recommends ?? []), ...items] }
+              : item,
+          ),
+        );
+      } else {
+        pendingRecommendsRef.current[data.messageId] = [
+          ...(pendingRecommendsRef.current[data.messageId] ?? []),
+          ...items,
+        ];
+      }
       return;
     }
     setMessages((prev) =>
@@ -145,7 +206,18 @@ export default function AiTutor() {
         }
         if (data.type === 'done') {
           const nextContent = data.content && !item.content ? data.content : item.content;
-          return { ...item, content: nextContent, pending: false };
+          const pending = pendingRecommendsRef.current[data.messageId] ?? [];
+          delete pendingRecommendsRef.current[data.messageId];
+          const nextRecommends =
+            data.bizType === 'RESOURCE_RECOMMEND'
+              ? [...pending, ...parseRecommends(data.bizData)]
+              : item.recommends;
+          return {
+            ...item,
+            content: nextContent,
+            pending: false,
+            recommends: nextRecommends,
+          };
         }
         return {
           ...item,
@@ -161,6 +233,7 @@ export default function AiTutor() {
   }, []);
 
   const loadSessionList = useCallback(async () => {
+    pendingRecommendsRef.current = {};
     try {
       const list = await loadAgentSessionList();
       const items = list.map(mapSession);
@@ -185,6 +258,7 @@ export default function AiTutor() {
       setActiveSessionId('');
       setStreaming(false);
       setStreamingMessageId('');
+      pendingRecommendsRef.current = {};
       return;
     }
     websocket.connect(token);
@@ -197,6 +271,7 @@ export default function AiTutor() {
   }, [token, handleAgentPush, loadSessionList]);
 
   useEffect(() => {
+    messagesStateRef.current = messages;
     messagesRef.current?.scrollTo({
       top: messagesRef.current.scrollHeight,
       behavior: 'smooth',
@@ -227,9 +302,18 @@ export default function AiTutor() {
       const result = await sendAgentMessage({ sessionId, message: text });
       setActiveSessionId(result.sessionId);
       setStreamingMessageId(result.messageId);
+      const pending = pendingRecommendsRef.current[result.messageId];
+      delete pendingRecommendsRef.current[result.messageId];
       setMessages((prev) => [
         ...prev,
-        { id: result.messageId, role: 'assistant', content: '', time: '', pending: true },
+        {
+          id: result.messageId,
+          role: 'assistant',
+          content: '',
+          time: '',
+          pending: true,
+          recommends: pending,
+        },
       ]);
     } catch {
       setStreaming(false);
@@ -277,6 +361,7 @@ export default function AiTutor() {
       setSessions((prev) => [mapSession(session), ...prev]);
       setActiveSessionId(session.sessionId);
       setMessages([]);
+      pendingRecommendsRef.current = {};
     } catch {
       // 请求层已统一提示
     }
@@ -288,6 +373,7 @@ export default function AiTutor() {
     }
     setActiveSessionId(sessionId);
     setMessages([]);
+    pendingRecommendsRef.current = {};
     try {
       const history = await loadAgentHistory(sessionId);
       setMessages(mapHistory(history));
@@ -309,7 +395,31 @@ export default function AiTutor() {
     if (activeSessionId === sessionId) {
       setMessages([]);
       setActiveSessionId('');
+      pendingRecommendsRef.current = {};
     }
+  };
+
+  const handleOpenRecommend = (item: ResourceRecommendItem) => {
+    if (item.resourceId) {
+      navigate(`/course-material/${item.resourceId}`);
+      return;
+    }
+    if (item.sourceUrl) {
+      window.open(item.sourceUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const renderRecommendIcon = (type?: string) => {
+    if (type === 'VIDEO') {
+      return <Film size={15} />;
+    }
+    if (type === 'IMAGE') {
+      return <ImageIcon size={15} />;
+    }
+    if (type === 'LINK') {
+      return <Link2 size={15} />;
+    }
+    return <FileText size={15} />;
   };
 
   return (
@@ -433,6 +543,28 @@ export default function AiTutor() {
                       </ReactMarkdown>
                     )}
                   </div>
+                  {item.role === 'assistant' && item.recommends && item.recommends.length > 0 ? (
+                    <div className={styles.recommendList}>
+                      {item.recommends.map((card) => (
+                        <button
+                          key={`${card.docId}-${card.resourceId || card.sourceUrl}`}
+                          className={styles.recommendCard}
+                          onClick={() => handleOpenRecommend(card)}
+                        >
+                          <span className={styles.recommendIcon}>
+                            {renderRecommendIcon(card.resourceType)}
+                          </span>
+                          <span className={styles.recommendText}>
+                            <span className={styles.recommendTitle}>{card.title}</span>
+                            <span className={styles.recommendType}>
+                              {recommendTypeLabel(card.resourceType)}
+                            </span>
+                          </span>
+                          <ChevronRight size={15} />
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className={styles.messageTime}>{item.time}</div>
                 </div>
                 {item.role === 'user' ? (

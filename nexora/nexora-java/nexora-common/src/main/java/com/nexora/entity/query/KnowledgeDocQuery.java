@@ -1,6 +1,7 @@
 package com.nexora.entity.query;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -15,6 +16,11 @@ public class KnowledgeDocQuery extends BaseParam {
 	private String docId;
 
 	private String docIdFuzzy;
+
+	/**
+	 * 文档ID集合（批量查询）
+	 */
+	private List<String> docIds;
 
 	/**
 	 * 标题
@@ -128,6 +134,14 @@ public class KnowledgeDocQuery extends BaseParam {
 
 	public String getDocIdFuzzy(){
 		return this.docIdFuzzy;
+	}
+
+	public List<String> getDocIds() {
+		return docIds;
+	}
+
+	public void setDocIds(List<String> docIds) {
+		this.docIds = docIds;
 	}
 
 	public void setTitle(String title){

@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import AiTutor from '@/views/ai-tutor';
 import LearningPath from '@/views/learning-path';
 import CourseMaterial from '@/views/course-material';
+import CourseMaterialDetail from '@/views/course-material/detail';
 import Coding from '@/views/coding';
 import Profile from '@/views/profile';
 import PictureBook from '@/views/picture-book';
@@ -37,6 +38,14 @@ const routes: RouteObject[] = [
         element: (
           <ProtectedRoute title="课程教材" description="登录后查看课程教材">
             <CourseMaterial />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'course-material/:resourceId',
+        element: (
+          <ProtectedRoute title="课程教材" description="登录后查看课程教材">
+            <CourseMaterialDetail />
           </ProtectedRoute>
         ),
       },

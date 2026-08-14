@@ -499,7 +499,8 @@ public class KnowledgeBaseBiz {
             }
             knowledgeVectorComponent.deleteChunks(docId, Math.max(oldCount, chunks.size()));
             knowledgeVectorComponent.saveChunks(docId, doc.getTitle(), doc.getStage(),
-                    doc.getKnowledgePointId(), doc.getDifficulty(), doc.getSourceUrl(), chunks);
+                    doc.getKnowledgePointId(), doc.getDifficulty(), doc.getSourceUrl(),
+                    doc.getSourceResourceId(), chunks);
             KnowledgeDoc done = new KnowledgeDoc();
             done.setVectorStatus(2);
             done.setVectorError(null);

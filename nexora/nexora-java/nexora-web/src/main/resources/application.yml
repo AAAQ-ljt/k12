@@ -94,6 +94,8 @@ project:
       api-key: ${NEXORA_IMAGE_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
       prompt-extend: true
   folder: d:/dev/ai/k12/nexora/
+resource:
+  file-dir: resource/files
 
 #日志级别
 log:

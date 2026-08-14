@@ -108,6 +108,12 @@
 			<if test="query.docIdFuzzy!= null  and query.docIdFuzzy!=''">
 				 and  k.doc_id like concat('%', #{query.docIdFuzzy}, '%')
 			</if>
+			<if test="query.docIds != null and query.docIds.size() > 0">
+				 and k.doc_id in
+				 <foreach collection="query.docIds" item="item" open="(" separator="," close=")">
+					 #{item}
+				 </foreach>
+			</if>
 			<if test="query.titleFuzzy!= null  and query.titleFuzzy!=''">
 				 and  k.title like concat('%', #{query.titleFuzzy}, '%')
 			</if>
