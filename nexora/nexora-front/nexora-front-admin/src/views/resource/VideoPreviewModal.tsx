@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import BaseDialog from '@/components/BaseDialog';
@@ -6,15 +6,21 @@ import { getVideoPlaylistUrl, type ResourceInfo } from '@/api/resource';
 import styles from './VideoPreviewModal.module.scss';
 
 interface VideoPlayerProps {
+  open: boolean;
+  onReady: (player: Artplayer | null) => void;
   url: string;
 }
 
-function VideoPlayer({ url }: VideoPlayerProps) {
+function VideoPlayer({ open, onReady, url }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Artplayer | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) {
+    if (!open || !containerRef.current) {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
       return undefined;
     }
     const player = new Artplayer({
@@ -45,11 +51,17 @@ function VideoPlayer({ url }: VideoPlayerProps) {
       },
     });
     playerRef.current = player;
+    onReady(player);
     return () => {
-      player.destroy();
+      try {
+        player.destroy();
+      } catch {
+        // 父级关闭弹窗时已销毁，重复销毁直接忽略
+      }
       playerRef.current = null;
+      onReady(null);
     };
-  }, [url]);
+  }, [onReady, open, url]);
 
   return (
     <div className={styles.playerWrap}>
@@ -65,6 +77,22 @@ interface VideoPreviewModalProps {
 }
 
 export default function VideoPreviewModal({ open, resource, onClose }: VideoPreviewModalProps) {
+  const playerRef = useRef<Artplayer | null>(null);
+  const handlePlayerReady = useCallback((player: Artplayer | null) => {
+    playerRef.current = player;
+  }, []);
+
+  useEffect(() => {
+    if (!open && playerRef.current) {
+      try {
+        playerRef.current.destroy();
+      } catch {
+        // 播放器已销毁时忽略
+      }
+      playerRef.current = null;
+    }
+  }, [open]);
+
   return (
     <BaseDialog
       className={styles.videoPreviewModal}
@@ -79,7 +107,12 @@ export default function VideoPreviewModal({ open, resource, onClose }: VideoPrev
       onCancel={onClose}
     >
       {resource && (
-        <VideoPlayer key={resource.resourceId} url={getVideoPlaylistUrl(resource.resourceId)} />
+        <VideoPlayer
+          key={resource.resourceId}
+          open={open}
+          onReady={handlePlayerReady}
+          url={getVideoPlaylistUrl(resource.resourceId)}
+        />
       )}
     </BaseDialog>
   );
