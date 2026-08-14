@@ -1,0 +1,27 @@
+.documentPreviewModal {
+  :global(.ant-modal-content) {
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  :global(.ant-modal-header) {
+    margin-bottom: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  :global(.ant-modal-body) {
+    padding: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+}
+
+.viewerBox {
+  width: 100%;
+  height: min(78vh, 900px);
+  min-height: 420px;
+  background: #f7f8fa;
+}

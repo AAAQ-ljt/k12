@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
 import {
   App,
@@ -20,7 +20,6 @@ import {
   type UploadFile,
 } from 'antd';
 import {
-  BookOpen,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -36,7 +35,6 @@ import {
   Image,
   Move,
   Pencil,
-  Presentation,
   RotateCcw,
   Search,
   Trash2,
@@ -72,6 +70,8 @@ import {
 import ImagePreviewModal from './ImagePreviewModal';
 import VideoPreviewModal from './VideoPreviewModal';
 import styles from './index.module.scss';
+
+const DocumentPreviewModal = lazy(() => import('./DocumentPreviewModal'));
 
 interface DirNode {
   key: string;
@@ -140,14 +140,8 @@ function typeIcon(type: string) {
   switch (type) {
     case 'VIDEO':
       return <Film size={size} />;
-    case 'PPT':
-      return <Presentation size={size} />;
-    case 'WORD':
-      return <FileText size={size} />;
     case 'IMAGE':
       return <Image size={size} />;
-    case 'PICTURE_BOOK':
-      return <BookOpen size={size} />;
     default:
       return <FileText size={size} />;
   }
@@ -183,6 +177,7 @@ export default function ResourceManagement() {
   const [renameForm] = Form.useForm();
   const [previewVideo, setPreviewVideo] = useState<ResourceInfo | null>(null);
   const [previewImage, setPreviewImage] = useState<ResourceInfo | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<ResourceInfo | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [renameResource, setRenameResource] = useState<ResourceInfo | null>(null);
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
@@ -513,6 +508,15 @@ export default function ResourceManagement() {
     }
     if (record.resourceType === 'IMAGE') {
       setPreviewImage(record);
+      return;
+    }
+    if (
+      record.resourceType === 'DOCUMENT' ||
+      record.resourceType === 'PPT' ||
+      record.resourceType === 'WORD' ||
+      record.resourceType === 'PICTURE_BOOK'
+    ) {
+      setPreviewDocument(record);
       return;
     }
     message.info('该类型暂不支持预览');
@@ -943,6 +947,13 @@ export default function ResourceManagement() {
         resource={previewImage}
         onClose={() => setPreviewImage(null)}
       />
+      <Suspense fallback={null}>
+        <DocumentPreviewModal
+          open={previewDocument !== null}
+          resource={previewDocument}
+          onClose={() => setPreviewDocument(null)}
+        />
+      </Suspense>
     </div>
   );
 }

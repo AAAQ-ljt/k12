@@ -5,7 +5,7 @@ import type { PageParam, PageResult } from '@/types/common';
 export interface ResourceInfo {
   resourceId: string;
   resourceName: string;
-  resourceType: string; // VIDEO/DOCUMENT/PPT/WORD/IMAGE/PICTURE_BOOK
+  resourceType: string; // VIDEO/IMAGE/DOCUMENT（兼容历史 PPT/WORD/PICTURE_BOOK）
   tags?: string;
   description?: string;
   filePath?: string;
@@ -122,6 +122,11 @@ export function getVideoPlaylistUrl(resourceId: string): string {
 /** 图片预览地址 */
 export function getImagePreviewUrl(resourceId: string): string {
   return `/api/resourceInfo/image/${resourceId}`;
+}
+
+/** 文档预览地址（原始文件流） */
+export function getFilePreviewUrl(resourceId: string): string {
+  return `/api/resourceInfo/file/${resourceId}`;
 }
 
 /** 文件下载地址（下载原始文件） */

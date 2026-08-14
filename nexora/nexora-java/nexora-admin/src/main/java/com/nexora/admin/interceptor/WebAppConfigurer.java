@@ -30,6 +30,7 @@ public class WebAppConfigurer implements WebMvcConfigurer {
                         "/error",
                         "/resourceInfo/video/**",
                         "/resourceInfo/image/**",
+                        "/resourceInfo/file/**",
                         "/resourceInfo/download/**"
                 );
     }

@@ -141,20 +141,18 @@ export const COURSE_STATUS_MAP: Record<string, { text: string; color: string }> 
 /** 资源类型选项 */
 export const RESOURCE_TYPE_OPTIONS = [
   { label: '视频', value: 'VIDEO' },
-  { label: '文档', value: 'DOCUMENT' },
-  { label: 'PPT', value: 'PPT' },
-  { label: 'Word', value: 'WORD' },
   { label: '图片', value: 'IMAGE' },
-  { label: '绘本', value: 'PICTURE_BOOK' },
+  { label: '文档', value: 'DOCUMENT' },
 ];
 
 /** 资源类型映射 */
 export const RESOURCE_TYPE_MAP: Record<string, { text: string; color: string }> = {
   VIDEO: { text: '视频', color: 'blue' },
   DOCUMENT: { text: '文档', color: 'green' },
+  IMAGE: { text: '图片', color: 'purple' },
+  // 兼容历史数据
   PPT: { text: 'PPT', color: 'orange' },
   WORD: { text: 'Word', color: 'cyan' },
-  IMAGE: { text: '图片', color: 'purple' },
   PICTURE_BOOK: { text: '绘本', color: 'magenta' },
 };
 

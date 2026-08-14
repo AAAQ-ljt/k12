@@ -139,6 +139,25 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
+     * 通用文件预览（供 jit-viewer 直接拉取原始文档）
+     */
+    @GetMapping("/file/{resourceId}")
+    public ResponseEntity<FileSystemResource> file(@PathVariable String resourceId) throws IOException {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path file = resolveResourcePath(resource.getFilePath());
+        if (!Files.exists(file)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(resolveFileMediaType(file))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(file));
+    }
+
+    /**
      * 下载原始文件
      */
     @GetMapping("/download/{resourceId}")
@@ -311,5 +330,40 @@ public class ResourceInfoController extends ABaseController {
             return MediaType.parseMediaType("image/bmp");
         }
         return MediaType.APPLICATION_OCTET_STREAM;
+    }
+
+    private MediaType resolveFileMediaType(Path file) {
+        String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (name.endsWith(".pdf")) {
+            return MediaType.APPLICATION_PDF;
+        }
+        if (name.endsWith(".docx")) {
+            return MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        }
+        if (name.endsWith(".xlsx")) {
+            return MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        if (name.endsWith(".pptx")) {
+            return MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.presentationml.presentation");
+        }
+        if (name.endsWith(".doc")) {
+            return MediaType.parseMediaType("application/msword");
+        }
+        if (name.endsWith(".xls")) {
+            return MediaType.parseMediaType("application/vnd.ms-excel");
+        }
+        if (name.endsWith(".ppt")) {
+            return MediaType.parseMediaType("application/vnd.ms-powerpoint");
+        }
+        if (name.endsWith(".md") || name.endsWith(".markdown")) {
+            return MediaType.parseMediaType("text/markdown");
+        }
+        if (name.endsWith(".txt")) {
+            return MediaType.parseMediaType("text/plain");
+        }
+        if (name.endsWith(".csv")) {
+            return MediaType.parseMediaType("text/csv");
+        }
+        return resolveImageMediaType(file);
     }
 }
