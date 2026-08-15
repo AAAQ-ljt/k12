@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Modal, Form, Button } from 'antd';
+import type { FormInstance } from 'antd';
 import type { ReactNode } from 'react';
 
 interface BaseFormModalProps {
   open: boolean;
   title: string;
   mode: 'create' | 'edit' | 'view';
+  form?: FormInstance;
   initialValues?: Record<string, any>;
   onCancel: () => void;
   onSuccess?: () => void;
@@ -17,13 +19,15 @@ export default function BaseFormModal({
   open,
   title,
   mode,
+  form: externalForm,
   initialValues,
   onCancel,
   onSuccess,
   children,
   onSubmit,
 }: BaseFormModalProps) {
-  const [form] = Form.useForm();
+  const [innerForm] = Form.useForm();
+  const form = externalForm ?? innerForm;
   const [loading, setLoading] = useState(false);
   const isView = mode === 'view';
 

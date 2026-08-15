@@ -126,6 +126,42 @@ export const DIFFICULTY_MAP: Record<string, { text: string; color: string }> = {
   '3': { text: '困难', color: 'red' },
 };
 
+/** 题型选项：0单选 1多选 2判断 3填空 */
+export const QUESTION_TYPE_OPTIONS = [
+  { label: '单选题', value: 0 },
+  { label: '多选题', value: 1 },
+  { label: '判断题', value: 2 },
+  { label: '填空题', value: 3 },
+];
+
+/** 题型映射 */
+export const QUESTION_TYPE_MAP: Record<string, { text: string; color: string }> = {
+  '0': { text: '单选题', color: 'blue' },
+  '1': { text: '多选题', color: 'purple' },
+  '2': { text: '判断题', color: 'cyan' },
+  '3': { text: '填空题', color: 'orange' },
+};
+
+/** 审核状态选项：0待审核 1已上架 2已驳回 */
+export const AUDIT_STATUS_OPTIONS = [
+  { label: '待审核', value: 0 },
+  { label: '已上架', value: 1 },
+  { label: '已驳回', value: 2 },
+];
+
+/** 审核状态映射 */
+export const AUDIT_STATUS_MAP: Record<string, { text: string; color: string }> = {
+  '0': { text: '待审核', color: 'orange' },
+  '1': { text: '已上架', color: 'green' },
+  '2': { text: '已驳回', color: 'red' },
+};
+
+/** 题目来源映射：0管理员录入 1AI生成 */
+export const QUESTION_SOURCE_MAP: Record<string, { text: string; color: string }> = {
+  '0': { text: '管理员录入', color: 'blue' },
+  '1': { text: 'AI生成', color: 'geekblue' },
+};
+
 /** 知识点状态映射：0=停用 1=启用 */
 export const KNOWLEDGE_STATUS_MAP: Record<string, { text: string; color: string }> = {
   '0': { text: '停用', color: 'red' },
