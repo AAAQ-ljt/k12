@@ -66,7 +66,7 @@ spring:
           dimensions: ${NEXORA_EMBEDDING_DIMENSIONS:1024}
     mcp:
       client:
-        enabled: true
+        enabled: ${NEXORA_MCP_CLIENT_ENABLED:false}
         name: nexora-mcp-client
         version: 1.0.0
         request-timeout: 30s
@@ -74,7 +74,7 @@ spring:
         streamable-http:
           connections:
             nexora-mcp:
-              url: http://localhost:8084
+              url: http://localhost:8084/mcp
 # 登录 Token 派生密钥（与 admin 一致，生产环境建议通过环境变量覆盖）
 login:
   token-secret: ${NEXORA_TOKEN_SECRET:nexora-default-token-secret}
