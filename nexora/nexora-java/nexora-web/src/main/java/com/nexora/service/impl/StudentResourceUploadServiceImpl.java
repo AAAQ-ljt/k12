@@ -47,6 +47,8 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
     private static final Logger log = LoggerFactory.getLogger(StudentResourceUploadServiceImpl.class);
     private static final int DEFAULT_SHARD_SIZE = 5 * 1024 * 1024;
     private static final List<String> VIDEO_EXTENSIONS = List.of("mp4", "avi", "mov", "mkv", "flv", "wmv", "webm", "m4v", "ts");
+    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("md", "txt", "docx", "doc", "pdf", "ppt", "pptx");
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp", "bmp", "svg");
 
     @Value("${project.folder}")
     private String projectFolder;
@@ -66,6 +68,9 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
     @Value("${resource.upload-session-ttl-minutes:120}")
     private long sessionTtlMinutes;
 
+    @Value("${resource.student-quota-mb:300}")
+    private long studentQuotaMb;
+
     @Resource
     private ResourceInfoService resourceInfoService;
 
@@ -81,6 +86,7 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
         if (fileSize == null || fileSize <= 0) {
             throw new BusinessException("文件大小不合法");
         }
+        validateStudentUpload(resourceType, originalFileName, fileSize, ownerId);
         String resourceId = StringTools.getRandomNumber(Constants.LENGTH_15);
         String uploadId = UUID.randomUUID().toString().replace("-", "");
         int totalShards = (int) Math.max(1, Math.ceil(fileSize * 1.0 / DEFAULT_SHARD_SIZE));
@@ -329,6 +335,32 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             return null;
         }
         return directoryId;
+    }
+
+    private void validateStudentUpload(String resourceType, String originalFileName, Long fileSize, String ownerId) {
+        String extension = extractExtension(originalFileName);
+        if (!extension.isEmpty() && extension.startsWith(".")) {
+            extension = extension.substring(1);
+        }
+        extension = extension.toLowerCase(Locale.ROOT);
+        if ("IMAGE".equalsIgnoreCase(resourceType)) {
+            if (!IMAGE_EXTENSIONS.contains(extension)) {
+                throw new BusinessException("仅支持上传 jpg/jpeg/png/gif/webp/bmp/svg 图片");
+            }
+        } else if ("DOCUMENT".equalsIgnoreCase(resourceType)) {
+            if (!DOCUMENT_EXTENSIONS.contains(extension)) {
+                throw new BusinessException("仅支持上传 md/txt/docx/doc/pdf/ppt/pptx 文档");
+            }
+        } else {
+            throw new BusinessException("学生个人知识库仅支持文档和图片");
+        }
+
+        long quotaBytes = studentQuotaMb * 1024 * 1024;
+        Long usedBytes = resourceInfoService.getUsedSizeByOwner(ownerId);
+        long used = usedBytes == null ? 0L : usedBytes;
+        if (used + fileSize > quotaBytes) {
+            throw new BusinessException("存储空间不足，每人额度为 " + studentQuotaMb + "MB");
+        }
     }
 
     private boolean isVideo(String resourceType, String extension) {

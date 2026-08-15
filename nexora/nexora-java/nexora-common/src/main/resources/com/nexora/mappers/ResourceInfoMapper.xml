@@ -788,4 +788,10 @@
 		select <include refid="base_column_list" /> from resource_info r where resource_id=#{resourceId}
 	</select>
 
+	<!-- 统计指定用户已占用空间（处理中 + 可用） -->
+	<select id="selectUsedSizeByOwner" resultType="java.lang.Long">
+		select coalesce(sum(r.file_size), 0) from resource_info r
+		where r.owner_id = #{ownerId} and r.status in (0, 1)
+	</select>
+
 </mapper>

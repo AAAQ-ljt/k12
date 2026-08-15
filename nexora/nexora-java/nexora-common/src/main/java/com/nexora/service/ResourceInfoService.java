@@ -74,4 +74,9 @@ public interface ResourceInfoService {
 	 */
 	Integer updateDirectoryBatch(List<ResourceInfo> list);
 
+	/**
+	 * 统计指定用户已占用空间（字节）
+	 */
+	Long getUsedSizeByOwner(String ownerId);
+
 }

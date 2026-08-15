@@ -30,6 +30,21 @@ export interface StudentUploadSession {
   uploadedShardIndexes: number[];
 }
 
+export interface StudentStorageInfo {
+  usedBytes: number;
+  quotaBytes: number;
+  remainingBytes: number;
+  initialized: boolean;
+}
+
+export function loadStudentStorage(): Promise<StudentStorageInfo> {
+  return get('/studentResource/storage');
+}
+
+export function initStudentKnowledgeBase(): Promise<void> {
+  return post('/studentResource/initKnowledgeBase');
+}
+
 export function loadStudentDirectories(): Promise<StudentDirectory[]> {
   return get('/studentResource/directoryTree');
 }

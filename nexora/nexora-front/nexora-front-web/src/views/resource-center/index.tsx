@@ -10,10 +10,10 @@ import VideoPlayer from '@/views/course-material/components/VideoPlayer';
 import {
   addStudentDirectory, deleteStudentDirectory, deleteStudentResource, getStudentResourceDownloadUrl,
   getStudentResourceFileUrl, getStudentResourceImageUrl, getStudentResourceVideoUrl, loadStudentDirectories,
-  loadStudentResources, prepareStudentUpload, sortStudentDirectories, updateStudentDirectory, updateStudentResource,
-  uploadStudentShard,
+  loadStudentResources, loadStudentStorage, initStudentKnowledgeBase, prepareStudentUpload,
+  sortStudentDirectories, updateStudentDirectory, updateStudentResource, uploadStudentShard,
 } from '@/api/studentResource';
-import type { StudentDirectory, StudentResource } from '@/api/studentResource';
+import type { StudentDirectory, StudentResource, StudentStorageInfo } from '@/api/studentResource';
 import styles from './index.module.scss';
 
 interface UploadTask {
@@ -39,8 +39,13 @@ const TYPE_OPTIONS = [
   { label: '文档', value: 'DOCUMENT' },
 ];
 
+const ALLOWED_EXTENSIONS = [
+  'md', 'txt', 'docx', 'doc', 'pdf', 'ppt', 'pptx',
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg',
+];
+
 function formatSize(size?: number) {
-  if (!size) {
+  if (size === undefined || size === null || size < 0) {
     return '-';
   }
   if (size < 1024 * 1024) {
@@ -78,6 +83,15 @@ export default function ResourceCenter() {
   const [previewResource, setPreviewResource] = useState<StudentResource | null>(null);
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
+  const [storage, setStorage] = useState<StudentStorageInfo | null>(null);
+
+  const loadStorage = useCallback(async () => {
+    try {
+      setStorage(await loadStudentStorage());
+    } catch {
+      // 错误已统一提示
+    }
+  }, []);
 
   const loadDirs = useCallback(async () => {
     try {
@@ -108,6 +122,7 @@ export default function ResourceCenter() {
 
   useEffect(() => {
     void loadDirs();
+    void loadStorage();
   }, [loadDirs]);
 
   useEffect(() => {
@@ -262,6 +277,7 @@ export default function ResourceCenter() {
       )));
       message.success(`${raw.name} 上传完成`);
       setTimeout(() => void loadFiles(), 800);
+      void loadStorage();
     } catch {
       setUploadTasks((prev) => prev.map((item) => (
         item.key === key ? { ...item, status: 'error' } : item
@@ -271,6 +287,30 @@ export default function ResourceCenter() {
 
   const removeUploadTask = (key: string) => {
     setUploadTasks((prev) => prev.filter((item) => item.key !== key));
+  };
+
+  const initKnowledgeBase = async () => {
+    try {
+      await initStudentKnowledgeBase();
+      message.success('个人知识库已初始化');
+      await Promise.all([loadStorage(), loadDirs()]);
+    } catch {
+      // 错误已统一提示
+    }
+  };
+
+  const validateUploadFile = (file: File) => {
+    const ext = file.name.toLowerCase().split('.').pop() || '';
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      message.error('仅支持 md/txt/docx/pdf/ppt/pptx 文档和图片');
+      return false;
+    }
+    const remaining = storage?.remainingBytes ?? 0;
+    if (file.size > remaining) {
+      message.error('存储空间不足，每人额度 300MB');
+      return false;
+    }
+    return true;
   };
 
   const saveResourceName = async () => {
@@ -396,13 +436,32 @@ export default function ResourceCenter() {
           />
         </Space>
         <Space>
+          {storage && !storage.initialized && (
+            <Button icon={<FolderOpen size={16} />} onClick={() => void initKnowledgeBase()}>
+              初始化知识库
+            </Button>
+          )}
+          {storage && (
+            <span className={styles.storageInfo}>
+              <Progress
+                percent={Math.min(100, Math.round((storage.usedBytes / storage.quotaBytes) * 100))}
+                size="small"
+                style={{ width: 140 }}
+              />
+              <span>{formatSize(storage.usedBytes)} / {formatSize(storage.quotaBytes)}</span>
+            </span>
+          )}
           <Button icon={<FolderPlus size={16} />} onClick={() => openAddDir(currentDirId || '0')}>
             新建目录
           </Button>
           <Upload
             multiple
             showUploadList={false}
+            accept=".md,.txt,.docx,.doc,.pdf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg"
             beforeUpload={(file) => {
+              if (!validateUploadFile(file)) {
+                return false;
+              }
               void uploadFile(file);
               return false;
             }}

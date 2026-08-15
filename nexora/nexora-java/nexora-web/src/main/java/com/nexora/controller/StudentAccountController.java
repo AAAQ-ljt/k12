@@ -13,12 +13,15 @@ import com.nexora.entity.po.UserInfo;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.UserInfoService;
+import com.nexora.service.StudentKnowledgeBaseService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
 import com.nexora.vo.CheckCodeVO;
 import com.nexora.vo.StudentLoginVO;
 import com.wf.captcha.ArithmeticCaptcha;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -38,8 +41,13 @@ import java.util.Date;
 @GlobalInterceptor(checkLogin = true)
 public class StudentAccountController extends ABaseController {
 
+    private static final Logger log = LoggerFactory.getLogger(StudentAccountController.class);
+
     @Resource
     private UserInfoService userInfoService;
+
+    @Resource
+    private StudentKnowledgeBaseService studentKnowledgeBaseService;
 
     @Resource
     private RedisComponent redisComponent;
@@ -102,6 +110,11 @@ public class StudentAccountController extends ABaseController {
             userInfo.setStatus(Constants.STATUS_ENABLE);
             userInfo.setCreateTime(new Date());
             userInfoService.add(userInfo);
+            try {
+                studentKnowledgeBaseService.initIfAbsent(userInfo.getUserId());
+            } catch (Exception e) {
+                log.error("注册后初始化个人知识库失败 userId={}", userInfo.getUserId(), e);
+            }
 
             // 注册即登录：生成 token 并返回登录态
             return getSuccessResponseVO(buildLoginVO(userInfo));
@@ -135,6 +148,11 @@ public class StudentAccountController extends ABaseController {
             UserInfo updateBean = new UserInfo();
             updateBean.setLastLoginTime(new Date());
             userInfoService.updateUserInfoByUserId(updateBean, userInfo.getUserId());
+            try {
+                studentKnowledgeBaseService.initIfAbsent(userInfo.getUserId());
+            } catch (Exception e) {
+                log.error("登录后初始化个人知识库失败 userId={}", userInfo.getUserId(), e);
+            }
 
             return getSuccessResponseVO(buildLoginVO(userInfo));
         } finally {

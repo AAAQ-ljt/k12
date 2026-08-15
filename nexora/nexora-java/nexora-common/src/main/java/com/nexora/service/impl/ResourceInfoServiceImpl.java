@@ -138,4 +138,12 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
 		}
 		return this.resourceInfoMapper.updateDirectoryBatch(list);
 	}
+
+	/**
+	 * 统计指定用户已占用空间（字节）
+	 */
+	@Override
+	public Long getUsedSizeByOwner(String ownerId) {
+		return this.resourceInfoMapper.selectUsedSizeByOwner(ownerId);
+	}
 }

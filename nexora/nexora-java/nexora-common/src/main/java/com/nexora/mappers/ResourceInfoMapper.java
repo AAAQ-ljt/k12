@@ -32,4 +32,9 @@ public interface ResourceInfoMapper<T,P> extends BaseMapper<T,P> {
 	 */
 	 Integer updateDirectoryBatch(@Param("list") List<ResourceInfo> list);
 
+	/**
+	 * 统计指定用户已占用空间（处理中 + 可用）
+	 */
+	 Long selectUsedSizeByOwner(@Param("ownerId") String ownerId);
+
 }

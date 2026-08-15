@@ -14,9 +14,11 @@ import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.ResourceDirectoryService;
 import com.nexora.service.ResourceInfoService;
+import com.nexora.service.StudentKnowledgeBaseService;
 import com.nexora.service.StudentResourceUploadService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
+import com.nexora.vo.StudentStorageVO;
 import com.nexora.vo.StudentResourceVO;
 import com.nexora.vo.StudentUploadSessionVO;
 import jakarta.annotation.Resource;
@@ -50,6 +52,20 @@ public class StudentResourceCenterController extends ABaseController {
 
     @Resource
     private StudentResourceUploadService studentResourceUploadService;
+
+    @Resource
+    private StudentKnowledgeBaseService studentKnowledgeBaseService;
+
+    @GetMapping("/storage")
+    public ResponseVO<StudentStorageVO> storage() {
+        return getSuccessResponseVO(studentKnowledgeBaseService.getStorageInfo(currentUserId()));
+    }
+
+    @PostMapping("/initKnowledgeBase")
+    public ResponseVO<Void> initKnowledgeBase() {
+        studentKnowledgeBaseService.initIfAbsent(currentUserId());
+        return getSuccessResponseVO(null);
+    }
 
     @GetMapping("/directoryTree")
     public ResponseVO<List<ResourceDirectory>> directoryTree() {

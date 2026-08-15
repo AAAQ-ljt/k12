@@ -98,6 +98,7 @@ resource:
   temp-dir: resource/temp
   file-dir: resource/files
   upload-session-ttl-minutes: 120
+  student-quota-mb: 300
   ffmpeg-path: ffmpeg
   ffprobe-path: ffprobe
 
