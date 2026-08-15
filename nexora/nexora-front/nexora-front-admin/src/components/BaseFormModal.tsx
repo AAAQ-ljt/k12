@@ -39,7 +39,9 @@ export default function BaseFormModal({
         form.resetFields();
       }
     }
-  }, [open, initialValues, form]);
+    // 只在弹窗打开时初始化，避免父组件重渲染把已填表单重置回初始值
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, form]);
 
   const handleOk = async () => {
     try {

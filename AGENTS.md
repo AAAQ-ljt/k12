@@ -83,3 +83,4 @@ ResponseVO<T> 统一返回结构:
 - 禁止在 Controller 直接调用 ChatClient / VectorStore / MCP 客户端
 - 禁止让大模型直接执行任意 SQL / 文件操作（教学工具必须白名单化）
 - 禁止把 AI 对话做成同步阻塞接口（必须 Netty WebSocket 流式 / 异步）
+- 禁止针对单个问题先启动浏览器验证；先在代码中直接定位并修复，浏览器验证仅用于整页 / 跨页 / 交互链路或用户明确要求时

@@ -43,7 +43,7 @@ public class QuestionInfoQuery extends BaseParam {
 	private Integer difficulty;
 
 	/**
-	 * 题型：0单选 1多选 2判断 3填空
+	 * 题型：0单选 1多选 2判断 3填空 4简答 5解答 6论述 7材料分析
 	 */
 	private Integer questionType;
 

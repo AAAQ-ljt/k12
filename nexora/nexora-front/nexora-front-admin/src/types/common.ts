@@ -126,12 +126,16 @@ export const DIFFICULTY_MAP: Record<string, { text: string; color: string }> = {
   '3': { text: '困难', color: 'red' },
 };
 
-/** 题型选项：0单选 1多选 2判断 3填空 */
+/** 题型选项：0单选 1多选 2判断 3填空 4简答 5解答 6论述 7材料分析 */
 export const QUESTION_TYPE_OPTIONS = [
   { label: '单选题', value: 0 },
   { label: '多选题', value: 1 },
   { label: '判断题', value: 2 },
   { label: '填空题', value: 3 },
+  { label: '简答题', value: 4 },
+  { label: '解答题', value: 5 },
+  { label: '论述题', value: 6 },
+  { label: '材料分析题', value: 7 },
 ];
 
 /** 题型映射 */
@@ -140,6 +144,10 @@ export const QUESTION_TYPE_MAP: Record<string, { text: string; color: string }> 
   '1': { text: '多选题', color: 'purple' },
   '2': { text: '判断题', color: 'cyan' },
   '3': { text: '填空题', color: 'orange' },
+  '4': { text: '简答题', color: 'green' },
+  '5': { text: '解答题', color: 'geekblue' },
+  '6': { text: '论述题', color: 'magenta' },
+  '7': { text: '材料分析题', color: 'volcano' },
 };
 
 /** 审核状态选项：0待审核 1已上架 2已驳回 */

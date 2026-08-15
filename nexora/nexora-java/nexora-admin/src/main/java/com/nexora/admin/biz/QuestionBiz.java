@@ -33,6 +33,10 @@ public class QuestionBiz {
     private static final int TYPE_MULTIPLE = 1;
     private static final int TYPE_JUDGE = 2;
     private static final int TYPE_FILL = 3;
+    private static final int TYPE_SHORT_ANSWER = 4;
+    private static final int TYPE_SOLUTION = 5;
+    private static final int TYPE_ESSAY = 6;
+    private static final int TYPE_MATERIAL = 7;
 
     @Resource
     private QuestionInfoService questionInfoService;
@@ -165,7 +169,7 @@ public class QuestionBiz {
         }
         if (bean.getQuestionType() == TYPE_SINGLE || bean.getQuestionType() == TYPE_MULTIPLE) {
             validateChoiceOptions(bean.getQuestionType(), options);
-        } else if (bean.getQuestionType() == TYPE_JUDGE || bean.getQuestionType() == TYPE_FILL) {
+        } else if (bean.getQuestionType() >= TYPE_JUDGE && bean.getQuestionType() <= TYPE_MATERIAL) {
             if (StringTools.isEmpty(bean.getAnswer())) {
                 throw new BusinessException("请填写答案");
             }
