@@ -1,0 +1,150 @@
+.resourcePage {
+  min-height: 100%;
+  padding: 20px 24px 40px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.resourceBody {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  min-height: 560px;
+}
+
+.directoryPanel {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  overflow: auto;
+}
+
+.directoryTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.treeNode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.treeNodeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.treeNodeActions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.treeNode:hover .treeNodeActions {
+  opacity: 1;
+}
+
+.filePanel {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.resourceName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+}
+
+.uploadPanel {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 360px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+  padding: 12px 14px;
+  z-index: 20;
+}
+
+.uploadPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.uploadTaskList {
+  max-height: 280px;
+  overflow: auto;
+}
+
+.uploadTask {
+  padding: 6px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.uploadTaskInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.imagePreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.imagePreview img {
+  max-width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+}
+
+.documentPreview {
+  width: 100%;
+  height: 78vh;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .resourceBody {
+    grid-template-columns: 1fr;
+  }
+
+  .directoryPanel {
+    max-height: 260px;
+  }
+}

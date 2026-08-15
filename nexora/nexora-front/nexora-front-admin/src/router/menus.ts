@@ -30,7 +30,7 @@ export const menus: MenuConfig[] = [
   },
   {
     key: 'knowledge',
-    label: '知识库管理',
+    label: '知识库管理（官方知识库）',
     icon: 'Database',
     path: '/knowledge',
     children: [
@@ -48,29 +48,6 @@ export const menus: MenuConfig[] = [
       { key: 'teaching:course', label: '课程管理', path: '/teaching/course', menuCode: 'teaching:course' },
       { key: 'teaching:question', label: '习题管理', path: '/teaching/question', menuCode: 'teaching:question' },
       { key: 'teaching:paper', label: '试卷管理', path: '/teaching/paper', menuCode: 'teaching:paper' },
-      { key: 'teaching:exam', label: '考试管理', path: '/teaching/exam', menuCode: 'teaching:exam' },
-    ],
-  },
-  {
-    key: 'animation',
-    label: '动画管理',
-    icon: 'Film',
-    path: '/animation',
-    children: [
-      { key: 'animation:template', label: '模板库', path: '/animation/template', menuCode: 'animation:template' },
-      { key: 'animation:record', label: '生成记录', path: '/animation/record', menuCode: 'animation:record' },
-      { key: 'animation:review', label: '动画审核', path: '/animation/review', menuCode: 'animation:review' },
-    ],
-  },
-  {
-    key: 'agent',
-    label: '智能体配置',
-    icon: 'Bot',
-    path: '/agent',
-    children: [
-      { key: 'agent:prompt', label: '提示词管理', path: '/agent/prompt', menuCode: 'agent:prompt' },
-      { key: 'agent:model', label: '模型与RAG配置', path: '/agent/model', menuCode: 'agent:model' },
-      { key: 'agent:intent', label: '意图路由', path: '/agent/intent', menuCode: 'agent:intent' },
     ],
   },
   {
@@ -79,8 +56,7 @@ export const menus: MenuConfig[] = [
     icon: 'BarChart3',
     path: '/learning',
     children: [
-      { key: 'learning:path', label: '学习路径', path: '/learning/path', menuCode: 'learning:path' },
-      { key: 'learning:mastery', label: '掌握度分析', path: '/learning/mastery', menuCode: 'learning:mastery' },
+      { key: 'learning:overview', label: '学习分析', path: '/learning/overview', menuCode: 'learning:overview' },
     ],
   },
   {
@@ -89,9 +65,9 @@ export const menus: MenuConfig[] = [
     icon: 'Settings',
     path: '/system',
     children: [
-      { key: 'system:config', label: '系统配置', path: '/system/config', menuCode: 'system:config' },
-      { key: 'system:menu', label: '菜单管理', path: '/system/menu', menuCode: 'system:menu' },
-      { key: 'system:notice', label: '系统公告', path: '/system/notice', menuCode: 'system:notice' },
+      { key: 'system:admin', label: '管理员账号', path: '/system/admin', menuCode: 'system:admin' },
+      { key: 'system:model', label: '模型与提示词', path: '/system/model', menuCode: 'system:model' },
+      { key: 'system:config', label: '环境配置', path: '/system/config', menuCode: 'system:config' },
     ],
   },
 ];

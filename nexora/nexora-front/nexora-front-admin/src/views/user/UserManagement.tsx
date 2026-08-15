@@ -10,14 +10,18 @@ import { loadDataList, del, changeStatus } from '@/api/user';
 import type { UserInfo, UserQuery } from '@/api/user';
 import UserFormModal from './UserFormModal';
 
-export default function UserManagement() {
+interface UserManagementProps {
+  roleType?: number;
+}
+
+export default function UserManagement({ roleType = 1 }: UserManagementProps) {
   const { message } = App.useApp();
 
   // 搜索参数状态（点击“查询”后才生效，不做实时搜索）
   const [searchParams, setSearchParams] = useState<UserQuery>({
     pageNo: 1,
     pageSize: 10,
-    roleType: 1,
+    roleType,
   });
 
   // 搜索草稿（输入过程中不触发查询）
@@ -80,7 +84,7 @@ export default function UserManagement() {
     setDraftGrade(undefined);
     setDraftStage(undefined);
     setDraftStatus(undefined);
-    setSearchParams({ pageNo: 1, pageSize: 10, roleType: 1 });
+    setSearchParams({ pageNo: 1, pageSize: 10, roleType });
   };
 
   /** 翻页 */

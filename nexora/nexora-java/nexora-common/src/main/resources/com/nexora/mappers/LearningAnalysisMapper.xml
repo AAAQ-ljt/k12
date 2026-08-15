@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.LearningAnalysisMapper">
+
+    <select id="selectOverview" resultType="com.nexora.entity.vo.LearningOverviewVO">
+        SELECT
+            (SELECT COUNT(*) FROM user_info WHERE role_type = 1) AS studentCount,
+            (SELECT COUNT(DISTINCT user_id) FROM course_study_progress) AS courseActiveStudents,
+            (SELECT COALESCE(ROUND(AVG(progress)), 0) FROM course_study_progress) AS courseAvgProgress,
+            (SELECT COALESCE(SUM(study_duration), 0) FROM course_study_progress) AS courseTotalDuration,
+            (SELECT COUNT(*) FROM practice_record) AS practiceTotal,
+            (SELECT COALESCE(SUM(is_correct), 0) FROM practice_record) AS practiceCorrect,
+            (SELECT COALESCE(ROUND(SUM(is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0) FROM practice_record) AS practiceAccuracy,
+            (SELECT COUNT(*) FROM resource_info WHERE owner_id IS NOT NULL) AS wikiResourceCount,
+            (SELECT COUNT(DISTINCT owner_id) FROM resource_info WHERE owner_id IS NOT NULL) AS wikiActiveUsers,
+            (SELECT COUNT(*) FROM agent_message) AS aiMessageCount,
+            (SELECT COUNT(DISTINCT user_id) FROM agent_message) AS aiActiveUsers,
+            (SELECT COALESCE(SUM(prompt_tokens + completion_tokens), 0) FROM agent_message) AS aiTotalTokens,
+            (SELECT COALESCE(ROUND(AVG(mastery_score)), 0) FROM knowledge_mastery) AS masteryAvgScore
+    </select>
+
+</mapper>

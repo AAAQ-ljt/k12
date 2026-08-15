@@ -63,6 +63,7 @@ public class StudentResourceController extends ABaseController {
             query.setPageSize(20);
         }
         query.setStatus(1);
+        query.setOwnerIdNull(Boolean.TRUE);
         if (current != null && !StringTools.isEmpty(current.getStage())) {
             query.setStage(current.getStage());
         }
@@ -77,7 +78,8 @@ public class StudentResourceController extends ABaseController {
     public ResponseVO<StudentResourceVO> getInfo(@RequestParam String resourceId) {
         TokenUserInfoDTO current = LoginUserContext.get();
         ResourceInfo resource = getReadyResource(resourceId);
-        if (resource == null || !stageMatches(resource.getStage(), current == null ? null : current.getStage())) {
+        if (resource == null || !StringTools.isEmpty(resource.getOwnerId())
+                || !stageMatches(resource.getStage(), current == null ? null : current.getStage())) {
             throw new BusinessException("资源不存在或暂不可用");
         }
         return getSuccessResponseVO(toVO(resource));
@@ -207,6 +209,7 @@ public class StudentResourceController extends ABaseController {
         vo.setDuration(resource.getDuration());
         vo.setStage(resource.getStage());
         vo.setKnowledgePointId(resource.getKnowledgePointId());
+        vo.setDirectoryId(resource.getDirectoryId());
         vo.setSource(resource.getSource());
         vo.setStatus(resource.getStatus());
         vo.setCreateTime(resource.getCreateTime());

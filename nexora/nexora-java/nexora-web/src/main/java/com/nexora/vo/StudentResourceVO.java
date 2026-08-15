@@ -29,6 +29,8 @@ public class StudentResourceVO {
 
     private String knowledgePointId;
 
+    private String directoryId;
+
     private Integer source;
 
     private Integer status;
@@ -117,6 +119,14 @@ public class StudentResourceVO {
 
     public void setKnowledgePointId(String knowledgePointId) {
         this.knowledgePointId = knowledgePointId;
+    }
+
+    public String getDirectoryId() {
+        return directoryId;
+    }
+
+    public void setDirectoryId(String directoryId) {
+        this.directoryId = directoryId;
     }
 
     public Integer getSource() {

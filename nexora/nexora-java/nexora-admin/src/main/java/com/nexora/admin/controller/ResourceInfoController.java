@@ -6,6 +6,7 @@ import com.nexora.admin.service.ResourceUploadService;
 import com.nexora.admin.vo.ResourceUploadSessionVO;
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
+import com.nexora.entity.po.ResourceDirectory;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.query.ResourceDirectoryQuery;
@@ -75,6 +76,7 @@ public class ResourceInfoController extends ABaseController {
      */
     @GetMapping("/loadDataList")
     public ResponseVO<PaginationResultVO<ResourceInfo>> loadDataList(ResourceInfoQuery query) {
+        query.setOwnerIdNull(Boolean.TRUE);
         return getSuccessResponseVO(resourceInfoService.findListByPage(query));
     }
 
@@ -279,6 +281,7 @@ public class ResourceInfoController extends ABaseController {
         }
         Date now = new Date();
         List<ResourceInfo> list = dto.getResourceIds().stream().map(resourceId -> {
+            assertPublicResource(resourceId);
             ResourceInfo item = new ResourceInfo();
             item.setResourceId(resourceId);
             item.setDirectoryId(dto.getDirectoryId());
@@ -294,6 +297,7 @@ public class ResourceInfoController extends ABaseController {
      */
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String resourceId) {
+        assertPublicResource(resourceId);
         resourceInfoService.deleteResourceInfoByResourceId(resourceId);
         return getSuccessResponseVO(null);
     }
@@ -318,6 +322,7 @@ public class ResourceInfoController extends ABaseController {
         if (resourceIds != null) {
             for (String resourceId : resourceIds) {
                 if (!StringTools.isEmpty(resourceId)) {
+                    assertPublicResource(resourceId);
                     resourceInfoService.deleteResourceInfoByResourceId(resourceId);
                 }
             }
@@ -340,12 +345,19 @@ public class ResourceInfoController extends ABaseController {
         if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
             return null;
         }
+        if (!StringTools.isEmpty(resource.getOwnerId())) {
+            return null;
+        }
         return resource;
     }
 
     private void assertDirectoryDeletable(String dirId) {
         if (StringTools.isEmpty(dirId) || "0".equals(dirId) || "root".equals(dirId)) {
             throw new BusinessException("根目录不能删除");
+        }
+        ResourceDirectory directory = resourceDirectoryService.getResourceDirectoryByDirId(dirId);
+        if (directory == null || !StringTools.isEmpty(directory.getOwnerId())) {
+            throw new BusinessException("目录不存在或不可删除");
         }
         ResourceDirectoryQuery childQuery = new ResourceDirectoryQuery();
         childQuery.setParentId(dirId);
@@ -356,6 +368,12 @@ public class ResourceInfoController extends ABaseController {
         fileQuery.setDirectoryId(dirId);
         if (resourceInfoService.findCountByParam(fileQuery) > 0) {
             throw new BusinessException("目录下存在文件，不能删除");
+        }
+    }
+
+    private void assertPublicResource(String resourceId) {
+        if (getReadyResource(resourceId) == null) {
+            throw new BusinessException("资源不存在或不可操作");
         }
     }
 

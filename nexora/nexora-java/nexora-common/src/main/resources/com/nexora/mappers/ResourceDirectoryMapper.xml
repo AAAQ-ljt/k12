@@ -7,13 +7,14 @@
         <id column="dir_id" property="dirId"/>
         <result column="dir_name" property="dirName"/>
         <result column="parent_id" property="parentId"/>
+        <result column="owner_id" property="ownerId"/>
         <result column="sort" property="sort"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <sql id="base_column_list">
-        d.dir_id,d.dir_name,d.parent_id,d.sort,
+        d.dir_id,d.dir_name,d.parent_id,d.owner_id,d.sort,
         d.create_time,d.update_time
     </sql>
 
@@ -26,6 +27,12 @@
         </if>
         <if test="query.parentId != null and query.parentId!=''">
             and d.parent_id = #{query.parentId}
+        </if>
+        <if test="query.ownerId != null and query.ownerId!=''">
+            and d.owner_id = #{query.ownerId}
+        </if>
+        <if test="query.ownerIdNull != null and query.ownerIdNull">
+            and d.owner_id is null
         </if>
         <if test="query.sort != null">
             and d.sort = #{query.sort}
@@ -63,6 +70,7 @@
             <if test="bean.dirId != null">dir_id,</if>
             <if test="bean.dirName != null">dir_name,</if>
             <if test="bean.parentId != null">parent_id,</if>
+            <if test="bean.ownerId != null">owner_id,</if>
             <if test="bean.sort != null">sort,</if>
             <if test="bean.createTime != null">create_time,</if>
             <if test="bean.updateTime != null">update_time,</if>
@@ -71,6 +79,7 @@
             <if test="bean.dirId!=null">#{bean.dirId},</if>
             <if test="bean.dirName!=null">#{bean.dirName},</if>
             <if test="bean.parentId!=null">#{bean.parentId},</if>
+            <if test="bean.ownerId!=null">#{bean.ownerId},</if>
             <if test="bean.sort!=null">#{bean.sort},</if>
             <if test="bean.createTime!=null">#{bean.createTime},</if>
             <if test="bean.updateTime!=null">#{bean.updateTime},</if>
@@ -83,6 +92,7 @@
             <if test="bean.dirId != null">dir_id,</if>
             <if test="bean.dirName != null">dir_name,</if>
             <if test="bean.parentId != null">parent_id,</if>
+            <if test="bean.ownerId != null">owner_id,</if>
             <if test="bean.sort != null">sort,</if>
             <if test="bean.createTime != null">create_time,</if>
             <if test="bean.updateTime != null">update_time,</if>
@@ -91,6 +101,7 @@
             <if test="bean.dirId!=null">#{bean.dirId},</if>
             <if test="bean.dirName!=null">#{bean.dirName},</if>
             <if test="bean.parentId!=null">#{bean.parentId},</if>
+            <if test="bean.ownerId!=null">#{bean.ownerId},</if>
             <if test="bean.sort!=null">#{bean.sort},</if>
             <if test="bean.createTime!=null">#{bean.createTime},</if>
             <if test="bean.updateTime!=null">#{bean.updateTime},</if>
@@ -99,24 +110,25 @@
         <trim prefix="" suffix="" suffixOverrides=",">
             <if test="bean.dirName!=null">dir_name = VALUES(dir_name),</if>
             <if test="bean.parentId!=null">parent_id = VALUES(parent_id),</if>
+            <if test="bean.ownerId!=null">owner_id = VALUES(owner_id),</if>
             <if test="bean.sort!=null">sort = VALUES(sort),</if>
             <if test="bean.updateTime!=null">update_time = VALUES(update_time),</if>
         </trim>
     </insert>
 
     <insert id="insertBatch">
-        INSERT INTO resource_directory (dir_id, dir_name, parent_id, sort, create_time, update_time) VALUES
+        INSERT INTO resource_directory (dir_id, dir_name, parent_id, owner_id, sort, create_time, update_time) VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.dirId},#{item.dirName},#{item.parentId},#{item.sort},#{item.createTime},#{item.updateTime})
+            (#{item.dirId},#{item.dirName},#{item.parentId},#{item.ownerId},#{item.sort},#{item.createTime},#{item.updateTime})
         </foreach>
     </insert>
 
     <insert id="insertOrUpdateBatch">
-        INSERT INTO resource_directory (dir_id, dir_name, parent_id, sort, create_time, update_time) VALUES
+        INSERT INTO resource_directory (dir_id, dir_name, parent_id, owner_id, sort, create_time, update_time) VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.dirId},#{item.dirName},#{item.parentId},#{item.sort},#{item.createTime},#{item.updateTime})
+            (#{item.dirId},#{item.dirName},#{item.parentId},#{item.ownerId},#{item.sort},#{item.createTime},#{item.updateTime})
         </foreach>
-        ON DUPLICATE KEY UPDATE dir_name = VALUES(dir_name), parent_id = VALUES(parent_id),
+        ON DUPLICATE KEY UPDATE dir_name = VALUES(dir_name), parent_id = VALUES(parent_id), owner_id = VALUES(owner_id),
         sort = VALUES(sort), update_time = VALUES(update_time)
     </insert>
 
@@ -125,6 +137,7 @@
         <set>
             <if test="bean.dirName != null">d.dir_name = #{bean.dirName},</if>
             <if test="bean.parentId != null">d.parent_id = #{bean.parentId},</if>
+            <if test="bean.ownerId != null">d.owner_id = #{bean.ownerId},</if>
             <if test="bean.sort != null">d.sort = #{bean.sort},</if>
             <if test="bean.updateTime != null">d.update_time = #{bean.updateTime},</if>
         </set>
@@ -145,6 +158,7 @@
         <set>
             <if test="bean.dirName != null">d.dir_name = #{bean.dirName},</if>
             <if test="bean.parentId != null">d.parent_id = #{bean.parentId},</if>
+            <if test="bean.ownerId != null">d.owner_id = #{bean.ownerId},</if>
             <if test="bean.sort != null">d.sort = #{bean.sort},</if>
             <if test="bean.updateTime != null">d.update_time = #{bean.updateTime},</if>
         </set>

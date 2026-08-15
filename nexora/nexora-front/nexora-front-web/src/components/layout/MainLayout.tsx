@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { App, Avatar, Button, Dropdown } from 'antd';
-import { Sparkles, MessageSquare, Route, BookOpen, BookImage, Code, User, LogOut } from 'lucide-react';
+import { Sparkles, MessageSquare, Route, BookOpen, BookImage, Code, User, LogOut, PlaySquare, FolderOpen } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
@@ -18,10 +18,32 @@ const TABS: TabItem[] = [
   { path: '/learning-path', label: '学习路径', icon: Route },
   { path: '/course-material', label: '课程教材', icon: BookOpen },
   { path: '/coding', label: '编程环境', icon: Code },
+  { path: '/resource-center', label: '资源中心', icon: FolderOpen },
   { path: '/profile', label: '我的', icon: User },
 ];
 
-const PICTURE_BOOK_TAB: TabItem = { path: '/picture-book', label: '绘本', icon: BookImage };
+const ANIMATION_TAB: TabItem = { path: '/animation', label: '动画讲解', icon: PlaySquare };
+const PICTURE_BOOK_TAB: TabItem = { path: '/picture-book', label: '绘本生成', icon: BookImage };
+
+const PRIMARY_TABS: TabItem[] = [
+  TABS[0],
+  PICTURE_BOOK_TAB,
+  TABS[2],
+  TABS[4],
+  TABS[5],
+];
+
+const JUNIOR_SENIOR_TABS: TabItem[] = [
+  TABS[0],
+  ANIMATION_TAB,
+  TABS[2],
+  TABS[3],
+  TABS[4],
+  TABS[1],
+  TABS[5],
+];
+
+const GUEST_TABS: TabItem[] = [TABS[0], TABS[2], TABS[5]];
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -31,9 +53,12 @@ export default function MainLayout() {
   const clear = useAuthStore((state) => state.clear);
   const openLoginModal = useUiStore((state) => state.openLoginModal);
   const stageOption = userInfo ? getStageOption(userInfo.stage) : undefined;
-  const visibleTabs = userInfo?.stage === 'PRIMARY_LOW'
-    ? [TABS[0], PICTURE_BOOK_TAB, ...TABS.slice(1)]
-    : TABS;
+  const stage = userInfo?.stage;
+  const visibleTabs = !stage
+    ? GUEST_TABS
+    : stage === 'PRIMARY_LOW' || stage === 'PRIMARY_HIGH'
+      ? PRIMARY_TABS
+      : JUNIOR_SENIOR_TABS;
 
   /** 退出登录 */
   const handleLogout = async () => {

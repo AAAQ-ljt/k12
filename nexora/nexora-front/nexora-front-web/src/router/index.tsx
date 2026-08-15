@@ -10,6 +10,8 @@ import CourseMaterialDetail from '@/views/course-material/detail';
 import Coding from '@/views/coding';
 import Profile from '@/views/profile';
 import PictureBook from '@/views/picture-book';
+import ResourceCenter from '@/views/resource-center';
+import Animation from '@/views/animation';
 
 const routes: RouteObject[] = [
   {
@@ -75,6 +77,22 @@ const routes: RouteObject[] = [
         ),
       },
       { path: 'picture-book', element: <PictureBook /> },
+      {
+        path: 'animation',
+        element: (
+          <ProtectedRoute title="动画讲解" description="登录后查看动画讲解">
+            <Animation />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'resource-center',
+        element: (
+          <ProtectedRoute title="资源中心" description="登录后管理你的个人知识库">
+            <ResourceCenter />
+          </ProtectedRoute>
+        ),
+      },
       { path: '*', element: <Navigate to="/ai-tutor" replace /> },
     ],
   },

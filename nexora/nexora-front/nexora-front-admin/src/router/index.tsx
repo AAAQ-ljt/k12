@@ -7,22 +7,14 @@ import UserManagement from '@/views/user/UserManagement';
 import CourseManagement from '@/views/course/CourseManagement';
 import QuestionManagement from '@/views/question/QuestionManagement';
 import PaperManagement from '@/views/paper/PaperManagement';
-import ExamManagement from '@/views/exam/ExamManagement';
 import ResourceManagement from '@/views/resource/ResourceManagement';
 import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
 import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
 import KnowledgeTest from '@/views/knowledge/KnowledgeTest';
-import TemplateLibrary from '@/views/animation/TemplateLibrary';
-import GenerationRecord from '@/views/animation/GenerationRecord';
-import AnimationReview from '@/views/animation/AnimationReview';
-import PromptTemplate from '@/views/agent/PromptTemplate';
-import ModelConfig from '@/views/agent/ModelConfig';
-import IntentRouting from '@/views/agent/IntentRouting';
-import LearningPath from '@/views/learning/LearningPath';
-import MasteryAnalysis from '@/views/learning/MasteryAnalysis';
-import SystemConfig from '@/views/system/SystemConfig';
-import MenuManagement from '@/views/system/MenuManagement';
-import NoticeManagement from '@/views/system/NoticeManagement';
+import LearningAnalysis from '@/views/learning/LearningAnalysis';
+import AdminAccount from '@/views/system/AdminAccount';
+import ModelPrompt from '@/views/system/ModelPrompt';
+import EnvConfig from '@/views/system/EnvConfig';
 
 export const router = createBrowserRouter([
   {
@@ -93,52 +85,6 @@ export const router = createBrowserRouter([
             path: 'paper',
             element: <PaperManagement />,
           },
-          {
-            path: 'exam',
-            element: <ExamManagement />,
-          },
-        ],
-      },
-      {
-        path: 'animation',
-        children: [
-          {
-            index: true,
-            element: <Navigate to="/animation/template" replace />,
-          },
-          {
-            path: 'template',
-            element: <TemplateLibrary />,
-          },
-          {
-            path: 'record',
-            element: <GenerationRecord />,
-          },
-          {
-            path: 'review',
-            element: <AnimationReview />,
-          },
-        ],
-      },
-      {
-        path: 'agent',
-        children: [
-          {
-            index: true,
-            element: <Navigate to="/agent/prompt" replace />,
-          },
-          {
-            path: 'prompt',
-            element: <PromptTemplate />,
-          },
-          {
-            path: 'model',
-            element: <ModelConfig />,
-          },
-          {
-            path: 'intent',
-            element: <IntentRouting />,
-          },
         ],
       },
       {
@@ -146,15 +92,11 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/learning/path" replace />,
+            element: <Navigate to="/learning/overview" replace />,
           },
           {
-            path: 'path',
-            element: <LearningPath />,
-          },
-          {
-            path: 'mastery',
-            element: <MasteryAnalysis />,
+            path: 'overview',
+            element: <LearningAnalysis />,
           },
         ],
       },
@@ -163,19 +105,19 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/system/config" replace />,
+            element: <Navigate to="/system/admin" replace />,
+          },
+          {
+            path: 'admin',
+            element: <AdminAccount />,
+          },
+          {
+            path: 'model',
+            element: <ModelPrompt />,
           },
           {
             path: 'config',
-            element: <SystemConfig />,
-          },
-          {
-            path: 'menu',
-            element: <MenuManagement />,
-          },
-          {
-            path: 'notice',
-            element: <NoticeManagement />,
+            element: <EnvConfig />,
           },
         ],
       },

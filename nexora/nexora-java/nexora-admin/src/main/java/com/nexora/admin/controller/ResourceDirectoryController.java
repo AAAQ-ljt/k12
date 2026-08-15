@@ -45,6 +45,7 @@ public class ResourceDirectoryController extends ABaseController {
     @GetMapping("/getTree")
     public ResponseVO<List<ResourceDirectory>> getTree() {
         ResourceDirectoryQuery query = new ResourceDirectoryQuery();
+        query.setOwnerIdNull(Boolean.TRUE);
         query.setOrderBy("parent_id asc, sort asc");
         return getSuccessResponseVO(resourceDirectoryService.findListByParam(query));
     }
@@ -62,6 +63,7 @@ public class ResourceDirectoryController extends ABaseController {
         }
         ResourceDirectoryQuery query = new ResourceDirectoryQuery();
         query.setParentId(bean.getParentId());
+        query.setOwnerIdNull(Boolean.TRUE);
         query.setOrderBy("sort desc");
         List<ResourceDirectory> list = resourceDirectoryService.findListByParam(query);
         int maxSort = list.isEmpty() || list.get(0).getSort() == null ? 0 : list.get(0).getSort();
@@ -101,11 +103,13 @@ public class ResourceDirectoryController extends ABaseController {
         }
         ResourceDirectoryQuery childQuery = new ResourceDirectoryQuery();
         childQuery.setParentId(dirId);
+        childQuery.setOwnerIdNull(Boolean.TRUE);
         if (resourceDirectoryService.findCountByParam(childQuery) > 0) {
             throw new BusinessException("目录下存在子目录，不能删除");
         }
         ResourceInfoQuery fileQuery = new ResourceInfoQuery();
         fileQuery.setDirectoryId(dirId);
+        fileQuery.setOwnerIdNull(Boolean.TRUE);
         if (resourceInfoService.findCountByParam(fileQuery) > 0) {
             throw new BusinessException("目录下存在文件，不能删除");
         }
