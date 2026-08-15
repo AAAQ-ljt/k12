@@ -97,7 +97,7 @@ Controller → Biz → Service → Mapper → 数据库
 
 # 开发规范
 
-> 当前进度：common 的 PO / Service / Mapper 已完整（easycode 生成）；admin / web / mcp 的业务层按 `docs/开发排期.md` 逐步落地（P0 校准、P1 账号体系、P2 课程资源、P3 AI 对话…）。
+> 当前进度：以 `docs/开发流程.md` 为唯一执行依据；已实现账号体系、资源中心、官方 RAG、课程/习题/试卷、学习分析与系统设置，个人知识库与多模态能力持续推进。
 
 - Controller 只做"收 → 派发 → 回"；业务逻辑在 Biz 或 Service。
 - 跨 Service 的组合放 Biz；单表 / 单领域事务边界放 Service。

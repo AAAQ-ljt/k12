@@ -84,13 +84,13 @@ npm install && npm run dev    # http://localhost:3000
 | `NEXORA_MAIL_USERNAME` | 邮箱账号 |
 | `NEXORA_MAIL_PASSWORD` | 邮箱授权码 |
 
-详细配置方法见 `docs/AI环境变量配置.md`。
+完整启动步骤与环境变量配置见 `docs/本地启动指南.md`。
 
 ## 演示账号
 
 | 角色 | 账号 | 密码 |
 |------|------|------|
-| 管理员 | admin@nexora.com | 123456 |
+| 管理员 | admin | 123456 |
 | 学生（小学低） | student_low@nexora.com | 123456 |
 | 学生（小学高） | student_high@nexora.com | 123456 |
 | 学生（初中） | student_junior@nexora.com | 123456 |
