@@ -72,7 +72,7 @@ export function getInfo(resourceId: string): Promise<ResourceInfo> {
 }
 
 /** 新增资源（multipart 上传文件 + 元数据） */
-export function add(file: File, metadata: ResourceAddMetadata): Promise<void> {
+export function add(file: File, metadata: ResourceAddMetadata): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('resourceName', metadata.resourceName);

@@ -21,7 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 习题管理业务：题目 CRUD、选项维护、审核上架。
@@ -146,6 +149,58 @@ public class QuestionBiz {
         questionInfoService.updateQuestionInfoByQuestionId(updateBean, questionId);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public Integer batchAddQuestions(List<QuestionSaveDTO> dtoList) {
+        if (dtoList == null || dtoList.isEmpty()) {
+            throw new BusinessException("题目列表不能为空");
+        }
+        Set<String> pointIds = new java.util.HashSet<>();
+        for (QuestionSaveDTO dto : dtoList) {
+            QuestionInfo bean = requireQuestion(dto);
+            if (!StringTools.isEmpty(bean.getKnowledgePointId())) {
+                pointIds.add(bean.getKnowledgePointId());
+            }
+        }
+        Map<String, KnowledgePoint> pointMap = new HashMap<>();
+        for (String pointId : pointIds) {
+            KnowledgePoint point = knowledgePointService.getKnowledgePointByKnowledgePointId(pointId);
+            if (point != null) {
+                pointMap.put(pointId, point);
+            }
+        }
+        List<QuestionInfo> beans = new ArrayList<>();
+        List<QuestionOption> allOptions = new ArrayList<>();
+        Date now = new Date();
+        for (QuestionSaveDTO dto : dtoList) {
+            QuestionInfo bean = requireQuestion(dto);
+            bean.setQuestionId(StringTools.getRandomNumber(Constants.LENGTH_15));
+            fillStageByGrade(bean);
+            validateQuestion(bean, dto.getOptions(), pointMap);
+            if (bean.getSource() == null) {
+                bean.setSource(0);
+            }
+            if (bean.getAuditStatus() == null) {
+                bean.setAuditStatus(bean.getSource() == 1 ? 0 : 1);
+            }
+            if (bean.getStatus() == null) {
+                bean.setStatus(bean.getAuditStatus() == 1 ? 1 : 0);
+            }
+            if (bean.getScore() == null) {
+                bean.setScore(5);
+            }
+            bean.setCreateTime(now);
+            bean.setUpdateTime(now);
+            beans.add(bean);
+            allOptions.addAll(prepareOptions(
+                    bean.getQuestionId(), bean.getQuestionType(), dto.getOptions(), now));
+        }
+        questionInfoService.addBatch(beans);
+        if (!allOptions.isEmpty()) {
+            questionOptionService.addBatch(allOptions);
+        }
+        return beans.size();
+    }
+
     private QuestionInfo requireQuestion(QuestionSaveDTO dto) {
         if (dto == null || dto.getQuestion() == null) {
             throw new BusinessException("题目信息不能为空");
@@ -178,12 +233,51 @@ public class QuestionBiz {
         }
     }
 
+    private void validateQuestion(QuestionInfo bean, List<QuestionOption> options,
+                                  Map<String, KnowledgePoint> pointMap) {
+        if (StringTools.isEmpty(bean.getTitle())) {
+            throw new BusinessException("题干不能为空");
+        }
+        if (StringTools.isEmpty(bean.getGrade())) {
+            throw new BusinessException("请选择年级");
+        }
+        validateKnowledgePoint(bean, pointMap);
+        if (bean.getQuestionType() == null) {
+            throw new BusinessException("请选择题型");
+        }
+        if (bean.getDifficulty() == null || bean.getDifficulty() < 1 || bean.getDifficulty() > 3) {
+            throw new BusinessException("难度必须为 1-3");
+        }
+        if (bean.getQuestionType() == TYPE_SINGLE || bean.getQuestionType() == TYPE_MULTIPLE) {
+            validateChoiceOptions(bean.getQuestionType(), options);
+        } else if (bean.getQuestionType() >= TYPE_JUDGE && bean.getQuestionType() <= TYPE_MATERIAL) {
+            if (StringTools.isEmpty(bean.getAnswer())) {
+                throw new BusinessException("请填写答案");
+            }
+        } else {
+            throw new BusinessException("非法的题型");
+        }
+    }
+
     private void validateKnowledgePoint(QuestionInfo bean) {
         if (StringTools.isEmpty(bean.getKnowledgePointId())) {
             throw new BusinessException("请选择知识点");
         }
         KnowledgePoint point = knowledgePointService
                 .getKnowledgePointByKnowledgePointId(bean.getKnowledgePointId());
+        if (point == null) {
+            throw new BusinessException("知识点不存在");
+        }
+        if (!bean.getStage().equals(point.getStage())) {
+            throw new BusinessException("知识点与所选年级不匹配");
+        }
+    }
+
+    private void validateKnowledgePoint(QuestionInfo bean, Map<String, KnowledgePoint> pointMap) {
+        if (StringTools.isEmpty(bean.getKnowledgePointId())) {
+            throw new BusinessException("请选择知识点");
+        }
+        KnowledgePoint point = pointMap.get(bean.getKnowledgePointId());
         if (point == null) {
             throw new BusinessException("知识点不存在");
         }
@@ -211,13 +305,20 @@ public class QuestionBiz {
     }
 
     private void saveOptions(String questionId, Integer questionType, List<QuestionOption> options) {
+        List<QuestionOption> saveList = prepareOptions(questionId, questionType, options, new Date());
+        if (!saveList.isEmpty()) {
+            questionOptionService.addBatch(saveList);
+        }
+    }
+
+    private List<QuestionOption> prepareOptions(String questionId, Integer questionType,
+                                                List<QuestionOption> options, Date now) {
         if (questionType != TYPE_SINGLE && questionType != TYPE_MULTIPLE) {
-            return;
+            return new ArrayList<>();
         }
         if (options == null || options.isEmpty()) {
-            return;
+            return new ArrayList<>();
         }
-        Date now = new Date();
         List<QuestionOption> saveList = new ArrayList<>();
         int index = 0;
         for (QuestionOption option : options) {
@@ -236,9 +337,7 @@ public class QuestionBiz {
             saveList.add(option);
             index++;
         }
-        if (!saveList.isEmpty()) {
-            questionOptionService.addBatch(saveList);
-        }
+        return saveList;
     }
 
     private List<QuestionOption> loadOptions(String questionId) {

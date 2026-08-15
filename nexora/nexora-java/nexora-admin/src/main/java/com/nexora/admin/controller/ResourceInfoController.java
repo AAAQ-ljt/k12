@@ -191,11 +191,11 @@ public class ResourceInfoController extends ABaseController {
      * 上传资源
      */
     @PostMapping("/add")
-    public ResponseVO<Void> add(@RequestParam("file") MultipartFile file,
-                                @RequestParam String resourceName,
-                                @RequestParam String resourceType,
-                                @RequestParam(required = false) String directoryId,
-                                @RequestParam(required = false) String stage) throws IOException {
+    public ResponseVO<String> add(@RequestParam("file") MultipartFile file,
+                                  @RequestParam String resourceName,
+                                  @RequestParam String resourceType,
+                                  @RequestParam(required = false) String directoryId,
+                                  @RequestParam(required = false) String stage) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("文件不能为空");
         }
@@ -225,7 +225,7 @@ public class ResourceInfoController extends ABaseController {
         bean.setCreateTime(new Date());
         bean.setUpdateTime(new Date());
         resourceInfoService.add(bean);
-        return getSuccessResponseVO(null);
+        return getSuccessResponseVO(bean.getResourceId());
     }
 
     /**

@@ -82,6 +82,16 @@ public class ResourceInfoQuery extends BaseParam {
 	private String hlsPathFuzzy;
 
 	/**
+	 * 归属用户ID；NULL=管理端公共资源
+	 */
+	private String ownerId;
+
+	/**
+	 * 仅查询管理端公共资源（owner_id IS NULL）
+	 */
+	private Boolean ownerIdNull;
+
+	/**
 	 * 归属学段，可空
 	 */
 	private String stage;
@@ -284,6 +294,22 @@ public class ResourceInfoQuery extends BaseParam {
 
 	public String getHlsPathFuzzy(){
 		return this.hlsPathFuzzy;
+	}
+
+	public void setOwnerId(String ownerId){
+		this.ownerId = ownerId;
+	}
+
+	public String getOwnerId(){
+		return this.ownerId;
+	}
+
+	public void setOwnerIdNull(Boolean ownerIdNull){
+		this.ownerIdNull = ownerIdNull;
+	}
+
+	public Boolean getOwnerIdNull(){
+		return this.ownerIdNull;
 	}
 
 	public void setStage(String stage){

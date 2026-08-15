@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * 习题管理 Controller
  */
@@ -41,6 +43,11 @@ public class QuestionInfoController extends ABaseController {
     @PostMapping("/add")
     public ResponseVO<String> add(@RequestBody QuestionSaveDTO dto) {
         return getSuccessResponseVO(questionBiz.addQuestion(dto));
+    }
+
+    @PostMapping("/batchAdd")
+    public ResponseVO<Integer> batchAdd(@RequestBody List<QuestionSaveDTO> dtoList) {
+        return getSuccessResponseVO(questionBiz.batchAddQuestions(dtoList));
     }
 
     @PutMapping("/update")

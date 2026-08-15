@@ -28,6 +28,7 @@ spring:
     uris: http://localhost:9200
   ai:
     model:
+      chat: openai
       embedding: openai
     vectorstore:
       elasticsearch:
@@ -37,6 +38,13 @@ spring:
     openai:
       api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
       base-url: ${NEXORA_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/}
+      chat:
+        api-key: ${NEXORA_DEEPSEEK_API_KEY:sk-xxx}
+        base-url: ${NEXORA_CHAT_BASE_URL:https://api.deepseek.com}
+        completions-path: ${NEXORA_CHAT_COMPLETIONS_PATH:/chat/completions}
+        options:
+          model: ${NEXORA_CHAT_MODEL:deepseek-v4-flash}
+          reasoning-effort: high
       embedding:
         api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
         base-url: ${NEXORA_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/}

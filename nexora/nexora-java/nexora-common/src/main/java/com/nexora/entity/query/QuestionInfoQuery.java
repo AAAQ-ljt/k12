@@ -1,6 +1,7 @@
 package com.nexora.entity.query;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -15,6 +16,11 @@ public class QuestionInfoQuery extends BaseParam {
 	private String questionId;
 
 	private String questionIdFuzzy;
+
+	/**
+	 * 题目ID集合（试卷预览批量查询）
+	 */
+	private List<String> questionIds;
 
 	/**
 	 * 知识点【冗余：出题/练习主筛选键】
@@ -125,6 +131,14 @@ public class QuestionInfoQuery extends BaseParam {
 
 	public String getQuestionId(){
 		return this.questionId;
+	}
+
+	public List<String> getQuestionIds() {
+		return questionIds;
+	}
+
+	public void setQuestionIds(List<String> questionIds) {
+		this.questionIds = questionIds;
 	}
 
 	public void setQuestionIdFuzzy(String questionIdFuzzy){

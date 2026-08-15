@@ -1,6 +1,7 @@
 import { Tabs } from 'antd';
 import QuestionList from './QuestionList';
 import QuestionReview from './QuestionReview';
+import QuestionPdfImport from './QuestionPdfImport';
 
 export default function QuestionManagement() {
   return (
@@ -14,8 +15,13 @@ export default function QuestionManagement() {
         },
         {
           key: 'review',
-          label: 'AI出题审核',
+          label: 'AI 出题',
           children: <QuestionReview />,
+        },
+        {
+          key: 'pdf',
+          label: 'PDF 导入',
+          children: <QuestionPdfImport />,
         },
       ]}
     />

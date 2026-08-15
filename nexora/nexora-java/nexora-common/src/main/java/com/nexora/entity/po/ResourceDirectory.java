@@ -27,6 +27,11 @@ public class ResourceDirectory implements Serializable {
     private String parentId;
 
     /**
+     * 归属用户ID；NULL=管理端公共目录
+     */
+    private String ownerId;
+
+    /**
      * 同级排序
      */
     private Integer sort;
@@ -67,6 +72,14 @@ public class ResourceDirectory implements Serializable {
 
     public void setParentId(String parentId) {
         this.parentId = parentId;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
     }
 
     public Integer getSort() {

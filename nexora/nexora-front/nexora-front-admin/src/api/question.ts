@@ -71,6 +71,11 @@ export function addQuestion(data: QuestionSaveDTO): Promise<string> {
   return request.post('/questionInfo/add', data);
 }
 
+/** 批量入库题目（草稿确认后调用） */
+export function batchAddQuestions(data: QuestionSaveDTO[]): Promise<number> {
+  return request.post('/questionInfo/batchAdd', data);
+}
+
 /** 修改题目 */
 export function updateQuestion(data: QuestionSaveDTO): Promise<void> {
   return request.put('/questionInfo/update', data);

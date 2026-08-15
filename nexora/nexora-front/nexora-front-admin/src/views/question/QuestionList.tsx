@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { App, Button, Form, Input, Popconfirm, Select, Space } from 'antd';
 import type { TableProps } from 'antd';
-import { Plus } from 'lucide-react';
+import { FileUp, Plus } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
 import StatusTag from '@/components/StatusTag';
@@ -24,6 +24,7 @@ import {
 } from '@/api/question';
 import type { QuestionDetail, QuestionInfo, QuestionInfoQuery } from '@/api/question';
 import QuestionFormModal from './QuestionFormModal';
+import QuestionImportModal from './QuestionImportModal';
 
 export default function QuestionList() {
   const { message } = App.useApp();
@@ -40,6 +41,7 @@ export default function QuestionList() {
     mode: 'create' | 'edit' | 'view';
     detail?: QuestionDetail;
   }>({ open: false, mode: 'create' });
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -226,7 +228,7 @@ export default function QuestionList() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, grade: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            className={styles.width150}
+            style={{ width: 180 }}
             options={GRADE_OPTIONS}
           />
         </Form.Item>
@@ -236,7 +238,7 @@ export default function QuestionList() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, questionType: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            className={styles.width120}
+            style={{ width: 150 }}
             options={QUESTION_TYPE_OPTIONS}
           />
         </Form.Item>
@@ -246,7 +248,7 @@ export default function QuestionList() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, difficulty: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            className={styles.width120}
+            style={{ width: 150 }}
             options={DIFFICULTY_OPTIONS}
           />
         </Form.Item>
@@ -256,20 +258,25 @@ export default function QuestionList() {
             onChange={(v) => setSearchParams((prev) => ({ ...prev, auditStatus: v, pageNo: 1 }))}
             placeholder="全部"
             allowClear
-            className={styles.width120}
+            style={{ width: 150 }}
             options={AUDIT_STATUS_OPTIONS}
           />
         </Form.Item>
       </SearchForm>
 
       <div style={{ marginBottom: 16 }}>
-        <Button
-          type="primary"
-          icon={<Plus size={14} />}
-          onClick={() => setModalState({ open: true, mode: 'create' })}
-        >
-          新增题目
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            icon={<Plus size={14} />}
+            onClick={() => setModalState({ open: true, mode: 'create' })}
+          >
+            新增题目
+          </Button>
+          <Button icon={<FileUp size={14} />} onClick={() => setImportOpen(true)}>
+            自动导入
+          </Button>
+        </Space>
       </div>
 
       <BaseTable<QuestionInfo>
@@ -294,6 +301,11 @@ export default function QuestionList() {
           setModalState((prev) => ({ ...prev, open: false }));
           fetchData();
         }}
+      />
+      <QuestionImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={fetchData}
       />
     </div>
   );

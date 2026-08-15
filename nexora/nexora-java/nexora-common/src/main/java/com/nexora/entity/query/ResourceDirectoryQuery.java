@@ -15,6 +15,16 @@ public class ResourceDirectoryQuery extends BaseParam {
 
     private Integer sort;
 
+    /**
+     * 归属用户ID；NULL=管理端公共目录
+     */
+    private String ownerId;
+
+    /**
+     * 仅查询管理端公共目录（owner_id IS NULL）
+     */
+    private Boolean ownerIdNull;
+
     public String getDirId() {
         return dirId;
     }
@@ -53,5 +63,21 @@ public class ResourceDirectoryQuery extends BaseParam {
 
     public void setSort(Integer sort) {
         this.sort = sort;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    public Boolean getOwnerIdNull() {
+        return ownerIdNull;
+    }
+
+    public void setOwnerIdNull(Boolean ownerIdNull) {
+        this.ownerIdNull = ownerIdNull;
     }
 }

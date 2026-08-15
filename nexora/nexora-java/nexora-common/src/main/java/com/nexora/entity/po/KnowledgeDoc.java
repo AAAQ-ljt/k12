@@ -36,6 +36,11 @@ public class KnowledgeDoc implements Serializable {
 	private String knowledgePointId;
 
 	/**
+	 * 归属用户ID；NULL=官方知识库，非空=学生个人知识库
+	 */
+	private String ownerId;
+
+	/**
 	 * 难度：1-3
 	 */
 	private Integer difficulty;
@@ -135,6 +140,14 @@ public class KnowledgeDoc implements Serializable {
 
 	public String getKnowledgePointId(){
 		return this.knowledgePointId;
+	}
+
+	public void setOwnerId(String ownerId){
+		this.ownerId = ownerId;
+	}
+
+	public String getOwnerId(){
+		return this.ownerId;
 	}
 
 	public void setDifficulty(Integer difficulty){

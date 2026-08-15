@@ -23,7 +23,7 @@ export const menus: MenuConfig[] = [
   },
   {
     key: 'resource',
-    label: '资源管理',
+    label: '资源中心',
     icon: 'FolderOpen',
     path: '/resource',
     menuCode: 'resource',

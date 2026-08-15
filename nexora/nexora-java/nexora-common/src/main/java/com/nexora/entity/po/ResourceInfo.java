@@ -66,6 +66,16 @@ public class ResourceInfo implements Serializable {
 	private String hlsPath;
 
 	/**
+	 * 归属用户ID；NULL=管理端公共资源
+	 */
+	private String ownerId;
+
+	/**
+	 * 产物扩展信息（动画步骤/绘本分页/播放配置等）
+	 */
+	private String extJson;
+
+	/**
 	 * 归属学段，可空
 	 */
 	private String stage;
@@ -190,6 +200,22 @@ public class ResourceInfo implements Serializable {
 		return this.hlsPath;
 	}
 
+	public void setOwnerId(String ownerId){
+		this.ownerId = ownerId;
+	}
+
+	public String getOwnerId(){
+		return this.ownerId;
+	}
+
+	public void setExtJson(String extJson){
+		this.extJson = extJson;
+	}
+
+	public String getExtJson(){
+		return this.extJson;
+	}
+
 	public void setStage(String stage){
 		this.stage = stage;
 	}
@@ -256,6 +282,6 @@ public class ResourceInfo implements Serializable {
 
 	@Override
 	public String toString (){
-		return "资源ID:"+(resourceId == null ? "空" : resourceId)+"，资源名:"+(resourceName == null ? "空" : resourceName)+"，类型：VIDEO/DOCUMENT/PPT/WORD/IMAGE/PICTURE_BOOK:"+(resourceType == null ? "空" : resourceType)+"，资源标签，多个逗号分隔:"+(tags == null ? "空" : tags)+"，资源简介:"+(description == null ? "空" : description)+"，文件地址:"+(filePath == null ? "空" : filePath)+"，文件大小（字节）:"+(fileSize == null ? "空" : fileSize)+"，封面:"+(cover == null ? "空" : cover)+"，音视频时长（秒）:"+(duration == null ? "空" : duration)+"，HLS转码产物地址:"+(hlsPath == null ? "空" : hlsPath)+"，归属学段，可空:"+(stage == null ? "空" : stage)+"，关联知识点【冗余：recommendResource工具按知识点直查】:"+(knowledgePointId == null ? "空" : knowledgePointId)+"，来源：0后台上传 1AI生成:"+(source == null ? "空" : source)+"，状态：0处理中 1可用 2失败:"+(status == null ? "空" : status)+"，上传人:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+		return "资源ID:"+(resourceId == null ? "空" : resourceId)+"，资源名:"+(resourceName == null ? "空" : resourceName)+"，类型：VIDEO/DOCUMENT/PPT/WORD/IMAGE/PICTURE_BOOK:"+(resourceType == null ? "空" : resourceType)+"，资源标签，多个逗号分隔:"+(tags == null ? "空" : tags)+"，资源简介:"+(description == null ? "空" : description)+"，文件地址:"+(filePath == null ? "空" : filePath)+"，文件大小（字节）:"+(fileSize == null ? "空" : fileSize)+"，封面:"+(cover == null ? "空" : cover)+"，音视频时长（秒）:"+(duration == null ? "空" : duration)+"，HLS转码产物地址:"+(hlsPath == null ? "空" : hlsPath)+"，归属用户ID；NULL=管理端公共资源:"+(ownerId == null ? "空" : ownerId)+"，产物扩展信息（动画步骤/绘本分页/播放配置等）:"+(extJson == null ? "空" : extJson)+"，归属学段，可空:"+(stage == null ? "空" : stage)+"，关联知识点【冗余：recommendResource工具按知识点直查】:"+(knowledgePointId == null ? "空" : knowledgePointId)+"，来源：0后台上传 1AI生成:"+(source == null ? "空" : source)+"，状态：0处理中 1可用 2失败:"+(status == null ? "空" : status)+"，上传人:"+(createBy == null ? "空" : createBy)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
 	}
 }

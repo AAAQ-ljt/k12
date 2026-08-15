@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.ExamInfoMapper">
+
+    <resultMap id="examMap" type="com.nexora.entity.vo.ExamInfoVO">
+        <id column="exam_id" property="examId"/>
+        <result column="exam_name" property="examName"/>
+        <result column="stage" property="stage"/>
+        <result column="grade" property="grade"/>
+        <result column="paper_id" property="paperId"/>
+        <result column="paper_name" property="paperName"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="duration_minutes" property="durationMinutes"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="examColumns">
+        e.exam_id, e.exam_name, e.stage, e.grade, e.paper_id, p.paper_name,
+        e.start_time, e.end_time, e.duration_minutes, e.status, e.create_by,
+        e.create_time, e.update_time
+    </sql>
+
+    <select id="selectPage" parameterType="com.nexora.entity.query.ExamInfoQuery" resultMap="examMap">
+        SELECT <include refid="examColumns"/>
+        FROM exam_info e
+        LEFT JOIN paper_info p ON e.paper_id = p.paper_id
+        <where>
+            <if test="examNameFuzzy != null and examNameFuzzy != ''">
+                AND e.exam_name LIKE CONCAT('%', #{examNameFuzzy}, '%')
+            </if>
+            <if test="grade != null and grade != ''">
+                AND e.grade = #{grade}
+            </if>
+            <if test="paperId != null and paperId != ''">
+                AND e.paper_id = #{paperId}
+            </if>
+            <if test="status != null">
+                AND e.status = #{status}
+            </if>
+        </where>
+        ORDER BY e.create_time DESC
+        <if test="simplePage != null">
+            LIMIT #{simplePage.start}, #{simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectCount" parameterType="com.nexora.entity.query.ExamInfoQuery" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM exam_info e
+        <where>
+            <if test="examNameFuzzy != null and examNameFuzzy != ''">
+                AND e.exam_name LIKE CONCAT('%', #{examNameFuzzy}, '%')
+            </if>
+            <if test="grade != null and grade != ''">
+                AND e.grade = #{grade}
+            </if>
+            <if test="paperId != null and paperId != ''">
+                AND e.paper_id = #{paperId}
+            </if>
+            <if test="status != null">
+                AND e.status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultMap="examMap">
+        SELECT <include refid="examColumns"/>
+        FROM exam_info e
+        LEFT JOIN paper_info p ON e.paper_id = p.paper_id
+        WHERE e.exam_id = #{examId}
+    </select>
+
+    <insert id="insert" parameterType="com.nexora.entity.po.ExamInfo">
+        INSERT INTO exam_info (exam_id, exam_name, stage, grade, paper_id, start_time, end_time,
+                               duration_minutes, status, create_by, create_time, update_time)
+        VALUES (#{examId}, #{examName}, #{stage}, #{grade}, #{paperId}, #{startTime}, #{endTime},
+                #{durationMinutes}, #{status}, #{createBy}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.nexora.entity.po.ExamInfo">
+        UPDATE exam_info
+        <set>
+            <if test="examName != null">exam_name = #{examName},</if>
+            <if test="stage != null">stage = #{stage},</if>
+            <if test="grade != null">grade = #{grade},</if>
+            <if test="paperId != null">paper_id = #{paperId},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="durationMinutes != null">duration_minutes = #{durationMinutes},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE exam_id = #{examId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM exam_info WHERE exam_id = #{examId}
+    </delete>
+</mapper>

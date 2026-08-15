@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.PaperInfoMapper">
+
+    <resultMap id="paperMap" type="com.nexora.entity.po.PaperInfo">
+        <id column="paper_id" property="paperId"/>
+        <result column="paper_name" property="paperName"/>
+        <result column="paper_type" property="paperType"/>
+        <result column="stage" property="stage"/>
+        <result column="grade" property="grade"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="groupMap" type="com.nexora.entity.po.PaperGroup">
+        <id column="group_id" property="groupId"/>
+        <result column="paper_id" property="paperId"/>
+        <result column="group_name" property="groupName"/>
+        <result column="group_sort" property="groupSort"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <resultMap id="questionMap" type="com.nexora.entity.po.PaperQuestion">
+        <id column="id" property="id"/>
+        <result column="paper_id" property="paperId"/>
+        <result column="group_id" property="groupId"/>
+        <result column="question_id" property="questionId"/>
+        <result column="score" property="score"/>
+        <result column="sort" property="sort"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="paperColumns">
+        paper_id, paper_name, paper_type, stage, grade, total_score, status,
+        create_by, create_time, update_time
+    </sql>
+
+    <select id="selectPage" parameterType="com.nexora.entity.query.PaperInfoQuery" resultMap="paperMap">
+        SELECT <include refid="paperColumns"/> FROM paper_info
+        <where>
+            <if test="paperNameFuzzy != null and paperNameFuzzy != ''">
+                AND paper_name LIKE CONCAT('%', #{paperNameFuzzy}, '%')
+            </if>
+            <if test="grade != null and grade != ''">
+                AND grade = #{grade}
+            </if>
+            <if test="paperType != null">
+                AND paper_type = #{paperType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        <if test="simplePage != null">
+            LIMIT #{simplePage.start}, #{simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectCount" parameterType="com.nexora.entity.query.PaperInfoQuery" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM paper_info
+        <where>
+            <if test="paperNameFuzzy != null and paperNameFuzzy != ''">
+                AND paper_name LIKE CONCAT('%', #{paperNameFuzzy}, '%')
+            </if>
+            <if test="grade != null and grade != ''">
+                AND grade = #{grade}
+            </if>
+            <if test="paperType != null">
+                AND paper_type = #{paperType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultMap="paperMap">
+        SELECT <include refid="paperColumns"/> FROM paper_info WHERE paper_id = #{paperId}
+    </select>
+
+    <insert id="insert" parameterType="com.nexora.entity.po.PaperInfo">
+        INSERT INTO paper_info (paper_id, paper_name, paper_type, stage, grade, total_score, status,
+                                create_by, create_time, update_time)
+        VALUES (#{paperId}, #{paperName}, #{paperType}, #{stage}, #{grade}, #{totalScore}, #{status},
+                #{createBy}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.nexora.entity.po.PaperInfo">
+        UPDATE paper_info
+        <set>
+            <if test="paperName != null">paper_name = #{paperName},</if>
+            <if test="paperType != null">paper_type = #{paperType},</if>
+            <if test="stage != null">stage = #{stage},</if>
+            <if test="grade != null">grade = #{grade},</if>
+            <if test="totalScore != null">total_score = #{totalScore},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE paper_id = #{paperId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM paper_info WHERE paper_id = #{paperId}
+    </delete>
+
+    <select id="selectGroups" resultMap="groupMap">
+        SELECT group_id, paper_id, group_name, group_sort, create_time
+        FROM paper_group
+        WHERE paper_id = #{paperId}
+        ORDER BY group_sort ASC, group_id ASC
+    </select>
+
+    <insert id="insertGroup" parameterType="com.nexora.entity.po.PaperGroup">
+        INSERT INTO paper_group (group_id, paper_id, group_name, group_sort, create_time)
+        VALUES (#{groupId}, #{paperId}, #{groupName}, #{groupSort}, #{createTime})
+    </insert>
+
+    <delete id="deleteGroups">
+        DELETE FROM paper_group WHERE paper_id = #{paperId}
+    </delete>
+
+    <select id="selectQuestions" resultMap="questionMap">
+        SELECT id, paper_id, group_id, question_id, score, sort, create_time
+        FROM paper_question
+        WHERE paper_id = #{paperId}
+        ORDER BY group_id ASC, sort ASC, id ASC
+    </select>
+
+    <insert id="insertQuestion" parameterType="com.nexora.entity.po.PaperQuestion">
+        INSERT INTO paper_question (paper_id, group_id, question_id, score, sort, create_time)
+        VALUES (#{paperId}, #{groupId}, #{questionId}, #{score}, #{sort}, #{createTime})
+    </insert>
+
+    <delete id="deleteQuestions">
+        DELETE FROM paper_question WHERE paper_id = #{paperId}
+    </delete>
+</mapper>
