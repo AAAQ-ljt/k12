@@ -57,6 +57,7 @@ export const menus: MenuConfig[] = [
     path: '/learning',
     children: [
       { key: 'learning:overview', label: '学习分析', path: '/learning/overview', menuCode: 'learning:overview' },
+      { key: 'learning:user', label: '用户个人学习情况', path: '/learning/user', menuCode: 'learning:user' },
     ],
   },
   {

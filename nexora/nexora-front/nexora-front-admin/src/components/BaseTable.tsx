@@ -35,12 +35,13 @@ interface BaseTableProps<T> {
   onChange?: TableProps<T>['onChange'];
   rowKey: string | ((record: T) => string | number);
   rowSelection?: TableProps<T>['rowSelection'];
+  scroll?: TableProps<T>['scroll'];
 }
 
 export default function BaseTable<T extends Record<string, any>>(
   props: BaseTableProps<T>,
 ) {
-  const { columns, dataSource, loading, pagination, onChange, rowKey, rowSelection } = props;
+  const { columns, dataSource, loading, pagination, onChange, rowKey, rowSelection, scroll } = props;
 
   const mergedPagination: false | TablePaginationConfig =
     pagination === false
@@ -63,6 +64,7 @@ export default function BaseTable<T extends Record<string, any>>(
       onChange={onChange}
       rowKey={rowKey}
       rowSelection={rowSelection}
+      scroll={scroll}
     />
   );
 }

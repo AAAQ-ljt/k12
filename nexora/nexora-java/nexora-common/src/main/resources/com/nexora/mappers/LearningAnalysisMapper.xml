@@ -20,4 +20,214 @@
             (SELECT COALESCE(ROUND(AVG(mastery_score)), 0) FROM knowledge_mastery) AS masteryAvgScore
     </select>
 
+    <sql id="learning_user_condition">
+        <where>
+            u.role_type = 1
+            <if test="query.userId != null and query.userId != ''">
+                and u.user_id = #{query.userId}
+            </if>
+            <if test="query.stage != null and query.stage != ''">
+                and u.stage = #{query.stage}
+            </if>
+            <if test="query.grade != null and query.grade != ''">
+                and u.grade = #{query.grade}
+            </if>
+            <if test="query.status != null">
+                and u.status = #{query.status}
+            </if>
+            <if test="query.usernameFuzzy != null and query.usernameFuzzy != ''">
+                and (u.username like concat('%', #{query.usernameFuzzy}, '%')
+                    or u.nick_name like concat('%', #{query.usernameFuzzy}, '%')
+                    or u.email like concat('%', #{query.usernameFuzzy}, '%'))
+            </if>
+            <if test="query.emailFuzzy != null and query.emailFuzzy != ''">
+                and u.email like concat('%', #{query.emailFuzzy}, '%')
+            </if>
+            <if test="query.nickNameFuzzy != null and query.nickNameFuzzy != ''">
+                and (u.nick_name like concat('%', #{query.nickNameFuzzy}, '%')
+                    or u.username like concat('%', #{query.nickNameFuzzy}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectUserList" resultType="com.nexora.entity.vo.LearningUserSummaryVO">
+        SELECT
+            u.user_id,
+            u.username,
+            u.email,
+            u.nick_name,
+            u.stage,
+            u.grade,
+            u.status,
+            u.last_login_time,
+            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = u.user_id) AS course_course_count,
+            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = u.user_id AND c.progress >= 100) AS course_finished_count,
+            (SELECT COALESCE(ROUND(AVG(c.progress)), 0) FROM course_study_progress c WHERE c.user_id = u.user_id) AS course_avg_progress,
+            (SELECT COUNT(*) FROM practice_record p WHERE p.user_id = u.user_id) AS practice_count,
+            (SELECT COALESCE(SUM(p.is_correct), 0) FROM practice_record p WHERE p.user_id = u.user_id) AS practice_correct_count,
+            (SELECT COALESCE(ROUND(SUM(p.is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0)
+                FROM practice_record p WHERE p.user_id = u.user_id) AS practice_accuracy,
+            (SELECT COUNT(*) FROM resource_info r WHERE r.owner_id = u.user_id) AS wiki_resource_count,
+            (SELECT COALESCE(SUM(r.file_size), 0) FROM resource_info r WHERE r.owner_id = u.user_id) AS wiki_resource_bytes,
+            (SELECT COUNT(*) FROM agent_session s WHERE s.user_id = u.user_id) AS ai_session_count,
+            (SELECT COUNT(*) FROM agent_message m WHERE m.user_id = u.user_id) AS ai_message_count,
+            (SELECT COALESCE(SUM(m.prompt_tokens + m.completion_tokens), 0)
+                FROM agent_message m WHERE m.user_id = u.user_id) AS ai_token_count,
+            (SELECT COALESCE(ROUND(AVG(k.mastery_score)), 0) FROM knowledge_mastery k WHERE k.user_id = u.user_id) AS mastery_avg_score,
+            (SELECT COUNT(*) FROM knowledge_mastery k WHERE k.user_id = u.user_id AND k.status = 2) AS mastery_mastered_count
+        FROM user_info u
+        <include refid="learning_user_condition" />
+        <if test="query.orderBy != null and query.orderBy != ''">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage != null">
+            limit #{query.simplePage.start}, #{query.simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectUserCount" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM user_info u
+        <include refid="learning_user_condition" />
+    </select>
+
+    <select id="selectUserDetail" resultType="com.nexora.entity.vo.LearningUserDetailVO">
+        SELECT
+            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = #{userId}) AS course_count,
+            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = #{userId} AND c.progress >= 100) AS course_finished_count,
+            (SELECT COALESCE(ROUND(AVG(c.progress)), 0) FROM course_study_progress c WHERE c.user_id = #{userId}) AS course_avg_progress,
+            (SELECT COALESCE(SUM(c.study_duration), 0) FROM course_study_progress c WHERE c.user_id = #{userId}) AS course_study_duration,
+            (SELECT COUNT(*) FROM practice_record p WHERE p.user_id = #{userId}) AS practice_count,
+            (SELECT COALESCE(SUM(p.is_correct), 0) FROM practice_record p WHERE p.user_id = #{userId}) AS practice_correct_count,
+            (SELECT COALESCE(ROUND(SUM(p.is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0)
+                FROM practice_record p WHERE p.user_id = #{userId}) AS practice_accuracy,
+            (SELECT COALESCE(SUM(p.score), 0) FROM practice_record p WHERE p.user_id = #{userId}) AS practice_total_score,
+            (SELECT COUNT(*) FROM resource_info r WHERE r.owner_id = #{userId}) AS wiki_resource_count,
+            (SELECT COALESCE(SUM(r.file_size), 0) FROM resource_info r WHERE r.owner_id = #{userId}) AS wiki_resource_bytes,
+            (SELECT COALESCE(ROUND(SUM(r.file_size) / 1024.0 / 1024.0, 1), 0)
+                FROM resource_info r WHERE r.owner_id = #{userId}) AS wiki_resource_used_mb,
+            (SELECT COALESCE(ROUND(SUM(r.file_size) / 1024.0 / 1024.0 / 300.0 * 100, 1), 0)
+                FROM resource_info r WHERE r.owner_id = #{userId}) AS wiki_quota_percent,
+            (SELECT COUNT(*) FROM agent_session s WHERE s.user_id = #{userId}) AS ai_session_count,
+            (SELECT COUNT(*) FROM agent_message m WHERE m.user_id = #{userId}) AS ai_message_count,
+            (SELECT COALESCE(SUM(m.prompt_tokens + m.completion_tokens), 0)
+                FROM agent_message m WHERE m.user_id = #{userId}) AS ai_token_count,
+            (SELECT COALESCE(ROUND(SUM(m.prompt_tokens + m.completion_tokens) / NULLIF(COUNT(*), 0)), 0)
+                FROM agent_message m WHERE m.user_id = #{userId}) AS ai_average_tokens,
+            (SELECT COALESCE(ROUND(AVG(k.mastery_score)), 0) FROM knowledge_mastery k WHERE k.user_id = #{userId}) AS mastery_avg_score,
+            (SELECT COUNT(*) FROM knowledge_mastery k WHERE k.user_id = #{userId} AND k.status = 2) AS mastery_mastered_count,
+            (SELECT COUNT(*) FROM knowledge_mastery k WHERE k.user_id = #{userId} AND k.status = 1) AS mastery_in_progress_count,
+            (SELECT COUNT(*) FROM knowledge_mastery k WHERE k.user_id = #{userId} AND k.status = 0) AS mastery_locked_count
+    </select>
+
+    <select id="selectCourseProgressList" resultType="com.nexora.entity.vo.CourseStudyProgressItemVO">
+        SELECT
+            c.course_id,
+            ci.course_name,
+            c.studied_lessons,
+            c.total_lessons,
+            c.progress,
+            c.study_duration,
+            c.finish_time,
+            c.update_time
+        FROM course_study_progress c
+        LEFT JOIN course_info ci ON ci.course_id = c.course_id
+        WHERE c.user_id = #{userId}
+        ORDER BY c.update_time DESC
+    </select>
+
+    <select id="selectPracticeKnowledgePointList" resultType="com.nexora.entity.vo.PracticeKnowledgePointVO">
+        SELECT
+            p.knowledge_point_id,
+            kp.name AS knowledge_point_name,
+            COUNT(*) AS practice_count,
+            COALESCE(SUM(p.is_correct), 0) AS correct_count,
+            COALESCE(ROUND(SUM(p.is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0) AS accuracy
+        FROM practice_record p
+        LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = p.knowledge_point_id
+        WHERE p.user_id = #{userId}
+        GROUP BY p.knowledge_point_id, kp.name
+        ORDER BY practice_count DESC
+    </select>
+
+    <select id="selectPracticeQuestionTypeList" resultType="com.nexora.entity.vo.PracticeQuestionTypeVO">
+        SELECT
+            p.question_type,
+            COUNT(*) AS practice_count,
+            COALESCE(SUM(p.is_correct), 0) AS correct_count,
+            COALESCE(ROUND(SUM(p.is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0) AS accuracy
+        FROM practice_record p
+        WHERE p.user_id = #{userId}
+        GROUP BY p.question_type
+        ORDER BY practice_count DESC
+    </select>
+
+    <select id="selectKnowledgeResourceTypeList" resultType="com.nexora.entity.vo.KnowledgeResourceVO">
+        SELECT
+            r.resource_type,
+            COUNT(*) AS resource_count,
+            COALESCE(ROUND(SUM(r.file_size) / 1024.0 / 1024.0, 1), 0) AS size_mb
+        FROM resource_info r
+        WHERE r.owner_id = #{userId}
+        GROUP BY r.resource_type
+        ORDER BY resource_count DESC
+    </select>
+
+    <select id="selectKnowledgeResourceList" resultType="com.nexora.entity.vo.KnowledgeResourceVO">
+        SELECT
+            r.resource_id,
+            r.resource_name,
+            r.resource_type,
+            r.file_size,
+            r.status,
+            r.create_time
+        FROM resource_info r
+        WHERE r.owner_id = #{userId}
+        ORDER BY r.create_time DESC
+        LIMIT 100
+    </select>
+
+    <select id="selectAiIntentList" resultType="com.nexora.entity.vo.AiIntentVO">
+        SELECT
+            COALESCE(m.intent, 'CHAT') AS intent,
+            COUNT(*) AS message_count,
+            COALESCE(SUM(m.prompt_tokens + m.completion_tokens), 0) AS token_count
+        FROM agent_message m
+        WHERE m.user_id = #{userId}
+        GROUP BY m.intent
+        ORDER BY message_count DESC
+    </select>
+
+    <select id="selectAiRecentMessageList" resultType="com.nexora.entity.vo.AiRecentMessageVO">
+        SELECT
+            m.message_id,
+            m.session_id,
+            m.intent,
+            m.user_message,
+            m.status,
+            m.prompt_tokens,
+            m.completion_tokens,
+            m.create_time
+        FROM agent_message m
+        WHERE m.user_id = #{userId}
+        ORDER BY m.create_time DESC
+        LIMIT 20
+    </select>
+
+    <select id="selectMasteryList" resultType="com.nexora.entity.vo.KnowledgeMasteryVO">
+        SELECT
+            k.knowledge_point_id,
+            kp.name AS knowledge_point_name,
+            k.mastery_score,
+            k.status,
+            k.practice_count,
+            k.correct_count,
+            COALESCE(ROUND(k.correct_count * 100.0 / NULLIF(k.practice_count, 0), 1), 0) AS accuracy,
+            k.last_practice_time,
+            k.next_review_time
+        FROM knowledge_mastery k
+        LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = k.knowledge_point_id
+        WHERE k.user_id = #{userId}
+        ORDER BY k.mastery_score DESC, k.update_time DESC
+    </select>
+
 </mapper>

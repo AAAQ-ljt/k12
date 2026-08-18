@@ -12,6 +12,7 @@ import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
 import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
 import KnowledgeTest from '@/views/knowledge/KnowledgeTest';
 import LearningAnalysis from '@/views/learning/LearningAnalysis';
+import LearningUser from '@/views/learning/LearningUser';
 import AdminAccount from '@/views/system/AdminAccount';
 import ModelPrompt from '@/views/system/ModelPrompt';
 import EnvConfig from '@/views/system/EnvConfig';
@@ -97,6 +98,10 @@ export const router = createBrowserRouter([
           {
             path: 'overview',
             element: <LearningAnalysis />,
+          },
+          {
+            path: 'user',
+            element: <LearningUser />,
           },
         ],
       },
