@@ -73,6 +73,11 @@ public class Constants {
     public static final String REDIS_KEY_STUDENT_RESOURCE_UPLOAD_QUEUE = "student:resource:upload:queue";
 
     /**
+     * Redis key：学生个人知识文档解析入库异步队列
+     */
+    public static final String REDIS_KEY_STUDENT_KNOWLEDGE_QUEUE = "student:knowledge:import:queue";
+
+    /**
      * Redis key：知识库解析入库异步队列
      */
     public static final String REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE = "knowledge:import:queue";

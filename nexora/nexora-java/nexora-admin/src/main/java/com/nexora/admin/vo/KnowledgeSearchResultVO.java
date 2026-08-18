@@ -15,6 +15,8 @@ public class KnowledgeSearchResultVO {
     private Double score;
     private String searchMode;
     private String sourceUrl;
+    private String ownerId;
+    private String sourceResourceId;
 
     public String getDocId() {
         return docId;
@@ -94,5 +96,21 @@ public class KnowledgeSearchResultVO {
 
     public void setSourceUrl(String sourceUrl) {
         this.sourceUrl = sourceUrl;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    public String getSourceResourceId() {
+        return sourceResourceId;
+    }
+
+    public void setSourceResourceId(String sourceResourceId) {
+        this.sourceResourceId = sourceResourceId;
     }
 }

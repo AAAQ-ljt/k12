@@ -11,6 +11,7 @@ export interface ResourceInfo {
   filePath?: string;
   fileSize?: number;
   directoryId?: string;
+  ownerId?: string;
   cover?: string;
   duration?: number;
   hlsPath?: string;
@@ -134,6 +135,26 @@ export function getFilePreviewUrl(resourceId: string): string {
 /** 文件下载地址（下载原始文件） */
 export function getDownloadUrl(resourceId: string): string {
   return `/api/resourceInfo/download/${resourceId}`;
+}
+
+/** 学生个人资源 HLS 播放地址（管理端学习分析预览） */
+export function getStudentVideoPlaylistUrl(resourceId: string, userId: string): string {
+  return `/api/resourceInfo/studentVideo/${resourceId}/index.m3u8?userId=${encodeURIComponent(userId)}`;
+}
+
+/** 学生个人资源图片预览地址 */
+export function getStudentImagePreviewUrl(resourceId: string, userId: string): string {
+  return `/api/resourceInfo/studentImage/${resourceId}?userId=${encodeURIComponent(userId)}`;
+}
+
+/** 学生个人资源文档预览地址 */
+export function getStudentFilePreviewUrl(resourceId: string, userId: string): string {
+  return `/api/resourceInfo/studentFile/${resourceId}?userId=${encodeURIComponent(userId)}`;
+}
+
+/** 学生个人资源下载地址 */
+export function getStudentDownloadUrl(resourceId: string, userId: string): string {
+  return `/api/resourceInfo/studentDownload/${resourceId}?userId=${encodeURIComponent(userId)}`;
 }
 
 /** 批量删除参数 */

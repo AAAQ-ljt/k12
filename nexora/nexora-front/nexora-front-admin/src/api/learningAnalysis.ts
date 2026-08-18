@@ -101,7 +101,8 @@ export interface KnowledgeResourceItem {
   resourceId: string;
   resourceName: string;
   resourceType: string;
-  fileSize: number;
+  fileSize?: number;
+  ownerId?: string;
   status: number;
   createTime?: string;
 }
@@ -177,4 +178,77 @@ export function loadLearningUserList(query: LearningUserQuery): Promise<PageResu
 
 export function getStudentDetail(userId: string): Promise<LearningUserDetail> {
   return request.get('/learningAnalysis/getStudentDetail', { params: { userId } });
+}
+
+/** 学生个人知识库向量化文档 */
+export interface StudentKnowledgeDoc {
+  docId: string;
+  title: string;
+  stage?: string;
+  knowledgePointId?: string;
+  ownerId?: string;
+  difficulty?: number;
+  dataType?: string;
+  content?: string;
+  sourceType?: number;
+  sourceResourceId?: string;
+  sourceUrl?: string;
+  vectorStatus: number;
+  vectorError?: string;
+  chunkCount?: number;
+  status: number;
+  createBy?: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface StudentKnowledgeDocQuery extends PageParam {
+  titleFuzzy?: string;
+  stage?: string;
+  vectorStatus?: number;
+}
+
+export interface StudentKnowledgeSearchResult {
+  docId: string;
+  title: string;
+  stage?: string;
+  knowledgePointId?: string;
+  difficulty?: number;
+  chunkIndex?: number;
+  content?: string;
+  score?: number;
+  searchMode?: string;
+  sourceUrl?: string;
+  ownerId?: string;
+  sourceResourceId?: string;
+}
+
+export interface StudentSearchTestParams {
+  question: string;
+  stage?: string;
+  knowledgePointId?: string;
+  difficulty?: number;
+  topK?: number;
+  threshold?: number;
+}
+
+export function loadStudentDocList(
+  userId: string,
+  query: StudentKnowledgeDocQuery,
+): Promise<PageResult<StudentKnowledgeDoc>> {
+  return request.get('/learningAnalysis/studentDocList', { params: { userId, ...query } });
+}
+
+export function loadStudentDocDetail(
+  userId: string,
+  docId: string,
+): Promise<StudentKnowledgeDoc> {
+  return request.get('/learningAnalysis/studentDocDetail', { params: { userId, docId } });
+}
+
+export function studentSearchTest(
+  userId: string,
+  params: StudentSearchTestParams,
+): Promise<StudentKnowledgeSearchResult[]> {
+  return request.post('/learningAnalysis/searchTest', params, { params: { userId } });
 }

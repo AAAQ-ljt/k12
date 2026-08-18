@@ -1,4 +1,4 @@
-package com.nexora.admin.component;
+package com.nexora.component;
 
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.exception.BusinessException;
@@ -6,7 +6,6 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.hslf.extractor.QuickButCruddyTextExtractor;
-import org.apache.poi.hslf.usermodel.HSLFSlideShow;
 import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;

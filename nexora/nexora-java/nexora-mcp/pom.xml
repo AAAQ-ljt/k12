@@ -30,6 +30,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- 公共组件引用 VectorStore API，MCP 尚不装配向量存储 Bean，仅需该依赖保证类可加载 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-vector-store</artifactId>
+        </dependency>
         <!-- MCP Server（响应式） -->
         <dependency>
             <groupId>org.springframework.ai</groupId>

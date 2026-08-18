@@ -177,6 +177,7 @@
             r.resource_id,
             r.resource_name,
             r.resource_type,
+            r.owner_id,
             r.file_size,
             r.status,
             r.create_time

@@ -44,6 +44,16 @@ public class KnowledgeDocQuery extends BaseParam {
 	private String knowledgePointIdFuzzy;
 
 	/**
+	 * 归属用户ID；NULL=官方知识库，非空=学生个人知识库
+	 */
+	private String ownerId;
+
+	/**
+	 * 仅查询官方知识库（owner_id IS NULL）
+	 */
+	private Boolean ownerIdNull;
+
+	/**
 	 * 难度：1-3
 	 */
 	private Integer difficulty;
@@ -190,6 +200,22 @@ public class KnowledgeDocQuery extends BaseParam {
 
 	public String getKnowledgePointIdFuzzy(){
 		return this.knowledgePointIdFuzzy;
+	}
+
+	public void setOwnerId(String ownerId){
+		this.ownerId = ownerId;
+	}
+
+	public String getOwnerId(){
+		return this.ownerId;
+	}
+
+	public void setOwnerIdNull(Boolean ownerIdNull){
+		this.ownerIdNull = ownerIdNull;
+	}
+
+	public Boolean getOwnerIdNull(){
+		return this.ownerIdNull;
 	}
 
 	public void setDifficulty(Integer difficulty){

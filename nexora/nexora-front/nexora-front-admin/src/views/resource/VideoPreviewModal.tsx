@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef } from 'react';
 import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import BaseDialog from '@/components/BaseDialog';
-import { getVideoPlaylistUrl, type ResourceInfo } from '@/api/resource';
+import {
+  getStudentVideoPlaylistUrl,
+  getVideoPlaylistUrl,
+  type ResourceInfo,
+} from '@/api/resource';
 import styles from './VideoPreviewModal.module.scss';
 
 interface VideoPlayerProps {
@@ -73,11 +77,22 @@ function VideoPlayer({ open, onReady, url }: VideoPlayerProps) {
 interface VideoPreviewModalProps {
   open: boolean;
   resource: ResourceInfo | null;
+  userId?: string;
   onClose: () => void;
 }
 
-export default function VideoPreviewModal({ open, resource, onClose }: VideoPreviewModalProps) {
+export default function VideoPreviewModal({
+  open,
+  resource,
+  onClose,
+  userId,
+}: VideoPreviewModalProps) {
   const playerRef = useRef<Artplayer | null>(null);
+  const previewUrl = resource
+    ? userId
+      ? getStudentVideoPlaylistUrl(resource.resourceId, userId)
+      : getVideoPlaylistUrl(resource.resourceId)
+    : '';
   const handlePlayerReady = useCallback((player: Artplayer | null) => {
     playerRef.current = player;
   }, []);
@@ -111,7 +126,7 @@ export default function VideoPreviewModal({ open, resource, onClose }: VideoPrev
           key={resource.resourceId}
           open={open}
           onReady={handlePlayerReady}
-          url={getVideoPlaylistUrl(resource.resourceId)}
+          url={previewUrl}
         />
       )}
     </BaseDialog>

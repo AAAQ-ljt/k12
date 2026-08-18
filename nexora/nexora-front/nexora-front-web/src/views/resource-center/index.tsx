@@ -42,6 +42,7 @@ const TYPE_OPTIONS = [
 const ALLOWED_EXTENSIONS = [
   'md', 'txt', 'docx', 'doc', 'pdf', 'ppt', 'pptx',
   'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg',
+  'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm', 'm4v', 'ts',
 ];
 
 function formatSize(size?: number) {
@@ -302,7 +303,7 @@ export default function ResourceCenter() {
   const validateUploadFile = (file: File) => {
     const ext = file.name.toLowerCase().split('.').pop() || '';
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      message.error('仅支持 md/txt/docx/pdf/ppt/pptx 文档和图片');
+      message.error('仅支持 md/txt/docx/doc/pdf/ppt/pptx 文档、图片和视频');
       return false;
     }
     const remaining = storage?.remainingBytes ?? 0;
@@ -457,7 +458,7 @@ export default function ResourceCenter() {
           <Upload
             multiple
             showUploadList={false}
-            accept=".md,.txt,.docx,.doc,.pdf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg"
+            accept=".md,.txt,.docx,.doc,.pdf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.avi,.mov,.mkv,.flv,.wmv,.webm,.m4v,.ts"
             beforeUpload={(file) => {
               if (!validateUploadFile(file)) {
                 return false;

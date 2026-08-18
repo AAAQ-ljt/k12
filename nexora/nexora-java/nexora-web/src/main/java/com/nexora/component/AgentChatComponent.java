@@ -197,7 +197,7 @@ public class AgentChatComponent {
                     .build();
 
             RagSearchComponent.RagSearchResult ragResult =
-                    ragSearchComponent.buildRagResult(user.getStage(), message.getUserMessage());
+                    ragSearchComponent.buildRagResult(user.getUserId(), user.getStage(), message.getUserMessage());
             List<ResourceRecommendVO> recommends = ragResult.recommendations();
             String systemPrompt = resolvePromptWithRag(user, intent, ragResult.ragData());
             sendRecommendPush(user, message, recommends);

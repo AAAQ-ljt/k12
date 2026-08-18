@@ -4,8 +4,10 @@ import com.alibaba.fastjson2.JSON;
 import com.nexora.component.RedisComponent;
 import com.nexora.constants.Constants;
 import com.nexora.dto.StudentResourceUploadSession;
+import com.nexora.entity.po.KnowledgeDoc;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.exception.BusinessException;
+import com.nexora.service.KnowledgeDocService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentResourceUploadService;
 import com.nexora.utils.StringTools;
@@ -73,6 +75,9 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private KnowledgeDocService knowledgeDocService;
 
     @Resource
     private RedisComponent redisComponent;
@@ -230,6 +235,9 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             update.setStatus(1);
             update.setUpdateTime(new Date());
             resourceInfoService.updateResourceInfoByResourceId(update, session.getResourceId());
+            if ("DOCUMENT".equalsIgnoreCase(session.getResourceType())) {
+                createStudentKnowledgeDoc(session);
+            }
             log.info("学生资源处理完成 resourceId={} filePath={}", session.getResourceId(), filePath);
         } catch (Exception e) {
             log.error("学生资源处理失败 uploadId={} resourceId={}", uploadId, session.getResourceId(), e);
@@ -241,6 +249,29 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             deleteDirectory(tempAbsDir);
             removeRedisSession(uploadId);
         }
+    }
+
+    private void createStudentKnowledgeDoc(StudentResourceUploadSession session) {
+        Date now = new Date();
+        KnowledgeDoc doc = new KnowledgeDoc();
+        doc.setDocId(UUID.randomUUID().toString().replace("-", ""));
+        doc.setTitle(session.getResourceName());
+        doc.setStage(session.getStage());
+        doc.setOwnerId(session.getOwnerId());
+        // 学生上传文档暂未关联知识点，统一用 0 占位，避免违反 NOT NULL 约束
+        doc.setKnowledgePointId("0");
+        doc.setDifficulty(1);
+        doc.setDataType("KNOWLEDGE");
+        doc.setContent("");
+        doc.setSourceType(1);
+        doc.setSourceResourceId(session.getResourceId());
+        doc.setVectorStatus(0);
+        doc.setChunkCount(0);
+        doc.setStatus(1);
+        doc.setCreateTime(now);
+        doc.setUpdateTime(now);
+        knowledgeDocService.add(doc);
+        redisComponent.leftPush(Constants.REDIS_KEY_STUDENT_KNOWLEDGE_QUEUE, doc.getDocId());
     }
 
     private void mergeShards(Path tempDir, int totalShards, Path target) throws IOException {
@@ -351,8 +382,12 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             if (!DOCUMENT_EXTENSIONS.contains(extension)) {
                 throw new BusinessException("仅支持上传 md/txt/docx/doc/pdf/ppt/pptx 文档");
             }
+        } else if ("VIDEO".equalsIgnoreCase(resourceType)) {
+            if (!VIDEO_EXTENSIONS.contains(extension)) {
+                throw new BusinessException("仅支持上传 mp4/avi/mov/mkv/flv/wmv/webm/m4v/ts 视频");
+            }
         } else {
-            throw new BusinessException("学生个人知识库仅支持文档和图片");
+            throw new BusinessException("学生个人知识库仅支持文档、图片和视频");
         }
 
         long quotaBytes = studentQuotaMb * 1024 * 1024;

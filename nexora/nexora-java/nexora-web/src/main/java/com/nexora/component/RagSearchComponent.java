@@ -45,23 +45,29 @@ public class RagSearchComponent {
     @Resource
     private ResourceInfoService resourceInfoService;
 
-    public String buildRagData(String stage, String question) {
-        return buildRagResult(stage, question).ragData();
+    public String buildRagData(String userId, String stage, String question) {
+        return buildRagResult(userId, stage, question).ragData();
     }
 
-    public RagSearchResult buildRagResult(String stage, String question) {
+    public RagSearchResult buildRagResult(String userId, String stage, String question) {
         if (question == null || question.isBlank()) {
             return new RagSearchResult("", List.of());
         }
         try {
-            List<RagHit> hits = vectorSearch(stage, question);
+            List<RagHit> hits = vectorSearch(userId, stage, question);
             if (hits.isEmpty()) {
-                hits = keywordSearch(stage, question);
+                hits = keywordSearch(userId, stage, question);
+            }
+            if (hits.isEmpty() && !StringTools.isEmpty(userId)) {
+                hits = vectorSearch("", stage, question);
+                if (hits.isEmpty()) {
+                    hits = keywordSearch("", stage, question);
+                }
             }
             if (hits.isEmpty()) {
                 return new RagSearchResult("", List.of());
             }
-            RagEnrichResult enrichResult = enrichHits(hits, stage);
+            RagEnrichResult enrichResult = enrichHits(hits, stage, userId);
             List<RagHit> enriched = enrichResult.hits();
             String ragData = buildRagData(enriched);
             List<ResourceRecommendVO> recommends = buildRecommends(enriched, enrichResult.resourceMap());
@@ -72,13 +78,15 @@ public class RagSearchComponent {
         }
     }
 
-    private List<RagHit> vectorSearch(String stage, String question) {
+    private List<RagHit> vectorSearch(String ownerId, String stage, String question) {
         SearchRequest.Builder builder = SearchRequest.builder()
                 .query(question)
                 .topK(TOP_K)
                 .similarityThreshold(THRESHOLD);
+        String actualOwnerId = ownerId == null ? "" : ownerId;
+        builder.filterExpression("ownerId == '" + actualOwnerId + "'");
         if (stage != null && !stage.isBlank()) {
-            builder.filterExpression("stage == '" + stage + "'");
+            builder.filterExpression("stage == '" + stage + "' && ownerId == '" + actualOwnerId + "'");
         }
         List<Document> documents = vectorStore.similaritySearch(builder.build());
         return documents.stream()
@@ -92,11 +100,16 @@ public class RagSearchComponent {
                 .toList();
     }
 
-    private List<RagHit> keywordSearch(String stage, String question) {
+    private List<RagHit> keywordSearch(String ownerId, String stage, String question) {
         KnowledgeDocQuery query = new KnowledgeDocQuery();
         query.setStage(stage);
         query.setContentFuzzy(question);
         query.setStatus(1);
+        if (ownerId != null && !ownerId.isBlank()) {
+            query.setOwnerId(ownerId);
+        } else {
+            query.setOwnerIdNull(Boolean.TRUE);
+        }
         List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
         List<RagHit> hits = new ArrayList<>();
         String lowerQuery = question.toLowerCase();
@@ -116,7 +129,7 @@ public class RagSearchComponent {
         return hits.stream().limit(TOP_K).toList();
     }
 
-    private RagEnrichResult enrichHits(List<RagHit> hits, String stage) {
+    private RagEnrichResult enrichHits(List<RagHit> hits, String stage, String userId) {
         List<String> docIds = hits.stream()
                 .map(RagHit::docId)
                 .filter(id -> !StringTools.isEmpty(id))
@@ -141,9 +154,19 @@ public class RagSearchComponent {
             ResourceInfoQuery resourceQuery = new ResourceInfoQuery();
             resourceQuery.setResourceIds(resourceIds);
             resourceQuery.setStatus(1);
+            resourceQuery.setOwnerIdNull(Boolean.TRUE);
             Map<String, ResourceInfo> foundResources = resourceInfoService.findListByParam(resourceQuery).stream()
                     .collect(Collectors.toMap(ResourceInfo::getResourceId, resource -> resource, (a, b) -> a));
             resourceMap.putAll(foundResources);
+            if (!StringTools.isEmpty(userId)) {
+                ResourceInfoQuery personalQuery = new ResourceInfoQuery();
+                personalQuery.setResourceIds(resourceIds);
+                personalQuery.setStatus(1);
+                personalQuery.setOwnerId(userId);
+                Map<String, ResourceInfo> personalResources = resourceInfoService.findListByParam(personalQuery).stream()
+                        .collect(Collectors.toMap(ResourceInfo::getResourceId, resource -> resource, (a, b) -> a));
+                resourceMap.putAll(personalResources);
+            }
         }
 
         Map<String, KnowledgeDoc> finalDocMap = docMap;
@@ -218,7 +241,7 @@ public class RagSearchComponent {
 
     private String buildRagData(List<RagHit> hits) {
         StringBuilder builder = new StringBuilder();
-        builder.append("=== 官方知识库参考内容 ===\n");
+        builder.append("=== 知识库参考内容 ===\n");
         for (RagHit hit : hits) {
             builder.append("【").append(hit.title()).append("】\n");
             builder.append(hit.content()).append("\n\n");

@@ -1,15 +1,25 @@
 import { Image } from 'antd';
 import BaseDialog from '@/components/BaseDialog';
-import { getImagePreviewUrl, type ResourceInfo } from '@/api/resource';
+import {
+  getImagePreviewUrl,
+  getStudentImagePreviewUrl,
+  type ResourceInfo,
+} from '@/api/resource';
 import styles from './ImagePreviewModal.module.scss';
 
 interface ImagePreviewModalProps {
   open: boolean;
   resource: ResourceInfo | null;
+  userId?: string;
   onClose: () => void;
 }
 
-export default function ImagePreviewModal({ open, resource, onClose }: ImagePreviewModalProps) {
+export default function ImagePreviewModal({
+  open,
+  resource,
+  onClose,
+  userId,
+}: ImagePreviewModalProps) {
   return (
     <BaseDialog
       className={styles.imagePreviewModal}
@@ -26,7 +36,11 @@ export default function ImagePreviewModal({ open, resource, onClose }: ImagePrev
       <div className={styles.previewBody}>
         {resource && (
           <Image
-            src={getImagePreviewUrl(resource.resourceId)}
+            src={
+              userId
+                ? getStudentImagePreviewUrl(resource.resourceId, userId)
+                : getImagePreviewUrl(resource.resourceId)
+            }
             alt={resource.resourceName}
             className={styles.previewImage}
           />

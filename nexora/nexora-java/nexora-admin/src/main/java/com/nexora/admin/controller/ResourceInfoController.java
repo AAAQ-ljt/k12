@@ -190,6 +190,121 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
+     * 学生个人资源 HLS 播放列表（管理端学习分析预览用，校验资源归属）
+     */
+    @GetMapping("/studentVideo/{resourceId}/index.m3u8")
+    public ResponseEntity<byte[]> studentVideoPlaylist(@PathVariable String resourceId,
+                                                       @RequestParam String userId) throws IOException {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getHlsPath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path playlist = resolveResourcePath(resource.getHlsPath());
+        if (!Files.exists(playlist)) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] content = buildStudentPlaylist(playlist, userId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(content);
+    }
+
+    /**
+     * 学生个人资源 HLS 分片（管理端学习分析预览用，校验资源归属）
+     */
+    @GetMapping("/studentVideo/{resourceId}/{segment}")
+    public ResponseEntity<FileSystemResource> studentVideoSegment(@PathVariable String resourceId,
+                                                                  @PathVariable String segment,
+                                                                  @RequestParam String userId) throws IOException {
+        if (!VIDEO_SEGMENT_PATTERN.matcher(segment).matches()) {
+            return ResponseEntity.notFound().build();
+        }
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getHlsPath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path hlsFile = resolveResourcePath(resource.getHlsPath());
+        Path hlsDir = hlsFile.getParent();
+        if (hlsDir == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Path segmentFile = hlsDir.resolve(segment).normalize();
+        if (!segmentFile.startsWith(hlsDir) || !Files.exists(segmentFile)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("video/mp2t"))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(segmentFile));
+    }
+
+    /**
+     * 学生个人资源图片预览（管理端学习分析预览用，校验资源归属）
+     */
+    @GetMapping("/studentImage/{resourceId}")
+    public ResponseEntity<FileSystemResource> studentImage(@PathVariable String resourceId,
+                                                           @RequestParam String userId) throws IOException {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imageFile = resolveResourcePath(resource.getFilePath());
+        if (!Files.exists(imageFile)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(resolveImageMediaType(imageFile))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(imageFile));
+    }
+
+    /**
+     * 学生个人资源文档预览（管理端学习分析预览用，校验资源归属）
+     */
+    @GetMapping("/studentFile/{resourceId}")
+    public ResponseEntity<FileSystemResource> studentFile(@PathVariable String resourceId,
+                                                          @RequestParam String userId) throws IOException {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path file = resolveResourcePath(resource.getFilePath());
+        if (!Files.exists(file)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(resolveFileMediaType(file))
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(new FileSystemResource(file));
+    }
+
+    /**
+     * 学生个人资源下载（管理端学习分析预览用，校验资源归属）
+     */
+    @GetMapping("/studentDownload/{resourceId}")
+    public ResponseEntity<FileSystemResource> studentDownload(@PathVariable String resourceId,
+                                                              @RequestParam String userId) throws IOException {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path file = resolveResourcePath(resource.getFilePath());
+        if (!Files.exists(file)) {
+            return ResponseEntity.notFound().build();
+        }
+        String fileName = StringTools.isEmpty(resource.getResourceName())
+                ? file.getFileName().toString()
+                : resource.getResourceName();
+        String encodedName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedName)
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(Files.size(file))
+                .body(new FileSystemResource(file));
+    }
+
+    /**
      * 上传资源
      */
     @PostMapping("/add")
@@ -349,6 +464,40 @@ public class ResourceInfoController extends ABaseController {
             return null;
         }
         return resource;
+    }
+
+    private ResourceInfo getStudentResource(String resourceId, String userId) {
+        if (StringTools.isEmpty(resourceId) || StringTools.isEmpty(userId)) {
+            return null;
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
+            return null;
+        }
+        if (StringTools.isEmpty(resource.getOwnerId()) || !userId.equals(resource.getOwnerId())) {
+            return null;
+        }
+        return resource;
+    }
+
+    private byte[] buildStudentPlaylist(Path playlist, String userId) throws IOException {
+        String userQuery = "userId=" + URLEncoder.encode(userId, StandardCharsets.UTF_8);
+        List<String> lines = Files.readAllLines(playlist, StandardCharsets.UTF_8);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            lines.set(i, appendQueryParam(line, userQuery));
+        }
+        return String.join("\n", lines).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String appendQueryParam(String uri, String query) {
+        if (uri.contains("?")) {
+            return uri.endsWith("?") || uri.endsWith("&") ? uri + query : uri + "&" + query;
+        }
+        return uri + "?" + query;
     }
 
     private void assertDirectoryDeletable(String dirId) {

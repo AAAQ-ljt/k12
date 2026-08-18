@@ -1,7 +1,5 @@
 package com.nexora.admin.biz;
 
-import com.nexora.admin.component.KnowledgeVectorComponent;
-import com.nexora.admin.component.ResourceKnowledgeParser;
 import com.nexora.admin.dto.KnowledgeSearchTestRequest;
 import com.nexora.admin.dto.ResourceKnowledgeImportRequest;
 import com.nexora.admin.vo.KnowledgeImportResultVO;
@@ -9,7 +7,9 @@ import com.nexora.admin.vo.KnowledgeOverviewVO;
 import com.nexora.admin.vo.KnowledgeSearchResultVO;
 import com.nexora.admin.vo.ResourceKnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeTreeNodeVO;
+import com.nexora.component.KnowledgeVectorComponent;
 import com.nexora.component.RedisComponent;
+import com.nexora.component.ResourceKnowledgeParser;
 import com.nexora.constants.Constants;
 import com.nexora.entity.po.KnowledgeDoc;
 import com.nexora.entity.po.KnowledgePoint;
@@ -76,7 +76,9 @@ public class KnowledgeBaseBiz {
     private String projectFolder;
 
     public KnowledgeOverviewVO overview() {
-        List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(new KnowledgeDocQuery());
+        KnowledgeDocQuery query = new KnowledgeDocQuery();
+        query.setOwnerIdNull(Boolean.TRUE);
+        List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
         KnowledgeOverviewVO vo = new KnowledgeOverviewVO();
         vo.setTotalDocs(docs.size());
         vo.setTotalPoints(knowledgePointService.findCountByParam(new KnowledgePointQuery()));
@@ -105,7 +107,9 @@ public class KnowledgeBaseBiz {
 
     public List<KnowledgeTreeNodeVO> tree() {
         List<KnowledgePoint> points = knowledgePointService.findListByParam(new KnowledgePointQuery());
-        List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(new KnowledgeDocQuery());
+        KnowledgeDocQuery query = new KnowledgeDocQuery();
+        query.setOwnerIdNull(Boolean.TRUE);
+        List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
         Map<String, Integer> docCountByPoint = new LinkedHashMap<>();
         for (KnowledgeDoc doc : docs) {
             if (doc.getKnowledgePointId() != null) {
@@ -500,7 +504,7 @@ public class KnowledgeBaseBiz {
             knowledgeVectorComponent.deleteChunks(docId, Math.max(oldCount, chunks.size()));
             knowledgeVectorComponent.saveChunks(docId, doc.getTitle(), doc.getStage(),
                     doc.getKnowledgePointId(), doc.getDifficulty(), doc.getSourceUrl(),
-                    doc.getSourceResourceId(), chunks);
+                    doc.getSourceResourceId(), doc.getOwnerId(), chunks);
             KnowledgeDoc done = new KnowledgeDoc();
             done.setVectorStatus(2);
             done.setVectorError(null);
@@ -525,7 +529,7 @@ public class KnowledgeBaseBiz {
         double threshold = request.getThreshold() == null ? 0.5 : request.getThreshold();
         List<Document> vectorHits = knowledgeVectorComponent.search(
                 request.getQuestion(), request.getStage(), request.getKnowledgePointId(),
-                request.getDifficulty(), topK, threshold);
+                request.getDifficulty(), request.getOwnerId(), topK, threshold);
         if (vectorHits != null && !vectorHits.isEmpty()) {
             return vectorHits.stream().map(this::toVectorResult).toList();
         }
@@ -545,6 +549,8 @@ public class KnowledgeBaseBiz {
         vo.setScore(document.getScore());
         vo.setSearchMode("vector");
         vo.setSourceUrl(asString(metadata.get("sourceUrl")));
+        vo.setOwnerId(asString(metadata.get("ownerId")));
+        vo.setSourceResourceId(asString(metadata.get("sourceResourceId")));
         return vo;
     }
 
@@ -555,6 +561,11 @@ public class KnowledgeBaseBiz {
         query.setDifficulty(request.getDifficulty());
         query.setContentFuzzy(request.getQuestion());
         query.setStatus(1);
+        if (request.getOwnerId() != null && !request.getOwnerId().isBlank()) {
+            query.setOwnerId(request.getOwnerId());
+        } else {
+            query.setOwnerIdNull(Boolean.TRUE);
+        }
         List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
         List<KnowledgeSearchResultVO> results = new ArrayList<>();
         String lowerQuery = request.getQuestion().toLowerCase();
@@ -580,6 +591,8 @@ public class KnowledgeBaseBiz {
                 vo.setScore(score);
                 vo.setSearchMode("keyword");
                 vo.setSourceUrl(doc.getSourceUrl());
+                vo.setOwnerId(doc.getOwnerId());
+                vo.setSourceResourceId(doc.getSourceResourceId());
                 results.add(vo);
             }
         }

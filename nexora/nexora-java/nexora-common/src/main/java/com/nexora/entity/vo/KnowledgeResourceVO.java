@@ -13,6 +13,7 @@ public class KnowledgeResourceVO {
 
     private String resourceId;
     private String resourceName;
+    private String ownerId;
     private Long fileSize;
     private Integer status;
     private Date createTime;
@@ -55,6 +56,14 @@ public class KnowledgeResourceVO {
 
     public void setResourceName(String resourceName) {
         this.resourceName = resourceName;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
     }
 
     public Long getFileSize() {

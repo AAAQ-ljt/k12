@@ -24,8 +24,6 @@ import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
 import {
   QUESTION_TYPE_MAP,
-  RESOURCE_STATUS_MAP,
-  RESOURCE_TYPE_MAP,
   USER_STATUS_MAP,
 } from '@/types/common';
 import { getStudentDetail } from '@/api/learningAnalysis';
@@ -34,13 +32,12 @@ import type {
   AiRecentMessageItem,
   CourseStudyProgressItem,
   KnowledgeMasteryItem,
-  KnowledgeResourceItem,
-  KnowledgeResourceTypeItem,
   LearningUserDetail,
   PracticeKnowledgePointItem,
   PracticeQuestionTypeItem,
 } from '@/api/learningAnalysis';
 import styles from './learning-user.module.scss';
+import StudentWikiPanel from './StudentWikiPanel';
 
 interface LearningUserDetailDrawerProps {
   open: boolean;
@@ -72,13 +69,6 @@ const AI_INTENT_MAP: Record<string, string> = {
 
 function formatNumber(value?: number): string {
   return (value ?? 0).toLocaleString('zh-CN');
-}
-
-function formatBytes(bytes?: number): string {
-  const value = bytes ?? 0;
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function formatDuration(seconds?: number): string {
@@ -228,74 +218,6 @@ export default function LearningUserDetailDrawer({
       key: 'accuracy',
       width: 120,
       render: (value: number) => formatAccuracy(value),
-    },
-  ];
-
-  const resourceTypeColumns: TableProps<KnowledgeResourceTypeItem>['columns'] = [
-    {
-      title: '资源类型',
-      dataIndex: 'resourceType',
-      key: 'resourceType',
-      render: (value: string) => {
-        const meta = RESOURCE_TYPE_MAP[value] || { text: value || '未知', color: 'default' };
-        return <Tag color={meta.color}>{meta.text}</Tag>;
-      },
-    },
-    {
-      title: '资源数量',
-      dataIndex: 'resourceCount',
-      key: 'resourceCount',
-      width: 110,
-    },
-    {
-      title: '占用空间',
-      dataIndex: 'sizeMb',
-      key: 'sizeMb',
-      width: 120,
-      render: (value: number) => `${(value ?? 0).toFixed(1)} MB`,
-    },
-  ];
-
-  const resourceColumns: TableProps<KnowledgeResourceItem>['columns'] = [
-    {
-      title: '资源名称',
-      dataIndex: 'resourceName',
-      key: 'resourceName',
-      ellipsis: true,
-    },
-    {
-      title: '类型',
-      dataIndex: 'resourceType',
-      key: 'resourceType',
-      width: 110,
-      render: (value: string) => {
-        const meta = RESOURCE_TYPE_MAP[value] || { text: value || '未知', color: 'default' };
-        return <Tag color={meta.color}>{meta.text}</Tag>;
-      },
-    },
-    {
-      title: '大小',
-      dataIndex: 'fileSize',
-      key: 'fileSize',
-      width: 120,
-      render: (value: number) => formatBytes(value),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (value: number) => {
-        const meta = RESOURCE_STATUS_MAP[String(value)] || { text: String(value), color: 'default' };
-        return <Tag color={meta.color}>{meta.text}</Tag>;
-      },
-    },
-    {
-      title: '上传时间',
-      dataIndex: 'createTime',
-      key: 'createTime',
-      width: 170,
-      render: (value?: string) => value || '-',
     },
   ];
 
@@ -534,52 +456,7 @@ export default function LearningUserDetailDrawer({
     </>
   );
 
-  const wikiTab = detail && (
-    <>
-      <div className={styles.sectionBlock}>
-        <div className={styles.quotaBlock}>
-          <MetricCard
-            label="已使用空间"
-            value={`${(detail.wikiResourceUsedMb ?? 0).toFixed(1)} MB`}
-            extra={`共 ${formatNumber(detail.wikiResourceBytes)} 字节`}
-          />
-          <MetricCard
-            label="配额占用"
-            value={`${(detail.wikiQuotaPercent ?? 0).toFixed(1)}%`}
-            extra="个人知识库上限 300 MB"
-          />
-          <div className={styles.quotaInfo}>
-            <div className={styles.metricLabel}>存储配额</div>
-            <Progress
-              percent={Math.min(detail.wikiQuotaPercent ?? 0, 100)}
-              strokeColor="#1677ff"
-            />
-          </div>
-        </div>
-      </div>
-      <div className={styles.sectionBlock}>
-        <div className={styles.tableCaption}>类型分布</div>
-        <Table<KnowledgeResourceTypeItem>
-          rowKey="resourceType"
-          size="small"
-          columns={resourceTypeColumns}
-          dataSource={detail.knowledgeResourceTypes}
-          pagination={false}
-        />
-      </div>
-      <div className={styles.sectionBlock}>
-        <div className={styles.tableCaption}>资源列表</div>
-        <Table<KnowledgeResourceItem>
-          rowKey="resourceId"
-          size="small"
-          columns={resourceColumns}
-          dataSource={detail.knowledgeResources}
-          pagination={false}
-          scroll={{ x: 780 }}
-        />
-      </div>
-    </>
-  );
+  const wikiTab = detail && <StudentWikiPanel detail={detail} />;
 
   const aiTab = detail && (
     <>

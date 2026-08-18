@@ -9,6 +9,7 @@ public class KnowledgeSearchTestRequest {
     private String stage;
     private String knowledgePointId;
     private Integer difficulty;
+    private String ownerId;
     private Integer topK = 10;
     private Double threshold = 0.5;
 
@@ -42,6 +43,14 @@ public class KnowledgeSearchTestRequest {
 
     public void setDifficulty(Integer difficulty) {
         this.difficulty = difficulty;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
     }
 
     public Integer getTopK() {
