@@ -75,6 +75,7 @@ ResponseVO<T> 统一返回结构:
 - 禁止随意升级依赖
 - 禁止破坏现有接口
 - 禁止覆盖我手动修改的代码
+- 禁止 Codex 自行编译 / 构建 / 打包前端或后端（`npm`、`mvn` 的 build / dev / install / compile / clean 等）；所有编译、构建、重启统一由用户手动在 IDEA / VSCode 执行
 - 禁止修改项目中数据库脚本 DDL
 - 禁止修改 `参考项目/` 下的任何文件
 - 禁止返回 Map，统一定义对象，比如 vo,dto
