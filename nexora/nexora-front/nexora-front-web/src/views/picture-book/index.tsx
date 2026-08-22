@@ -81,8 +81,10 @@ export default function PictureBook() {
       message.warning('先输入一个绘本主题吧，比如“机器人朋友”');
       return;
     }
+    // 先清残留任务快照，避免旧任务的 FAILED/COMPLETED 状态在恢复 effect 中复活弹窗
+    sessionStorage.removeItem(PB_TASK_KEY);
     setGenerating(true);
-    setGenProgress('');
+    setGenProgress('任务提交中...');
     setTopic('');
     try {
       // 异步任务：提交后轮询状态，生成完成时自动打开绘本；切页不丢任务
@@ -116,11 +118,14 @@ export default function PictureBook() {
     if (!mountedRef.current) {
       return snapshot.status === 'COMPLETED' || snapshot.status === 'FAILED';
     }
-    if (snapshot.status === 'IMAGE_GENERATING' || snapshot.status === 'STORY_GENERATING') {
+    if (snapshot.status === 'IMAGE_GENERATING' || snapshot.status === 'STORY_GENERATING'
+        || snapshot.status === 'PENDING') {
       setGenProgress(
         snapshot.status === 'IMAGE_GENERATING'
           ? `正在绘制插图 ${Math.max(snapshot.current, 1)}/${snapshot.total} 页...`
-          : 'AI 正在编写故事...',
+          : snapshot.status === 'STORY_GENERATING'
+            ? 'AI 正在编写故事...'
+            : '任务已提交，正在排队执行...',
       );
       return false;
     }
