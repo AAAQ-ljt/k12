@@ -30,6 +30,11 @@ export function parsePictureBook(extJson?: string): PictureBookScript | null {
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.pages)) {
       return null;
     }
+    // 数据净化：过滤 pages 中的 null/非对象元素，防止渲染崩溃
+    parsed.pages = parsed.pages.filter((p: unknown) => p && typeof p === 'object');
+    if (parsed.pages.length === 0) {
+      return null;
+    }
     return parsed as PictureBookScript;
   } catch {
     return null;

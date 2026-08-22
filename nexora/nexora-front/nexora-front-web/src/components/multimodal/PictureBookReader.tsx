@@ -20,8 +20,10 @@ export default function PictureBookReader({
     return <div className={styles.empty}>绘本数据异常</div>;
   }
 
-  const page = pages[current];
-  const hasImage = !!page.imageFile;
+  // 兜底：pages 内可能存在 null/残缺元素（历史异常产物），渲染安全降级
+  const page = pages[current] ?? null;
+  const pageText = page?.text ?? '';
+  const hasImage = !!page?.imageFile;
 
   return (
     <div className={styles.reader}>
@@ -39,7 +41,7 @@ export default function PictureBookReader({
           {script.imageError ? <div className={styles.placeholderError}>{script.imageError}</div> : null}
         </div>
         )}
-        <div className={styles.pageText}>{page.text}</div>
+        <div className={styles.pageText}>{pageText || '（本页内容缺失）'}</div>
       </div>
       <div className={styles.footer}>
         <button
