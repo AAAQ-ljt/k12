@@ -16,6 +16,8 @@ import com.nexora.service.ResourceDirectoryService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentKnowledgeBaseService;
 import com.nexora.service.StudentResourceUploadService;
+import com.nexora.service.StudentWikiService;
+import com.nexora.service.impl.StudentKnowledgeBaseServiceImpl;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
 import com.nexora.vo.StudentStorageVO;
@@ -55,6 +57,9 @@ public class StudentResourceCenterController extends ABaseController {
 
     @Resource
     private StudentKnowledgeBaseService studentKnowledgeBaseService;
+
+    @Resource
+    private StudentWikiService studentWikiService;
 
     @GetMapping("/storage")
     public ResponseVO<StudentStorageVO> storage() {
@@ -105,7 +110,10 @@ public class StudentResourceCenterController extends ABaseController {
         if (StringTools.isEmpty(bean.getDirId()) || StringTools.isEmpty(bean.getDirName())) {
             throw new BusinessException("目录ID和名称不能为空");
         }
-        assertOwnedDirectory(bean.getDirId());
+        ResourceDirectory current = assertOwnedDirectory(bean.getDirId());
+        if (StudentKnowledgeBaseServiceImpl.isSystemDirectory(current.getDirType())) {
+            throw new BusinessException("系统目录不可重命名");
+        }
         ResourceDirectory update = new ResourceDirectory();
         update.setDirName(bean.getDirName());
         update.setUpdateTime(new Date());
@@ -115,7 +123,10 @@ public class StudentResourceCenterController extends ABaseController {
 
     @DeleteMapping("/directory")
     public ResponseVO<Void> deleteDirectory(@RequestParam String dirId) {
-        assertOwnedDirectory(dirId);
+        ResourceDirectory current = assertOwnedDirectory(dirId);
+        if (StudentKnowledgeBaseServiceImpl.isSystemDirectory(current.getDirType())) {
+            throw new BusinessException("系统目录不可删除");
+        }
         if ("0".equals(dirId) || "root".equals(dirId)) {
             throw new BusinessException("根目录不能删除");
         }
@@ -186,7 +197,7 @@ public class StudentResourceCenterController extends ABaseController {
         }
         TokenUserInfoDTO current = LoginUserContext.get();
         return getSuccessResponseVO(studentResourceUploadService.prepare(resourceName, resourceType, fileName,
-                fileSize, directoryId, current.getStage(), current.getUserId()));
+                fileSize, directoryId, current.getStage(), current.getUserId(), current.getEmail()));
     }
 
     @PostMapping("/uploadShard")
@@ -221,6 +232,8 @@ public class StudentResourceCenterController extends ABaseController {
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String resourceId) {
         assertOwnedResource(resourceId);
+        // 级联清理该资源的知识页与向量（两段式后知识页独立于资源）
+        studentWikiService.cleanupByResource(currentUserId(), resourceId);
         resourceInfoService.deleteResourceInfoByResourceId(resourceId);
         return getSuccessResponseVO(null);
     }

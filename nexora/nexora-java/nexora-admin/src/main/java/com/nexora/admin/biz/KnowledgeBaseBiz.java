@@ -2,11 +2,13 @@ package com.nexora.admin.biz;
 
 import com.nexora.admin.dto.KnowledgeSearchTestRequest;
 import com.nexora.admin.dto.ResourceKnowledgeImportRequest;
+import com.nexora.admin.vo.KnowledgeAIDocVO;
 import com.nexora.admin.vo.KnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeOverviewVO;
 import com.nexora.admin.vo.KnowledgeSearchResultVO;
 import com.nexora.admin.vo.ResourceKnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeTreeNodeVO;
+import com.nexora.component.AiStructureComponent;
 import com.nexora.component.KnowledgeVectorComponent;
 import com.nexora.component.RedisComponent;
 import com.nexora.component.ResourceKnowledgeParser;
@@ -53,6 +55,8 @@ public class KnowledgeBaseBiz {
     private static final Pattern FRONTMATTER_PATTERN = Pattern.compile(
             "^---\\s*\\n(.*?)\\n---\\s*\\n", Pattern.DOTALL);
     private static final int CHUNK_SIZE = 500;
+    /** AI 整理接口返回的原始文本展示上限 */
+    private static final int MAX_ORIGINAL_TEXT_CHARS = 60000;
 
     @Resource
     private KnowledgeDocService knowledgeDocService;
@@ -68,6 +72,9 @@ public class KnowledgeBaseBiz {
 
     @Resource
     private ResourceKnowledgeParser resourceKnowledgeParser;
+
+    @Resource
+    private AiStructureComponent aiStructureComponent;
 
     @Resource
     private RedisComponent redisComponent;
@@ -309,6 +316,39 @@ public class KnowledgeBaseBiz {
         result.setVectorStatus(1);
         result.setAsync(true);
         return result;
+    }
+
+    /**
+     * 官方资源 AI 文档整理：提取文本 → AI 整理为结构化 Markdown，返回供管理员编辑确认后走 resourceImport 入库
+     */
+    public KnowledgeAIDocVO aiOrganize(String resourceId) {
+        if (StringTools.isEmpty(resourceId)) {
+            throw new BusinessException("请选择要整理的资源");
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+        if (resource.getOwnerId() != null) {
+            throw new BusinessException("仅官方资源可进行 AI 整理");
+        }
+        ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
+        String text = parsed == null ? null : parsed.getText();
+        if (StringTools.isEmpty(text)) {
+            throw new BusinessException("未能从资源提取到文本，请确认内容可读取");
+        }
+        String organized = aiStructureComponent.generateStructure(resource.getStage(), resource.getResourceName(), text);
+        if (StringTools.isEmpty(organized)) {
+            throw new BusinessException("AI 整理结果为空，请稍后重试");
+        }
+        KnowledgeAIDocVO vo = new KnowledgeAIDocVO();
+        vo.setResourceId(resourceId);
+        vo.setResourceName(resource.getResourceName());
+        vo.setStage(resource.getStage());
+        // 原始文本仅用于对照编辑，展示截断防止响应过大
+        vo.setOriginalText(text.length() > MAX_ORIGINAL_TEXT_CHARS ? text.substring(0, MAX_ORIGINAL_TEXT_CHARS) : text);
+        vo.setOrganizedMd(organized);
+        return vo;
     }
 
     public void submitVectorize(String docId) {

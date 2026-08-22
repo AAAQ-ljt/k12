@@ -11,10 +11,11 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 /**
- * 轻量意图分析：结构化解析用户消息，失败兜底 CHAT
+ * 意图分析：理科求解类先走关键词规则（省一次模型调用），其余走 LLM 结构化分类，失败兜底 CHAT
  */
 @Component
 @Slf4j
@@ -22,9 +23,34 @@ public class IntentAnalyzerComponent {
 
     private static final String INTENT_SYSTEM_PROMPT = """
             你是意图分类器。只输出 JSON，不要输出任何解释。
-            从以下意图中选择一个：EXPLAIN、RECOMMEND、QUIZ、PICTURE_BOOK、DRAW、ANIMATION、CODING、PLAN、PROGRESS、CHAT。
+            从以下意图中选择一个：EXPLAIN、RECOMMEND、QUIZ、PICTURE_BOOK、DRAW、ANIMATION、CODING、SCIENCE_SOLVE、PLAN、PROGRESS、CHAT。
             返回格式：{"intent":"EXPLAIN","data":{"knowledgePoint":"冒泡排序"}}。
             无法确定用户意图时使用 CHAT。""";
+
+    /** 概念类问句前缀：命中则不以关键词规则判为理科求解，交给 LLM/RAG 链路 */
+    private static final List<String> CONCEPT_PREFIXES = List.of(
+            "什么是", "啥是", "什么叫", "这是什么", "介绍一下", "介绍", "解释", "讲解",
+            "概念", "原理是", "意思是", "举例", "举个例子", "举例子", "为什么");
+
+    /** 理科求解关键词（数学/物理/化学/生物），含解题句式触发词 */
+    private static final List<String> SCIENCE_KEYWORDS = List.of(
+            // 数学
+            "解方程", "方程", "求导", "导数", "微分", "积分", "求极限", "极限", "不等式",
+            "证明", "求解", "三角函数", "对数", "指数", "概率", "排列", "组合数", "几何",
+            "勾股", "配方", "函数值", "计算",
+            // 物理
+            "并联", "串联", "电阻", "电流", "电压", "电功率", "功率", "加速度", "牛顿",
+            "浮力", "压强", "做功", "动能", "势能", "机械能", "折射", "反射", "透镜",
+            "欧姆", "自由落体", "抛体", "电路",
+            // 化学
+            "配平", "化学方程式", "化学反应", "摩尔", "浓度", "化合价", "离子", "电解",
+            "氧化还原", "中和反应", "沉淀", "溶解度", "化学式",
+            // 生物
+            "遗传", "基因", "染色体", "显性", "隐性", "杂交", "光合作用", "呼吸作用",
+            "细胞分裂", "减数分裂",
+            // 解题句式
+            "帮我算", "帮我解", "怎么算", "怎么求", "怎么解", "计算一下", "算一下",
+            "推导", "这道题", "解题", "做一下这道");
 
     private final ChatClient chatClient;
 
@@ -36,6 +62,9 @@ public class IntentAnalyzerComponent {
     }
 
     public IntentResult analyze(String userMessage) {
+        if (matchScienceKeyword(userMessage)) {
+            return new IntentResult("SCIENCE_SOLVE", null, 0, 0);
+        }
         try {
             ChatResponse response = chatClient.prompt()
                     .system(INTENT_SYSTEM_PROMPT)
@@ -65,6 +94,23 @@ public class IntentAnalyzerComponent {
             log.warn("意图分析失败，兜底 CHAT", e);
             return new IntentResult("CHAT", null, 0, 0);
         }
+    }
+
+    /**
+     * 理科求解关键词规则：概念类问句（什么是/解释/为什么等开头）不进入该规则，避免误伤概念查询
+     */
+    private boolean matchScienceKeyword(String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return false;
+        }
+        String text = userMessage.trim();
+        String lower = text.toLowerCase();
+        for (String prefix : CONCEPT_PREFIXES) {
+            if (text.startsWith(prefix)) {
+                return false;
+            }
+        }
+        return SCIENCE_KEYWORDS.stream().anyMatch(lower::contains);
     }
 
     private UserIntentDTO parseJson(String content) {

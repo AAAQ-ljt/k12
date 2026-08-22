@@ -86,6 +86,7 @@ mybatis:
 #项目目录（按本机实际路径调整）
 project:
   ai:
+    vision-model: ${NEXORA_VISION_MODEL:deepseek-v4-flash-vision-exp}
     image:
       provider: ${NEXORA_IMAGE_PROVIDER:dashscope}
       model: ${NEXORA_IMAGE_MODEL:qwen-image-3.0}

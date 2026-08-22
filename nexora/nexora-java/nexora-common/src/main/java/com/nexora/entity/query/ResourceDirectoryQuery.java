@@ -13,6 +13,11 @@ public class ResourceDirectoryQuery extends BaseParam {
 
     private String parentId;
 
+    /**
+     * 目录类型：raw/wiki/attachments 系统目录；NULL=普通目录
+     */
+    private String dirType;
+
     private Integer sort;
 
     /**
@@ -55,6 +60,14 @@ public class ResourceDirectoryQuery extends BaseParam {
 
     public void setParentId(String parentId) {
         this.parentId = parentId;
+    }
+
+    public String getDirType() {
+        return dirType;
+    }
+
+    public void setDirType(String dirType) {
+        this.dirType = dirType;
     }
 
     public Integer getSort() {

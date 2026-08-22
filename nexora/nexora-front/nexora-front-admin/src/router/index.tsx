@@ -11,6 +11,7 @@ import ResourceManagement from '@/views/resource/ResourceManagement';
 import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
 import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
 import KnowledgeTest from '@/views/knowledge/KnowledgeTest';
+import AIDocArrange from '@/views/knowledge/AIDocArrange';
 import LearningAnalysis from '@/views/learning/LearningAnalysis';
 import LearningUser from '@/views/learning/LearningUser';
 import AdminAccount from '@/views/system/AdminAccount';
@@ -64,6 +65,10 @@ export const router = createBrowserRouter([
           {
             path: 'test',
             element: <KnowledgeTest />,
+          },
+          {
+            path: 'arrange',
+            element: <AIDocArrange />,
           },
         ],
       },

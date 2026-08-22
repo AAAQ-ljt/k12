@@ -6,9 +6,11 @@ import com.nexora.constants.Constants;
 import com.nexora.dto.StudentResourceUploadSession;
 import com.nexora.entity.po.KnowledgeDoc;
 import com.nexora.entity.po.ResourceInfo;
+import com.nexora.entity.query.KnowledgeDocQuery;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.KnowledgeDocService;
 import com.nexora.service.ResourceInfoService;
+import com.nexora.service.StudentKnowledgeBaseService;
 import com.nexora.service.StudentResourceUploadService;
 import com.nexora.utils.StringTools;
 import com.nexora.vo.StudentUploadSessionVO;
@@ -80,11 +82,14 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
     private KnowledgeDocService knowledgeDocService;
 
     @Resource
+    private StudentKnowledgeBaseService studentKnowledgeBaseService;
+
+    @Resource
     private RedisComponent redisComponent;
 
     @Override
     public StudentUploadSessionVO prepare(String resourceName, String resourceType, String originalFileName,
-                                          Long fileSize, String directoryId, String stage, String ownerId) {
+                                          Long fileSize, String directoryId, String stage, String ownerId, String email) {
         if (StringTools.isEmpty(resourceName) || StringTools.isEmpty(resourceType)) {
             throw new BusinessException("资源名称和类型不能为空");
         }
@@ -92,6 +97,15 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             throw new BusinessException("文件大小不合法");
         }
         validateStudentUpload(resourceType, originalFileName, fileSize, ownerId);
+        String extension = extractExtension(originalFileName);
+        String resolvedDirectoryId = normalizeDirectoryId(directoryId);
+        if (StringTools.isEmpty(resolvedDirectoryId)) {
+            // 未选择目录时自动归类：md/txt 归「原始资料」，其余归「附件」
+            resolvedDirectoryId = studentKnowledgeBaseService.resolveDefaultDirectoryId(ownerId, resourceType, extension);
+        } else {
+            // 选择了目录时校验目录类型约束（raw 仅允许 md/txt）
+            studentKnowledgeBaseService.validateDirectoryState(ownerId, resolvedDirectoryId, resourceType, extension);
+        }
         String resourceId = StringTools.getRandomNumber(Constants.LENGTH_15);
         String uploadId = UUID.randomUUID().toString().replace("-", "");
         int totalShards = (int) Math.max(1, Math.ceil(fileSize * 1.0 / DEFAULT_SHARD_SIZE));
@@ -109,7 +123,7 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
         bean.setResourceId(resourceId);
         bean.setResourceName(resourceName);
         bean.setResourceType(resourceType);
-        bean.setDirectoryId(normalizeDirectoryId(directoryId));
+        bean.setDirectoryId(resolvedDirectoryId);
         bean.setStage(stage);
         bean.setOwnerId(ownerId);
         bean.setFileSize(fileSize);
@@ -126,9 +140,10 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
         session.setResourceType(resourceType);
         session.setOriginalFileName(originalFileName);
         session.setFileSize(fileSize);
-        session.setDirectoryId(normalizeDirectoryId(directoryId));
+        session.setDirectoryId(resolvedDirectoryId);
         session.setStage(stage);
         session.setOwnerId(ownerId);
+        session.setEmail(email);
         session.setShardSize(DEFAULT_SHARD_SIZE);
         session.setTotalShards(totalShards);
         session.setTempDir(tempRelativeDir);
@@ -192,12 +207,13 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             }
             String monthDir = new SimpleDateFormat("yyyyMM").format(new Date());
             String extension = extractExtension(session.getOriginalFileName());
+            String studentDir = emailDir(session.getEmail());
             String filePath;
             String hlsPath = null;
             String cover = null;
             Integer duration = null;
             if (isVideo(session.getResourceType(), extension)) {
-                String targetRelativeDir = resourceFileDir + "/student/" + monthDir + "/"
+                String targetRelativeDir = resourceFileDir + "/student/" + studentDir + "/" + monthDir + "/"
                         + UUID.randomUUID().toString().replace("-", "");
                 Path targetAbsDir = Paths.get(projectFolder, targetRelativeDir);
                 Files.createDirectories(targetAbsDir);
@@ -220,12 +236,12 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
                 hlsPath = hlsRelative;
                 cover = coverRelative;
             } else {
-                Path targetAbsDir = Paths.get(projectFolder, resourceFileDir, "student", monthDir);
+                Path targetAbsDir = Paths.get(projectFolder, resourceFileDir, "student", studentDir, monthDir);
                 Files.createDirectories(targetAbsDir);
                 String fileName = UUID.randomUUID().toString().replace("-", "") + extension;
                 Path targetFile = targetAbsDir.resolve(fileName);
                 Files.copy(mergedPath, targetFile, StandardCopyOption.REPLACE_EXISTING);
-                filePath = resourceFileDir + "/student/" + monthDir + "/" + fileName;
+                filePath = resourceFileDir + "/student/" + studentDir + "/" + monthDir + "/" + fileName;
             }
             ResourceInfo update = new ResourceInfo();
             update.setFilePath(filePath);
@@ -235,8 +251,11 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             update.setStatus(1);
             update.setUpdateTime(new Date());
             resourceInfoService.updateResourceInfoByResourceId(update, session.getResourceId());
-            if ("DOCUMENT".equalsIgnoreCase(session.getResourceType())) {
-                createStudentKnowledgeDoc(session);
+            // 两段式：文档上传仅保存原始资源，由用户「生成 Wiki」后确认才向量化；
+            // 图片/视频上传自动建「标题+简介」知识页草稿（dataType=IMAGE/VIDEO），用户确认后入库（7.15）
+            if ("IMAGE".equalsIgnoreCase(session.getResourceType())
+                    || "VIDEO".equalsIgnoreCase(session.getResourceType())) {
+                createLightweightKnowledgeDoc(session);
             }
             log.info("学生资源处理完成 resourceId={} filePath={}", session.getResourceId(), filePath);
         } catch (Exception e) {
@@ -251,27 +270,67 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
         }
     }
 
-    private void createStudentKnowledgeDoc(StudentResourceUploadSession session) {
-        Date now = new Date();
-        KnowledgeDoc doc = new KnowledgeDoc();
-        doc.setDocId(UUID.randomUUID().toString().replace("-", ""));
-        doc.setTitle(session.getResourceName());
-        doc.setStage(session.getStage());
-        doc.setOwnerId(session.getOwnerId());
-        // 学生上传文档暂未关联知识点，统一用 0 占位，避免违反 NOT NULL 约束
-        doc.setKnowledgePointId("0");
-        doc.setDifficulty(1);
-        doc.setDataType("KNOWLEDGE");
-        doc.setContent("");
-        doc.setSourceType(1);
-        doc.setSourceResourceId(session.getResourceId());
-        doc.setVectorStatus(0);
-        doc.setChunkCount(0);
-        doc.setStatus(1);
-        doc.setCreateTime(now);
-        doc.setUpdateTime(now);
-        knowledgeDocService.add(doc);
-        redisComponent.leftPush(Constants.REDIS_KEY_STUDENT_KNOWLEDGE_QUEUE, doc.getDocId());
+    /**
+     * 图片/视频轻量知识页草稿：content = 标题 + 简介，随资源简介更新；用户在知识页确认后向量化
+     */
+    private void createLightweightKnowledgeDoc(StudentResourceUploadSession session) {
+        String dataType = "IMAGE".equalsIgnoreCase(session.getResourceType()) ? "IMAGE" : "VIDEO";
+        try {
+            KnowledgeDocQuery query = new KnowledgeDocQuery();
+            query.setOwnerId(session.getOwnerId());
+            query.setSourceResourceId(session.getResourceId());
+            List<KnowledgeDoc> existing = knowledgeDocService.findListByParam(query);
+            if (existing != null && !existing.isEmpty()) {
+                return;
+            }
+            String content = buildLightweightContent(session.getResourceName(), null);
+            Date now = new Date();
+            KnowledgeDoc doc = new KnowledgeDoc();
+            doc.setDocId(UUID.randomUUID().toString().replace("-", ""));
+            doc.setTitle(session.getResourceName());
+            doc.setStage(session.getStage());
+            doc.setOwnerId(session.getOwnerId());
+            doc.setKnowledgePointId("0");
+            doc.setDifficulty(1);
+            doc.setDataType(dataType);
+            doc.setContent(content);
+            doc.setSourceType(1);
+            doc.setSourceResourceId(session.getResourceId());
+            doc.setVectorStatus(0);
+            doc.setVectorError(null);
+            doc.setChunkCount(0);
+            doc.setStatus(1);
+            doc.setCreateTime(now);
+            doc.setUpdateTime(now);
+            knowledgeDocService.add(doc);
+        } catch (Exception e) {
+            log.error("图片/视频轻量知识页草稿创建失败 resourceId={}", session.getResourceId(), e);
+        }
+    }
+
+    /**
+     * 轻量内容模板：自动生成的 content 以「标题：」开头，便于确认时识别并可刷新
+     */
+    private String buildLightweightContent(String title, String description) {
+        String content = "标题：" + (title == null ? "" : title);
+        if (description != null && !description.isBlank()) {
+            content += "\n简介：" + description.trim();
+        }
+        return content;
+    }
+
+    /**
+     * 确认图片/视频知识页时刷新为最新标题+简介（用户手动编辑过的内容不覆盖）
+     */
+    public static String refreshLightweightContent(String currentContent, String title, String description) {
+        if (currentContent == null || !currentContent.startsWith("标题：")) {
+            return currentContent;
+        }
+        String content = "标题：" + (title == null ? "" : title);
+        if (description != null && !description.isBlank()) {
+            content += "\n简介：" + description.trim();
+        }
+        return content;
     }
 
     private void mergeShards(Path tempDir, int totalShards, Path target) throws IOException {
@@ -410,6 +469,16 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             return "";
         }
         return fileName.substring(fileName.lastIndexOf('.'));
+    }
+
+    /**
+     * 学生邮箱目录名：小写，@ 转 _at_（保证文件系统安全且可读）
+     */
+    private String emailDir(String email) {
+        if (StringTools.isEmpty(email)) {
+            return "unknown";
+        }
+        return email.trim().toLowerCase(Locale.ROOT).replace("@", "_at_");
     }
 
     private void deleteDirectory(Path dir) {

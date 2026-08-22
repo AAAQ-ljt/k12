@@ -1,0 +1,102 @@
+.reader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.stage {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: linear-gradient(160deg, #fff7e6, #fff);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-height: 420px;
+  justify-content: center;
+}
+
+.pageImage {
+  max-width: 100%;
+  max-height: 52vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  animation: pageIn 0.3s ease;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pagePlaceholder {
+  min-height: 300px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+}
+
+.pageText {
+  font-size: 16px;
+  line-height: 2;
+  color: rgba(0, 0, 0, 0.8);
+  text-align: center;
+  max-width: 560px;
+  padding: 0 12px;
+  font-weight: 500;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.75);
+  transition: all 0.15s ease;
+}
+
+.navButton:hover:not(:disabled) {
+  border-color: #faad14;
+  color: #d48806;
+}
+
+.navButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageIndicator {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 600;
+}

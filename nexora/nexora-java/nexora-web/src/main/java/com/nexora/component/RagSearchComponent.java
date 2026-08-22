@@ -107,6 +107,8 @@ public class RagSearchComponent {
         query.setStatus(1);
         if (ownerId != null && !ownerId.isBlank()) {
             query.setOwnerId(ownerId);
+            // 个人库两段式：仅检索已确认入库（vectorStatus=2）的知识页，草稿不被检索
+            query.setVectorStatus(2);
         } else {
             query.setOwnerIdNull(Boolean.TRUE);
         }

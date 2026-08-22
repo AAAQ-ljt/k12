@@ -35,6 +35,8 @@ export interface AgentMessageInfo {
 export interface AgentSendParams {
   sessionId?: string;
   message: string;
+  /** 随消息携带的图片资源ID（个人库 IMAGE），可空 */
+  imageResourceIds?: string[];
 }
 
 /** AI 对话发送结果 */

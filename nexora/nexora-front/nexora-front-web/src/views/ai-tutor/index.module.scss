@@ -421,3 +421,120 @@
     height: calc(100vh - var(--header-height) - 40px);
   }
 }
+
+.animationCard {
+  margin-top: 10px;
+  max-width: 560px;
+}
+
+
+.quizCard {
+  margin-top: 10px;
+  max-width: 560px;
+}
+
+
+.actionRow {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  padding-left: 36px;
+}
+
+.actionRow :global(.ant-btn) {
+  color: rgba(0, 0, 0, 0.55);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.actionRow :global(.ant-btn:hover) {
+  color: #1677ff;
+  border-color: #1677ff;
+}
+
+
+.animationSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.animationMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.animationTitle {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.animationSteps {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  flex: none;
+}
+
+.composerImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px 0;
+}
+
+.composerImageItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  background: #fff;
+}
+
+.composerImage {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.composerInputRow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.attachButton {
+  align-self: center;
+}
+
+.messageImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.messageImage {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.messageImage:hover {
+  transform: scale(1.03);
+}

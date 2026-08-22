@@ -100,6 +100,11 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-model</artifactId>
         </dependency>
+        <!-- ChatClient（AI 公共组件 AiStructureComponent 使用；版本由 spring-ai-bom 管理） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-client-chat</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-vector-store</artifactId>

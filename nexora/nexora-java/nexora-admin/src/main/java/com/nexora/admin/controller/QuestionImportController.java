@@ -35,6 +35,11 @@ public class QuestionImportController extends ABaseController {
         return getSuccessResponseVO(questionImportBiz.parsePdf(file, resourceId));
     }
 
+    @PostMapping("/parseDocx")
+    public ResponseVO<String> parseDocx(@RequestParam("file") MultipartFile file) {
+        return getSuccessResponseVO(questionImportBiz.parseDocx(file));
+    }
+
     @GetMapping("/pageImage/{dir}/{fileName}")
     public ResponseEntity<FileSystemResource> pageImage(@PathVariable String dir,
                                                         @PathVariable String fileName) {

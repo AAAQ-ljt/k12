@@ -126,6 +126,15 @@ export interface ResourceKnowledgeImportResult {
   async?: boolean;
 }
 
+/** AI 文档整理结果 */
+export interface KnowledgeAIDocVO {
+  resourceId: string;
+  resourceName?: string;
+  stage?: string;
+  originalText?: string;
+  organizedMd?: string;
+}
+
 export function loadOverview(): Promise<KnowledgeOverview> {
   return request.get('/knowledgeBase/overview');
 }
@@ -176,4 +185,8 @@ export function vectorize(docId: string): Promise<void> {
 
 export function searchTest(params: KnowledgeSearchTestParams): Promise<KnowledgeSearchResult[]> {
   return request.post('/knowledgeBase/searchTest', params);
+}
+
+export function aiOrganize(resourceId: string): Promise<KnowledgeAIDocVO> {
+  return request.post('/knowledgeBase/aiOrganize', null, { params: { resourceId } });
 }

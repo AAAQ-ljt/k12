@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  Button,
   Descriptions,
+  Modal,
   Progress,
   Space,
   Spin,
@@ -10,12 +12,14 @@ import {
   Tag,
   type TableProps,
 } from 'antd';
+import MDEditor from '@uiw/react-md-editor';
 import {
   BookOpen,
   BrainCircuit,
   Database,
   FolderOpen,
   MessageSquare,
+  Sparkles,
   Target,
   Timer,
 } from 'lucide-react';
@@ -26,7 +30,7 @@ import {
   QUESTION_TYPE_MAP,
   USER_STATUS_MAP,
 } from '@/types/common';
-import { getStudentDetail } from '@/api/learningAnalysis';
+import { aiReport, getStudentDetail } from '@/api/learningAnalysis';
 import type {
   AiIntentItem,
   AiRecentMessageItem,
@@ -107,6 +111,9 @@ export default function LearningUserDetailDrawer({
 }: LearningUserDetailDrawerProps) {
   const [detail, setDetail] = useState<LearningUserDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [report, setReport] = useState('');
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     if (!open || !userId) return;
@@ -117,6 +124,23 @@ export default function LearningUserDetailDrawer({
       .catch(() => undefined)
       .finally(() => setLoading(false));
   }, [open, userId]);
+
+  const handleGenerateReport = async () => {
+    if (!userId) {
+      return;
+    }
+    setReporting(true);
+    setReport('');
+    setReportOpen(true);
+    try {
+      setReport(await aiReport(userId));
+    } catch {
+      setReportOpen(false);
+      // 错误已由请求拦截器统一提示
+    } finally {
+      setReporting(false);
+    }
+  };
 
   const courseColumns: TableProps<CourseStudyProgressItem>['columns'] = [
     {
@@ -537,7 +561,11 @@ export default function LearningUserDetailDrawer({
       open={open}
       title="用户个人学习情况"
       width={1100}
-      footer={null}
+      footer={!loading && detail ? (
+        <Button type="primary" icon={<Sparkles size={15} />} loading={reporting} onClick={() => void handleGenerateReport()}>
+          AI 生成学习报告
+        </Button>
+      ) : null}
       onClose={onClose}
     >
       {loading || !detail ? (
@@ -557,6 +585,26 @@ export default function LearningUserDetailDrawer({
           ]}
         />
       )}
+
+      <Modal
+        title="AI 学习报告"
+        open={reportOpen}
+        onCancel={() => setReportOpen(false)}
+        footer={report ? (
+          <Button type="primary" onClick={() => setReportOpen(false)}>关闭</Button>
+        ) : null}
+        width={720}
+      >
+        {reporting || !report ? (
+          <div className={styles.loadingBox} style={{ minHeight: 260 }}>
+            <Spin tip="AI 正在撰写学习报告..." />
+          </div>
+        ) : (
+          <div className={styles.reportBody}>
+            <MDEditor.Markdown source={report} />
+          </div>
+        )}
+      </Modal>
     </BaseDrawer>
   );
 }

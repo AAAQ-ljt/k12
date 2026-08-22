@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.UserWikiProfileMapper">
+
+    <resultMap id="base_result_map" type="com.nexora.entity.po.UserWikiProfile">
+        <id column="user_id" property="userId"/>
+        <result column="learning_goal" property="learningGoal"/>
+        <result column="key_questions" property="keyQuestions"/>
+        <result column="interest_subjects" property="interestSubjects"/>
+        <result column="alias_terms" property="aliasTerms"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        p.user_id,p.learning_goal,p.key_questions,p.interest_subjects,p.alias_terms,
+        p.create_time,p.update_time
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.userId != null and query.userId!=''">
+            and p.user_id = #{query.userId}
+        </if>
+    </sql>
+
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+        </where>
+    </sql>
+
+    <select id="selectList" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/> FROM user_wiki_profile p
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM user_wiki_profile p
+        <include refid="query_condition"/>
+    </select>
+
+    <insert id="insert" parameterType="com.nexora.entity.po.UserWikiProfile">
+        INSERT INTO user_wiki_profile
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.userId != null">user_id,</if>
+            <if test="bean.learningGoal != null">learning_goal,</if>
+            <if test="bean.keyQuestions != null">key_questions,</if>
+            <if test="bean.interestSubjects != null">interest_subjects,</if>
+            <if test="bean.aliasTerms != null">alias_terms,</if>
+            <if test="bean.createTime != null">create_time,</if>
+            <if test="bean.updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.userId!=null">#{bean.userId},</if>
+            <if test="bean.learningGoal!=null">#{bean.learningGoal},</if>
+            <if test="bean.keyQuestions!=null">#{bean.keyQuestions},</if>
+            <if test="bean.interestSubjects!=null">#{bean.interestSubjects},</if>
+            <if test="bean.aliasTerms!=null">#{bean.aliasTerms},</if>
+            <if test="bean.createTime!=null">#{bean.createTime},</if>
+            <if test="bean.updateTime!=null">#{bean.updateTime},</if>
+        </trim>
+    </insert>
+
+    <insert id="insertOrUpdate" parameterType="com.nexora.entity.po.UserWikiProfile">
+        INSERT INTO user_wiki_profile
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.userId != null">user_id,</if>
+            <if test="bean.learningGoal != null">learning_goal,</if>
+            <if test="bean.keyQuestions != null">key_questions,</if>
+            <if test="bean.interestSubjects != null">interest_subjects,</if>
+            <if test="bean.aliasTerms != null">alias_terms,</if>
+            <if test="bean.createTime != null">create_time,</if>
+            <if test="bean.updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.userId!=null">#{bean.userId},</if>
+            <if test="bean.learningGoal!=null">#{bean.learningGoal},</if>
+            <if test="bean.keyQuestions!=null">#{bean.keyQuestions},</if>
+            <if test="bean.interestSubjects!=null">#{bean.interestSubjects},</if>
+            <if test="bean.aliasTerms!=null">#{bean.aliasTerms},</if>
+            <if test="bean.createTime!=null">#{bean.createTime},</if>
+            <if test="bean.updateTime!=null">#{bean.updateTime},</if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.learningGoal!=null">learning_goal = VALUES(learning_goal),</if>
+            <if test="bean.keyQuestions!=null">key_questions = VALUES(key_questions),</if>
+            <if test="bean.interestSubjects!=null">interest_subjects = VALUES(interest_subjects),</if>
+            <if test="bean.aliasTerms!=null">alias_terms = VALUES(alias_terms),</if>
+            <if test="bean.updateTime!=null">update_time = VALUES(update_time),</if>
+        </trim>
+    </insert>
+
+    <update id="updateByParam">
+        UPDATE user_wiki_profile p
+        <set>
+            <if test="bean.learningGoal != null">p.learning_goal = #{bean.learningGoal},</if>
+            <if test="bean.keyQuestions != null">p.key_questions = #{bean.keyQuestions},</if>
+            <if test="bean.interestSubjects != null">p.interest_subjects = #{bean.interestSubjects},</if>
+            <if test="bean.aliasTerms != null">p.alias_terms = #{bean.aliasTerms},</if>
+            <if test="bean.updateTime != null">p.update_time = #{bean.updateTime},</if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <delete id="deleteByParam">
+        DELETE FROM user_wiki_profile p
+        <include refid="query_condition"/>
+    </delete>
+
+    <update id="updateByUserId">
+        UPDATE user_wiki_profile p
+        <set>
+            <if test="bean.learningGoal != null">p.learning_goal = #{bean.learningGoal},</if>
+            <if test="bean.keyQuestions != null">p.key_questions = #{bean.keyQuestions},</if>
+            <if test="bean.interestSubjects != null">p.interest_subjects = #{bean.interestSubjects},</if>
+            <if test="bean.aliasTerms != null">p.alias_terms = #{bean.aliasTerms},</if>
+            <if test="bean.updateTime != null">p.update_time = #{bean.updateTime},</if>
+        </set>
+        WHERE p.user_id = #{userId}
+    </update>
+
+    <delete id="deleteByUserId">
+        DELETE FROM user_wiki_profile WHERE user_id = #{userId}
+    </delete>
+
+    <select id="selectByUserId" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/> FROM user_wiki_profile p WHERE p.user_id = #{userId}
+    </select>
+</mapper>

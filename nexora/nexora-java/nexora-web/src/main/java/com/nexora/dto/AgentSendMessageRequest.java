@@ -1,5 +1,7 @@
 package com.nexora.dto;
 
+import java.util.List;
+
 /**
  * AI 对话发送请求
  */
@@ -15,6 +17,11 @@ public class AgentSendMessageRequest {
      */
     private String message;
 
+    /**
+     * 随消息携带的图片资源ID（学生个人资源中心的 IMAGE 资源），可空；带图时对话走视觉模型
+     */
+    private List<String> imageResourceIds;
+
     public String getSessionId() {
         return sessionId;
     }
@@ -29,5 +36,13 @@ public class AgentSendMessageRequest {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public List<String> getImageResourceIds() {
+        return imageResourceIds;
+    }
+
+    public void setImageResourceIds(List<String> imageResourceIds) {
+        this.imageResourceIds = imageResourceIds;
     }
 }

@@ -12,6 +12,7 @@ import Profile from '@/views/profile';
 import PictureBook from '@/views/picture-book';
 import ResourceCenter from '@/views/resource-center';
 import Animation from '@/views/animation';
+import AnimationPlay from '@/views/animation/play';
 
 const routes: RouteObject[] = [
   {
@@ -82,6 +83,14 @@ const routes: RouteObject[] = [
         element: (
           <ProtectedRoute title="动画讲解" description="登录后查看动画讲解">
             <Animation />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'animation/:resourceId',
+        element: (
+          <ProtectedRoute title="动画讲解" description="登录后查看动画讲解">
+            <AnimationPlay />
           </ProtectedRoute>
         ),
       },

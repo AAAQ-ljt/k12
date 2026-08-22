@@ -68,23 +68,26 @@ public class StudentKnowledgeImportQueueListener {
             if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
                 throw new IllegalArgumentException("源资源不存在或暂不可用");
             }
-            ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
+            // 两段式：确认后的知识页已有 AI 整理内容，直接用其分块向量化，不再用源文件解析结果覆盖
+            if (StringTools.isEmpty(doc.getContent())) {
+                ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
 
-            KnowledgeDoc contentUpdate = new KnowledgeDoc();
-            contentUpdate.setContent(parsed.getText());
-            contentUpdate.setUpdateTime(new Date());
-            knowledgeDocService.updateKnowledgeDocByDocId(contentUpdate, docId);
+                KnowledgeDoc contentUpdate = new KnowledgeDoc();
+                contentUpdate.setContent(parsed.getText());
+                contentUpdate.setUpdateTime(new Date());
+                knowledgeDocService.updateKnowledgeDocByDocId(contentUpdate, docId);
+                doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
+            }
 
-            KnowledgeDoc fresh = knowledgeDocService.getKnowledgeDocByDocId(docId);
-            List<String> chunks = TextChunker.split(fresh.getContent(), 500);
+            List<String> chunks = TextChunker.split(doc.getContent(), 500);
             if (chunks.isEmpty()) {
                 throw new IllegalArgumentException("文档分块结果为空");
             }
-            int oldCount = fresh.getChunkCount() == null ? 0 : fresh.getChunkCount();
+            int oldCount = doc.getChunkCount() == null ? 0 : doc.getChunkCount();
             knowledgeVectorComponent.deleteChunks(docId, Math.max(oldCount, chunks.size()));
-            knowledgeVectorComponent.saveChunks(docId, fresh.getTitle(), fresh.getStage(),
-                    fresh.getKnowledgePointId(), fresh.getDifficulty(), fresh.getSourceUrl(),
-                    fresh.getSourceResourceId(), fresh.getOwnerId(), chunks);
+            knowledgeVectorComponent.saveChunks(docId, doc.getTitle(), doc.getStage(),
+                    doc.getKnowledgePointId(), doc.getDifficulty(), doc.getSourceUrl(),
+                    doc.getSourceResourceId(), doc.getOwnerId(), chunks);
 
             KnowledgeDoc done = new KnowledgeDoc();
             done.setVectorStatus(2);

@@ -42,7 +42,8 @@ public class AgentController extends ABaseController {
         if (request == null || StringTools.isEmpty(request.getMessage())) {
             throw new BusinessException("消息不能为空");
         }
-        AgentMessage message = agentChatComponent.sendMessage(current, request.getSessionId(), request.getMessage());
+        AgentMessage message = agentChatComponent.sendMessage(current, request.getSessionId(),
+                request.getMessage(), request.getImageResourceIds());
         return getSuccessResponseVO(message);
     }
 

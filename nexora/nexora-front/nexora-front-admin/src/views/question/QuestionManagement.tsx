@@ -19,8 +19,8 @@ export default function QuestionManagement() {
           children: <QuestionReview />,
         },
         {
-          key: 'pdf',
-          label: 'PDF 导入',
+          key: 'import',
+          label: '批量导入',
           children: <QuestionPdfImport />,
         },
       ]}

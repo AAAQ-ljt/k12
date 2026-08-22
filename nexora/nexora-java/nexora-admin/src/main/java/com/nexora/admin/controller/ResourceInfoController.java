@@ -322,7 +322,7 @@ public class ResourceInfoController extends ABaseController {
             ext = originalName.substring(originalName.lastIndexOf('.'));
         }
         String dateDir = new SimpleDateFormat("yyyyMMdd").format(new Date());
-        String relativeDir = resourceFileDir + "/" + dateDir;
+        String relativeDir = resourceFileDir + "/admin/" + dateDir;
         Path targetDir = Paths.get(projectFolder, relativeDir);
         Files.createDirectories(targetDir);
         String fileName = UUID.randomUUID().toString().replace("-", "") + ext;

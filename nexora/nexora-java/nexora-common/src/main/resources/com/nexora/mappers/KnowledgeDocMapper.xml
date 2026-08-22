@@ -89,6 +89,9 @@
 			<if test="query.sourceResourceId != null and query.sourceResourceId!=''">
 				 and  k.source_resource_id = #{query.sourceResourceId}
 			</if>
+			<if test="query.sourceUrl != null and query.sourceUrl!=''">
+				 and  k.source_url = #{query.sourceUrl}
+			</if>
 			<if test="query.vectorStatus != null">
 				 and  k.vector_status = #{query.vectorStatus}
 			</if>

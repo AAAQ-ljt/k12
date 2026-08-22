@@ -37,6 +37,7 @@ export const menus: MenuConfig[] = [
       { key: 'knowledge:overview', label: '知识总览', path: '/knowledge/overview', menuCode: 'knowledge:overview' },
       { key: 'knowledge:catalog', label: '知识目录', path: '/knowledge/catalog', menuCode: 'knowledge:catalog' },
       { key: 'knowledge:test', label: '问答测试', path: '/knowledge/test', menuCode: 'knowledge:test' },
+      { key: 'knowledge:arrange', label: 'AI 文档整理', path: '/knowledge/arrange', menuCode: 'knowledge:arrange' },
     ],
   },
   {

@@ -1,0 +1,146 @@
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--card-white);
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 16px;
+}
+
+.pageTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pageDesc {
+  margin-top: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pathCard {
+  background: var(--card-white);
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.pathHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pathTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pathTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pathActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.pathTime {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.stepIndex {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gradient-brand-warm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.stepBody {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.stepTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.stepTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stepDesc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.emptySteps {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}

@@ -10,8 +10,10 @@ import {
   Image as ImageIcon,
   Layers,
   Link2,
+  Sparkles,
 } from 'lucide-react';
 import { getCourseDetail, type StudentCourseDetail, type StudentLessonResource } from '@/api/course';
+import { syncStudentWikiFromCourse } from '@/api/studentWiki';
 import styles from './course.module.scss';
 
 const RESOURCE_META: Record<string, { label: string; icon: typeof FileText; color: string }> = {
@@ -36,6 +38,7 @@ export default function CourseDetail() {
   const [detail, setDetail] = useState<StudentCourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -78,6 +81,18 @@ export default function CourseDetail() {
       return;
     }
     navigate(`/course-material/resource/${resource.resourceId}`);
+  };
+
+  const handleSyncWiki = async () => {
+    setSyncing(true);
+    try {
+      const doc = await syncStudentWikiFromCourse(courseId);
+      message.success(`已生成知识页草稿《${doc.title || ''}》，可在「资源中心 → 知识页」查看并确认入库`);
+    } catch {
+      // 错误已统一提示
+    } finally {
+      setSyncing(false);
+    }
   };
 
   if (loading) {
@@ -127,6 +142,16 @@ export default function CourseDetail() {
               </span>
             </div>
           </div>
+          <Button
+            className={styles.syncButton}
+            type="primary"
+            ghost
+            icon={<Sparkles size={15} />}
+            loading={syncing}
+            onClick={() => void handleSyncWiki()}
+          >
+            生成知识页草稿
+          </Button>
         </div>
       </header>
 

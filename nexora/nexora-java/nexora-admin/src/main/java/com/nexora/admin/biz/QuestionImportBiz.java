@@ -12,6 +12,11 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +25,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,8 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * PDF 题目导入：PDFBox 抽取文本 + PDFRenderer 渲染页图。
- * TODO: 当前解析格式不完善，后续重构或移交。
+ * 题目导入：docx 提取（主路径，PDF 转 Word 后导入）；历史 PDF 文本/页图解析保留但已废弃（见 7.18）。
  */
 @Service
 public class QuestionImportBiz {
@@ -41,6 +46,43 @@ public class QuestionImportBiz {
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    /**
+     * docx 解析（7.18 主路径）：POI 提取段落与表格文本，作为题目 MD 初稿
+     */
+    public String parseDocx(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择 Word 文档");
+        }
+        try (InputStream in = file.getInputStream();
+             XWPFDocument document = new XWPFDocument(in)) {
+            StringBuilder builder = new StringBuilder();
+            for (XWPFParagraph paragraph : document.getParagraphs()) {
+                String text = paragraph.getText();
+                if (text == null || text.isBlank()) {
+                    continue;
+                }
+                builder.append(text.trim()).append("\n");
+            }
+            for (XWPFTable table : document.getTables()) {
+                for (XWPFTableRow row : table.getRows()) {
+                    List<String> cells = new ArrayList<>();
+                    for (XWPFTableCell cell : row.getTableCells()) {
+                        cells.add(cell.getText() == null ? "" : cell.getText().trim());
+                    }
+                    builder.append(String.join(" | ", cells)).append("\n");
+                }
+                builder.append("\n");
+            }
+            String text = builder.toString().trim();
+            if (text.isEmpty()) {
+                throw new BusinessException("未能从 Word 文档提取到文本，请确认内容可读取");
+            }
+            return text;
+        } catch (IOException e) {
+            throw new BusinessException("Word 文档解析失败：" + e.getMessage());
+        }
+    }
 
     public QuestionPdfParseVO parsePdf(MultipartFile file, String resourceId) {
         File pdfFile = null;

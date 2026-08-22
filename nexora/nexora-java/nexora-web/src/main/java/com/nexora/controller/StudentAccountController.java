@@ -73,7 +73,10 @@ public class StudentAccountController extends ABaseController {
      */
     @PostMapping("/register")
     @GlobalInterceptor(checkLogin = false)
-    public ResponseVO<StudentLoginVO> register(@RequestBody StudentRegisterRequest request) {
+    public ResponseVO<StudentLoginVO> register(@RequestBody(required = false) StudentRegisterRequest request) {
+        if (request == null || StringTools.isEmpty(request.getCheckCodeKey()) || StringTools.isEmpty(request.getCheckCode())) {
+            throw new BusinessException("请先获取图形验证码");
+        }
         validCheckCode(request.getCheckCodeKey(), request.getCheckCode());
         try {
             if (StringTools.isEmpty(request.getUsername())) {

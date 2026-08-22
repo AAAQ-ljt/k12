@@ -122,3 +122,15 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.reportBody {
+  max-height: 62vh;
+  overflow: auto;
+  padding: 8px 4px;
+}
+
+.reportBody :global(.wmde-markdown) {
+  font-size: 14px;
+  line-height: 1.8;
+}
+

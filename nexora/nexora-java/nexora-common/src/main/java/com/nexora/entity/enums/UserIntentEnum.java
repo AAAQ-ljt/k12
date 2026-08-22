@@ -12,6 +12,7 @@ public enum UserIntentEnum {
     DRAW("DRAW", "画图"),
     ANIMATION("ANIMATION", "动画"),
     CODING("CODING", "编程"),
+    SCIENCE_SOLVE("SCIENCE_SOLVE", "理科求解"),
     PLAN("PLAN", "学习路径"),
     PROGRESS("PROGRESS", "进度掌握度"),
     CHAT("CHAT", "普通对话");

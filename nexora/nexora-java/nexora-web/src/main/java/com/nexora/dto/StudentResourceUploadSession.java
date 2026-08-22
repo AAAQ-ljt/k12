@@ -14,6 +14,10 @@ public class StudentResourceUploadSession {
     private String directoryId;
     private String stage;
     private String ownerId;
+
+    /** 学生邮箱（落盘目录用：student/{邮箱目录}/{月份}/...） */
+    private String email;
+
     private Integer shardSize;
     private Integer totalShards;
     private String tempDir;
@@ -88,6 +92,14 @@ public class StudentResourceUploadSession {
 
     public void setOwnerId(String ownerId) {
         this.ownerId = ownerId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public Integer getShardSize() {

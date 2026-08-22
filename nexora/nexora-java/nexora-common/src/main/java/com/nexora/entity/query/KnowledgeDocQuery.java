@@ -85,6 +85,13 @@ public class KnowledgeDocQuery extends BaseParam {
 	private String sourceResourceIdFuzzy;
 
 	/**
+	 * 资料链接（超链接文档 / 对话同步消息标识），可空
+	 */
+	private String sourceUrl;
+
+	private String sourceUrlFuzzy;
+
+	/**
 	 * 向量状态：0待处理 1处理中 2已完成 3失败 4过期
 	 */
 	private Integer vectorStatus;
@@ -280,6 +287,22 @@ public class KnowledgeDocQuery extends BaseParam {
 
 	public String getSourceResourceIdFuzzy(){
 		return this.sourceResourceIdFuzzy;
+	}
+
+	public void setSourceUrl(String sourceUrl){
+		this.sourceUrl = sourceUrl;
+	}
+
+	public String getSourceUrl(){
+		return this.sourceUrl;
+	}
+
+	public void setSourceUrlFuzzy(String sourceUrlFuzzy){
+		this.sourceUrlFuzzy = sourceUrlFuzzy;
+	}
+
+	public String getSourceUrlFuzzy(){
+		return this.sourceUrlFuzzy;
 	}
 
 	public void setVectorStatus(Integer vectorStatus){

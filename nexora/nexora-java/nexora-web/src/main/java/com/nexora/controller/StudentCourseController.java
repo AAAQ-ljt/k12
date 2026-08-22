@@ -6,6 +6,7 @@ import com.nexora.entity.po.CourseChapter;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseInfo;
+import com.nexora.entity.po.KnowledgeDoc;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.CourseChapterLessonQuery;
 import com.nexora.entity.query.CourseChapterLessonResourceQuery;
@@ -23,10 +24,12 @@ import com.nexora.service.CourseChapterLessonService;
 import com.nexora.service.CourseChapterService;
 import com.nexora.service.CourseInfoService;
 import com.nexora.service.ResourceInfoService;
+import com.nexora.service.StudentWikiService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,6 +59,9 @@ public class StudentCourseController extends ABaseController {
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private StudentWikiService studentWikiService;
 
     @GetMapping("/loadMyCourses")
     public ResponseVO<PaginationResultVO<CourseInfo>> loadMyCourses(CourseInfoQuery query) {
@@ -103,6 +109,22 @@ public class StudentCourseController extends ABaseController {
         }
         detail.setChapters(chapterVOs);
         return getSuccessResponseVO(detail);
+    }
+
+    /**
+     * 同步课程教材为知识页草稿（主线 6）：AI 将课程绑定资源（名称+简介）整理后落个人知识库草稿，按课程去重
+     */
+    @PostMapping("/syncWiki")
+    public ResponseVO<KnowledgeDoc> syncWiki(@RequestParam String courseId) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        CourseInfo course = courseInfoService.getCourseInfoByCourseId(courseId);
+        if (course == null || course.getStatus() == null || course.getStatus() != 1
+                || !courseVisibleTo(course, current)) {
+            throw new BusinessException("课程不存在或暂不可用");
+        }
+        String stage = StringTools.isEmpty(current.getStage()) ? course.getStage() : current.getStage();
+        return getSuccessResponseVO(studentWikiService.syncFromCourse(
+                current.getUserId(), stage, courseId, course.getCourseName()));
     }
 
     private List<CourseLessonDetailVO> loadLessons(String chapterId, String courseId) {

@@ -27,6 +27,11 @@ public class ResourceDirectory implements Serializable {
     private String parentId;
 
     /**
+     * 目录类型：raw/wiki/attachments 系统目录；NULL=普通目录
+     */
+    private String dirType;
+
+    /**
      * 归属用户ID；NULL=管理端公共目录
      */
     private String ownerId;
@@ -72,6 +77,14 @@ public class ResourceDirectory implements Serializable {
 
     public void setParentId(String parentId) {
         this.parentId = parentId;
+    }
+
+    public String getDirType() {
+        return dirType;
+    }
+
+    public void setDirType(String dirType) {
+        this.dirType = dirType;
     }
 
     public String getOwnerId() {

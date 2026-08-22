@@ -1,0 +1,42 @@
+.playPage {
+  height: calc(100vh - var(--header-height) - 64px);
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.playHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--card-white);
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 16px;
+}
+
+.playTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playSub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.playStage {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 16px;
+  padding: 14px 18px;
+  overflow: auto;
+}

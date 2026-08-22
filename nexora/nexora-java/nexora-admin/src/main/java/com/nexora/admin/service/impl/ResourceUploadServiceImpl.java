@@ -184,7 +184,7 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
             String cover = null;
             Integer duration = null;
             if (isVideo(session.getResourceType(), extension)) {
-                String targetRelativeDir = resourceFileDir + "/" + monthDir + "/"
+                String targetRelativeDir = resourceFileDir + "/admin/" + monthDir + "/"
                         + UUID.randomUUID().toString().replace("-", "");
                 Path targetAbsDir = Paths.get(projectFolder, targetRelativeDir);
                 Files.createDirectories(targetAbsDir);
@@ -207,12 +207,12 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
                 hlsPath = hlsRelative;
                 cover = coverRelative;
             } else {
-                Path targetAbsDir = Paths.get(projectFolder, resourceFileDir, monthDir);
+                Path targetAbsDir = Paths.get(projectFolder, resourceFileDir, "admin", monthDir);
                 Files.createDirectories(targetAbsDir);
                 String fileName = UUID.randomUUID().toString().replace("-", "") + extension;
                 Path targetFile = targetAbsDir.resolve(fileName);
                 Files.copy(mergedPath, targetFile, StandardCopyOption.REPLACE_EXISTING);
-                filePath = resourceFileDir + "/" + monthDir + "/" + fileName;
+                filePath = resourceFileDir + "/admin/" + monthDir + "/" + fileName;
             }
             ResourceInfo update = new ResourceInfo();
             update.setFilePath(filePath);

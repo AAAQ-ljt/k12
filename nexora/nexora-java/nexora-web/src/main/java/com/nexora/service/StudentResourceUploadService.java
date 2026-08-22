@@ -12,7 +12,7 @@ public interface StudentResourceUploadService {
      * 创建上传会话：落库为上传中并缓存到 Redis
      */
     StudentUploadSessionVO prepare(String resourceName, String resourceType, String originalFileName,
-                                   Long fileSize, String directoryId, String stage, String ownerId);
+                                   Long fileSize, String directoryId, String stage, String ownerId, String email);
 
     /**
      * 写入分片；最后一片写入后自动入队合并

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Pyodide 本地发行文件(从 node_modules/pyodide 拷贝,勿提交,换环境重新拷贝)
+public/pyodide/
+

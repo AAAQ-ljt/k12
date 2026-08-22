@@ -26,6 +26,9 @@ import com.nexora.service.KnowledgeDocService;
 import com.nexora.service.UserInfoService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -48,6 +51,12 @@ public class LearningAnalysisBiz {
     @Resource
     private KnowledgeBaseBiz knowledgeBaseBiz;
 
+    @Resource
+    private ChatClient chatClient;
+
+    @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
+    private String chatModel;
+
     public LearningOverviewVO overview() {
         return learningAnalysisMapper.selectOverview();
     }
@@ -60,6 +69,92 @@ public class LearningAnalysisBiz {
         query.setSimplePage(page);
         List<LearningUserSummaryVO> list = learningAnalysisMapper.selectUserList(query);
         return new PaginationResultVO<>(count, page.getPageSize(), page.getPageNo(), page.getPageTotal(), list);
+    }
+
+    /**
+     * AI 学习报告（主线 9 最小主体）：基于六类学习统计生成自然语言 Markdown 报告
+     */
+    public String aiReport(String userId) {
+        LearningUserDetailVO detail = userDetail(userId);
+        String input = buildReportInput(detail);
+        String systemPrompt = """
+                你是 K12 人工智能通识课的班主任 AI 助教，负责为学生撰写个性化学习报告。
+                根据提供的学生学习统计数据，输出一份 Markdown 学习报告，结构：
+                ## 总体评价(2-3 句)
+                ## 学习亮点(分点列出 2-4 条真实数据亮点)
+                ## 薄弱环节(分点指出 2-3 个需加强的方向)
+                ## 针对性建议(按学段给出 3-5 条可执行建议，结合 AI 助教/动画/绘本/编程/练习等学习方式)
+                ## 下一步行动(3 条具体、可立刻开始)
+                要求：只使用给定数据，不编造；语气鼓励、温和；面向学生本人，语言通俗。""";
+        try {
+            String content = chatClient.prompt()
+                    .system(systemPrompt)
+                    .user(input)
+                    .options(OpenAiChatOptions.builder().model(chatModel).build())
+                    .call()
+                    .content();
+            if (content == null || content.isBlank()) {
+                throw new BusinessException("AI 报告生成失败，请稍后重试");
+            }
+            return content.trim();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("AI 报告生成失败，请稍后重试");
+        }
+    }
+
+    private String buildReportInput(LearningUserDetailVO detail) {
+        StringBuilder builder = new StringBuilder();
+        UserInfo user = detail.getUserInfo();
+        builder.append("学生：").append(user == null ? "-" : user.getNickName() != null ? user.getNickName() : user.getUsername())
+                .append("，学段：").append(user == null || user.getStage() == null ? "-" : user.getStage())
+                .append("，年级：").append(user == null || user.getGrade() == null ? "-" : user.getGrade()).append("\n");
+        builder.append("- 课程：已学 ").append(nz(detail.getCourseCount())).append(" 门，完成 ").append(nz(detail.getCourseFinishedCount()))
+                .append(" 门，平均进度 ").append(detail.getCourseAvgProgress() == null ? 0 : detail.getCourseAvgProgress()).append("%\n");
+        builder.append("- 练习：共 ").append(nz(detail.getPracticeCount())).append(" 次，正确 ").append(nz(detail.getPracticeCorrectCount()))
+                .append(" 次，正确率 ").append(percent(detail.getPracticeAccuracy())).append("\n");
+        builder.append("- 个人知识库：资源 ").append(nz(detail.getWikiResourceCount())).append(" 个，占用 ")
+                .append(detail.getWikiResourceUsedMb() == null ? "0" : String.format("%.1f", detail.getWikiResourceUsedMb()))
+                .append("MB / 配额 ").append(detail.getWikiQuotaPercent() == null ? "0" : String.format("%.0f", detail.getWikiQuotaPercent()))
+                .append("%\n");
+        builder.append("- AI 对话：会话 ").append(nz(detail.getAiSessionCount())).append(" 个，消息 ")
+                .append(nz(detail.getAiMessageCount())).append(" 条，Token 合计 ").append(nz(detail.getAiTokenCount())).append("\n");
+        builder.append("- 掌握度：平均分 ").append(detail.getMasteryAvgScore() == null ? 0 : detail.getMasteryAvgScore())
+                .append("，已掌握知识点 ").append(detail.getMasteryMasteredCount() == null ? 0 : detail.getMasteryMasteredCount()).append(" 个\n");
+        if (detail.getCourseList() != null && !detail.getCourseList().isEmpty()) {
+            builder.append("课程明细：\n");
+            for (CourseStudyProgressItemVO item : detail.getCourseList()) {
+                builder.append("  - ").append(item.getCourseName()).append("：进度 ")
+                        .append(item.getProgress() == null ? 0 : item.getProgress()).append("%\n");
+            }
+        }
+        if (detail.getPracticeKnowledgePoints() != null && !detail.getPracticeKnowledgePoints().isEmpty()) {
+            builder.append("练习知识点：\n");
+            for (PracticeKnowledgePointVO item : detail.getPracticeKnowledgePoints()) {
+                builder.append("  - ").append(item.getKnowledgePointName()).append("：练习 ")
+                        .append(nz(item.getPracticeCount())).append(" 次，正确率 ").append(percent(item.getAccuracy())).append("\n");
+            }
+        }
+        if (detail.getMasteryList() != null && !detail.getMasteryList().isEmpty()) {
+            builder.append("掌握度明细：\n");
+            for (KnowledgeMasteryVO item : detail.getMasteryList()) {
+                builder.append("  - ").append(item.getKnowledgePointName()).append("：得分 ")
+                        .append(item.getMasteryScore() == null ? 0 : item.getMasteryScore()).append("\n");
+            }
+        }
+        return builder.toString();
+    }
+
+    private long nz(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    private String percent(Double value) {
+        if (value == null) {
+            return "0%";
+        }
+        return String.format("%.0f%%", value * 100);
     }
 
     public LearningUserDetailVO userDetail(String userId) {
@@ -111,6 +206,8 @@ public class LearningAnalysisBiz {
         }
         query.setOwnerId(userId);
         query.setOwnerIdNull(null);
+        // 两段式后统计口径：仅「已确认入库」的知识页（vectorStatus=2）计入已向量化文档
+        query.setVectorStatus(2);
         return knowledgeDocService.findListByPage(query);
     }
 

@@ -4,7 +4,7 @@ import {
 } from 'antd';
 import type { TableProps } from 'antd';
 import {
-  Download, Eye, FileImage, FileText, FileVideo, FolderPlus, FolderOpen, Pencil, Trash2, UploadCloud,
+  BookOpen, Download, Eye, FileImage, FileText, FileVideo, FolderPlus, FolderOpen, Pencil, Trash2, UploadCloud,
 } from 'lucide-react';
 import VideoPlayer from '@/views/course-material/components/VideoPlayer';
 import {
@@ -14,6 +14,10 @@ import {
   sortStudentDirectories, updateStudentDirectory, updateStudentResource, uploadStudentShard,
 } from '@/api/studentResource';
 import type { StudentDirectory, StudentResource, StudentStorageInfo } from '@/api/studentResource';
+import { generateStudentWiki, type StudentWikiDoc } from '@/api/studentWiki';
+import WikiListPanel from './components/WikiListPanel';
+import WikiEditModal from './components/WikiEditModal';
+import LearningProfileModal from './components/LearningProfileModal';
 import styles from './index.module.scss';
 
 interface UploadTask {
@@ -38,6 +42,16 @@ const TYPE_OPTIONS = [
   { label: '图片', value: 'IMAGE' },
   { label: '文档', value: 'DOCUMENT' },
 ];
+
+/** 系统目录类型展示名 */
+const DIR_TYPE_LABELS: Record<string, string> = {
+  raw: '原始资料',
+  wiki: '知识页',
+  attachments: '附件',
+};
+
+/** raw 目录仅允许的文档扩展名 */
+const RAW_EXTENSIONS = ['md', 'txt'];
 
 const ALLOWED_EXTENSIONS = [
   'md', 'txt', 'docx', 'doc', 'pdf', 'ppt', 'pptx',
@@ -85,6 +99,10 @@ export default function ResourceCenter() {
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
   const [storage, setStorage] = useState<StudentStorageInfo | null>(null);
+  const [wikiEditDoc, setWikiEditDoc] = useState<StudentWikiDoc | null>(null);
+  const [wikiGenerating, setWikiGenerating] = useState(false);
+  const [wikiReloadKey, setWikiReloadKey] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const loadStorage = useCallback(async () => {
     try {
@@ -141,6 +159,12 @@ export default function ResourceCenter() {
     });
     return map;
   }, [directories]);
+
+  /** 当前选中目录（未选中或根时为 undefined） */
+  const currentDir = currentDirId ? dirMap[currentDirId] : undefined;
+
+  /** 知识页视图：仅「知识页」系统目录展示 wiki 列表 */
+  const isWikiView = currentDir?.dirType === 'wiki';
 
   const breadcrumbItems = useMemo(() => {
     const items: { title: string }[] = [{ title: '我的资源' }];
@@ -306,6 +330,10 @@ export default function ResourceCenter() {
       message.error('仅支持 md/txt/docx/doc/pdf/ppt/pptx 文档、图片和视频');
       return false;
     }
+    if (currentDir?.dirType === 'raw' && !RAW_EXTENSIONS.includes(ext)) {
+      message.error('「原始资料」目录仅支持 md/txt 文档，请先切换到「附件」或其他目录');
+      return false;
+    }
     const remaining = storage?.remainingBytes ?? 0;
     if (file.size > remaining) {
       message.error('存储空间不足，每人额度 300MB');
@@ -314,13 +342,34 @@ export default function ResourceCenter() {
     return true;
   };
 
+  const handleGenerateWiki = async (resource: StudentResource) => {
+    if (!resource.resourceId) {
+      return;
+    }
+    setWikiGenerating(true);
+    setWikiEditDoc(null);
+    try {
+      const doc = await generateStudentWiki(resource.resourceId);
+      setWikiEditDoc(doc);
+      message.success('知识页草稿已生成，可编辑后确认入库');
+    } catch {
+      // 错误已统一提示
+    } finally {
+      setWikiGenerating(false);
+    }
+  };
+
   const saveResourceName = async () => {
     if (!renameResource || !renameResource.resourceId) {
       return;
     }
     try {
-      await updateStudentResource({ resourceId: renameResource.resourceId, resourceName: renameResource.resourceName });
-      message.success('资源已重命名');
+      await updateStudentResource({
+        resourceId: renameResource.resourceId,
+        resourceName: renameResource.resourceName,
+        description: renameResource.description,
+      });
+      message.success('资源信息已保存');
       setRenameResource(null);
       void loadFiles();
     } catch {
@@ -390,9 +439,19 @@ export default function ResourceCenter() {
     {
       title: '操作',
       key: 'action',
-      width: 190,
+      width: 250,
       render: (_, record) => (
         <Space size={4}>
+          {record.resourceType === 'DOCUMENT' && record.status === 1 ? (
+            <Button
+              type="text"
+              size="small"
+              icon={<BookOpen size={14} />}
+              onClick={() => void handleGenerateWiki(record)}
+            >
+              生成 Wiki
+            </Button>
+          ) : null}
           <Button type="text" size="small" icon={<Eye size={14} />} onClick={() => setPreviewResource(record)} />
           <Button
             type="text"
@@ -452,23 +511,30 @@ export default function ResourceCenter() {
               <span>{formatSize(storage.usedBytes)} / {formatSize(storage.quotaBytes)}</span>
             </span>
           )}
-          <Button icon={<FolderPlus size={16} />} onClick={() => openAddDir(currentDirId || '0')}>
-            新建目录
+          <Button icon={<BookOpen size={16} />} onClick={() => setProfileOpen(true)}>
+            我的学习档案
           </Button>
-          <Upload
-            multiple
-            showUploadList={false}
-            accept=".md,.txt,.docx,.doc,.pdf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.avi,.mov,.mkv,.flv,.wmv,.webm,.m4v,.ts"
-            beforeUpload={(file) => {
-              if (!validateUploadFile(file)) {
-                return false;
-              }
-              void uploadFile(file);
-              return false;
-            }}
-          >
-            <Button type="primary" icon={<UploadCloud size={16} />}>上传资源</Button>
-          </Upload>
+          {!isWikiView ? (
+            <>
+              <Button icon={<FolderPlus size={16} />} onClick={() => openAddDir(currentDirId || '0')}>
+                新建目录
+              </Button>
+              <Upload
+                multiple
+                showUploadList={false}
+                accept=".md,.txt,.docx,.doc,.pdf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.avi,.mov,.mkv,.flv,.wmv,.webm,.m4v,.ts"
+                beforeUpload={(file) => {
+                  if (!validateUploadFile(file)) {
+                    return false;
+                  }
+                  void uploadFile(file);
+                  return false;
+                }}
+              >
+                <Button type="primary" icon={<UploadCloud size={16} />}>上传资源</Button>
+              </Upload>
+            </>
+          ) : null}
         </Space>
       </div>
 
@@ -487,27 +553,38 @@ export default function ResourceCenter() {
             onDrop={handleDrop}
             titleRender={(node: any) => {
               const dir = dirMap[node.key];
+              const dirType = dir?.dirType;
+              const isSystem = !!dirType;
               return (
                 <div className={styles.treeNode}>
-                  <span className={styles.treeNodeName}>{node.title}</span>
-                  <Space size={0} className={styles.treeNodeActions}>
-                    <Button type="text" size="small" icon={<FolderPlus size={13} />} onClick={(event) => {
-                      event.stopPropagation();
-                      openAddDir(node.key);
-                    }} />
-                    <Button type="text" size="small" icon={<Pencil size={13} />} onClick={(event) => {
-                      event.stopPropagation();
-                      if (dir) {
-                        openRenameDir(dir);
-                      }
-                    }} />
-                    <Button type="text" size="small" danger icon={<Trash2 size={13} />} onClick={(event) => {
-                      event.stopPropagation();
-                      if (dir) {
-                        void removeDir(dir);
-                      }
-                    }} />
-                  </Space>
+                  <span className={styles.treeNodeName}>
+                    {node.title}
+                    {isSystem && dirType ? (
+                      <Tag color="blue" style={{ marginLeft: 6 }}>
+                        {DIR_TYPE_LABELS[dirType] || dirType}
+                      </Tag>
+                    ) : null}
+                  </span>
+                  {!isSystem ? (
+                    <Space size={0} className={styles.treeNodeActions}>
+                      <Button type="text" size="small" icon={<FolderPlus size={13} />} onClick={(event) => {
+                        event.stopPropagation();
+                        openAddDir(node.key);
+                      }} />
+                      <Button type="text" size="small" icon={<Pencil size={13} />} onClick={(event) => {
+                        event.stopPropagation();
+                        if (dir) {
+                          openRenameDir(dir);
+                        }
+                      }} />
+                      <Button type="text" size="small" danger icon={<Trash2 size={13} />} onClick={(event) => {
+                        event.stopPropagation();
+                        if (dir) {
+                          void removeDir(dir);
+                        }
+                      }} />
+                    </Space>
+                  ) : null}
                 </div>
               );
             }}
@@ -516,23 +593,27 @@ export default function ResourceCenter() {
 
         <section className={styles.filePanel}>
           <Breadcrumb items={breadcrumbItems} />
-          <Table
-            rowKey="resourceId"
-            columns={columns}
-            dataSource={resources}
-            loading={loading}
-            pagination={{
-              current: pageNo,
-              pageSize,
-              total,
-              showSizeChanger: true,
-              onChange: (page, size) => {
-                setPageNo(page);
-                setPageSize(size);
-              },
-            }}
-            locale={{ emptyText: <Empty description="暂无资源" /> }}
-          />
+          {isWikiView ? (
+            <WikiListPanel reloadKey={wikiReloadKey} />
+          ) : (
+            <Table
+              rowKey="resourceId"
+              columns={columns}
+              dataSource={resources}
+              loading={loading}
+              pagination={{
+                current: pageNo,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                onChange: (page, size) => {
+                  setPageNo(page);
+                  setPageSize(size);
+                },
+              }}
+              locale={{ emptyText: <Empty description="暂无资源" /> }}
+            />
+          )}
         </section>
       </div>
 
@@ -584,16 +665,25 @@ export default function ResourceCenter() {
       </Modal>
 
       <Modal
-        title="重命名资源"
+        title="编辑资源信息"
         open={!!renameResource}
         onOk={saveResourceName}
         onCancel={() => setRenameResource(null)}
         okText="保存"
       >
-        <Input
-          value={renameResource?.resourceName || ''}
-          onChange={(event) => setRenameResource((prev) => prev ? { ...prev, resourceName: event.target.value } : prev)}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input
+            placeholder="资源名称"
+            value={renameResource?.resourceName || ''}
+            onChange={(event) => setRenameResource((prev) => prev ? { ...prev, resourceName: event.target.value } : prev)}
+          />
+          <Input.TextArea
+            placeholder="简介（图片/视频确认知识页入库时作为检索内容）"
+            autoSize={{ minRows: 2, maxRows: 4 }}
+            value={renameResource?.description || ''}
+            onChange={(event) => setRenameResource((prev) => prev ? { ...prev, description: event.target.value } : prev)}
+          />
+        </div>
       </Modal>
 
       <Modal
@@ -628,6 +718,22 @@ export default function ResourceCenter() {
           />
         )}
       </Modal>
+
+      <WikiEditModal
+        doc={wikiEditDoc}
+        generating={wikiGenerating}
+        onClose={() => {
+          setWikiEditDoc(null);
+          setWikiGenerating(false);
+        }}
+        onSaved={() => {
+          setWikiEditDoc(null);
+          setWikiGenerating(false);
+          setWikiReloadKey((prev) => prev + 1);
+        }}
+      />
+
+      <LearningProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={() => setWikiReloadKey((prev) => prev + 1)} />
     </div>
   );
 }

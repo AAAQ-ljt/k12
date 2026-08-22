@@ -34,6 +34,15 @@ import {
   type AgentSessionInfo,
   type ResourceRecommendItem,
 } from '@/api/agent';
+import { parseAnimationScript, type AnimationScript } from '@/api/animation';
+import { parseQuizScript, type QuizScript } from '@/api/quiz';
+import QuizCard from '@/components/multimodal/QuizCard';
+import { syncStudentWikiFromMessage } from '@/api/studentWiki';
+import {
+  getStudentResourceImageUrl,
+  prepareStudentUpload,
+  uploadStudentShard,
+} from '@/api/studentResource';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { getGradeText, getStageOption } from '@/types/common';
@@ -43,6 +52,11 @@ import styles from './index.module.scss';
 type MessageRole = 'user' | 'assistant';
 type ChatMode = 'chat' | 'animation';
 
+interface ChatImage {
+  resourceId: string;
+  url: string;
+}
+
 interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -51,6 +65,9 @@ interface ChatMessage {
   pending?: boolean;
   cancelled?: boolean;
   recommends?: ResourceRecommendItem[];
+  animation?: AnimationScript | null;
+  quiz?: QuizScript | null;
+  images?: ChatImage[];
 }
 
 interface SessionItem {
@@ -122,6 +139,20 @@ function mapSession(item: AgentSessionInfo): SessionItem {
   };
 }
 
+function parseHistoryImages(bizType?: string, bizData?: string): ChatImage[] | undefined {
+  if (bizType !== 'USER_IMAGE' || !bizData) {
+    return undefined;
+  }
+  try {
+    const ids: string[] = JSON.parse(bizData);
+    return Array.isArray(ids)
+      ? ids.map((resourceId) => ({ resourceId, url: getStudentResourceImageUrl(resourceId) }))
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
   const result: ChatMessage[] = [];
   list.forEach((item) => {
@@ -131,6 +162,7 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
         role: 'user',
         content: item.userMessage,
         time: formatTime(item.createTime),
+        images: parseHistoryImages(item.bizType, item.bizData),
       });
     }
     if (item.assistantMessage) {
@@ -140,6 +172,8 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
         content: item.assistantMessage,
         time: formatTime(item.updateTime || item.createTime),
         recommends: item.bizType === 'RESOURCE_RECOMMEND' ? parseRecommends(item.bizData) : [],
+        animation: item.bizType === 'ANIMATION' ? parseAnimationScript(item.bizData) : undefined,
+        quiz: item.bizType === 'QUIZ' ? parseQuizScript(item.bizData) : undefined,
       });
     }
   });
@@ -160,6 +194,7 @@ export default function AiTutor() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
+  const [attachedImages, setAttachedImages] = useState<ChatImage[]>([]);
   const messagesRef = useRef<HTMLDivElement>(null);
   const messagesStateRef = useRef<ChatMessage[]>([]);
   const pendingRecommendsRef = useRef<Record<string, ResourceRecommendItem[]>>({});
@@ -217,6 +252,8 @@ export default function AiTutor() {
             content: nextContent,
             pending: false,
             recommends: nextRecommends,
+            animation: data.bizType === 'ANIMATION' ? parseAnimationScript(data.bizData) : item.animation,
+            quiz: data.bizType === 'QUIZ' ? parseQuizScript(data.bizData) : item.quiz,
           };
         }
         return {
@@ -280,7 +317,7 @@ export default function AiTutor() {
 
   const handleSend = async (content?: string) => {
     const text = (content ?? input).trim();
-    if (!text || streaming) {
+    if ((!text && attachedImages.length === 0) || streaming) {
       return;
     }
     if (!token) {
@@ -288,9 +325,17 @@ export default function AiTutor() {
       return;
     }
 
+    const imageIds = attachedImages.map((item) => item.resourceId);
     setInput('');
     setStreaming(true);
-    setMessages((prev) => [...prev, createMessage('user', text)]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        ...createMessage('user', text),
+        images: imageIds.length > 0 ? attachedImages.map((item) => ({ resourceId: item.resourceId, url: item.url })) : undefined,
+      },
+    ]);
+    setAttachedImages([]);
     try {
       let sessionId = activeSessionId;
       if (!sessionId) {
@@ -299,7 +344,11 @@ export default function AiTutor() {
         setActiveSessionId(sessionId);
         setSessions((prev) => [mapSession(session), ...prev]);
       }
-      const result = await sendAgentMessage({ sessionId, message: text });
+      const result = await sendAgentMessage({
+        sessionId,
+        message: text,
+        imageResourceIds: imageIds.length > 0 ? imageIds : undefined,
+      });
       setActiveSessionId(result.sessionId);
       setStreamingMessageId(result.messageId);
       const pending = pendingRecommendsRef.current[result.messageId];
@@ -318,6 +367,56 @@ export default function AiTutor() {
     } catch {
       setStreaming(false);
       setStreamingMessageId('');
+    }
+  };
+
+  /** 图片附件：上传到个人库后加入待发列表（预览用本地 ObjectURL，避免上传异步落盘期间的 404） */
+  const handleAttachImage = async (file: File) => {
+    if (!token) {
+      openLoginModal();
+      return;
+    }
+    if (!/^image\/(png|jpe?g|gif|webp|bmp)$/i.test(file.type)) {
+      message.warning('仅支持图片文件');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      message.warning('单张图片不能超过 8MB');
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    try {
+      const session = await prepareStudentUpload({
+        resourceName: file.name.replace(/\.[^.]+$/, ''),
+        resourceType: 'IMAGE',
+        fileName: file.name,
+        fileSize: file.size,
+      });
+      await uploadStudentShard(session.uploadId, 0, file);
+      const item = { resourceId: session.resourceId, url: previewUrl };
+      setAttachedImages((prev) => [...prev, item]);
+      message.success('图片已添加，发送后 AI 会一起识别');
+    } catch {
+      URL.revokeObjectURL(previewUrl);
+      // 错误已统一提示
+    }
+  };
+
+  const handlePasteImage = (event: React.ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (!items) {
+      return;
+    }
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          event.preventDefault();
+          void handleAttachImage(file);
+        }
+        return;
+      }
     }
   };
 
@@ -407,6 +506,27 @@ export default function AiTutor() {
     if (item.sourceUrl) {
       window.open(item.sourceUrl, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  /** L2 动作卡片：把当前问答导出为知识页草稿（assistant 消息 id 即 messageId） */
+  const handleSyncKnowledge = async (item: ChatMessage) => {
+    try {
+      await syncStudentWikiFromMessage(item.id);
+      message.success('已生成知识页草稿，可在「知识页」目录查看并确认入库');
+    } catch {
+      // 错误已统一提示
+    }
+  };
+
+  /** L2 动作卡片：把动作作为新消息继续对话（复用现有意图链路） */
+  const handleQuickAction = (action: 'quiz' | 'animation') => {
+    if (streaming) {
+      return;
+    }
+    const text = action === 'quiz'
+      ? '针对刚才讲解的内容出几道练习题考考我'
+      : '把刚才讲解的内容生成一个动画讲解';
+    void handleSend(text);
   };
 
   const renderRecommendIcon = (type?: string) => {
@@ -534,7 +654,22 @@ export default function AiTutor() {
                 <div className={styles.messageContent}>
                   <div className={`${styles.messageBubble} ${item.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant}`}>
                     {item.role === 'user' ? (
-                      <span className={styles.plainText}>{item.content}</span>
+                      <>
+                        <span className={styles.plainText}>{item.content}</span>
+                        {item.images && item.images.length > 0 ? (
+                          <div className={styles.messageImages}>
+                            {item.images.map((image) => (
+                              <img
+                                key={image.resourceId}
+                                className={styles.messageImage}
+                                src={image.url}
+                                alt="消息图片"
+                                onClick={() => window.open(image.url, '_blank', 'noopener,noreferrer')}
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
                     ) : item.pending ? (
                       <span className={styles.typingHint}>正在思考...</span>
                     ) : (
@@ -563,6 +698,37 @@ export default function AiTutor() {
                           <ChevronRight size={15} />
                         </button>
                       ))}
+                    </div>
+                  ) : null}
+                  {item.role === 'assistant' && item.animation ? (
+                    <div className={styles.animationCard}>
+                      <div className={styles.animationSummary}>
+                        <div className={styles.animationMeta}>
+                          <span className={styles.animationTitle}>《{item.animation.title}》</span>
+                          <span className={styles.animationSteps}>{item.animation.steps.length} 步讲解</span>
+                        </div>
+                        <Button type="primary" size="small" onClick={() => navigate('/animation')}>
+                          查看动画讲解
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {item.role === 'assistant' && item.quiz ? (
+                    <div className={styles.quizCard}>
+                      <QuizCard quiz={item.quiz} />
+                    </div>
+                  ) : null}
+                  {item.role === 'assistant' && !item.pending && item.content && !item.animation && !item.quiz ? (
+                    <div className={styles.actionRow}>
+                      <Button size="small" type="text" icon={<BookOpen size={13} />} onClick={() => void handleSyncKnowledge(item)}>
+                        同步知识页
+                      </Button>
+                      <Button size="small" type="text" onClick={() => handleQuickAction('quiz')}>
+                        出题练习
+                      </Button>
+                      <Button size="small" type="text" onClick={() => handleQuickAction('animation')}>
+                        动画讲解
+                      </Button>
                     </div>
                   ) : null}
                   <div className={styles.messageTime}>{item.time}</div>
@@ -594,39 +760,79 @@ export default function AiTutor() {
 
           {token ? (
             <div className={styles.composerBox}>
-              <Input.TextArea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onPressEnter={(event) => {
-                  if (!event.shiftKey) {
-                    event.preventDefault();
-                    void handleSend();
-                  }
-                }}
-                placeholder={mode === 'animation' ? '例如：冒泡排序' : '输入你的问题...'}
-                autoSize={{ minRows: 1, maxRows: 5 }}
-                variant="borderless"
-                className={styles.composerInput}
-              />
-              {streaming ? (
-                <Tooltip title="停止生成">
+              {attachedImages.length > 0 ? (
+                <div className={styles.composerImages}>
+                  {attachedImages.map((image) => (
+                    <div key={image.resourceId} className={styles.composerImageItem}>
+                      <img className={styles.composerImage} src={image.url} alt="待发送图片" />
+                      <Button
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<Trash2 size={13} />}
+                        onClick={() => setAttachedImages((prev) => prev.filter((item) => item.resourceId !== image.resourceId))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <div className={styles.composerInputRow}>
+                <Tooltip title="上传图片（粘贴图片也可以）">
                   <Button
                     type="text"
-                    icon={<Square size={18} />}
-                    onClick={() => void handleCancel()}
-                    className={styles.sendButton}
+                    icon={<ImageIcon size={18} />}
+                    onClick={() => document.getElementById('ai-tutor-image-input')?.click()}
+                    className={styles.attachButton}
                   />
                 </Tooltip>
-              ) : (
-                <Tooltip title="发送">
-                  <Button
-                    type="primary"
-                    icon={<Send size={17} />}
-                    onClick={() => void handleSend()}
-                    className={styles.sendButton}
-                  />
-                </Tooltip>
-              )}
+                <input
+                  id="ai-tutor-image-input"
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+                  hidden
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void handleAttachImage(file);
+                      event.target.value = '';
+                    }
+                  }}
+                />
+                <Input.TextArea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onPaste={handlePasteImage}
+                  onPressEnter={(event) => {
+                    if (!event.shiftKey) {
+                      event.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                  placeholder={mode === 'animation' ? '例如：冒泡排序' : '输入你的问题，可附带图片...'}
+                  autoSize={{ minRows: 1, maxRows: 5 }}
+                  variant="borderless"
+                  className={styles.composerInput}
+                />
+                {streaming ? (
+                  <Tooltip title="停止生成">
+                    <Button
+                      type="text"
+                      icon={<Square size={18} />}
+                      onClick={() => void handleCancel()}
+                      className={styles.sendButton}
+                    />
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="发送">
+                    <Button
+                      type="primary"
+                      icon={<Send size={17} />}
+                      onClick={() => void handleSend()}
+                      className={styles.sendButton}
+                    />
+                  </Tooltip>
+                )}
+              </div>
             </div>
           ) : (
             <div className={styles.guestBar}>

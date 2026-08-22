@@ -64,4 +64,9 @@ public class LearningAnalysisController extends ABaseController {
                                                                 @RequestBody KnowledgeSearchTestRequest request) {
         return getSuccessResponseVO(learningAnalysisBiz.studentSearchTest(userId, request));
     }
+
+    @GetMapping("/aiReport")
+    public ResponseVO<String> aiReport(@RequestParam String userId) {
+        return getSuccessResponseVO(learningAnalysisBiz.aiReport(userId));
+    }
 }

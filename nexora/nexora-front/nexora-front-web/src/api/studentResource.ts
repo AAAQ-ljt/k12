@@ -6,6 +6,8 @@ export interface StudentDirectory {
   dirId: string;
   dirName: string;
   parentId: string;
+  /** 系统目录类型：raw/wiki/attachments；普通目录为空 */
+  dirType?: string;
   ownerId?: string;
   sort: number;
   createTime?: string;
