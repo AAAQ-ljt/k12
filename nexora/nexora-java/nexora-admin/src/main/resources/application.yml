@@ -84,7 +84,7 @@ project:
   ai:
     vision-model: ${NEXORA_VISION_MODEL:deepseek-v4-flash-vision-exp}
     image:
-      provider: ${NEXORA_IMAGE_PROVIDER:ark}
+      provider: ${NEXORA_IMAGE_PROVIDER:dashscope}
       model: ${NEXORA_IMAGE_MODEL:qwen-image-3.0}
       base-url: ${NEXORA_IMAGE_BASE_URL:https://llm-ujcvkugrdhkrbvqu.cn-beijing.maas.aliyuncs.com}
       path: ${NEXORA_IMAGE_PATH:/api/v1/services/aigc/multimodal-generation/generation}
