@@ -229,7 +229,8 @@ public class AgentChatComponent {
                 return;
             }
 
-            IntentAnalyzerComponent.IntentResult intentResult = intentAnalyzerComponent.analyze(message.getUserMessage());
+            IntentAnalyzerComponent.IntentResult intentResult = intentAnalyzerComponent.analyze(
+                    message.getUserMessage(), user.getStage());
             String intent = intentResult.intent();
             String bizType = mapIntentToBizType(intent);
             String bizData = intentResult.data() == null ? null : JSON.toJSONString(intentResult.data());

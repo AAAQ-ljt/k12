@@ -177,6 +177,17 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
       });
     }
   });
+  // 会话最后一条消息仍在生成中(status=0)时，插入"生成中"占位，等待 WS 增量继续填充
+  const last = list[list.length - 1];
+  if (last && last.status === 0 && !result.some((m) => m.id === last.messageId)) {
+    result.push({
+      id: last.messageId,
+      role: 'assistant',
+      content: '',
+      time: '',
+      pending: true,
+    });
+  }
   return result;
 }
 
@@ -188,6 +199,8 @@ export default function AiTutor() {
   const openLoginModal = useUiStore((state) => state.openLoginModal);
 
   const [mode, setMode] = useState<ChatMode>('chat');
+  /** 整个小学阶段（小低+小高）不提供动画讲解能力 */
+  const isPrimaryStage = userInfo?.stage === 'PRIMARY_LOW' || userInfo?.stage === 'PRIMARY_HIGH';
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState('');
@@ -290,6 +303,8 @@ export default function AiTutor() {
 
   useEffect(() => {
     if (!token) {
+      websocket.offMessage('*', handleAgentPush);
+      websocket.disconnect();
       setSessions([]);
       setMessages([]);
       setActiveSessionId('');
@@ -302,8 +317,9 @@ export default function AiTutor() {
     websocket.onMessage('*', handleAgentPush);
     void loadSessionList();
     return () => {
+      // 仅解绑回调，不断开连接：切换页面时让 AI 流式生成继续在后台运行，
+      // 重新进入页面后重新注册回调，继续接收增量（或从历史同步最终结果）
       websocket.offMessage('*', handleAgentPush);
-      websocket.disconnect();
     };
   }, [token, handleAgentPush, loadSessionList]);
 
@@ -626,9 +642,16 @@ export default function AiTutor() {
                 <Bot size={30} />
               </div>
               <h2>你好，我是你的 AI 助教</h2>
-              <p>可以帮你讲解知识、生成动画、推荐材料、出练习题</p>
+              <p>
+                {isPrimaryStage
+                  ? '可以帮你讲解知识、推荐材料、出练习题'
+                  : '可以帮你讲解知识、生成动画、推荐材料、出练习题'}
+              </p>
               <div className={styles.suggestionGrid}>
-                {SUGGESTIONS.map((item) => (
+                {(isPrimaryStage
+                  ? SUGGESTIONS.filter((s) => s.mode !== 'animation')
+                  : SUGGESTIONS
+                ).map((item) => (
                   <button
                     key={item.label}
                     className={styles.suggestionChip}
@@ -726,9 +749,11 @@ export default function AiTutor() {
                       <Button size="small" type="text" onClick={() => handleQuickAction('quiz')}>
                         出题练习
                       </Button>
-                      <Button size="small" type="text" onClick={() => handleQuickAction('animation')}>
-                        动画讲解
-                      </Button>
+                      {!isPrimaryStage ? (
+                        <Button size="small" type="text" onClick={() => handleQuickAction('animation')}>
+                          动画讲解
+                        </Button>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className={styles.messageTime}>{item.time}</div>
@@ -748,10 +773,14 @@ export default function AiTutor() {
             <Segmented<ChatMode>
               value={mode}
               onChange={setMode}
-              options={[
-                { label: '自由对话', value: 'chat' },
-                { label: '动画讲解', value: 'animation' },
-              ]}
+              options={
+                isPrimaryStage
+                  ? [{ label: '自由对话', value: 'chat' }]
+                  : [
+                      { label: '自由对话', value: 'chat' },
+                      { label: '动画讲解', value: 'animation' },
+                    ]
+              }
             />
             <div className={styles.composerHint}>
               {mode === 'animation' ? '输入概念后将生成 SVG 动画讲解' : '输入问题开始学习'}

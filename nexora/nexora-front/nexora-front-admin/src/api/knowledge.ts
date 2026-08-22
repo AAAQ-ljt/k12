@@ -188,5 +188,6 @@ export function searchTest(params: KnowledgeSearchTestParams): Promise<Knowledge
 }
 
 export function aiOrganize(resourceId: string): Promise<KnowledgeAIDocVO> {
-  return request.post('/knowledgeBase/aiOrganize', null, { params: { resourceId } });
+  // AI 整理为同步调用,大文档可能耗时较长
+  return request.post('/knowledgeBase/aiOrganize', null, { params: { resourceId }, timeout: 300000 });
 }

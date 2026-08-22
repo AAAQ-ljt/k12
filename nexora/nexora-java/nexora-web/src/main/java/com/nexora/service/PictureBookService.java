@@ -1,19 +1,18 @@
 package com.nexora.service;
 
 import com.nexora.entity.po.ResourceInfo;
-import com.nexora.vo.PictureBookVO;
 
 import java.util.List;
 
 /**
- * 学生绘本业务：生成绘本（故事 + 插图，产物存 resource_info.ext_json）、列表、详情、删除
+ * 学生绘本业务：生成由异步任务编排（PictureBookTaskConsumer），此处负责产物落库、列表、详情、删除
  */
 public interface PictureBookService {
 
     /**
-     * 生成绘本：LLM 故事分页文案 + 逐页文生图；单页插图失败降级为纯文字页
+     * 保存绘本产物到资源中心（PICTURE_BOOK 类型，附件目录，owner 隔离）
      */
-    PictureBookVO generate(String userId, String stage, String topic);
+    ResourceInfo saveBook(String userId, String stage, String title, String extJson);
 
     /**
      * 我的绘本列表

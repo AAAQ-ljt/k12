@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Button, Empty, Input, Modal, Popconfirm, Space, Tag } from 'antd';
 import { BookImage, Lock, Play, Sparkles, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useUiStore } from '@/stores/ui';
 import {
   deletePictureBook,
   generatePictureBook,
+  getPictureBookTask,
   loadMyPictureBooks,
   parsePictureBook,
   type PictureBookItem,
@@ -14,6 +15,17 @@ import {
 } from '@/api/pictureBook';
 import PictureBookReader from '@/components/multimodal/PictureBookReader';
 import styles from './index.module.scss';
+
+/** 绘本生成任务持久化（sessionStorage），切页不丢进度 */
+const PB_TASK_KEY = 'pb:task';
+
+interface PictureBookTaskSnapshot {
+  taskId: string;
+  status: string;
+  bookResourceId?: string;
+  title?: string;
+  message?: string;
+}
 
 function formatTime(value?: string): string {
   if (!value) {
@@ -28,6 +40,17 @@ export default function PictureBook() {
   const token = useAuthStore((state) => state.token);
   const userInfo = useAuthStore((state) => state.userInfo);
   const openLoginModal = useUiStore((state) => state.openLoginModal);
+  const [genProgress, setGenProgress] = useState('');
+  /** 绘本面向整个小学阶段（小低+小高） */
+  const isPrimaryStage = userInfo?.stage === 'PRIMARY_LOW' || userInfo?.stage === 'PRIMARY_HIGH';
+  /** 组件是否挂载：切页后轮询只写 sessionStorage，切回时恢复 */
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const [topic, setTopic] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -47,10 +70,10 @@ export default function PictureBook() {
   }, []);
 
   useEffect(() => {
-    if (token && userInfo?.stage === 'PRIMARY_LOW') {
+    if (token && isPrimaryStage) {
       void load();
     }
-  }, [token, userInfo?.stage, load]);
+  }, [token, isPrimaryStage, load]);
 
   const handleGenerate = async () => {
     const text = topic.trim();
@@ -59,21 +82,134 @@ export default function PictureBook() {
       return;
     }
     setGenerating(true);
+    setGenProgress('');
+    setTopic('');
     try {
-      const book = await generatePictureBook(text);
-      setTopic('');
-      message.success(`绘本《${book.resourceName || ''}》生成完成`);
-      await load();
-      const script = parsePictureBook(book.extJson);
-      if (book.resourceId && script) {
-        setReading({ item: book, script });
-      }
+      // 异步任务：提交后轮询状态，生成完成时自动打开绘本；切页不丢任务
+      const task = await generatePictureBook(text);
+      sessionStorage.setItem(PB_TASK_KEY, JSON.stringify({ taskId: task.taskId, status: task.status }));
+      await pollLoop(task.taskId);
     } catch {
-      // 错误已统一提示
-    } finally {
+      // 提交失败已统一提示
       setGenerating(false);
+      setGenProgress('');
+      sessionStorage.removeItem(PB_TASK_KEY);
     }
   };
+
+  /** 轮询一次任务状态：更新进度/持久化；返回 true 表示已到终态 */
+  const pollOnce = async (taskId: string): Promise<boolean> => {
+    const snapshot = await getPictureBookTask(taskId);
+    sessionStorage.setItem(
+      PB_TASK_KEY,
+      JSON.stringify({
+        taskId,
+        status: snapshot.status,
+        bookResourceId: snapshot.bookResourceId,
+        title: snapshot.title,
+        message: snapshot.message,
+        current: snapshot.current,
+        total: snapshot.total,
+      }),
+    );
+    // 页面已切走：仅持久化，切回时恢复
+    if (!mountedRef.current) {
+      return snapshot.status === 'COMPLETED' || snapshot.status === 'FAILED';
+    }
+    if (snapshot.status === 'IMAGE_GENERATING' || snapshot.status === 'STORY_GENERATING') {
+      setGenProgress(
+        snapshot.status === 'IMAGE_GENERATING'
+          ? `正在绘制插图 ${Math.max(snapshot.current, 1)}/${snapshot.total} 页...`
+          : 'AI 正在编写故事...',
+      );
+      return false;
+    }
+    if (snapshot.status === 'COMPLETED') {
+      sessionStorage.removeItem(PB_TASK_KEY);
+      message.success(`绘本《${snapshot.title || ''}》生成完成`);
+      const fresh = await loadMyPictureBooks();
+      if (mountedRef.current) {
+        setList(fresh);
+        const newBook = fresh.find((item) => item.resourceId === snapshot.bookResourceId);
+        if (newBook) {
+          const script = parsePictureBook(newBook.extJson);
+          if (script) {
+            setReading({ item: newBook, script });
+          }
+        }
+      }
+      return true;
+    }
+    sessionStorage.removeItem(PB_TASK_KEY);
+    message.warning(snapshot.message || '绘本生成失败，请稍后重试');
+    return true;
+  };
+
+  /** 轮询循环：组件卸载时停止，任务进度由 sessionStorage 保存，切回页面时恢复 */
+  const pollLoop = async (taskId: string) => {
+    while (mountedRef.current) {
+      try {
+        if (await pollOnce(taskId)) {
+          setGenerating(false);
+          setGenProgress('');
+          return;
+        }
+      } catch {
+        sessionStorage.removeItem(PB_TASK_KEY);
+        if (mountedRef.current) {
+          message.warning('生成状态查询失败，请刷新绘本列表查看');
+        }
+        setGenerating(false);
+        setGenProgress('');
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  };
+
+  /** 切回页面时恢复未完成任务（进度/完成弹窗/失败提示） */
+  useEffect(() => {
+    if (!token || !isPrimaryStage) {
+      return;
+    }
+    const raw = sessionStorage.getItem(PB_TASK_KEY);
+    if (!raw) {
+      return;
+    }
+    let saved: PictureBookTaskSnapshot;
+    try {
+      saved = JSON.parse(raw) as PictureBookTaskSnapshot;
+    } catch {
+      sessionStorage.removeItem(PB_TASK_KEY);
+      return;
+    }
+    if (saved.status === 'COMPLETED') {
+      sessionStorage.removeItem(PB_TASK_KEY);
+      void (async () => {
+        const fresh = await loadMyPictureBooks();
+        if (!mountedRef.current) {
+          return;
+        }
+        setList(fresh);
+        const newBook = fresh.find((item) => item.resourceId === saved.bookResourceId);
+        if (newBook) {
+          const script = parsePictureBook(newBook.extJson);
+          if (script) {
+            setReading({ item: newBook, script });
+          }
+        }
+      })();
+    } else if (saved.status === 'FAILED') {
+      sessionStorage.removeItem(PB_TASK_KEY);
+      message.warning(saved.message || '绘本生成失败，请稍后重试');
+      void load();
+    } else if (saved.taskId) {
+      setGenerating(true);
+      setGenProgress('恢复生成进度...');
+      void pollLoop(saved.taskId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, userInfo?.stage]);
 
   const openReader = (item: PictureBookItem) => {
     const script = parsePictureBook(item.extJson);
@@ -101,7 +237,7 @@ export default function PictureBook() {
           <Lock size={30} />
         </div>
         <h2>登录后查看绘本</h2>
-        <p>绘本仅面向小学低年级学生，登录后即可进入互动绘本。</p>
+        <p>绘本面向小学阶段学生，登录后即可进入互动绘本。</p>
         <Button type="primary" icon={<BookImage size={16} />} onClick={openLoginModal}>
           去登录
         </Button>
@@ -109,13 +245,13 @@ export default function PictureBook() {
     );
   }
 
-  if (userInfo?.stage !== 'PRIMARY_LOW') {
+  if (!isPrimaryStage) {
     return (
       <div className={styles.accessBlock}>
         <div className={styles.accessIcon}>
           <BookImage size={30} />
         </div>
-        <h2>绘本仅面向小学低年级</h2>
+        <h2>绘本面向小学阶段</h2>
         <p>当前学段暂不支持查看绘本，请到「我的」页面切换学段。</p>
         <Button onClick={() => navigate('/learning-path')}>返回学习路径</Button>
       </div>
@@ -148,7 +284,7 @@ export default function PictureBook() {
           loading={generating}
           onClick={() => void handleGenerate()}
         >
-          {generating ? 'AI 创作中（故事 + 插图）...' : '生成绘本'}
+          {generating ? (genProgress || 'AI 创作中（故事 + 插图）...') : '生成绘本'}
         </Button>
       </div>
 
@@ -170,6 +306,9 @@ export default function PictureBook() {
                     <span>{pageCount} 页</span>
                     <span>{formatTime(item.createTime)}</span>
                   </div>
+                  {script?.imageError ? (
+                    <div className={styles.bookError} title={script.imageError}>{script.imageError}</div>
+                  ) : null}
                 </div>
                 <Space size={6}>
                   <Button type="primary" size="small" icon={<Play size={13} />} onClick={() => openReader(item)}>

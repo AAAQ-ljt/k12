@@ -33,7 +33,8 @@ export interface StudentWikiProfile {
 }
 
 export function generateStudentWiki(resourceId: string): Promise<StudentWikiDoc> {
-  return post('/studentWiki/generate', null, { params: { resourceId } });
+  // AI 整理为同步调用(长文档分段多轮),超时给足 5 分钟
+  return post('/studentWiki/generate', null, { params: { resourceId }, timeout: 300000 });
 }
 
 export function updateStudentWikiDraft(docId: string, content: string): Promise<StudentWikiDoc> {
@@ -71,10 +72,10 @@ export function saveStudentWikiProfile(data: {
 
 /** 同步 AI 对话消息为知识页草稿（L3） */
 export function syncStudentWikiFromMessage(messageId: string): Promise<StudentWikiDoc> {
-  return post('/studentWiki/syncFromMessage', null, { params: { messageId } });
+  return post('/studentWiki/syncFromMessage', null, { params: { messageId }, timeout: 300000 });
 }
 
 /** 同步课程教材为知识页草稿（主线 6，按课程去重） */
 export function syncStudentWikiFromCourse(courseId: string): Promise<StudentWikiDoc> {
-  return post('/courseInfo/syncWiki', null, { params: { courseId } });
+  return post('/courseInfo/syncWiki', null, { params: { courseId }, timeout: 300000 });
 }

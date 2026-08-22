@@ -3,16 +3,14 @@ package com.nexora.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.nexora.component.PictureBookGenerateComponent;
+import com.nexora.entity.po.ResourceDirectory;
 import com.nexora.entity.po.ResourceInfo;
-import com.nexora.entity.po.UserInfo;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.PictureBookService;
 import com.nexora.service.ResourceInfoService;
-import com.nexora.service.UserInfoService;
+import com.nexora.service.StudentKnowledgeBaseService;
 import com.nexora.utils.StringTools;
-import com.nexora.vo.PictureBookVO;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 学生绘本业务实现：故事 + 插图产物存 resource_info.ext_json（PICTURE_BOOK），单页插图失败降级纯文字
+ * 学生绘本业务实现：绘本产物存 resource_info.ext_json（PICTURE_BOOK）；生成由异步任务编排
  */
 @Service
 public class PictureBookServiceImpl implements PictureBookService {
@@ -41,55 +39,32 @@ public class PictureBookServiceImpl implements PictureBookService {
     private ResourceInfoService resourceInfoService;
 
     @Resource
-    private UserInfoService userInfoService;
-
-    @Resource
-    private PictureBookGenerateComponent pictureBookGenerateComponent;
+    private StudentKnowledgeBaseService studentKnowledgeBaseService;
 
     @Override
-    public PictureBookVO generate(String userId, String stage, String topic) {
-        if (StringTools.isEmpty(topic)) {
-            throw new BusinessException("请先输入绘本主题");
+    public ResourceInfo saveBook(String userId, String stage, String title, String extJson) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(title)) {
+            throw new BusinessException("绘本保存参数不完整");
         }
-        // 1. 生成故事分页文案
-        PictureBookGenerateComponent.StoryScript story = pictureBookGenerateComponent.generateStory(stage, topic);
-        if (story.pages().isEmpty()) {
-            throw new BusinessException("绘本故事生成失败，请稍后重试");
-        }
-        // 2. 逐页生成插图（失败降级纯文字，不阻断），插图按学生邮箱分目录存储
-        UserInfo user = userInfoService.getUserInfoByUserId(userId);
-        String email = user == null ? null : user.getEmail();
-        JSONArray pages = new JSONArray();
-        for (int i = 0; i < story.pages().size(); i++) {
-            String imageFile = pictureBookGenerateComponent.generatePageImage(
-                    email, stage, story.pages().get(i), story.title(), i);
-            JSONObject page = new JSONObject();
-            page.put("text", story.pages().get(i));
-            page.put("imageFile", imageFile == null ? "" : imageFile);
-            pages.add(page);
-        }
-        JSONObject ext = new JSONObject();
-        ext.put("type", "PICTURE_BOOK");
-        ext.put("pages", pages);
-
-        // 3. 落资源中心（PICTURE_BOOK 类型，owner 隔离）
         String resourceId = UUID.randomUUID().toString().replace("-", "");
         Date now = new Date();
         ResourceInfo bean = new ResourceInfo();
         bean.setResourceId(resourceId);
-        bean.setResourceName(story.title());
+        bean.setResourceName(title);
         bean.setResourceType("PICTURE_BOOK");
-        bean.setExtJson(ext.toJSONString());
-        bean.setStage(null);
+        bean.setExtJson(extJson);
+        ResourceDirectory attachments = studentKnowledgeBaseService
+                .getSystemDirectory(userId, StudentKnowledgeBaseService.DIR_TYPE_ATTACHMENTS);
+        bean.setDirectoryId(attachments == null ? null : attachments.getDirId());
+        bean.setStage(stage);
         bean.setOwnerId(userId);
         bean.setSource(1);
         bean.setStatus(1);
         bean.setCreateTime(now);
         bean.setUpdateTime(now);
         resourceInfoService.add(bean);
-
-        log.info("绘本生成完成 userId={} title={} pages={}", userId, story.title(), story.pages().size());
-        return toVO(bean);
+        log.info("绘本产物落库 userId={} title={}", userId, title);
+        return bean;
     }
 
     @Override
@@ -165,15 +140,5 @@ public class PictureBookServiceImpl implements PictureBookService {
             throw new BusinessException("绘本不存在或无权操作");
         }
         return resource;
-    }
-
-    private PictureBookVO toVO(ResourceInfo resource) {
-        PictureBookVO vo = new PictureBookVO();
-        vo.setResourceId(resource.getResourceId());
-        vo.setResourceName(resource.getResourceName());
-        vo.setStage(resource.getStage());
-        vo.setExtJson(resource.getExtJson());
-        vo.setCreateTime(resource.getCreateTime());
-        return vo;
     }
 }

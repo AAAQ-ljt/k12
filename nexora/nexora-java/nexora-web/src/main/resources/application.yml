@@ -88,12 +88,15 @@ project:
   ai:
     vision-model: ${NEXORA_VISION_MODEL:deepseek-v4-flash-vision-exp}
     image:
-      provider: ${NEXORA_IMAGE_PROVIDER:dashscope}
+      provider: ${NEXORA_IMAGE_PROVIDER:ark}
       model: ${NEXORA_IMAGE_MODEL:qwen-image-3.0}
-      base-url: ${NEXORA_IMAGE_BASE_URL:https://dashscope.aliyuncs.com}
+      base-url: ${NEXORA_IMAGE_BASE_URL:https://llm-ujcvkugrdhkrbvqu.cn-beijing.maas.aliyuncs.com}
       path: ${NEXORA_IMAGE_PATH:/api/v1/services/aigc/multimodal-generation/generation}
       api-key: ${NEXORA_IMAGE_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
       prompt-extend: true
+      ark-model: ${NEXORA_ARK_MODEL:doubao-seedream-5-0-pro-260628}
+      ark-base-url: ${NEXORA_ARK_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+      ark-api-key: ${NEXORA_ARK_API_KEY:ark-xxx}
   folder: d:/dev/ai/k12/nexora/
 resource:
   temp-dir: resource/temp

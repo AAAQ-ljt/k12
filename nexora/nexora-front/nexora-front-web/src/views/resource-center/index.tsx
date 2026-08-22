@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   App, Breadcrumb, Button, Empty, Input, Modal, Progress, Select, Space, Table, Tag, Tree, Upload,
 } from 'antd';
 import type { TableProps } from 'antd';
 import {
-  BookOpen, Download, Eye, FileImage, FileText, FileVideo, FolderPlus, FolderOpen, Pencil, Trash2, UploadCloud,
+  BookImage, BookOpen, Download, Eye, FileImage, FileText, FileVideo, FolderPlus, FolderOpen, Pencil, Trash2, UploadCloud,
 } from 'lucide-react';
 import VideoPlayer from '@/views/course-material/components/VideoPlayer';
 import {
@@ -41,6 +42,8 @@ const TYPE_OPTIONS = [
   { label: '视频', value: 'VIDEO' },
   { label: '图片', value: 'IMAGE' },
   { label: '文档', value: 'DOCUMENT' },
+  { label: '绘本', value: 'PICTURE_BOOK' },
+  { label: '动画', value: 'ANIMATION' },
 ];
 
 /** 系统目录类型展示名 */
@@ -82,6 +85,7 @@ function detectResourceType(fileName: string) {
 
 export default function ResourceCenter() {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   const [directories, setDirectories] = useState<StudentDirectory[]>([]);
   const [currentDirId, setCurrentDirId] = useState<string>();
   const [resources, setResources] = useState<StudentResource[]>([]);
@@ -394,7 +398,23 @@ export default function ResourceCenter() {
     if (resourceTypeValue === 'IMAGE') {
       return <FileImage size={16} />;
     }
+    if (resourceTypeValue === 'PICTURE_BOOK') {
+      return <BookImage size={16} />;
+    }
     return <FileText size={16} />;
+  };
+
+  /** 预览：绘本/动画跳转对应页，其余打开预览弹窗 */
+  const handlePreview = (record: StudentResource) => {
+    if (record.resourceType === 'PICTURE_BOOK') {
+      navigate('/picture-book');
+      return;
+    }
+    if (record.resourceType === 'ANIMATION') {
+      navigate('/animation');
+      return;
+    }
+    setPreviewResource(record);
   };
 
   const columns: TableProps<StudentResource>['columns'] = [
@@ -452,7 +472,7 @@ export default function ResourceCenter() {
               生成 Wiki
             </Button>
           ) : null}
-          <Button type="text" size="small" icon={<Eye size={14} />} onClick={() => setPreviewResource(record)} />
+          <Button type="text" size="small" icon={<Eye size={14} />} onClick={() => handlePreview(record)} />
           <Button
             type="text"
             size="small"

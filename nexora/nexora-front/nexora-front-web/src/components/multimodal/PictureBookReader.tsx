@@ -34,7 +34,10 @@ export default function PictureBookReader({
             alt={`第 ${current + 1} 页`}
           />
         ) : (
-          <div className={styles.pagePlaceholder}>（本页暂无插图）</div>
+          <div className={styles.pagePlaceholder}>
+          （本页暂无插图）
+          {script.imageError ? <div className={styles.placeholderError}>{script.imageError}</div> : null}
+        </div>
         )}
         <div className={styles.pageText}>{page.text}</div>
       </div>

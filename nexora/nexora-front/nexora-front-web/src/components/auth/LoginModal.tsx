@@ -133,21 +133,16 @@ export default function LoginModal() {
           </Form.Item>
         )}
         <Form.Item name="checkCode" label="验证码" rules={[{ required: true, message: '请输入验证码' }]}>
-          <Input
-            placeholder="请输入验证码"
-            maxLength={4}
-            suffix={
-              checkCodeBase64 ? (
-                <img
-                  src={checkCodeBase64}
-                  alt="验证码"
-                  title="点击刷新"
-                  className={styles.checkCodeImg}
-                  onClick={refreshCheckCode}
-                />
-              ) : null
-            }
-          />
+          <div className={styles.checkCodeRow}>
+            <Input placeholder="请输入验证码" maxLength={4} className={styles.checkCodeInput} />
+            <div className={styles.checkCodeBox} onClick={refreshCheckCode} title="点击刷新验证码">
+              {checkCodeBase64 ? (
+                <img src={checkCodeBase64} alt="验证码" className={styles.checkCodeImg} />
+              ) : (
+                <span className={styles.checkCodeLoading}>加载中</span>
+              )}
+            </div>
+          </div>
         </Form.Item>
         <Button type="primary" htmlType="submit" block loading={loading}>
           {mode === 'login' ? '登录' : '注册'}

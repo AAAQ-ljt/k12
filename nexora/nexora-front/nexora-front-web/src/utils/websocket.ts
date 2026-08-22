@@ -23,8 +23,12 @@ class WebSocketManager {
   private messageHandlers = new Map<string, Set<MessageHandler>>();
   private closeHandlers = new Set<CloseHandler>();
 
-  /** 建立 WebSocket 连接 */
+  /** 建立 WebSocket 连接（幂等：已连接且 token 相同则复用，不重复建连） */
   connect(token: string): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.token === token) {
+      return;
+    }
+    this.disconnect();
     this.token = token;
     this.manualClose = false;
     this.reconnectCount = 0;

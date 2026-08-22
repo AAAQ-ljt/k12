@@ -17,6 +17,7 @@ import LearningUser from '@/views/learning/LearningUser';
 import AdminAccount from '@/views/system/AdminAccount';
 import ModelPrompt from '@/views/system/ModelPrompt';
 import EnvConfig from '@/views/system/EnvConfig';
+import ModelTest from '@/views/system/ModelTest';
 
 export const router = createBrowserRouter([
   {
@@ -128,6 +129,10 @@ export const router = createBrowserRouter([
           {
             path: 'config',
             element: <EnvConfig />,
+          },
+          {
+            path: 'modelTest',
+            element: <ModelTest />,
           },
         ],
       },

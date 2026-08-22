@@ -61,13 +61,18 @@ public class IntentAnalyzerComponent {
         this.chatClient = chatClient;
     }
 
-    public IntentResult analyze(String userMessage) {
+    public IntentResult analyze(String userMessage, String stage) {
+        boolean primaryStage = "PRIMARY_LOW".equalsIgnoreCase(stage) || "PRIMARY_HIGH".equalsIgnoreCase(stage);
         if (matchScienceKeyword(userMessage)) {
             return new IntentResult("SCIENCE_SOLVE", null, 0, 0);
         }
         try {
+            String systemPrompt = primaryStage
+                    ? INTENT_SYSTEM_PROMPT
+                            + " 注意：用户为小学阶段（小低/小高），画面型动画能力不可用：禁止选择 ANIMATION，动画类请求返回 CHAT。"
+                    : INTENT_SYSTEM_PROMPT;
             ChatResponse response = chatClient.prompt()
-                    .system(INTENT_SYSTEM_PROMPT)
+                    .system(systemPrompt)
                     .user(userMessage)
                     .options(OpenAiChatOptions.builder().model(chatModel).build())
                     .call()
@@ -87,6 +92,11 @@ public class IntentAnalyzerComponent {
             UserIntentDTO dto = parseJson(content);
             String intent = dto == null || dto.getIntent() == null ? "CHAT" : dto.getIntent().trim().toUpperCase();
             if (!UserIntentEnum.isValid(intent)) {
+                intent = "CHAT";
+            }
+            // 硬拦截：小学阶段（小低/小高）不允许动画生成（无动画页面，防止误用绘本提示词）
+            if (primaryStage && "ANIMATION".equals(intent)) {
+                log.info("小学阶段动画意图降级为 CHAT: {}", userMessage);
                 intent = "CHAT";
             }
             return new IntentResult(intent, dto == null ? null : dto.getData(), promptTokens, completionTokens);

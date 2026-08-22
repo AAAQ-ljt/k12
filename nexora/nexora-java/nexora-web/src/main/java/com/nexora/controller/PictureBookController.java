@@ -2,14 +2,15 @@ package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
 import com.nexora.dto.PictureBookGenerateRequest;
+import com.nexora.dto.PictureBookTaskVO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.PictureBookService;
+import com.nexora.service.PictureBookTaskService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
-import com.nexora.vo.PictureBookVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -30,7 +31,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 /**
- * 学生绘本 Controller：生成 / 列表 / 详情 / 删除 / 页内插图
+ * 学生绘本 Controller：提交异步生成任务 / 查询任务 / 列表 / 详情 / 删除 / 页内插图
  */
 @RestController
 @RequestMapping("/pictureBook")
@@ -40,16 +41,31 @@ public class PictureBookController extends ABaseController {
     @Resource
     private PictureBookService pictureBookService;
 
+    @Resource
+    private PictureBookTaskService pictureBookTaskService;
+
     @Value("${project.folder}")
     private String projectFolder;
 
+    /**
+     * 提交绘本生成任务：立即返回 taskId，前端轮询 /task 获取进度（异步编排，不再阻塞等待）
+     */
     @PostMapping("/generate")
-    public ResponseVO<PictureBookVO> generate(@RequestBody PictureBookGenerateRequest request) {
+    public ResponseVO<PictureBookTaskVO> generate(@RequestBody PictureBookGenerateRequest request) {
         TokenUserInfoDTO current = LoginUserContext.get();
         if (request == null || StringTools.isEmpty(request.getTopic())) {
             throw new BusinessException("请先输入绘本主题");
         }
-        return getSuccessResponseVO(pictureBookService.generate(current.getUserId(), current.getStage(), request.getTopic().trim()));
+        return getSuccessResponseVO(pictureBookTaskService.submit(
+                current.getUserId(), current.getStage(), request.getTopic().trim()));
+    }
+
+    /**
+     * 查询绘本生成任务状态
+     */
+    @GetMapping("/task")
+    public ResponseVO<PictureBookTaskVO> task(@RequestParam String taskId) {
+        return getSuccessResponseVO(pictureBookTaskService.get(currentUserId(), taskId));
     }
 
     @GetMapping("/myList")

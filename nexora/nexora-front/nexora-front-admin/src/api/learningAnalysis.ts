@@ -255,5 +255,5 @@ export function studentSearchTest(
 
 /** AI 学习报告（基于六类学习统计生成 Markdown） */
 export function aiReport(userId: string): Promise<string> {
-  return request.get('/learningAnalysis/aiReport', { params: { userId } });
+  return request.get('/learningAnalysis/aiReport', { params: { userId }, timeout: 300000 });
 }

@@ -70,6 +70,7 @@ export const menus: MenuConfig[] = [
       { key: 'system:admin', label: '管理员账号', path: '/system/admin', menuCode: 'system:admin' },
       { key: 'system:model', label: '模型与提示词', path: '/system/model', menuCode: 'system:model' },
       { key: 'system:config', label: '环境配置', path: '/system/config', menuCode: 'system:config' },
+      { key: 'system:modelTest', label: '模型验证', path: '/system/modelTest', menuCode: 'system:modelTest' },
     ],
   },
 ];
