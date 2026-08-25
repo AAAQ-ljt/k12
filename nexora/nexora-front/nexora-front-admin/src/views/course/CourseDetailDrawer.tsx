@@ -32,6 +32,7 @@ import {
   type CourseInfo,
 } from '@/api/course';
 import { loadDataList as loadResourceList, type ResourceInfo } from '@/api/resource';
+import { getStageOption } from '@/types/common';
 import styles from './course-detail.module.scss';
 
 interface CourseDetailDrawerProps {
@@ -140,6 +141,8 @@ export default function CourseDetailDrawer({
         pageNo: page,
         pageSize: 10,
         status: 1,
+        stage: course?.stage || undefined,
+        stageIncludeNull: course?.stage ? true : undefined,
         resourceNameFuzzy: keyword || undefined,
       });
       setResourceRows(result.list);
@@ -231,6 +234,16 @@ export default function CourseDetailDrawer({
       render: (type: string) => {
         const meta = RESOURCE_TYPE_MAP[type] || { text: type, color: 'default' };
         return <Tag color={meta.color}>{meta.text}</Tag>;
+      },
+    },
+    {
+      title: '学段',
+      dataIndex: 'stage',
+      key: 'stage',
+      width: 110,
+      render: (stage?: string) => {
+        const option = getStageOption(stage);
+        return option ? <Tag color={option.color}>{option.label}</Tag> : <Tag>未标记</Tag>;
       },
     },
   ];
@@ -509,7 +522,7 @@ export default function CourseDetailDrawer({
       </Modal>
 
       <Modal
-        title="选择资源"
+        title={course?.stage ? `选择资源（${getStageOption(course.stage)?.label ?? course.stage}）` : '选择资源'}
         open={pickerOpen}
         width={720}
         onCancel={() => setPickerOpen(false)}

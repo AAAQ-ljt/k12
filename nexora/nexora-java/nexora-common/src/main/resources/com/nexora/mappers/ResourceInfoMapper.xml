@@ -94,7 +94,14 @@
 				 and  r.owner_id is null
 			</if>
 			<if test="query.stage != null and query.stage!=''">
-				 and  r.stage = #{query.stage}
+				 <choose>
+					 <when test="query.stageIncludeNull != null and query.stageIncludeNull">
+						 and  (r.stage is null or r.stage = #{query.stage})
+					 </when>
+					 <otherwise>
+						 and  r.stage = #{query.stage}
+					 </otherwise>
+				 </choose>
 			</if>
 			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
 				 and  r.knowledge_point_id = #{query.knowledgePointId}

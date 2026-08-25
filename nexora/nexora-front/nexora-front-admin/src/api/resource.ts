@@ -30,6 +30,7 @@ export interface ResourceInfoQuery extends PageParam {
   resourceNameFuzzy?: string;
   resourceType?: string;
   stage?: string;
+  stageIncludeNull?: boolean;
   directoryId?: string;
   status?: number;
 }

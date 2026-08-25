@@ -99,6 +99,11 @@ public class ResourceInfoQuery extends BaseParam {
 	private String stageFuzzy;
 
 	/**
+	 * 学段筛选是否同时包含未标记学段资源（stage IS NULL OR stage = 指定值）
+	 */
+	private Boolean stageIncludeNull;
+
+	/**
 	 * 关联知识点【冗余：recommendResource工具按知识点直查】
 	 */
 	private String knowledgePointId;
@@ -318,6 +323,14 @@ public class ResourceInfoQuery extends BaseParam {
 
 	public String getStage(){
 		return this.stage;
+	}
+
+	public Boolean getStageIncludeNull(){
+		return this.stageIncludeNull;
+	}
+
+	public void setStageIncludeNull(Boolean stageIncludeNull){
+		this.stageIncludeNull = stageIncludeNull;
 	}
 
 	public void setStageFuzzy(String stageFuzzy){

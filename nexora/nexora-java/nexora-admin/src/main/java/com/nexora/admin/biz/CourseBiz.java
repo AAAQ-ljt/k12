@@ -334,6 +334,11 @@ public class CourseBiz {
         if (lesson == null) {
             throw new BusinessException("课时不存在");
         }
+        CourseInfo course = courseInfoService.getCourseInfoByCourseId(lesson.getCourseId());
+        if (course == null) {
+            throw new BusinessException("课程不存在");
+        }
+        String courseStage = course.getStage();
 
         CourseChapterLessonResourceQuery existQuery = new CourseChapterLessonResourceQuery();
         existQuery.setLessonId(dto.getLessonId());
@@ -355,6 +360,13 @@ public class CourseBiz {
             ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(resourceId);
             if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
                 throw new BusinessException("资源不存在或不可用");
+            }
+            if (!StringTools.isEmpty(resource.getStage()) && !StringTools.isEmpty(courseStage)
+                    && !courseStage.equals(resource.getStage())) {
+                String resourceName = StringTools.isEmpty(resource.getResourceName())
+                        ? resourceId : resource.getResourceName();
+                throw new BusinessException("不能绑定《" + resourceName + "》：资源学段（"
+                        + resource.getStage() + "）与课程学段（" + courseStage + "）不一致");
             }
             CourseChapterLessonResource bind = new CourseChapterLessonResource();
             bind.setLessonId(dto.getLessonId());
