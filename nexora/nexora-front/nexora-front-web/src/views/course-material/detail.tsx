@@ -197,6 +197,12 @@ export default function CourseMaterialDetail() {
               在新窗口打开
             </Button>
           </div>
+        ) : type === 'PDF' ? (
+          <iframe
+            className={styles.pdfPreview}
+            src={getResourceFileUrl(resource.resourceId)}
+            title={resource.resourceName}
+          />
         ) : (
           <DocumentViewer
             key={resource.resourceId}
