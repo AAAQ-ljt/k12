@@ -11,4 +11,12 @@
 .player {
   width: 100%;
   height: 100%;
+
+  :global(.art-mask .art-state) {
+    pointer-events: none !important;
+  }
+
+  :global(.art-video) {
+    cursor: pointer;
+  }
 }

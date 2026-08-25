@@ -27,6 +27,29 @@ function VideoPlayer({ open, onReady, url }: VideoPlayerProps) {
       }
       return undefined;
     }
+
+    let activeHls: Hls | null = null;
+    // ArtPlayer 的 m3u8 初始化是异步的，卸载后仍可能回调，需阻止补建 HLS
+    let disposed = false;
+
+    const destroyHls = () => {
+      if (!activeHls) {
+        return;
+      }
+      const hls = activeHls;
+      activeHls = null;
+      try {
+        hls.detachMedia();
+      } catch {
+        // 已分离时忽略
+      }
+      try {
+        hls.destroy();
+      } catch {
+        // 已销毁时忽略
+      }
+    };
+
     const player = new Artplayer({
       container: containerRef.current,
       url,
@@ -42,12 +65,16 @@ function VideoPlayer({ open, onReady, url }: VideoPlayerProps) {
       playsInline: true,
       setting: true,
       customType: {
-        m3u8(video, videoUrl, art) {
+        m3u8(video, videoUrl) {
+          if (disposed) {
+            return;
+          }
           if (Hls.isSupported()) {
+            destroyHls();
             const hls = new Hls();
+            activeHls = hls;
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
-            art.on('destroy', () => hls.destroy());
           } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = videoUrl;
           }
@@ -56,7 +83,27 @@ function VideoPlayer({ open, onReady, url }: VideoPlayerProps) {
     });
     playerRef.current = player;
     onReady(player);
+    player.on('destroy', () => {
+      disposed = true;
+      destroyHls();
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && playerRef.current) {
+        playerRef.current.pause();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      disposed = true;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      try {
+        player.pause();
+      } catch {
+        // 已销毁时忽略
+      }
+      destroyHls();
       try {
         player.destroy();
       } catch {
