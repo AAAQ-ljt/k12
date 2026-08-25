@@ -25,5 +25,6 @@ export function modelTestEmbedding(text: string): Promise<EmbeddingTestVO> {
 
 /** 文生图模型连通性 */
 export function modelTestImage(prompt: string): Promise<ImageTestVO> {
-  return request.post('/modelTest/image', { prompt }, { timeout: 120000 });
+  // qwen-image-2.0-pro 同步出图实测约 112s，前端等待上限放到 5 分钟，避免先于后端报超时
+  return request.post('/modelTest/image', { prompt }, { timeout: 300000 });
 }
