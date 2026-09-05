@@ -270,7 +270,6 @@ export default function PictureBook() {
           <div className={styles.pageTitle}>互动绘本</div>
           <div className={styles.pageDesc}>输入主题，AI 为你编故事、画插图，生成图文翻页绘本</div>
         </div>
-        <Tag color="success">小学低年级</Tag>
       </div>
 
       <div className={styles.generateBar}>

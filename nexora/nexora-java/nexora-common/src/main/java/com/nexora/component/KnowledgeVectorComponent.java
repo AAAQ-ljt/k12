@@ -23,6 +23,13 @@ public class KnowledgeVectorComponent {
      */
     private static final int EMBEDDING_BATCH_SIZE = 15;
 
+    /**
+     * 删除 ID 上界防御余量：ES 中该 docId 可能残留历史更大 chunkIndex
+     * （旧版本 chunkCount 被清零/多次入库叠加/中断未清等），统一按固定宽限清理，
+     * 保证重新入库后不会命中旧向量。
+     */
+    private static final int DELETE_RANGE_GUARD = 200;
+
     @Autowired
     private ObjectProvider<VectorStore> vectorStoreProvider;
 
@@ -63,11 +70,11 @@ public class KnowledgeVectorComponent {
 
     public void deleteChunks(String docId, int maxCount) {
         if (maxCount <= 0) {
-            return;
+            maxCount = DELETE_RANGE_GUARD;
         }
         VectorStore vectorStore = vectorStoreProvider.getObject();
         List<String> ids = new ArrayList<>();
-        for (int i = 0; i < maxCount; i++) {
+        for (int i = 0; i < Math.max(maxCount, DELETE_RANGE_GUARD); i++) {
             ids.add(docId + "_" + i);
         }
         vectorStore.delete(ids);

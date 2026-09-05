@@ -294,8 +294,8 @@ public class KnowledgeBaseBiz {
             update.setStatus(1);
             update.setVectorStatus(1);
             update.setVectorError(null);
-            update.setChunkCount(0);
             update.setUpdateTime(now);
+            // 注意：chunkCount 不在此处清零，保留旧值作为重入库时删除 ES 旧向量的范围基准
             knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
         } else {
             KnowledgeDoc bean = new KnowledgeDoc();
@@ -399,10 +399,13 @@ public class KnowledgeBaseBiz {
                 }
                 ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
                 warnings.addAll(parsed.getWarnings());
-                KnowledgeDoc update = new KnowledgeDoc();
-                update.setContent(parsed.getText());
-                update.setUpdateTime(new Date());
-                knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
+                // 已有正文（如管理员编辑整理过的内容）不覆盖，防止重新入库把人工内容冲回资源原文
+                if (StringTools.isEmpty(doc.getContent())) {
+                    KnowledgeDoc update = new KnowledgeDoc();
+                    update.setContent(parsed.getText());
+                    update.setUpdateTime(new Date());
+                    knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
+                }
             }
             processVectorize(docId);
             if (!warnings.isEmpty()) {
