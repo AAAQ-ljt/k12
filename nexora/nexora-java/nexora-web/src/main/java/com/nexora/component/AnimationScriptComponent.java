@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 /**
  * 动画讲解脚本生成组件：LLM 生成分步 SVG 讲解脚本（JSON），逐帧清洗为白名单基础图形后再返回。
  * 产物结构：{ "title": "...", "steps": [ { "title": "...", "explain": "...", "svg": "<svg>...</svg>" } ] }
+ * 生成提示词走统一提示词体系（Redis 覆盖 -> prompt_template 表 -> PromptTypeEnum.ANIMATION 默认值）。
  */
 @Slf4j
 @Component
@@ -29,27 +30,6 @@ public class AnimationScriptComponent {
 
     /** 最多保留的步骤数 */
     private static final int MAX_STEPS = 12;
-
-    private static final String SYSTEM_PROMPT = """
-            你是 K12 人工智能通识课的「动画讲解导演」。学生当前学段：%s。
-            针对用户给出的概念，设计一张分步讲解动画脚本，只输出一个 JSON 对象，不要输出任何解释或 Markdown 代码块标记。
-            JSON 结构：
-            {
-              "title": "动画标题（简短）",
-              "steps": [
-                {
-                  "title": "步骤标题（简短，如：第一步：比较相邻元素）",
-                  "explain": "该步的讲解文字（2-4 句，适合该学段，口语化）",
-                  "svg": "自包含的 SVG 画面（宽 640 高 400，仅基础图形 text/rect/circle/ellipse/line/polyline/polygon/path，白色或浅色背景，深色文字，用于示意该步骤的画面）"
-                }
-              ]
-            }
-            要求：
-            1. steps 为 4-8 步，逐步递进，最后一步总结；
-            2. svg 必须是一个完整的 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">...</svg> 字符串；
-            3. svg 只使用基础图形与 <text> 文字，禁止 script、style、foreignObject、iframe、动画标签、外部链接；
-            4. 画面用简单图形示意即可（如数组格子、小球、阶梯、箭头），配合文字说明；
-            5. explain 面向 %s 学段学生，语言生动易懂。""";
 
     private static final Pattern SVG_BLOCK = Pattern.compile(
             "<svg\\b[^>]*>.*?</svg>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -75,6 +55,9 @@ public class AnimationScriptComponent {
     @Resource
     private ChatClient chatClient;
 
+    @Resource
+    private PromptTemplateComponent promptTemplateComponent;
+
     @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
     private String chatModel;
 
@@ -82,15 +65,14 @@ public class AnimationScriptComponent {
      * 生成清洗后的动画脚本；LLM 输出不合法时抛出异常（调用方降级为普通对话）
      */
     public AnimationScript generate(String stage, String concept) {
-        String stageDesc = stageDesc(stage);
-        String raw = callModel(stage, concept, stageDesc);
+        String raw = callModel(stage, concept);
         return parseAndSanitize(raw);
     }
 
-    private String callModel(String stage, String concept, String stageDesc) {
-        String systemPrompt = String.format(SYSTEM_PROMPT, stageDesc, stageDesc);
+    private String callModel(String stage, String concept) {
+        String systemPrompt = promptTemplateComponent.resolvePrompt(stage, "ANIMATION");
         String userPrompt = "请为概念「" + (concept == null ? "" : concept)
-                + "」生成动画讲解脚本（学生学段：" + stageDesc + "）。只输出 JSON。";
+                + "」生成动画讲解脚本（学生学段：" + stageDesc(stage) + "）。只输出 JSON。";
         try {
             return chatClient.prompt()
                     .system(systemPrompt)

@@ -44,11 +44,46 @@
 .animationCard {
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   background: #fff;
+  transition: box-shadow 0.2s;
+}
+
+.animationCard:hover {
+  box-shadow: 0 4px 16px rgba(22, 119, 255, 0.1);
+}
+
+.cardPreview {
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f5f8ff, #eef9f0);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.cardSvg :global(svg) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cardPreviewEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(22, 119, 255, 0.25);
 }
 
 .cardTitle {

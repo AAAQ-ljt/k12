@@ -1,6 +1,6 @@
 .playPage {
   height: calc(100vh - var(--header-height) - 64px);
-  min-height: 560px;
+  min-height: 480px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -14,6 +14,7 @@
   background: var(--card-white);
   border: 1px solid var(--warm-bg-dark);
   border-radius: 16px;
+  flex: none;
 }
 
 .playTitle {
@@ -23,20 +24,35 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.playTitle > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .playSub {
+  flex: none;
   font-size: 12px;
   font-weight: 400;
   color: var(--text-tertiary);
 }
 
+/* 舞台区：播放器撑满剩余宽高，画面弹性适配，一屏内无需滚动 */
 .playStage {
   flex: 1;
   min-height: 0;
+  display: flex;
   background: #fff;
   border: 1px solid var(--warm-bg-dark);
   border-radius: 16px;
-  padding: 14px 18px;
-  overflow: auto;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.playStage > div {
+  flex: 1;
+  min-width: 0;
 }

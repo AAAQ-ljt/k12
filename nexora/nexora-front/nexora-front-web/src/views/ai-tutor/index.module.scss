@@ -427,6 +427,16 @@
   max-width: 560px;
 }
 
+.animationActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.animationActions :global(.ant-btn) {
+  color: #1677ff;
+}
+
 
 .quizCard {
   margin-top: 10px;
@@ -449,36 +459,6 @@
 .actionRow :global(.ant-btn:hover) {
   color: #1677ff;
   border-color: #1677ff;
-}
-
-
-.animationSummary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-}
-
-.animationMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.animationTitle {
-  font-weight: 600;
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.animationSteps {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
-  flex: none;
 }
 
 .composerImages {

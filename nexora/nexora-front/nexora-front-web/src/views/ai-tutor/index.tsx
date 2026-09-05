@@ -10,6 +10,7 @@ import {
   History,
   Image as ImageIcon,
   Link2,
+  Maximize,
   MessageSquare,
   Plus,
   Send,
@@ -37,6 +38,7 @@ import {
 import { parseAnimationScript, type AnimationScript } from '@/api/animation';
 import { parseQuizScript, type QuizScript } from '@/api/quiz';
 import QuizCard from '@/components/multimodal/QuizCard';
+import SvgStepPlayer from '@/components/multimodal/SvgStepPlayer';
 import { syncStudentWikiFromMessage } from '@/api/studentWiki';
 import {
   getStudentResourceImageUrl,
@@ -725,13 +727,10 @@ export default function AiTutor() {
                   ) : null}
                   {item.role === 'assistant' && item.animation ? (
                     <div className={styles.animationCard}>
-                      <div className={styles.animationSummary}>
-                        <div className={styles.animationMeta}>
-                          <span className={styles.animationTitle}>《{item.animation.title}》</span>
-                          <span className={styles.animationSteps}>{item.animation.steps.length} 步讲解</span>
-                        </div>
-                        <Button type="primary" size="small" onClick={() => navigate('/animation')}>
-                          查看动画讲解
+                      <SvgStepPlayer script={item.animation} compact />
+                      <div className={styles.animationActions}>
+                        <Button size="small" type="text" icon={<Maximize size={13} />} onClick={() => navigate('/animation')}>
+                          全屏查看
                         </Button>
                       </div>
                     </div>
