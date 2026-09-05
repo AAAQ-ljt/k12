@@ -8,13 +8,15 @@ import styles from './index.module.scss';
 
 /**
  * Pyodide 完整发行版加载源(依次尝试,本地优先,CDN 回退):
- * 1. 本地 public/pyodide(从 node_modules/pyodide 拷贝,离线可用)
+ * 1. 本地 public/pyodide(由 scripts/sync-pyodide.mjs 从 node_modules/pyodide 拷贝,离线可用)
  * 2. jsdelivr / unpkg CDN(环境无本地拷贝时的兜底)
+ * 版本号必须与 package.json 中 pyodide 依赖保持一致,否则加载器与产物不匹配。
  */
+const PYODIDE_VERSION = '314.0.3';
 const PYODIDE_INDEX_URLS = [
   '/pyodide/',
-  'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/',
-  'https://unpkg.com/pyodide@0.26.4/full/',
+  `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
+  `https://unpkg.com/pyodide@${PYODIDE_VERSION}/`,
 ];
 
 interface CodeTemplate {
@@ -65,20 +67,21 @@ print('最低分：', lowest)
 print('及格人数：', len([s for s in scores if s >= 60]))`,
     },
     {
-      label: '循环画图（turtle）',
-      code: `# 用海龟画一个彩色螺旋
-try:
-    import turtle
-except ImportError:
-    print('当前环境没有 turtle 库，换用图形示例吧')
+      label: '字符串回文判断',
+      code: `# 判断一句话是否为回文（正读倒读都一样），并统计字符出现次数
+text = '上海自来水来自海上'
+
+if text == text[::-1]:
+    print('「%s」是回文' % text)
 else:
-    t = turtle.Turtle()
-    colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple']
-    for i in range(60):
-        t.pencolor(colors[i % len(colors)])
-        t.forward(i * 2)
-        t.left(61)
-    print('海龟画完啦！')`,
+    print('「%s」不是回文' % text)
+
+print('这个字符串共', len(text), '个字')
+
+count = {}
+for ch in text:
+    count[ch] = count.get(ch, 0) + 1
+print('每个字符出现次数：', count)`,
     },
   ],
   SENIOR: [
