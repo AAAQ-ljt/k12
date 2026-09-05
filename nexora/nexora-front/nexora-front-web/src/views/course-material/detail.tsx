@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { App, Button, Empty, Image, Skeleton, Tag } from 'antd';
 import {
   ArrowLeft,
@@ -70,6 +70,7 @@ function formatDuration(seconds?: number): string {
 export default function CourseMaterialDetail() {
   const { resourceId = '' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { message } = App.useApp();
   const [resource, setResource] = useState<StudentResourceInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,11 @@ export default function CourseMaterialDetail() {
   const meta = TYPE_META[type] || TYPE_META.DOCUMENT;
   const Icon = meta.icon;
 
+  // 课程详情页进入时携带 from state，返回课程详情；AI 助教/直接访问回教材列表
+  const fromPath = (location.state as { from?: string } | null)?.from;
+  const backTarget = fromPath || '/course-material';
+  const backLabel = fromPath && fromPath !== '/course-material' ? '返回课程详情' : '返回教材列表';
+
   if (loading) {
     return (
       <div className={styles.detailPage}>
@@ -115,8 +121,8 @@ export default function CourseMaterialDetail() {
   if (notFound || !resource) {
     return (
       <div className={styles.detailPage}>
-        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate('/course-material')} className={styles.backButton}>
-          返回教材列表
+        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(backTarget)} className={styles.backButton}>
+          {backLabel}
         </Button>
         <Empty description="资源不存在或暂不可用" style={{ marginTop: 80 }} />
       </div>
@@ -135,8 +141,8 @@ export default function CourseMaterialDetail() {
   return (
     <div className={styles.detailPage}>
       <header className={styles.detailHeader}>
-        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate('/course-material')} className={styles.backButton}>
-          返回教材列表
+        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(backTarget)} className={styles.backButton}>
+          {backLabel}
         </Button>
         <div className={styles.titleRow}>
           <span className={styles.titleIcon} style={{ '--icon-color': meta.color } as React.CSSProperties}>

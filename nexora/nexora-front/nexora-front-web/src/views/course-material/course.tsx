@@ -80,7 +80,9 @@ export default function CourseDetail() {
       }
       return;
     }
-    navigate(`/course-material/resource/${resource.resourceId}`);
+    navigate(`/course-material/resource/${resource.resourceId}`, {
+      state: { from: `/course-material/${courseId}` },
+    });
   };
 
   const handleSyncWiki = async () => {
