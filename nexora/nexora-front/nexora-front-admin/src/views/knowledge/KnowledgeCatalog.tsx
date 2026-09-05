@@ -331,6 +331,7 @@ export default function KnowledgeCatalog() {
       title: '操作',
       key: 'action',
       width: 260,
+      fixed: 'right' as const,
       render: (_: unknown, record: KnowledgeDoc) => (
         <Space size="small" wrap>
           <Button type="link" size="small" onClick={() => setDocModal({ open: true, mode: 'view', initialValues: record })}>
@@ -351,6 +352,9 @@ export default function KnowledgeCatalog() {
       ),
     },
   ];
+
+  /** 表格最小内容宽度 = 各固定列宽之和，窄屏时由 Table 内部横向滚动，操作列固定右侧始终可见 */
+  const TABLE_SCROLL_X = 220 + 110 + 80 + 110 + 90 + 100 + 170 + 260;
 
   return (
     <div>
@@ -412,10 +416,21 @@ export default function KnowledgeCatalog() {
         </Form.Item>
       </SearchForm>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div style={{ width: 300, minWidth: 220, maxHeight: 640, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 6, padding: 8 }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', width: '100%', minWidth: 0 }}>
+        <div
+          style={{
+            width: 300,
+            flexShrink: 0,
+            maxHeight: 640,
+            overflow: 'auto',
+            border: '1px solid rgba(0,0,0,0.08)',
+            borderRadius: 12,
+            padding: 12,
+            background: '#fff',
+          }}
+        >
           <Space style={{ marginBottom: 8 }}>
-            <FolderOpen size={14} />
+            <FolderOpen size={14} color="#1677ff" />
             <span style={{ fontWeight: 600 }}>知识目录</span>
           </Space>
           <Tree
@@ -426,12 +441,22 @@ export default function KnowledgeCatalog() {
             titleRender={renderTitle}
           />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: '1px solid rgba(0,0,0,0.08)',
+            borderRadius: 12,
+            padding: 12,
+            background: '#fff',
+          }}
+        >
           <BaseTable<KnowledgeDoc>
             columns={columns}
             dataSource={docs}
             loading={loading}
             rowKey="docId"
+            scroll={{ x: TABLE_SCROLL_X }}
             pagination={{ current: query.pageNo, pageSize: query.pageSize, total }}
             onChange={handleTableChange}
           />
