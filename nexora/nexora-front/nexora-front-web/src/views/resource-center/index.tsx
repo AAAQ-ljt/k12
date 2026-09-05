@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   App, Breadcrumb, Button, Empty, Input, Modal, Progress, Select, Space, Table, Tag, Tree, Upload,
@@ -45,6 +45,9 @@ const TYPE_OPTIONS = [
   { label: '绘本', value: 'PICTURE_BOOK' },
   { label: '动画', value: 'ANIMATION' },
 ];
+
+/** 树顶「全部资源」根节点 key */
+const ALL_FILES_KEY = 'all-files';
 
 /** 系统目录类型展示名 */
 const DIR_TYPE_LABELS: Record<string, string> = {
@@ -171,14 +174,16 @@ export default function ResourceCenter() {
   const isWikiView = currentDir?.dirType === 'wiki';
 
   const breadcrumbItems = useMemo(() => {
-    const items: { title: string }[] = [{ title: '我的资源' }];
+    const items: { title: ReactNode }[] = [{
+      title: <a onClick={() => setCurrentDirId(undefined)}>我的资源</a>,
+    }];
     const stack: StudentDirectory[] = [];
     let current = currentDirId ? dirMap[currentDirId] : undefined;
     while (current) {
       stack.unshift(current);
       current = current.parentId ? dirMap[current.parentId] : undefined;
     }
-    stack.forEach((dir) => items.push({ title: dir.dirName }));
+    stack.forEach((dir) => items.push({ title: <a onClick={() => setCurrentDirId(dir.dirId)}>{dir.dirName}</a> }));
     return items;
   }, [currentDirId, dirMap]);
 
@@ -196,12 +201,17 @@ export default function ResourceCenter() {
       parentId: parentId === '0' ? '0' : parentId,
       children: build(dir.dirId),
     }));
-    return build('0');
+    // 树顶固定「全部资源」根节点：点击回到根目录查看所有资源，避免进入子目录后无法返回
+    return [{ key: ALL_FILES_KEY, title: '全部资源', parentId: '0', children: build('0') }];
   }, [directories]);
 
   const handleDrop = async (info: any) => {
     const dragId = info.dragNode.key as string;
     const targetId = info.node.key as string;
+    if (dragId === ALL_FILES_KEY || targetId === ALL_FILES_KEY) {
+      message.warning('「全部资源」节点不可参与排序');
+      return;
+    }
     const dragDir = dirMap[dragId];
     const targetDir = dirMap[targetId];
     const dragParent = dragDir?.parentId || '0';
@@ -568,11 +578,16 @@ export default function ResourceCenter() {
             blockNode
             draggable
             treeData={treeData}
-            selectedKeys={currentDirId ? [currentDirId] : []}
-            onSelect={(keys) => setCurrentDirId((keys[0] as string) || undefined)}
+            selectedKeys={[currentDirId || ALL_FILES_KEY]}
+            onSelect={(keys) => {
+              const key = (keys[0] as string) || ALL_FILES_KEY;
+              // 点「全部资源」或再次点击取消 → 回到所有资源视图
+              setCurrentDirId(key === ALL_FILES_KEY ? undefined : key);
+            }}
             onDrop={handleDrop}
             titleRender={(node: any) => {
-              const dir = dirMap[node.key];
+              const isAll = node.key === ALL_FILES_KEY;
+              const dir = isAll ? undefined : dirMap[node.key];
               const dirType = dir?.dirType;
               const isSystem = !!dirType;
               return (
@@ -585,7 +600,7 @@ export default function ResourceCenter() {
                       </Tag>
                     ) : null}
                   </span>
-                  {!isSystem ? (
+                  {!isAll && !isSystem ? (
                     <Space size={0} className={styles.treeNodeActions}>
                       <Button type="text" size="small" icon={<FolderPlus size={13} />} onClick={(event) => {
                         event.stopPropagation();
