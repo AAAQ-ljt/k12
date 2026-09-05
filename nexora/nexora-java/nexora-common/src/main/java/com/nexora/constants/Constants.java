@@ -84,6 +84,12 @@ public class Constants {
     public static final String REDIS_KEY_PICTURE_BOOK_TASK_PREFIX = "picturebook:task:";
 
     /**
+     * Redis key：动画讲解生成异步任务队列与任务前缀（任务体 = 动画任务 JSON）
+     */
+    public static final String REDIS_KEY_ANIMATION_TASK_QUEUE = "animation:task:queue";
+    public static final String REDIS_KEY_ANIMATION_TASK_PREFIX = "animation:task:";
+
+    /**
      * Redis key：知识库解析入库异步队列
      */
     public static final String REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE = "knowledge:import:queue";

@@ -1,4 +1,4 @@
-import { del, get } from './request';
+import { del, get, post } from './request';
 
 export interface AnimationStep {
   title: string;
@@ -98,6 +98,34 @@ export function sanitizeAnimationSvg(raw?: string): string {
 
 export function loadMyAnimationList(): Promise<AnimationResource[]> {
   return get('/animation/myList');
+}
+
+/** 动画生成任务（异步编排，前端轮询） */
+export interface AnimationTask {
+  taskId: string;
+  userId?: string;
+  stage?: string;
+  topic?: string;
+  /** PENDING / ANIMATION_GENERATING / COMPLETED / FAILED */
+  status: string;
+  message?: string;
+  title?: string;
+  animationResourceId?: string;
+  createTime?: string;
+}
+
+/**
+ * 提交动画讲解生成任务：立即返回 taskId，前端轮询 /task 获取进度
+ */
+export function generateAnimation(topic: string): Promise<AnimationTask> {
+  return post('/animation/generate', { topic });
+}
+
+/**
+ * 查询动画生成任务进度
+ */
+export function getAnimationTask(taskId: string): Promise<AnimationTask> {
+  return get('/animation/task', { taskId });
 }
 
 export function getAnimationResource(resourceId: string): Promise<AnimationResource> {

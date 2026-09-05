@@ -23,6 +23,18 @@
   font-size: 14px;
 }
 
+/* 动画生成输入栏 */
+.generateBar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.generateBar .ant-input {
+  flex: 1;
+}
+
 .animationBody {
   display: flex;
   align-items: center;
