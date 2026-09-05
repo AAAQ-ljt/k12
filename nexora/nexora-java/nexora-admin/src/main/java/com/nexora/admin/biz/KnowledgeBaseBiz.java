@@ -26,6 +26,7 @@ import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.StringTools;
 import com.nexora.utils.TextChunker;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,7 @@ import java.util.stream.Stream;
 /**
  * 知识库管理业务：总览、目录、文档、知识点、导入、向量化、问答测试。
  */
+@Slf4j
 @Service
 public class KnowledgeBaseBiz {
 
@@ -164,6 +166,8 @@ public class KnowledgeBaseBiz {
     }
 
     public PaginationResultVO<KnowledgeDoc> docList(KnowledgeDocQuery query) {
+        // 管理端知识库列表只看官方库（owner_id IS NULL），个人知识页在学习分析模块查看
+        query.setOwnerIdNull(Boolean.TRUE);
         if (query.getPageNo() == null) {
             query.setPageNo(1);
         }
@@ -175,6 +179,8 @@ public class KnowledgeBaseBiz {
 
     public void docAdd(KnowledgeDoc bean) {
         validateDoc(bean);
+        // 管理端新增一律落官方库，忽略调用方传入的 ownerId
+        bean.setOwnerId(null);
         if (bean.getSourceUrl() != null && !bean.getSourceUrl().isBlank()
                 && StringTools.isEmpty(bean.getContent())) {
             bean.setContent("原文链接：" + bean.getSourceUrl().trim());
@@ -200,6 +206,11 @@ public class KnowledgeBaseBiz {
         if (exist == null) {
             throw new BusinessException("文档不存在");
         }
+        // 官方库管理边界：学生个人知识页不允许在管理端修改
+        if (!StringTools.isEmpty(exist.getOwnerId())) {
+            throw new BusinessException("学生个人知识页不允许在管理端修改");
+        }
+        bean.setOwnerId(null);
         if (bean.getVectorStatus() == null) {
             bean.setVectorStatus(4);
         }
@@ -228,6 +239,10 @@ public class KnowledgeBaseBiz {
         }
         KnowledgeDoc doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
         if (doc != null) {
+            // 官方库管理边界：学生个人知识页不允许在管理端删除（级联删向量会破坏学生个人库）
+            if (!StringTools.isEmpty(doc.getOwnerId())) {
+                throw new BusinessException("学生个人知识页不允许在管理端删除");
+            }
             int count = doc.getChunkCount() == null ? 0 : doc.getChunkCount();
             safeDeleteChunks(docId, count);
         }
@@ -567,11 +582,16 @@ public class KnowledgeBaseBiz {
         }
         int topK = request.getTopK() == null ? 10 : Math.min(Math.max(request.getTopK(), 1), 50);
         double threshold = request.getThreshold() == null ? 0.5 : request.getThreshold();
-        List<Document> vectorHits = knowledgeVectorComponent.search(
-                request.getQuestion(), request.getStage(), request.getKnowledgePointId(),
-                request.getDifficulty(), request.getOwnerId(), topK, threshold);
-        if (vectorHits != null && !vectorHits.isEmpty()) {
-            return vectorHits.stream().map(this::toVectorResult).toList();
+        // 向量优先、关键词回退：向量检索异常（如 ES 不可用）不阻断问答测试
+        try {
+            List<Document> vectorHits = knowledgeVectorComponent.search(
+                    request.getQuestion(), request.getStage(), request.getKnowledgePointId(),
+                    request.getDifficulty(), request.getOwnerId(), topK, threshold);
+            if (vectorHits != null && !vectorHits.isEmpty()) {
+                return vectorHits.stream().map(this::toVectorResult).toList();
+            }
+        } catch (Exception e) {
+            log.warn("向量检索失败，回退关键词检索: {}", e.getMessage());
         }
         return keywordSearch(request, topK);
     }

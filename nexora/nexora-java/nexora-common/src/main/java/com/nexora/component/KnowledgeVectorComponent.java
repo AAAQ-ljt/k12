@@ -73,17 +73,18 @@ public class KnowledgeVectorComponent {
         vectorStore.delete(ids);
     }
 
+    /**
+     * ES 向量检索过滤表达式转 query_string 时不支持空字符串等值（ownerId == '' 会生成非法查询 metadata.ownerId:），
+     * 官方库检索不下发 ownerId 过滤，改为超量取回后在内存按 metadata 过滤。
+     */
+    private static final int OFFICIAL_SEARCH_OVER_FETCH = 3;
+
     public List<Document> search(String query, String stage, String knowledgePointId,
                                  Integer difficulty, String ownerId, int topK, double threshold) {
-        SearchRequest.Builder builder = SearchRequest.builder()
-                .query(query)
-                .topK(topK)
-                .similarityThreshold(threshold);
+        boolean officialSearch = ownerId == null || ownerId.isBlank();
         List<String> filters = new ArrayList<>();
-        if (ownerId != null && !ownerId.isBlank()) {
+        if (!officialSearch) {
             filters.add("ownerId == '" + ownerId + "'");
-        } else {
-            filters.add("ownerId == ''");
         }
         if (stage != null && !stage.isBlank()) {
             filters.add("stage == '" + stage + "'");
@@ -94,8 +95,21 @@ public class KnowledgeVectorComponent {
         if (difficulty != null) {
             filters.add("difficulty == " + difficulty);
         }
-        builder.filterExpression(String.join(" && ", filters));
+        SearchRequest.Builder builder = SearchRequest.builder()
+                .query(query)
+                .topK(officialSearch ? Math.min(topK * OFFICIAL_SEARCH_OVER_FETCH, 50) : topK)
+                .similarityThreshold(threshold);
+        if (!filters.isEmpty()) {
+            builder.filterExpression(String.join(" && ", filters));
+        }
         VectorStore vectorStore = vectorStoreProvider.getObject();
-        return vectorStore.similaritySearch(builder.build());
+        List<Document> documents = vectorStore.similaritySearch(builder.build());
+        if (!officialSearch) {
+            return documents;
+        }
+        return documents.stream()
+                .filter(doc -> String.valueOf(doc.getMetadata().getOrDefault("ownerId", "")).isEmpty())
+                .limit(topK)
+                .toList();
     }
 }

@@ -12,8 +12,6 @@ import com.nexora.vo.ResourceRecommendVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -37,7 +35,7 @@ public class RagSearchComponent {
     private static final int CHUNK_SIZE = 500;
 
     @Resource
-    private VectorStore vectorStore;
+    private KnowledgeVectorComponent knowledgeVectorComponent;
 
     @Resource
     private KnowledgeDocService knowledgeDocService;
@@ -79,16 +77,10 @@ public class RagSearchComponent {
     }
 
     private List<RagHit> vectorSearch(String ownerId, String stage, String question) {
-        SearchRequest.Builder builder = SearchRequest.builder()
-                .query(question)
-                .topK(TOP_K)
-                .similarityThreshold(THRESHOLD);
-        String actualOwnerId = ownerId == null ? "" : ownerId;
-        builder.filterExpression("ownerId == '" + actualOwnerId + "'");
-        if (stage != null && !stage.isBlank()) {
-            builder.filterExpression("stage == '" + stage + "' && ownerId == '" + actualOwnerId + "'");
-        }
-        List<Document> documents = vectorStore.similaritySearch(builder.build());
+        // 复用 KnowledgeVectorComponent.search：官方库（ownerId 为空）不下发 ownerId 过滤，
+        // 由组件内超量取回后按 metadata 过滤（ES 过滤表达式不支持空字符串等值）
+        List<Document> documents = knowledgeVectorComponent.search(
+                question, stage, null, null, ownerId, TOP_K, THRESHOLD);
         return documents.stream()
                 .map(doc -> new RagHit(
                         asString(doc.getMetadata().get("docId")),
