@@ -215,17 +215,13 @@ export default function ResourceManagement() {
   }, [dirList, selectedDir]);
 
   const tableData = useMemo<ResourceTableRow[]>(() => {
-    const parentId = selectedDir === 'root' ? '0' : selectedDir;
-    const dirRows: ResourceTableRow[] = dirList
-      .filter((dir) => dir.parentId === parentId)
-      .map((dir) => ({ ...dir, key: `dir:${dir.dirId}`, kind: 'dir' }));
-    const fileRows: ResourceTableRow[] = files.map((file) => ({
+    // 资源列表只展示文件，不混入文件夹行（文件夹通过左侧目录树进入）
+    return files.map((file) => ({
       ...file,
       key: file.resourceId,
       kind: 'file',
     }));
-    return [...dirRows, ...fileRows];
-  }, [dirList, files, selectedDir]);
+  }, [files]);
 
   const selectedFileCount = selectedRowKeys.filter((key) => !String(key).startsWith('dir:')).length;
 
