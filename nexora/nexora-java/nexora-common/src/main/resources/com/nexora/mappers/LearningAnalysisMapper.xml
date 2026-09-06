@@ -3,12 +3,51 @@
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.nexora.mappers.LearningAnalysisMapper">
 
+    <!-- 课程学习进度源：以已加入课程（course_enrollment）为主，实时聚合课时完成进度。
+         course_study_progress 表无任何写入方已废弃，不再作为口径来源。
+         进度 = 已完成课时(finished=1) / 课程可见课时数（章节与课时均启用） -->
+    <sql id="course_progress_source">
+        SELECT
+            e.user_id,
+            e.course_id,
+            ci.course_name,
+            COALESCE(lp.finished_lessons, 0) AS studied_lessons,
+            COALESCE(tl.total_lessons, 0) AS total_lessons,
+            COALESCE(ROUND(COALESCE(lp.finished_lessons, 0) * 100.0 / NULLIF(tl.total_lessons, 0)), 0) AS progress,
+            COALESCE(lp.study_duration, 0) AS study_duration,
+            CASE
+                WHEN COALESCE(lp.finished_lessons, 0) > 0 AND lp.finished_lessons >= COALESCE(tl.total_lessons, 0)
+                    THEN lp.finish_time
+                ELSE NULL
+            END AS finish_time,
+            e.update_time AS update_time
+        FROM course_enrollment e
+        INNER JOIN course_info ci ON ci.course_id = e.course_id AND ci.status = 1
+        LEFT JOIN (
+            SELECT l.course_id, COUNT(*) AS total_lessons
+            FROM course_chapter_lesson l
+            INNER JOIN course_chapter ch ON ch.chapter_id = l.chapter_id AND ch.status = 0
+            WHERE l.status = 0
+            GROUP BY l.course_id
+        ) tl ON tl.course_id = e.course_id
+        LEFT JOIN (
+            SELECT user_id, course_id,
+                   COUNT(*) AS finished_lessons,
+                   SUM(COALESCE(study_duration, 0)) AS study_duration,
+                   MAX(finish_time) AS finish_time
+            FROM course_study_lesson_progress
+            WHERE finished = 1
+            GROUP BY user_id, course_id
+        ) lp ON lp.user_id = e.user_id AND lp.course_id = e.course_id
+        WHERE e.status = 1
+    </sql>
+
     <select id="selectOverview" resultType="com.nexora.entity.vo.LearningOverviewVO">
         SELECT
             (SELECT COUNT(*) FROM user_info WHERE role_type = 1) AS studentCount,
-            (SELECT COUNT(DISTINCT user_id) FROM course_study_progress) AS courseActiveStudents,
-            (SELECT COALESCE(ROUND(AVG(progress)), 0) FROM course_study_progress) AS courseAvgProgress,
-            (SELECT COALESCE(SUM(study_duration), 0) FROM course_study_progress) AS courseTotalDuration,
+            (SELECT COUNT(DISTINCT e.user_id) FROM course_enrollment e WHERE e.status = 1) AS courseActiveStudents,
+            (SELECT COALESCE(ROUND(AVG(cp.progress)), 0) FROM (<include refid="course_progress_source" />) cp) AS courseAvgProgress,
+            (SELECT COALESCE(SUM(cp.study_duration), 0) FROM (<include refid="course_progress_source" />) cp) AS courseTotalDuration,
             (SELECT COUNT(*) FROM practice_record) AS practiceTotal,
             (SELECT COALESCE(SUM(is_correct), 0) FROM practice_record) AS practiceCorrect,
             (SELECT COALESCE(ROUND(SUM(is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0) FROM practice_record) AS practiceAccuracy,
@@ -60,9 +99,9 @@
             u.grade,
             u.status,
             u.last_login_time,
-            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = u.user_id) AS course_course_count,
-            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = u.user_id AND c.progress >= 100) AS course_finished_count,
-            (SELECT COALESCE(ROUND(AVG(c.progress)), 0) FROM course_study_progress c WHERE c.user_id = u.user_id) AS course_avg_progress,
+            (SELECT COUNT(*) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = u.user_id) AS course_course_count,
+            (SELECT COUNT(*) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = u.user_id AND cp.progress >= 100) AS course_finished_count,
+            (SELECT COALESCE(ROUND(AVG(cp.progress)), 0) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = u.user_id) AS course_avg_progress,
             (SELECT COUNT(*) FROM practice_record p WHERE p.user_id = u.user_id) AS practice_count,
             (SELECT COALESCE(SUM(p.is_correct), 0) FROM practice_record p WHERE p.user_id = u.user_id) AS practice_correct_count,
             (SELECT COALESCE(ROUND(SUM(p.is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0)
@@ -92,10 +131,10 @@
 
     <select id="selectUserDetail" resultType="com.nexora.entity.vo.LearningUserDetailVO">
         SELECT
-            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = #{userId}) AS course_count,
-            (SELECT COUNT(*) FROM course_study_progress c WHERE c.user_id = #{userId} AND c.progress >= 100) AS course_finished_count,
-            (SELECT COALESCE(ROUND(AVG(c.progress)), 0) FROM course_study_progress c WHERE c.user_id = #{userId}) AS course_avg_progress,
-            (SELECT COALESCE(SUM(c.study_duration), 0) FROM course_study_progress c WHERE c.user_id = #{userId}) AS course_study_duration,
+            (SELECT COUNT(*) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = #{userId}) AS course_count,
+            (SELECT COUNT(*) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = #{userId} AND cp.progress >= 100) AS course_finished_count,
+            (SELECT COALESCE(ROUND(AVG(cp.progress)), 0) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = #{userId}) AS course_avg_progress,
+            (SELECT COALESCE(SUM(cp.study_duration), 0) FROM (<include refid="course_progress_source" />) cp WHERE cp.user_id = #{userId}) AS course_study_duration,
             (SELECT COUNT(*) FROM practice_record p WHERE p.user_id = #{userId}) AS practice_count,
             (SELECT COALESCE(SUM(p.is_correct), 0) FROM practice_record p WHERE p.user_id = #{userId}) AS practice_correct_count,
             (SELECT COALESCE(ROUND(SUM(p.is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0)
@@ -121,18 +160,17 @@
 
     <select id="selectCourseProgressList" resultType="com.nexora.entity.vo.CourseStudyProgressItemVO">
         SELECT
-            c.course_id,
-            ci.course_name,
-            c.studied_lessons,
-            c.total_lessons,
-            c.progress,
-            c.study_duration,
-            c.finish_time,
-            c.update_time
-        FROM course_study_progress c
-        LEFT JOIN course_info ci ON ci.course_id = c.course_id
-        WHERE c.user_id = #{userId}
-        ORDER BY c.update_time DESC
+            cp.course_id,
+            cp.course_name,
+            cp.studied_lessons,
+            cp.total_lessons,
+            cp.progress,
+            cp.study_duration,
+            cp.finish_time,
+            cp.update_time
+        FROM (<include refid="course_progress_source" />) cp
+        WHERE cp.user_id = #{userId}
+        ORDER BY cp.update_time DESC
     </select>
 
     <select id="selectPracticeKnowledgePointList" resultType="com.nexora.entity.vo.PracticeKnowledgePointVO">

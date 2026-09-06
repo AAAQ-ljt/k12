@@ -29,12 +29,18 @@
 	</sql>
 
 	<sql id="base_condition_filed">
-			<if test="query.optionId != null">
-				 and  q.option_id = #{query.optionId}
-			</if>
-			<if test="query.questionId != null and query.questionId!=''">
-				 and  q.question_id = #{query.questionId}
-			</if>
+				<if test="query.optionId != null">
+					 and  q.option_id = #{query.optionId}
+				</if>
+				<if test="query.questionIds != null and query.questionIds.size()>0">
+					 and  q.question_id IN
+					 <foreach collection="query.questionIds" item="id" open="(" separator="," close=")">
+						 #{id}
+					 </foreach>
+				</if>
+				<if test="query.questionId != null and query.questionId!=''">
+					 and  q.question_id = #{query.questionId}
+				</if>
 			<if test="query.optionLabel != null and query.optionLabel!=''">
 				 and  q.option_label = #{query.optionLabel}
 			</if>

@@ -1,19 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { App, Button, Empty, Skeleton, Tag } from 'antd';
 import {
   ArrowLeft,
   BookOpen,
+  CheckCircle2,
   FileText,
   Film,
   GraduationCap,
   Image as ImageIcon,
   Layers,
   Link2,
+  Lock,
+  PlusCircle,
   Sparkles,
 } from 'lucide-react';
-import { getCourseDetail, type StudentCourseDetail, type StudentLessonResource } from '@/api/course';
+import {
+  getCourseDetail,
+  getLessonQuizStatus,
+  joinCourse,
+  type LessonQuizStatus,
+  type StudentCourseDetail,
+  type StudentLessonResource,
+} from '@/api/course';
 import { syncStudentWikiFromCourse } from '@/api/studentWiki';
+import LessonQuizModal from './components/LessonQuizModal';
 import styles from './course.module.scss';
 
 const RESOURCE_META: Record<string, { label: string; icon: typeof FileText; color: string }> = {
@@ -39,31 +50,81 @@ export default function CourseDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [joining, setJoining] = useState(false);
+  /** 课时测验/解锁状态 map（lessonId → 状态） */
+  const [quizStatusMap, setQuizStatusMap] = useState<Record<string, LessonQuizStatus>>({});
+  /** 正在做题的课时 */
+  const [quizLesson, setQuizLesson] = useState<{ lessonId: string; lessonName: string } | null>(null);
+
+  const loadDetail = useCallback(
+    (active: { current: boolean }) => {
+      setLoading(true);
+      setNotFound(false);
+      getCourseDetail(courseId)
+        .then((data) => {
+          if (active.current) {
+            setDetail(data);
+          }
+        })
+        .catch(() => {
+          if (active.current) {
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (active.current) {
+            setLoading(false);
+          }
+        });
+    },
+    [courseId],
+  );
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setNotFound(false);
-    getCourseDetail(courseId)
-      .then((data) => {
-        if (active) {
-          setDetail(data);
+    const active = { current: true };
+    loadDetail(active);
+    getLessonQuizStatus(courseId)
+      .then((list) => {
+        if (active.current) {
+          const map: Record<string, LessonQuizStatus> = {};
+          list.forEach((item) => {
+            map[item.lessonId] = item;
+          });
+          setQuizStatusMap(map);
         }
       })
-      .catch(() => {
-        if (active) {
-          setNotFound(true);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
+      .catch(() => undefined);
     return () => {
-      active = false;
+      active.current = false;
     };
-  }, [courseId]);
+  }, [courseId, loadDetail]);
+
+  /** 加入课程后重新拉取详情（章节解锁展示） */
+  const handleJoin = async () => {
+    setJoining(true);
+    try {
+      await joinCourse(courseId);
+      message.success('加入课程成功，开始学习吧');
+      loadDetail({ current: true });
+    } catch {
+      // 请求层已统一提示
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  /** 测验通过后刷新解锁状态（下一课时随之解锁） */
+  const refreshQuizStatus = () => {
+    getLessonQuizStatus(courseId)
+      .then((list) => {
+        const map: Record<string, LessonQuizStatus> = {};
+        list.forEach((item) => {
+          map[item.lessonId] = item;
+        });
+        setQuizStatusMap(map);
+      })
+      .catch(() => undefined);
+  };
 
   const totalLessons = useMemo(
     () => detail?.chapters.reduce((sum, chapter) => sum + chapter.lessons.length, 0) ?? 0,
@@ -144,16 +205,18 @@ export default function CourseDetail() {
               </span>
             </div>
           </div>
-          <Button
-            className={styles.syncButton}
-            type="primary"
-            ghost
-            icon={<Sparkles size={15} />}
-            loading={syncing}
-            onClick={() => void handleSyncWiki()}
-          >
-            生成知识页草稿
-          </Button>
+          {detail.enrolled === false ? null : (
+            <Button
+              className={styles.syncButton}
+              type="primary"
+              ghost
+              icon={<Sparkles size={15} />}
+              loading={syncing}
+              onClick={() => void handleSyncWiki()}
+            >
+              生成知识页草稿
+            </Button>
+          )}
         </div>
       </header>
 
@@ -164,8 +227,27 @@ export default function CourseDetail() {
         </section>
       ) : null}
 
-      <div className={styles.chapterList}>
-        {detail.chapters.map((chapter, chapterIndex) => (
+      {detail.enrolled === false ? (
+        <section className={styles.descriptionBox}>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="加入课程后即可查看章节、课时与学习资料"
+            style={{ padding: '20px 0' }}
+          >
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlusCircle size={16} />}
+              loading={joining}
+              onClick={() => void handleJoin()}
+            >
+              加入课程
+            </Button>
+          </Empty>
+        </section>
+      ) : (
+        <div className={styles.chapterList}>
+          {detail.chapters.map((chapter, chapterIndex) => (
           <section key={chapter.chapter.chapterId} className={styles.chapterCard}>
             <div className={styles.chapterHeader}>
               <span className={styles.chapterIndex}>{chapterIndex + 1}</span>
@@ -178,49 +260,94 @@ export default function CourseDetail() {
               {chapter.lessons.length === 0 ? (
                 <Empty description="暂无课时" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                chapter.lessons.map((lesson, lessonIndex) => (
-                  <div key={lesson.lesson.lessonId} className={styles.lessonCard}>
-                    <div className={styles.lessonTitle}>
-                      <span>
-                        {chapterIndex + 1}.{lessonIndex + 1}
-                      </span>
-                      <h4>{lesson.lesson.lessonName}</h4>
+                chapter.lessons.map((lesson, lessonIndex) => {
+                  const status = quizStatusMap[lesson.lesson.lessonId];
+                  const locked = !!status && !status.unlocked;
+                  const passed = !!status && status.passed;
+                  return (
+                    <div
+                      key={lesson.lesson.lessonId}
+                      className={`${styles.lessonCard}${locked ? ` ${styles.lessonLocked}` : ''}`}
+                    >
+                      <div className={styles.lessonTitle}>
+                        <span>
+                          {chapterIndex + 1}.{lessonIndex + 1}
+                        </span>
+                        <h4>{lesson.lesson.lessonName}</h4>
+                        {status?.hasQuiz ? (
+                          <Tag color={passed ? 'success' : 'gold'}>{passed ? '测验已通过' : '含通关测验'}</Tag>
+                        ) : null}
+                        {passed ? (
+                          <span className={styles.passedMark}>
+                            <CheckCircle2 size={16} />
+                          </span>
+                        ) : null}
+                      </div>
+                      {lesson.lesson.summary ? (
+                        <p className={styles.lessonSummary}>{lesson.lesson.summary}</p>
+                      ) : null}
+                      <div className={styles.resourceList}>
+                        {lesson.resources.length === 0 ? (
+                          <span className={styles.noResource}>暂无学习资料</span>
+                        ) : (
+                          lesson.resources.map((resource) => {
+                            const meta = resourceMeta(resource.resourceType);
+                            const Icon = meta.icon;
+                            return (
+                              <button
+                                key={resource.id}
+                                className={styles.resourceItem}
+                                disabled={locked}
+                                onClick={() => openResource(resource)}
+                              >
+                                <span className={styles.resourceIcon} style={{ '--icon-color': meta.color } as React.CSSProperties}>
+                                  <Icon size={17} />
+                                </span>
+                                <span className={styles.resourceText}>
+                                  <span>{resource.resourceName || '未命名资料'}</span>
+                                  <Tag color={meta.color}>{meta.label}</Tag>
+                                </span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                      <div className={styles.quizBar}>
+                        {locked ? (
+                          <span className={styles.lockTip}>
+                            <Lock size={13} />
+                            需先通过上一课时的通关测验
+                          </span>
+                        ) : status?.hasQuiz && !passed ? (
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => setQuizLesson({ lessonId: lesson.lesson.lessonId, lessonName: lesson.lesson.lessonName })}
+                          >
+                            做通关测验
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                    {lesson.lesson.summary ? (
-                      <p className={styles.lessonSummary}>{lesson.lesson.summary}</p>
-                    ) : null}
-                    <div className={styles.resourceList}>
-                      {lesson.resources.length === 0 ? (
-                        <span className={styles.noResource}>暂无学习资料</span>
-                      ) : (
-                        lesson.resources.map((resource) => {
-                          const meta = resourceMeta(resource.resourceType);
-                          const Icon = meta.icon;
-                          return (
-                            <button
-                              key={resource.id}
-                              className={styles.resourceItem}
-                              onClick={() => openResource(resource)}
-                            >
-                              <span className={styles.resourceIcon} style={{ '--icon-color': meta.color } as React.CSSProperties}>
-                                <Icon size={17} />
-                              </span>
-                              <span className={styles.resourceText}>
-                                <span>{resource.resourceName || '未命名资料'}</span>
-                                <Tag color={meta.color}>{meta.label}</Tag>
-                              </span>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>
         ))}
-      </div>
+        </div>
+      )}
+
+      <LessonQuizModal
+        open={!!quizLesson}
+        lessonId={quizLesson?.lessonId}
+        lessonName={quizLesson?.lessonName}
+        onClose={() => setQuizLesson(null)}
+        onPassed={() => {
+          message.success('测验通过，该课时已完成');
+          refreshQuizStatus();
+        }}
+      />
     </div>
   );
 }

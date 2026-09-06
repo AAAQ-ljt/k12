@@ -50,6 +50,8 @@ export interface CourseChapterLesson {
   videoDuration?: number;
   sort?: number;
   status?: number;
+  /** 是否已配置通关测验（课程详情返回） */
+  quizEnabled?: boolean;
   createTime?: string;
   updateTime?: string;
 }
@@ -170,4 +172,65 @@ export function bindLessonResources(lessonId: string, resourceIds: string[]): Pr
 /** 解绑课时资源 */
 export function unbindLessonResource(id: number): Promise<void> {
   return request.delete('/courseChapterLessonResource/del', { params: { id } });
+}
+
+/** 课时通关测验配置 */
+export interface CourseLessonQuiz {
+  lessonId: string;
+  courseId?: string;
+  quizMode: number; // 0关闭 1题库选题 2AI生成
+  questionIds?: string;
+  questionCount?: number;
+  difficulty?: number;
+  passScore?: number;
+  unlockNext: number; // 0宽松 1严格门禁
+  quizConfig?: string;
+  status?: number;
+}
+
+/** 课时通关测验详情 */
+export interface LessonQuizDetail {
+  quiz?: CourseLessonQuiz | null;
+  questions?: QuestionLite[];
+  /** 每题分值（questionId → 分） */
+  questionScores?: Record<string, number>;
+}
+
+/** 关联题目（轻量回显） */
+export interface QuestionLite {
+  questionId: string;
+  questionType?: number;
+  title?: string;
+  score?: number;
+  difficulty?: number;
+  status?: number;
+}
+
+/** 课时通关测验保存参数 */
+export interface LessonQuizSaveData {
+  lessonId: string;
+  quizMode: number;
+  questionIds?: string[];
+  /** 每题分值（questionId → 分） */
+  questionScores?: Record<string, number>;
+  questionCount?: number;
+  difficulty?: number;
+  passScore: number;
+  unlockNext: number;
+  topic?: string;
+}
+
+/** 获取课时通关测验详情 */
+export function getLessonQuizDetail(lessonId: string): Promise<LessonQuizDetail> {
+  return request.get('/courseChapterLesson/quizDetail', { params: { lessonId } });
+}
+
+/** 保存课时通关测验（quizMode=2 时后端 AI 出题） */
+export function saveLessonQuiz(data: LessonQuizSaveData): Promise<void> {
+  return request.post('/courseChapterLesson/quizSave', data);
+}
+
+/** 关闭课时通关测验 */
+export function deleteLessonQuiz(lessonId: string): Promise<void> {
+  return request.delete('/courseChapterLesson/quizDel', { params: { lessonId } });
 }

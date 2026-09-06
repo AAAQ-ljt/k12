@@ -1,6 +1,7 @@
 package com.nexora.entity.query;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -13,6 +14,11 @@ public class QuestionOptionQuery extends BaseParam {
 	 * 选项ID
 	 */
 	private Integer optionId;
+
+	/**
+	 * 批量题目ID（IN 查询）
+	 */
+	private List<String> questionIds;
 
 	/**
 	 * 题目ID
@@ -61,6 +67,14 @@ public class QuestionOptionQuery extends BaseParam {
 
 	public Integer getOptionId(){
 		return this.optionId;
+	}
+
+	public void setQuestionIds(List<String> questionIds){
+		this.questionIds = questionIds;
+	}
+
+	public List<String> getQuestionIds(){
+		return this.questionIds;
 	}
 
 	public void setQuestionId(String questionId){

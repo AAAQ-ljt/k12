@@ -106,6 +106,18 @@
 			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
 				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
 			</if>
+			<if test="query.courseIds != null and query.courseIds.size() > 0">
+				 and  c.course_id in
+				 <foreach collection="query.courseIds" item="idItem" open="(" close=")" separator=",">
+					 #{idItem}
+				 </foreach>
+			</if>
+			<if test="query.excludeCourseIds != null and query.excludeCourseIds.size() > 0">
+				 and  c.course_id not in
+				 <foreach collection="query.excludeCourseIds" item="idItem" open="(" close=")" separator=",">
+					 #{idItem}
+				 </foreach>
+			</if>
 			<if test="query.courseNameFuzzy!= null  and query.courseNameFuzzy!=''">
 				 and  c.course_name like concat('%', #{query.courseNameFuzzy}, '%')
 			</if>

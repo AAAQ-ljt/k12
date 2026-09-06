@@ -136,10 +136,16 @@
   border-radius: 10px;
 }
 
+.lessonCard.lessonLocked {
+  opacity: 0.62;
+  background: #f5f5f5;
+}
+
 .lessonTitle {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .lessonTitle span {
@@ -152,6 +158,25 @@
   margin: 0;
   font-size: 14px;
   color: var(--text-primary);
+}
+
+.passedMark {
+  color: #52c41a;
+  display: inline-flex;
+}
+
+.quizBar {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.lockTip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
 }
 
 .lessonSummary {

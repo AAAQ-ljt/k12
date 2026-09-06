@@ -23,6 +23,7 @@ import {
   delChapter,
   delLesson,
   getDetail,
+  getLessonQuizDetail,
   unbindLessonResource,
   updateChapter,
   updateLesson,
@@ -34,6 +35,7 @@ import {
 import { loadDataList as loadResourceList, type ResourceInfo } from '@/api/resource';
 import { getStageOption } from '@/types/common';
 import styles from './course-detail.module.scss';
+import LessonQuizConfigModal from './LessonQuizConfigModal';
 
 interface CourseDetailDrawerProps {
   open: boolean;
@@ -86,6 +88,9 @@ export default function CourseDetailDrawer({
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [chapterForm] = Form.useForm();
   const [lessonForm] = Form.useForm();
+  /** 课时通关测验配置弹窗 */
+  const [quizConfigOpen, setQuizConfigOpen] = useState(false);
+  const [lessonQuizEnabled, setLessonQuizEnabled] = useState(false);
 
   useEffect(() => {
     if (chapterModal.open) {
@@ -133,6 +138,17 @@ export default function CourseDetailDrawer({
     () => selectedChapter?.lessons.find((item) => item.lesson.lessonId === selectedLessonId),
     [selectedChapter, selectedLessonId],
   );
+
+  /** 选中课时变化时查询其通关测验状态 */
+  useEffect(() => {
+    if (!selectedLessonId) {
+      setLessonQuizEnabled(false);
+      return;
+    }
+    getLessonQuizDetail(selectedLessonId)
+      .then((detail) => setLessonQuizEnabled(!!detail.quiz && detail.quiz.quizMode > 0))
+      .catch(() => setLessonQuizEnabled(false));
+  }, [selectedLessonId]);
 
   const loadResources = async (page = resourcePage, keyword = resourceKeyword) => {
     setResourceLoading(true);
@@ -390,7 +406,14 @@ export default function CourseDetailDrawer({
                     ]}
                   >
                     <List.Item.Meta
-                      title={item.lesson.lessonName}
+                      title={
+                        <Space size={6}>
+                          {item.lesson.lessonName}
+                          {item.lesson.quizEnabled ? (
+                            <Tag color="green" style={{ marginLeft: 6, fontSize: 11 }}>测验</Tag>
+                          ) : null}
+                        </Space>
+                      }
                       description={item.lesson.summary || '暂无摘要'}
                     />
                   </List.Item>
@@ -404,19 +427,29 @@ export default function CourseDetailDrawer({
               <span>
                 <Link2 size={15} />
                 课时资源
+                {lessonQuizEnabled ? <Tag color="green">已配测验</Tag> : null}
               </span>
-              <Button
-                size="small"
-                icon={<Plus size={13} />}
-                disabled={!selectedLessonId}
-                onClick={() => {
-                  setSelectedResourceIds(selectedLesson?.resources.map((item) => item.resourceId) ?? []);
-                  setPickerOpen(true);
-                  loadResources(1, '');
-                }}
-              >
-                绑定资源
-              </Button>
+              <Space size={6}>
+                <Button
+                  size="small"
+                  disabled={!selectedLessonId}
+                  onClick={() => setQuizConfigOpen(true)}
+                >
+                  通关测验
+                </Button>
+                <Button
+                  size="small"
+                  icon={<Plus size={13} />}
+                  disabled={!selectedLessonId}
+                  onClick={() => {
+                    setSelectedResourceIds(selectedLesson?.resources.map((item) => item.resourceId) ?? []);
+                    setPickerOpen(true);
+                    loadResources(1, '');
+                  }}
+                >
+                  绑定资源
+                </Button>
+              </Space>
             </div>
             {!selectedLesson ? (
               <Empty description="请先选择课时" className={styles.emptyBox} />
@@ -464,6 +497,19 @@ export default function CourseDetailDrawer({
           </section>
         </div>
       )}
+
+      <LessonQuizConfigModal
+        open={quizConfigOpen}
+        lessonId={selectedLessonId}
+        lessonName={selectedLesson?.lesson.lessonName}
+        onClose={() => setQuizConfigOpen(false)}
+        onSaved={() => {
+          if (course?.courseId) {
+            void loadDetail(course.courseId);
+          }
+          onChanged();
+        }}
+      />
 
       <Modal
         title={chapterModal.mode === 'create' ? '新增章节' : '编辑章节'}

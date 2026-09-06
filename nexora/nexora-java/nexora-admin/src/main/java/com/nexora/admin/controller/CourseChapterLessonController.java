@@ -1,6 +1,8 @@
 package com.nexora.admin.controller;
 
 import com.nexora.admin.biz.CourseBiz;
+import com.nexora.admin.dto.LessonQuizSaveDTO;
+import com.nexora.admin.vo.LessonQuizDetailVO;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.vo.ResponseVO;
@@ -46,6 +48,23 @@ public class CourseChapterLessonController extends ABaseController {
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String lessonId) {
         courseBiz.deleteLesson(lessonId);
+        return getSuccessResponseVO(null);
+    }
+
+    @GetMapping("/quizDetail")
+    public ResponseVO<LessonQuizDetailVO> quizDetail(@RequestParam String lessonId) {
+        return getSuccessResponseVO(courseBiz.lessonQuizDetail(lessonId));
+    }
+
+    @PostMapping("/quizSave")
+    public ResponseVO<Void> quizSave(@RequestBody LessonQuizSaveDTO dto) {
+        courseBiz.saveLessonQuiz(dto);
+        return getSuccessResponseVO(null);
+    }
+
+    @DeleteMapping("/quizDel")
+    public ResponseVO<Void> quizDel(@RequestParam String lessonId) {
+        courseBiz.deleteLessonQuiz(lessonId);
         return getSuccessResponseVO(null);
     }
 }

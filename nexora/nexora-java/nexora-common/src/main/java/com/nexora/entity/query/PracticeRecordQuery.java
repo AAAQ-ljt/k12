@@ -68,9 +68,16 @@ public class PracticeRecordQuery extends BaseParam {
 	private Integer duration;
 
 	/**
-	 * 来源：0对话练习 1路径快测 2遗忘复习
+	 * 来源：0对话练习 1路径快测 2遗忘复习 3课时通关测验
 	 */
 	private Integer source;
+
+	/**
+	 * 业务维度标识：课时通关测验=lesson_id
+	 */
+	private String bizId;
+
+	private String bizIdFuzzy;
 
 	/**
 	 * 创建时间
@@ -200,6 +207,22 @@ public class PracticeRecordQuery extends BaseParam {
 
 	public Integer getSource(){
 		return this.source;
+	}
+
+	public void setBizId(String bizId){
+		this.bizId = bizId;
+	}
+
+	public String getBizId(){
+		return this.bizId;
+	}
+
+	public void setBizIdFuzzy(String bizIdFuzzy){
+		this.bizIdFuzzy = bizIdFuzzy;
+	}
+
+	public String getBizIdFuzzy(){
+		return this.bizIdFuzzy;
 	}
 
 	public void setCreateTime(String createTime){

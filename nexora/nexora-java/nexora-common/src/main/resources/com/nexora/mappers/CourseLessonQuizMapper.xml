@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.CourseLessonQuizMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.nexora.entity.po.CourseLessonQuiz">
+		<result column="lesson_id" property="lessonId" />
+		<result column="course_id" property="courseId" />
+		<result column="quiz_mode" property="quizMode" />
+		<result column="question_ids" property="questionIds" />
+		<result column="question_count" property="questionCount" />
+		<result column="difficulty" property="difficulty" />
+		<result column="pass_score" property="passScore" />
+		<result column="unlock_next" property="unlockNext" />
+		<result column="quiz_config" property="quizConfig" />
+		<result column="status" property="status" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 c.lesson_id,c.course_id,c.quiz_mode,c.question_ids,c.question_count,
+		 c.difficulty,c.pass_score,c.unlock_next,c.quiz_config,c.status,c.create_time,c.update_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.lessonId != null and query.lessonId!=''">
+				 and  c.lesson_id = #{query.lessonId}
+			</if>
+			<if test="query.courseId != null and query.courseId!=''">
+				 and  c.course_id = #{query.courseId}
+			</if>
+			<if test="query.quizMode != null">
+				 and  c.quiz_mode = #{query.quizMode}
+			</if>
+			<if test="query.unlockNext != null">
+				 and  c.unlock_next = #{query.unlockNext}
+			</if>
+			<if test="query.status != null">
+				 and  c.status = #{query.status}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  c.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  c.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.lessonIdFuzzy!= null  and query.lessonIdFuzzy!=''">
+				 and  c.lesson_id like concat('%', #{query.lessonIdFuzzy}, '%')
+			</if>
+			<if test="query.courseIdFuzzy!= null  and query.courseIdFuzzy!=''">
+				 and  c.course_id like concat('%', #{query.courseIdFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  c.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  c.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  c.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  c.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map">
+		 SELECT <include refid="base_column_list" /> FROM course_lesson_quiz c <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer">
+		 SELECT count(1) FROM course_lesson_quiz c <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.nexora.entity.po.CourseLessonQuiz">
+		 INSERT INTO course_lesson_quiz
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.lessonId != null">
+				 lesson_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.quizMode != null">
+				 quiz_mode,
+			</if>
+			<if test="bean.questionIds != null">
+				 question_ids,
+			</if>
+			<if test="bean.questionCount != null">
+				 question_count,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.passScore != null">
+				 pass_score,
+			</if>
+			<if test="bean.unlockNext != null">
+				 unlock_next,
+			</if>
+			<if test="bean.quizConfig != null">
+				 quiz_config,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.lessonId!=null">
+				 #{bean.lessonId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.quizMode!=null">
+				 #{bean.quizMode},
+			</if>
+			<if test="bean.questionIds!=null">
+				 #{bean.questionIds},
+			</if>
+			<if test="bean.questionCount!=null">
+				 #{bean.questionCount},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.passScore!=null">
+				 #{bean.passScore},
+			</if>
+			<if test="bean.unlockNext!=null">
+				 #{bean.unlockNext},
+			</if>
+			<if test="bean.quizConfig!=null">
+				 #{bean.quizConfig},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.nexora.entity.po.CourseLessonQuiz">
+		 INSERT INTO course_lesson_quiz
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.lessonId != null">
+				 lesson_id,
+			</if>
+			<if test="bean.courseId != null">
+				 course_id,
+			</if>
+			<if test="bean.quizMode != null">
+				 quiz_mode,
+			</if>
+			<if test="bean.questionIds != null">
+				 question_ids,
+			</if>
+			<if test="bean.questionCount != null">
+				 question_count,
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty,
+			</if>
+			<if test="bean.passScore != null">
+				 pass_score,
+			</if>
+			<if test="bean.unlockNext != null">
+				 unlock_next,
+			</if>
+			<if test="bean.quizConfig != null">
+				 quiz_config,
+			</if>
+			<if test="bean.status != null">
+				 status,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.lessonId!=null">
+				 #{bean.lessonId},
+			</if>
+			<if test="bean.courseId!=null">
+				 #{bean.courseId},
+			</if>
+			<if test="bean.quizMode!=null">
+				 #{bean.quizMode},
+			</if>
+			<if test="bean.questionIds!=null">
+				 #{bean.questionIds},
+			</if>
+			<if test="bean.questionCount!=null">
+				 #{bean.questionCount},
+			</if>
+			<if test="bean.difficulty!=null">
+				 #{bean.difficulty},
+			</if>
+			<if test="bean.passScore!=null">
+				 #{bean.passScore},
+			</if>
+			<if test="bean.unlockNext!=null">
+				 #{bean.unlockNext},
+			</if>
+			<if test="bean.quizConfig!=null">
+				 #{bean.quizConfig},
+			</if>
+			<if test="bean.status!=null">
+				 #{bean.status},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.courseId!=null">
+				 course_id = VALUES(course_id),
+			</if>
+			<if test="bean.quizMode!=null">
+				 quiz_mode = VALUES(quiz_mode),
+			</if>
+			<if test="bean.questionIds!=null">
+				 question_ids = VALUES(question_ids),
+			</if>
+			<if test="bean.questionCount!=null">
+				 question_count = VALUES(question_count),
+			</if>
+			<if test="bean.difficulty!=null">
+				 difficulty = VALUES(difficulty),
+			</if>
+			<if test="bean.passScore!=null">
+				 pass_score = VALUES(pass_score),
+			</if>
+			<if test="bean.unlockNext!=null">
+				 unlock_next = VALUES(unlock_next),
+			</if>
+			<if test="bean.quizConfig!=null">
+				 quiz_config = VALUES(quiz_config),
+			</if>
+			<if test="bean.status!=null">
+				 status = VALUES(status),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.updateTime!=null">
+				 update_time = VALUES(update_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 多条件修改-->
+	<update id="updateByParam" parameterType="com.nexora.entity.query.CourseLessonQuizQuery">
+		 UPDATE course_lesson_quiz c
+		 <set>
+			<if test="bean.lessonId != null">
+				 lesson_id = #{bean.lessonId},
+			</if>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.quizMode != null">
+				 quiz_mode = #{bean.quizMode},
+			</if>
+			<if test="bean.questionIds != null">
+				 question_ids = #{bean.questionIds},
+			</if>
+			<if test="bean.questionCount != null">
+				 question_count = #{bean.questionCount},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.passScore != null">
+				 pass_score = #{bean.passScore},
+			</if>
+			<if test="bean.unlockNext != null">
+				 unlock_next = #{bean.unlockNext},
+			</if>
+			<if test="bean.quizConfig != null">
+				 quiz_config = #{bean.quizConfig},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+		 </set>
+		 <include refid="query_condition" />
+	</update>
+
+	<!-- 多条件删除-->
+	<delete id="deleteByParam">
+		 delete c from course_lesson_quiz c
+		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据LessonId修改-->
+	<update id="updateByLessonId" parameterType="com.nexora.entity.po.CourseLessonQuiz">
+		 UPDATE course_lesson_quiz
+		 <set>
+			<if test="bean.courseId != null">
+				 course_id = #{bean.courseId},
+			</if>
+			<if test="bean.quizMode != null">
+				 quiz_mode = #{bean.quizMode},
+			</if>
+			<if test="bean.questionIds != null">
+				 question_ids = #{bean.questionIds},
+			</if>
+			<if test="bean.questionCount != null">
+				 question_count = #{bean.questionCount},
+			</if>
+			<if test="bean.difficulty != null">
+				 difficulty = #{bean.difficulty},
+			</if>
+			<if test="bean.passScore != null">
+				 pass_score = #{bean.passScore},
+			</if>
+			<if test="bean.unlockNext != null">
+				 unlock_next = #{bean.unlockNext},
+			</if>
+			<if test="bean.quizConfig != null">
+				 quiz_config = #{bean.quizConfig},
+			</if>
+			<if test="bean.status != null">
+				 status = #{bean.status},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
+		 </set>
+		 where lesson_id=#{lessonId}
+	</update>
+
+	<!-- 根据LessonId删除-->
+	<delete id="deleteByLessonId">
+		delete from course_lesson_quiz where lesson_id=#{lessonId}
+	</delete>
+
+	<!-- 根据LessonId获取对象-->
+	<select id="selectByLessonId" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from course_lesson_quiz c where lesson_id=#{lessonId}
+	</select>
+
+</mapper>

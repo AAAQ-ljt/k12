@@ -1,0 +1,447 @@
+.loadingBox {
+  padding: 40px 0;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* ===== 答题视图：逐题作答 + 答题卡 ===== */
+
+.quizBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.quizHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.quizMeta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+}
+
+.quizAnswered {
+  margin-left: auto;
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.progressBar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.progressInner {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #4096ff, #1677ff);
+  transition: width 0.25s ease;
+}
+
+.sheet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sheetDot {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  line-height: 26px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #1677ff;
+    color: #1677ff;
+  }
+}
+
+.dotDone {
+  background: #e6f4ff;
+  border-color: #91caff;
+  color: #1677ff;
+}
+
+.dotCurrent {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15);
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.questionCard {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fff;
+}
+
+.questionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.questionIndex {
+  margin-left: auto;
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+}
+
+.questionTitle {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.questionTitle p {
+  margin: 0;
+}
+
+.questionTitle :global(.math),
+.questionTitle :global(.katex) {
+  font-size: 1.05em;
+}
+
+.questionScore {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}
+
+.optionGroup {
+  width: 100%;
+}
+
+.optionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.optionItem {
+  display: flex;
+  align-items: flex-start;
+  margin-inline-end: 0 !important;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: #91caff;
+  }
+}
+
+.optionLabel {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.quizFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footerNav {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== 结果视图：得分环 + 选项高亮对比 ===== */
+
+.resultBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resultBanner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.bannerPass {
+  background: linear-gradient(135deg, #52c41a, #389e0d);
+}
+
+.bannerFail {
+  background: linear-gradient(135deg, #ff4d4f, #cf1322);
+}
+
+.ring {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ringPass {
+  background: conic-gradient(#fff var(--pct, 0%), rgba(255, 255, 255, 0.25) 0);
+}
+
+.ringFail {
+  background: conic-gradient(#fff var(--pct, 0%), rgba(255, 255, 255, 0.25) 0);
+}
+
+.ringInner {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.ringScore {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.ringPass .ringScore {
+  color: #389e0d;
+}
+
+.ringFail .ringScore {
+  color: #cf1322;
+}
+
+.ringTotal {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.bannerInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.bannerTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.bannerStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  opacity: 0.92;
+}
+
+.resultListHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.resultList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.resultItem {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fafafa;
+}
+
+.resultHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.questionNo {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1.6;
+}
+
+.questionNo p {
+  margin: 0;
+}
+
+.questionNo :global(.math),
+.questionNo :global(.katex) {
+  font-size: 1.05em;
+}
+
+.scoreBadge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1677ff;
+  background: #e6f4ff;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.answerRow {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.72);
+}
+
+.optionResult {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.optRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.optContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.optContent p {
+  margin: 0;
+}
+
+.optIcon {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.optCorrect {
+  background: #f6ffed;
+  border-color: #b7eb8f;
+}
+
+.optCorrect .optIcon {
+  color: #52c41a;
+}
+
+.optWrong {
+  background: #fff2f0;
+  border-color: #ffccc7;
+}
+
+.optWrong .optIcon {
+  color: #ff4d4f;
+}
+
+.compareRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.compareCell {
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid;
+}
+
+.compareOk {
+  background: #f6ffed;
+  border-color: #b7eb8f;
+}
+
+.compareBad {
+  background: #fff2f0;
+  border-color: #ffccc7;
+}
+
+.compareLabel {
+  display: block;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 2px;
+}
+
+.subjectiveTip {
+  font-size: 12px;
+  color: #d46b08;
+  margin-top: 2px;
+}
+
+.analysisWrap {
+  margin-top: 6px;
+}
+
+.analysisToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #1677ff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.analysis {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.65);
+}

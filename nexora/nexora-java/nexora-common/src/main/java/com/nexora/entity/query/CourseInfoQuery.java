@@ -1,6 +1,7 @@
 package com.nexora.entity.query;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -15,6 +16,16 @@ public class CourseInfoQuery extends BaseParam {
 	private String courseId;
 
 	private String courseIdFuzzy;
+
+	/**
+	 * 课程ID集合（按加入课程等场景过滤）
+	 */
+	private List<String> courseIds;
+
+	/**
+	 * 排除的课程ID集合（可加入课程=全量-已加入）
+	 */
+	private List<String> excludeCourseIds;
 
 	/**
 	 * 课程名
@@ -128,6 +139,22 @@ public class CourseInfoQuery extends BaseParam {
 
 	public String getCourseIdFuzzy(){
 		return this.courseIdFuzzy;
+	}
+
+	public void setCourseIds(List<String> courseIds){
+		this.courseIds = courseIds;
+	}
+
+	public List<String> getCourseIds(){
+		return this.courseIds;
+	}
+
+	public void setExcludeCourseIds(List<String> excludeCourseIds){
+		this.excludeCourseIds = excludeCourseIds;
+	}
+
+	public List<String> getExcludeCourseIds(){
+		return this.excludeCourseIds;
 	}
 
 	public void setCourseName(String courseName){

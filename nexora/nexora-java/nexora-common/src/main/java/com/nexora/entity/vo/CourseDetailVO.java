@@ -14,6 +14,17 @@ public class CourseDetailVO implements Serializable {
 
     private List<CourseChapterDetailVO> chapters;
 
+    /** 当前学生是否已加入课程；未加入时章节不返回，前端展示加入入口 */
+    private Boolean enrolled;
+
+    public Boolean getEnrolled() {
+        return enrolled;
+    }
+
+    public void setEnrolled(Boolean enrolled) {
+        this.enrolled = enrolled;
+    }
+
     public CourseInfo getCourse() {
         return course;
     }

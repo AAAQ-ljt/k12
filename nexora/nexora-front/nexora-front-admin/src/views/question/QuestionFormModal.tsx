@@ -82,12 +82,33 @@ export default function QuestionFormModal({
   );
 
   const handleSubmit = async (values: Record<string, any>) => {
+    const options = values.options || [];
+    if (isChoice) {
+      const answerCount = options.filter((option: any) => option.isAnswer).length;
+      if (questionType === 0 && answerCount !== 1) {
+        message.warning('单选题只能勾选一个正确答案');
+        throw new Error('单选题只能勾选一个正确答案');
+      }
+      if (questionType === 1 && answerCount < 1) {
+        message.warning('请至少勾选一个正确答案');
+        throw new Error('请至少勾选一个正确答案');
+      }
+    }
+    // 选择题答案由勾选项推导（A / ACD），question_info.answer 是学生端判分依据
+    const answer = isChoice
+      ? options
+          .map((option: any, index: number) => (option.isAnswer ? String.fromCharCode(65 + index) : ''))
+          .filter(Boolean)
+          .sort()
+          .join('')
+      : values.answer;
     const payload: QuestionSaveDTO = {
       question: {
         ...values,
+        answer,
         stage: gradeToStage(values.grade) ?? initialValues?.question.stage,
       },
-      options: values.options?.map((option: any, index: number) => ({
+      options: options.map((option: any, index: number) => ({
         ...option,
         optionLabel: String.fromCharCode(65 + index),
         isAnswer: option.isAnswer ? 1 : 0,
@@ -194,34 +215,56 @@ export default function QuestionFormModal({
           <Form.List name="options">
             {(fields, { add, remove }) => (
               <>
-                {fields.map((field, index) => (
-                  <Space key={field.key} align="baseline" style={{ display: 'flex', width: '100%' }}>
-                    <span style={{ width: 24, textAlign: 'center', fontWeight: 600 }}>
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <Form.Item
-                      name={[field.name, 'optionContent']}
-                      rules={[{ required: true, message: '请输入选项内容' }]}
-                      style={{ flex: 1 }}
+                {/* 选项横向排列，超出弹窗宽度才换行 */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px' }}>
+                  {fields.map((field, index) => (
+                    <div
+                      key={field.key}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
-                      <Input placeholder="选项内容" maxLength={500} />
-                    </Form.Item>
-                    <Form.Item name={[field.name, 'isAnswer']} valuePropName="checked">
-                      <Checkbox>正确答案</Checkbox>
-                    </Form.Item>
-                    {!isView && (
-                      <Button
-                        type="text"
-                        danger
-                        aria-label="删除选项"
-                        icon={<MinusCircle size={16} />}
-                        onClick={() => remove(field.name)}
-                      />
-                    )}
-                  </Space>
-                ))}
+                      <span style={{ fontWeight: 600 }}>{String.fromCharCode(65 + index)}.</span>
+                      <Form.Item
+                        name={[field.name, 'optionContent']}
+                        rules={[{ required: true, message: '请输入选项内容' }]}
+                        noStyle
+                      >
+                        <Input placeholder="选项内容" maxLength={500} style={{ width: 200 }} />
+                      </Form.Item>
+                      <Form.Item name={[field.name, 'isAnswer']} valuePropName="checked" noStyle>
+                        <Checkbox
+                          onChange={(e) => {
+                            // 单选题勾选答案自动取消其他选项的勾选
+                            if (questionType === 0 && e.target.checked) {
+                              fields.forEach((other) => {
+                                if (other.name !== field.name) {
+                                  form.setFieldValue(['options', other.name, 'isAnswer'], false);
+                                }
+                              });
+                            }
+                          }}
+                        >
+                          答案
+                        </Checkbox>
+                      </Form.Item>
+                      {!isView && (
+                        <Button
+                          type="text"
+                          danger
+                          aria-label="删除选项"
+                          icon={<MinusCircle size={16} />}
+                          onClick={() => remove(field.name)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
                 {!isView && (
-                  <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add({ isAnswer: false })}>
+                  <Button
+                    type="dashed"
+                    icon={<Plus size={14} />}
+                    style={{ marginTop: 10 }}
+                    onClick={() => add({ isAnswer: false })}
+                  >
                     添加选项
                   </Button>
                 )}

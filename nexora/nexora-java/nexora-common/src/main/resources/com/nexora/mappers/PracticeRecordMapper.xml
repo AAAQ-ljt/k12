@@ -25,8 +25,10 @@
 		<result column="score" property="score"  />
 		<!--用时（秒）-->
 		<result column="duration" property="duration"  />
-		<!--来源：0对话练习 1路径快测 2遗忘复习-->
+		<!--来源：0对话练习 1路径快测 2遗忘复习 3课时通关测验-->
 		<result column="source" property="source"  />
+		<!--业务维度标识：课时通关测验=lesson_id-->
+		<result column="biz_id" property="bizId"  />
 		<!--创建时间-->
 		<result column="create_time" property="createTime"  />
 	</resultMap>
@@ -36,7 +38,7 @@
 	<sql id="base_column_list">
 		 p.record_id,p.user_id,p.knowledge_point_id,p.stage,p.question_id,
 		 p.question_type,p.user_answer,p.is_correct,p.score,p.duration,
-		 p.source,p.create_time
+		 p.source,p.biz_id,p.create_time
 	</sql>
 
 	<sql id="base_condition_filed">
@@ -72,6 +74,9 @@
 			</if>
 			<if test="query.source != null">
 				 and  p.source = #{query.source}
+			</if>
+			<if test="query.bizId != null and query.bizId!=''">
+				 and  p.biz_id = #{query.bizId}
 			</if>
 			<if test="query.createTime != null and query.createTime!=''">
 				 <![CDATA[ and  p.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
@@ -156,6 +161,9 @@
 			<if test="bean.source != null">
 				 source,
 			</if>
+			<if test="bean.bizId != null">
+				 biz_id,
+			</if>
 			<if test="bean.createTime != null">
 				 create_time,
 			</if>
@@ -190,6 +198,9 @@
 			</if>
 			<if test="bean.source!=null">
 				 #{bean.source},
+			</if>
+			<if test="bean.bizId!=null">
+				 #{bean.bizId},
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
@@ -234,6 +245,9 @@
 			<if test="bean.source != null">
 				 source,
 			</if>
+			<if test="bean.bizId != null">
+				 biz_id,
+			</if>
 			<if test="bean.createTime != null">
 				 create_time,
 			</if>
@@ -272,6 +286,9 @@
 			<if test="bean.source!=null">
 				 #{bean.source},
 			</if>
+			<if test="bean.bizId!=null">
+				 #{bean.bizId},
+			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
 			</if>
@@ -308,6 +325,9 @@
 			<if test="bean.source!=null">
 				 source = VALUES(source),
 			</if>
+			<if test="bean.bizId!=null">
+				 biz_id = VALUES(biz_id),
+			</if>
 			<if test="bean.createTime!=null">
 				 create_time = VALUES(create_time),
 			</if>
@@ -327,6 +347,7 @@
 			 score,
 			 duration,
 			 source,
+			 biz_id,
 			 create_time
 		 )values
 		 <foreach collection="list" item="item" separator=",">
@@ -341,6 +362,7 @@
 				 #{item.score},
 				 #{item.duration},
 				 #{item.source},
+				 #{item.bizId},
 				 #{item.createTime}
 			 )
 		 </foreach>
@@ -359,6 +381,7 @@
 			 score,
 			 duration,
 			 source,
+			 biz_id,
 			 create_time
 		 )values
 		 <foreach collection="list" item="item" separator=",">
@@ -373,6 +396,7 @@
 				 #{item.score},
 				 #{item.duration},
 				 #{item.source},
+				 #{item.bizId},
 				 #{item.createTime}
 			 )
 		 </foreach>
@@ -387,6 +411,7 @@
 			score = VALUES(score),
 			duration = VALUES(duration),
 			source = VALUES(source),
+			biz_id = VALUES(biz_id),
 			create_time = VALUES(create_time)
 	</insert>
 
@@ -424,10 +449,13 @@
 			<if test="bean.source != null">
 				 source = #{bean.source},
 			</if>
+			<if test="bean.bizId != null">
+				 biz_id = #{bean.bizId},
+			</if>
 			<if test="bean.createTime != null">
 				 create_time = #{bean.createTime},
 			</if>
- 		 </set>
+	 		 </set>
  		 <include refid="query_condition" />
 	</update>
 
@@ -471,10 +499,13 @@
 			<if test="bean.source != null">
 				 source = #{bean.source},
 			</if>
+			<if test="bean.bizId != null">
+				 biz_id = #{bean.bizId},
+			</if>
 			<if test="bean.createTime != null">
 				 create_time = #{bean.createTime},
 			</if>
- 		 </set>
+	 		 </set>
  		 where record_id=#{recordId}
 	</update>
 

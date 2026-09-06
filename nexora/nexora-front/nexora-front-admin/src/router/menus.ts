@@ -30,7 +30,7 @@ export const menus: MenuConfig[] = [
   },
   {
     key: 'knowledge',
-    label: '知识库管理（官方知识库）',
+    label: '知识库管理',
     icon: 'Database',
     path: '/knowledge',
     children: [

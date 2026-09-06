@@ -224,6 +224,7 @@ public class QuestionBiz {
         }
         if (bean.getQuestionType() == TYPE_SINGLE || bean.getQuestionType() == TYPE_MULTIPLE) {
             validateChoiceOptions(bean.getQuestionType(), options);
+            fillChoiceAnswer(bean, options);
         } else if (bean.getQuestionType() >= TYPE_JUDGE && bean.getQuestionType() <= TYPE_MATERIAL) {
             if (StringTools.isEmpty(bean.getAnswer())) {
                 throw new BusinessException("请填写答案");
@@ -250,6 +251,7 @@ public class QuestionBiz {
         }
         if (bean.getQuestionType() == TYPE_SINGLE || bean.getQuestionType() == TYPE_MULTIPLE) {
             validateChoiceOptions(bean.getQuestionType(), options);
+            fillChoiceAnswer(bean, options);
         } else if (bean.getQuestionType() >= TYPE_JUDGE && bean.getQuestionType() <= TYPE_MATERIAL) {
             if (StringTools.isEmpty(bean.getAnswer())) {
                 throw new BusinessException("请填写答案");
@@ -302,6 +304,24 @@ public class QuestionBiz {
         if (questionType == TYPE_SINGLE && answerCount != 1) {
             throw new BusinessException("单选题只能有一个正确答案");
         }
+    }
+
+    /**
+     * 选择题 answer 由勾选的正确选项推导落库：单选 A，多选按字母序拼接（如 ACD）。
+     * 学生端判分、试卷判分都读取 question_info.answer，缺失会导致选择题全判错。
+     */
+    private void fillChoiceAnswer(QuestionInfo bean, List<QuestionOption> options) {
+        Integer type = bean.getQuestionType();
+        if (type == null || (type != TYPE_SINGLE && type != TYPE_MULTIPLE)) {
+            return;
+        }
+        String answer = options.stream()
+                .filter(option -> option != null && option.getIsAnswer() != null && option.getIsAnswer() == 1
+                        && !StringTools.isEmpty(option.getOptionLabel()))
+                .map(option -> option.getOptionLabel().trim().toUpperCase())
+                .sorted()
+                .collect(java.util.stream.Collectors.joining());
+        bean.setAnswer(answer);
     }
 
     private void saveOptions(String questionId, Integer questionType, List<QuestionOption> options) {

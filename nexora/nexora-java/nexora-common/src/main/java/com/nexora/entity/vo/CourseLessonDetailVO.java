@@ -14,6 +14,9 @@ public class CourseLessonDetailVO implements Serializable {
 
     private List<CourseLessonResourceVO> resources;
 
+    /** 是否已配置通关测验 */
+    private Boolean quizEnabled;
+
     public CourseChapterLesson getLesson() {
         return lesson;
     }
@@ -28,5 +31,13 @@ public class CourseLessonDetailVO implements Serializable {
 
     public void setResources(List<CourseLessonResourceVO> resources) {
         this.resources = resources;
+    }
+
+    public Boolean getQuizEnabled() {
+        return quizEnabled;
+    }
+
+    public void setQuizEnabled(Boolean quizEnabled) {
+        this.quizEnabled = quizEnabled;
     }
 }

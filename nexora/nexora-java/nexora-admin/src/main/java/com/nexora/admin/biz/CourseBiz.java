@@ -1,20 +1,30 @@
 package com.nexora.admin.biz;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import com.nexora.admin.component.LessonQuizAiComponent;
+import com.nexora.admin.dto.LessonQuizSaveDTO;
 import com.nexora.admin.dto.LessonResourceBindDTO;
+import com.nexora.admin.vo.LessonQuizDetailVO;
 import com.nexora.constants.Constants;
 import com.nexora.entity.enums.StageEnum;
 import com.nexora.entity.po.CourseChapter;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseInfo;
+import com.nexora.entity.po.CourseLessonQuiz;
+import com.nexora.entity.po.QuestionInfo;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.CourseChapterLessonQuery;
 import com.nexora.entity.query.CourseChapterLessonResourceQuery;
 import com.nexora.entity.query.CourseChapterQuery;
 import com.nexora.entity.query.CourseInfoQuery;
+import com.nexora.entity.query.CourseLessonQuizQuery;
 import com.nexora.entity.query.CourseStudyLessonProgressQuery;
 import com.nexora.entity.query.CourseStudyLogQuery;
 import com.nexora.entity.query.CourseStudyProgressQuery;
+import com.nexora.entity.query.QuestionInfoQuery;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.vo.CourseChapterDetailVO;
 import com.nexora.entity.vo.CourseDetailVO;
@@ -26,24 +36,31 @@ import com.nexora.service.CourseChapterLessonResourceService;
 import com.nexora.service.CourseChapterLessonService;
 import com.nexora.service.CourseChapterService;
 import com.nexora.service.CourseInfoService;
+import com.nexora.service.CourseLessonQuizService;
 import com.nexora.service.CourseStudyLessonProgressService;
 import com.nexora.service.CourseStudyLogService;
 import com.nexora.service.CourseStudyProgressService;
+import com.nexora.service.QuestionInfoService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * 课程体系管理业务：课程、章节、课时、课时资源绑定。
  */
+@Slf4j
 @Service
 public class CourseBiz {
 
@@ -70,6 +87,19 @@ public class CourseBiz {
 
     @Resource
     private CourseStudyLessonProgressService courseStudyLessonProgressService;
+
+    @Resource
+    private CourseLessonQuizService courseLessonQuizService;
+
+    @Resource
+    private QuestionInfoService questionInfoService;
+
+    @Resource
+    private LessonQuizAiComponent lessonQuizAiComponent;
+
+    private static final int QUIZ_MODE_CLOSED = 0;
+    private static final int QUIZ_MODE_LIBRARY = 1;
+    private static final int QUIZ_MODE_AI = 2;
 
     public PaginationResultVO<CourseInfo> coursePage(CourseInfoQuery query) {
         return courseInfoService.findListByPage(query);
@@ -165,14 +195,29 @@ public class CourseBiz {
         List<CourseChapter> chapters = courseChapterService.findListByParam(chapterQuery);
 
         List<CourseChapterDetailVO> chapterVOs = new ArrayList<>();
+        Map<String, CourseLessonQuiz> quizEnabledMap = quizEnabledMap(courseId);
         for (CourseChapter chapter : chapters) {
             CourseChapterDetailVO chapterVO = new CourseChapterDetailVO();
             chapterVO.setChapter(chapter);
-            chapterVO.setLessons(lessonDetails(chapter.getChapterId(), courseId));
+            chapterVO.setLessons(lessonDetails(chapter.getChapterId(), courseId, quizEnabledMap));
             chapterVOs.add(chapterVO);
         }
         detail.setChapters(chapterVOs);
         return detail;
+    }
+
+    /**
+     * 一次查询课程下全部测验配置，构建 lessonId → 配置 映射（避免循环查库）
+     */
+    private Map<String, CourseLessonQuiz> quizEnabledMap(String courseId) {
+        CourseLessonQuizQuery quizQuery = new CourseLessonQuizQuery();
+        quizQuery.setCourseId(courseId);
+        List<CourseLessonQuiz> quizList = courseLessonQuizService.findListByParam(quizQuery);
+        Map<String, CourseLessonQuiz> map = new HashMap<>();
+        for (CourseLessonQuiz quiz : quizList) {
+            map.put(quiz.getLessonId(), quiz);
+        }
+        return map;
     }
 
     public List<CourseChapter> chapterList(String courseId) {
@@ -235,6 +280,7 @@ public class CourseBiz {
         for (CourseChapterLesson lesson : lessons) {
             deleteLessonResourcesByLesson(lesson.getLessonId());
             deleteLessonStudyData(lesson.getLessonId());
+            courseLessonQuizService.deleteCourseLessonQuizByLessonId(lesson.getLessonId());
         }
         courseChapterLessonService.deleteByParam(lessonQuery);
         courseChapterService.deleteCourseChapterByChapterId(chapterId);
@@ -303,6 +349,7 @@ public class CourseBiz {
         }
         deleteLessonResourcesByLesson(lessonId);
         deleteLessonStudyData(lessonId);
+        courseLessonQuizService.deleteCourseLessonQuizByLessonId(lessonId);
         courseChapterLessonService.deleteCourseChapterLessonByLessonId(lessonId);
         refreshLessonCount(lesson.getCourseId());
     }
@@ -386,7 +433,202 @@ public class CourseBiz {
         courseChapterLessonResourceService.deleteCourseChapterLessonResourceById(id);
     }
 
-    private List<CourseLessonDetailVO> lessonDetails(String chapterId, String courseId) {
+    /**
+     * 课时通关测验详情：配置 + 已关联题目（quizMode=0 或未配置时 quiz 为空）
+     */
+    public LessonQuizDetailVO lessonQuizDetail(String lessonId) {
+        if (StringTools.isEmpty(lessonId)) {
+            throw new BusinessException("课时ID不能为空");
+        }
+        CourseLessonQuiz quiz = courseLessonQuizService.getCourseLessonQuizByLessonId(lessonId);
+        LessonQuizDetailVO vo = new LessonQuizDetailVO();
+        if (quiz == null || QUIZ_MODE_CLOSED == quiz.getQuizMode()) {
+            vo.setQuiz(null);
+            vo.setQuestions(List.of());
+            vo.setQuestionScores(Map.of());
+            return vo;
+        }
+        List<String> ids = parseQuestionIds(quiz.getQuestionIds());
+        List<QuestionInfo> questions = ids.isEmpty() ? List.of() : loadQuestions(ids);
+        vo.setQuiz(quiz);
+        vo.setQuestions(questions);
+        vo.setQuestionScores(parseQuestionScores(quiz.getQuizConfig()));
+        return vo;
+    }
+
+    /**
+     * 保存课时通关测验配置；quizMode=2 时自动 AI 出题并落题库后关联。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveLessonQuiz(LessonQuizSaveDTO dto) {
+        if (dto == null || StringTools.isEmpty(dto.getLessonId())) {
+            throw new BusinessException("课时ID不能为空");
+        }
+        if (dto.getQuizMode() == null || dto.getQuizMode() < 0 || dto.getQuizMode() > 2) {
+            throw new BusinessException("非法的测验方式");
+        }
+        CourseChapterLesson lesson = courseChapterLessonService.getCourseChapterLessonByLessonId(dto.getLessonId());
+        if (lesson == null) {
+            throw new BusinessException("课时不存在");
+        }
+        CourseInfo course = courseInfoService.getCourseInfoByCourseId(lesson.getCourseId());
+        if (course == null) {
+            throw new BusinessException("课程不存在");
+        }
+        if (dto.getPassScore() == null || dto.getPassScore() < 1 || dto.getPassScore() > 100) {
+            throw new BusinessException("及格分必须为 1-100");
+        }
+        if (dto.getUnlockNext() == null || (dto.getUnlockNext() != 0 && dto.getUnlockNext() != 1)) {
+            throw new BusinessException("非法的门禁设置");
+        }
+
+        Date now = new Date();
+        CourseLessonQuiz exist = courseLessonQuizService.getCourseLessonQuizByLessonId(dto.getLessonId());
+        List<String> questionIds = new ArrayList<>();
+        if (QUIZ_MODE_CLOSED == dto.getQuizMode()) {
+            // 关闭测验：清空关联题目
+        } else if (QUIZ_MODE_AI == dto.getQuizMode()) {
+            String topic = StringTools.isEmpty(dto.getTopic()) ? lesson.getLessonName() : dto.getTopic().trim();
+            int count = dto.getQuestionCount() == null ? 5 : dto.getQuestionCount();
+            int difficulty = dto.getDifficulty() == null ? 1 : dto.getDifficulty();
+            questionIds.addAll(lessonQuizAiComponent.generateAndSave(
+                    course.getStage(), course.getGrade(), topic, count, difficulty));
+        } else {
+            // 题库选题：校验题目可用
+            questionIds.addAll(requireQuestions(dto.getQuestionIds()));
+        }
+
+        CourseLessonQuiz bean = new CourseLessonQuiz();
+        bean.setCourseId(lesson.getCourseId());
+        bean.setQuizMode(dto.getQuizMode());
+        bean.setQuestionIds(questionIds.isEmpty() ? "[]" : JSON.toJSONString(questionIds));
+        bean.setQuestionCount(dto.getQuestionCount() == null ? 5 : dto.getQuestionCount());
+        bean.setDifficulty(dto.getDifficulty() == null ? 1 : dto.getDifficulty());
+        bean.setPassScore(dto.getPassScore());
+        bean.setUnlockNext(dto.getUnlockNext());
+        bean.setQuizConfig(buildQuizConfig(dto, questionIds));
+        bean.setStatus(1);
+        bean.setUpdateTime(now);
+        if (exist == null) {
+            bean.setLessonId(dto.getLessonId());
+            bean.setCreateTime(now);
+            courseLessonQuizService.add(bean);
+        } else {
+            courseLessonQuizService.updateCourseLessonQuizByLessonId(bean, dto.getLessonId());
+        }
+    }
+
+    /**
+     * 关闭课时通关测验：删除配置行，回到未配置状态
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteLessonQuiz(String lessonId) {
+        if (StringTools.isEmpty(lessonId)) {
+            throw new BusinessException("课时ID不能为空");
+        }
+        courseLessonQuizService.deleteCourseLessonQuizByLessonId(lessonId);
+    }
+
+    private List<String> requireQuestions(List<String> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            throw new BusinessException("请选择测验题目");
+        }
+        List<String> distinct = new ArrayList<>(new HashSet<>(questionIds));
+        QuestionInfoQuery query = new QuestionInfoQuery();
+        query.setQuestionIds(distinct);
+        List<QuestionInfo> questions = questionInfoService.findListByParam(query);
+        Set<String> existIds = new HashSet<>();
+        for (QuestionInfo question : questions) {
+            if (question.getStatus() == null || question.getStatus() != 1) {
+                throw new BusinessException("题目已下架：" + question.getTitle());
+            }
+            existIds.add(question.getQuestionId());
+        }
+        for (String id : distinct) {
+            if (!existIds.contains(id)) {
+                throw new BusinessException("题目不存在或不可用：" + id);
+            }
+        }
+        return distinct;
+    }
+
+    private List<QuestionInfo> loadQuestions(List<String> questionIds) {
+        QuestionInfoQuery query = new QuestionInfoQuery();
+        query.setQuestionIds(questionIds);
+        List<QuestionInfo> questions = questionInfoService.findListByParam(query);
+        questions.sort((a, b) -> questionIds.indexOf(a.getQuestionId()) - questionIds.indexOf(b.getQuestionId()));
+        return questions;
+    }
+
+    private List<String> parseQuestionIds(String jsonText) {
+        if (StringTools.isEmpty(jsonText)) {
+            return new ArrayList<>();
+        }
+        try {
+            JSONArray array = JSON.parseArray(jsonText);
+            List<String> ids = new ArrayList<>();
+            if (array != null) {
+                for (int i = 0; i < array.size(); i++) {
+                    String id = array.getString(i);
+                    if (!StringTools.isEmpty(id)) {
+                        ids.add(id);
+                    }
+                }
+            }
+            return ids;
+        } catch (Exception e) {
+            log.warn("课时测验题目ID解析失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 构建 quiz_config 扩展 JSON（弹性扩展配置，后续能力直接进此列不加表）：
+     * {"questionScores": {"questionId": 分值}}
+     */
+    private String buildQuizConfig(LessonQuizSaveDTO dto, List<String> questionIds) {
+        Map<String, Integer> scores = new LinkedHashMap<>();
+        if (dto.getQuestionScores() != null) {
+            for (String questionId : questionIds) {
+                Integer score = dto.getQuestionScores().get(questionId);
+                if (score != null) {
+                    int safe = Math.max(1, Math.min(score, 100));
+                    scores.put(questionId, safe);
+                }
+            }
+        }
+        JSONObject config = new JSONObject();
+        if (!scores.isEmpty()) {
+            config.put("questionScores", scores);
+        }
+        return config.isEmpty() ? null : config.toJSONString();
+    }
+
+    private Map<String, Integer> parseQuestionScores(String quizConfig) {
+        if (StringTools.isEmpty(quizConfig)) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            JSONObject config = JSON.parseObject(quizConfig);
+            JSONObject scores = config == null ? null : config.getJSONObject("questionScores");
+            Map<String, Integer> map = new LinkedHashMap<>();
+            if (scores != null) {
+                for (String key : scores.keySet()) {
+                    Integer value = scores.getInteger(key);
+                    if (value != null) {
+                        map.put(key, value);
+                    }
+                }
+            }
+            return map;
+        } catch (Exception e) {
+            log.warn("课时测验分值配置解析失败", e);
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private List<CourseLessonDetailVO> lessonDetails(String chapterId, String courseId,
+                                                     Map<String, CourseLessonQuiz> quizEnabledMap) {
         CourseChapterLessonQuery lessonQuery = new CourseChapterLessonQuery();
         lessonQuery.setChapterId(chapterId);
         lessonQuery.setCourseId(courseId);
@@ -397,6 +639,8 @@ public class CourseBiz {
             CourseLessonDetailVO lessonVO = new CourseLessonDetailVO();
             lessonVO.setLesson(lesson);
             lessonVO.setResources(lessonResourceList(lesson.getLessonId()));
+            CourseLessonQuiz quiz = quizEnabledMap.get(lesson.getLessonId());
+            lessonVO.setQuizEnabled(quiz != null && quiz.getQuizMode() != null && quiz.getQuizMode() > 0);
             lessonVOs.add(lessonVO);
         }
         return lessonVOs;
@@ -464,6 +708,10 @@ public class CourseBiz {
         CourseChapterLessonResourceQuery query = new CourseChapterLessonResourceQuery();
         query.setCourseId(courseId);
         courseChapterLessonResourceService.deleteByParam(query);
+
+        CourseLessonQuizQuery quizQuery = new CourseLessonQuizQuery();
+        quizQuery.setCourseId(courseId);
+        courseLessonQuizService.deleteByParam(quizQuery);
     }
 
     private void deleteLessonResourcesByLesson(String lessonId) {

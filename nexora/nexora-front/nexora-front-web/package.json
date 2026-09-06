@@ -22,6 +22,7 @@
     "highlight.js": "^11.11.2",
     "hls.js": "^1.6.17",
     "jit-viewer": "^1.5.0",
+    "katex": "^0.18.6",
     "lucide-react": "^1.31.0",
     "pyodide": "^314.0.3",
     "react": "^19.2.8",
@@ -29,7 +30,9 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.2",
     "rehype-highlight": "^7.0.2",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
