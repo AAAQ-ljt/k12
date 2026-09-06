@@ -77,6 +77,11 @@ public class PracticeRecordQuery extends BaseParam {
 	 */
 	private String bizId;
 
+	/**
+	 * 批阅状态：0待批阅 1已批阅 2无需批阅(客观题)
+	 */
+	private Integer reviewStatus;
+
 	private String bizIdFuzzy;
 
 	/**
@@ -211,6 +216,14 @@ public class PracticeRecordQuery extends BaseParam {
 
 	public void setBizId(String bizId){
 		this.bizId = bizId;
+	}
+
+	public Integer getReviewStatus(){
+		return this.reviewStatus;
+	}
+
+	public void setReviewStatus(Integer reviewStatus){
+		this.reviewStatus = reviewStatus;
 	}
 
 	public String getBizId(){

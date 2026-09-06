@@ -1,5 +1,8 @@
 package com.nexora.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -28,6 +31,10 @@ public class LessonQuizSubmitResultVO {
     /** 逐题判分明细 */
     private List<QuestionResult> results;
 
+    /** 最近一次提交时间（结果回显时返回） */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date submitTime;
+
     public static class QuestionResult {
         private String questionId;
         private String title;
@@ -40,6 +47,16 @@ public class LessonQuizSubmitResultVO {
         /** 该题满分（主观题也返回其配置分值） */
         private int questionScore;
         private String analysis;
+        /** 题型（结果页按题型渲染选项/对比块） */
+        private Integer questionType;
+        /** 题目选项（结果页重渲染高亮用，提交判分时同样返回） */
+        private List<QuestionOption> options;
+        /** 主观题批阅状态：0待批阅 1已批阅（结果回显时返回） */
+        private Integer reviewStatus;
+        /** 主观题人工批阅得分 */
+        private Integer reviewScore;
+        /** 主观题批阅评语 */
+        private String reviewComment;
 
         public String getQuestionId() {
             return questionId;
@@ -112,6 +129,79 @@ public class LessonQuizSubmitResultVO {
         public void setAnalysis(String analysis) {
             this.analysis = analysis;
         }
+
+        public Integer getQuestionType() {
+            return questionType;
+        }
+
+        public void setQuestionType(Integer questionType) {
+            this.questionType = questionType;
+        }
+
+        public List<QuestionOption> getOptions() {
+            return options;
+        }
+
+        public void setOptions(List<QuestionOption> options) {
+            this.options = options;
+        }
+
+        public Integer getReviewStatus() {
+            return reviewStatus;
+        }
+
+        public void setReviewStatus(Integer reviewStatus) {
+            this.reviewStatus = reviewStatus;
+        }
+
+        public Integer getReviewScore() {
+            return reviewScore;
+        }
+
+        public void setReviewScore(Integer reviewScore) {
+            this.reviewScore = reviewScore;
+        }
+
+        public String getReviewComment() {
+            return reviewComment;
+        }
+
+        public void setReviewComment(String reviewComment) {
+            this.reviewComment = reviewComment;
+        }
+    }
+
+    /**
+     * 题目选项（结果页渲染）
+     */
+    public static class QuestionOption {
+        private Integer optionId;
+        private String optionLabel;
+        private String optionContent;
+
+        public Integer getOptionId() {
+            return optionId;
+        }
+
+        public void setOptionId(Integer optionId) {
+            this.optionId = optionId;
+        }
+
+        public String getOptionLabel() {
+            return optionLabel;
+        }
+
+        public void setOptionLabel(String optionLabel) {
+            this.optionLabel = optionLabel;
+        }
+
+        public String getOptionContent() {
+            return optionContent;
+        }
+
+        public void setOptionContent(String optionContent) {
+            this.optionContent = optionContent;
+        }
     }
 
     public boolean isPassed() {
@@ -168,5 +258,13 @@ public class LessonQuizSubmitResultVO {
 
     public void setResults(List<QuestionResult> results) {
         this.results = results;
+    }
+
+    public Date getSubmitTime() {
+        return submitTime;
+    }
+
+    public void setSubmitTime(Date submitTime) {
+        this.submitTime = submitTime;
     }
 }

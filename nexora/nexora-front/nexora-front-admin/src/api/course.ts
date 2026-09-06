@@ -194,6 +194,8 @@ export interface LessonQuizDetail {
   questions?: QuestionLite[];
   /** 每题分值（questionId → 分） */
   questionScores?: Record<string, number>;
+  /** 多选题漏选（未错选）按比例部分给分 */
+  partialCredit?: boolean;
 }
 
 /** 关联题目（轻量回显） */
@@ -218,6 +220,22 @@ export interface LessonQuizSaveData {
   passScore: number;
   unlockNext: number;
   topic?: string;
+  /** 多选题漏选（未错选）按比例部分给分 */
+  partialCredit?: boolean;
+  /** AI 模式挂载的知识点（必选） */
+  knowledgePointId?: string;
+}
+
+/** AI 出题异步任务状态 */
+export interface LessonQuizTask {
+  taskId: string;
+  lessonId: string;
+  /** PENDING / GENERATING / SUCCESS / FAILED */
+  status: string;
+  step?: string;
+  generated?: number;
+  total?: number;
+  message?: string;
 }
 
 /** 获取课时通关测验详情 */
@@ -233,4 +251,14 @@ export function saveLessonQuiz(data: LessonQuizSaveData): Promise<void> {
 /** 关闭课时通关测验 */
 export function deleteLessonQuiz(lessonId: string): Promise<void> {
   return request.delete('/courseChapterLesson/quizDel', { params: { lessonId } });
+}
+
+/** AI 出题异步任务提交：返回 taskId，轮询 getQuizTask 获取进度 */
+export function generateQuizAsync(data: LessonQuizSaveData): Promise<LessonQuizTask> {
+  return request.post('/courseChapterLesson/quizGenerateAsync', data);
+}
+
+/** 查询 AI 出题任务进度 */
+export function getQuizTask(taskId: string): Promise<LessonQuizTask> {
+  return request.get('/courseChapterLesson/quizTask', { params: { taskId } });
 }

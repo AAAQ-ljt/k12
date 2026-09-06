@@ -20,6 +20,18 @@ public class LessonQuizStatusVO {
     /** 对当前学生是否解锁 */
     private boolean unlocked;
 
+    /** 是否有过作答记录 */
+    private boolean hasAttempt;
+
+    /** 最近一次作答得分 */
+    private Integer lastScore;
+
+    /** 测验总分（客观+主观配置分值合计） */
+    private Integer totalScore;
+
+    /** 及格线 */
+    private Integer passScore;
+
     public String getLessonId() {
         return lessonId;
     }
@@ -54,6 +66,38 @@ public class LessonQuizStatusVO {
 
     public boolean isUnlocked() {
         return unlocked;
+    }
+
+    public boolean isHasAttempt() {
+        return hasAttempt;
+    }
+
+    public void setHasAttempt(boolean hasAttempt) {
+        this.hasAttempt = hasAttempt;
+    }
+
+    public Integer getLastScore() {
+        return lastScore;
+    }
+
+    public void setLastScore(Integer lastScore) {
+        this.lastScore = lastScore;
+    }
+
+    public Integer getTotalScore() {
+        return totalScore;
+    }
+
+    public void setTotalScore(Integer totalScore) {
+        this.totalScore = totalScore;
+    }
+
+    public Integer getPassScore() {
+        return passScore;
+    }
+
+    public void setPassScore(Integer passScore) {
+        this.passScore = passScore;
     }
 
     public void setUnlocked(boolean unlocked) {

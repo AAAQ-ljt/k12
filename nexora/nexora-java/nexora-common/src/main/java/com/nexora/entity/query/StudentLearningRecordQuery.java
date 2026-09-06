@@ -40,6 +40,13 @@ public class StudentLearningRecordQuery extends BaseParam {
      */
     private Integer duration;
 
+    /**
+     * 创建时间范围（当日去重用）
+     */
+    private String createTimeStart;
+
+    private String createTimeEnd;
+
     public Long getRecordId() {
         return recordId;
     }
@@ -94,5 +101,21 @@ public class StudentLearningRecordQuery extends BaseParam {
 
     public void setDuration(Integer duration) {
         this.duration = duration;
+    }
+
+    public String getCreateTimeStart() {
+        return createTimeStart;
+    }
+
+    public void setCreateTimeStart(String createTimeStart) {
+        this.createTimeStart = createTimeStart;
+    }
+
+    public String getCreateTimeEnd() {
+        return createTimeEnd;
+    }
+
+    public void setCreateTimeEnd(String createTimeEnd) {
+        this.createTimeEnd = createTimeEnd;
     }
 }

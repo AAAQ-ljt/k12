@@ -28,6 +28,7 @@ import com.nexora.service.CourseChapterService;
 import com.nexora.service.CourseEnrollmentService;
 import com.nexora.service.CourseInfoService;
 import com.nexora.service.CourseQuizBiz;
+import com.nexora.service.CourseStudyBiz;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentWikiService;
 import com.nexora.utils.LoginUserContext;
@@ -76,6 +77,9 @@ public class StudentCourseController extends ABaseController {
 
     @Resource
     private CourseQuizBiz courseQuizBiz;
+
+    @Resource
+    private CourseStudyBiz courseStudyBiz;
 
     @Resource
     private CourseEnrollmentService courseEnrollmentService;
@@ -233,6 +237,25 @@ public class StudentCourseController extends ABaseController {
     public ResponseVO<List<LessonQuizStatusVO>> lessonQuizStatus(@RequestParam String courseId) {
         TokenUserInfoDTO current = LoginUserContext.get();
         return getSuccessResponseVO(courseQuizBiz.quizStatus(current.getUserId(), courseId));
+    }
+
+    /**
+     * 最近一次测验作答结果还原（章节卡「查看结果」；未作答过返回 null）
+     */
+    @GetMapping("/lessonQuizResult")
+    public ResponseVO<LessonQuizSubmitResultVO> lessonQuizResult(@RequestParam String lessonId) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        return getSuccessResponseVO(courseQuizBiz.result(current.getUserId(), lessonId));
+    }
+
+    /**
+     * 学习进度一期上报：打开课时资源即记课时完成（学习内容强制加入，未加入报业务异常）
+     */
+    @PostMapping("/reportStudy")
+    public ResponseVO<Void> reportStudy(@RequestParam String lessonId, @RequestParam String resourceId) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        courseStudyBiz.reportStudy(current.getUserId(), lessonId, resourceId);
+        return getSuccessResponseVO(null);
     }
 
     private List<CourseLessonDetailVO> loadLessons(String chapterId, String courseId) {

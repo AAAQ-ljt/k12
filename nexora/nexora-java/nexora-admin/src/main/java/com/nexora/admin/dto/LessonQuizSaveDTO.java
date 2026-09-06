@@ -35,6 +35,12 @@ public class LessonQuizSaveDTO {
     /** AI 出题主题/知识点描述（AI 模式时必填） */
     private String topic;
 
+    /** 多选题漏选（未错选）按比例部分给分，默认关闭 */
+    private Boolean partialCredit;
+
+    /** AI 模式挂载的知识点（必选，题目落库依赖） */
+    private String knowledgePointId;
+
     public String getLessonId() {
         return lessonId;
     }
@@ -105,5 +111,21 @@ public class LessonQuizSaveDTO {
 
     public void setTopic(String topic) {
         this.topic = topic;
+    }
+
+    public Boolean getPartialCredit() {
+        return partialCredit;
+    }
+
+    public void setPartialCredit(Boolean partialCredit) {
+        this.partialCredit = partialCredit;
+    }
+
+    public String getKnowledgePointId() {
+        return knowledgePointId;
+    }
+
+    public void setKnowledgePointId(String knowledgePointId) {
+        this.knowledgePointId = knowledgePointId;
     }
 }

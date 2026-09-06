@@ -82,6 +82,33 @@ public class PracticeRecord implements Serializable {
 	@DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 	private Date createTime;
 
+	/**
+	 * 批阅状态：0待批阅 1已批阅 2无需批阅(客观题)
+	 */
+	private Integer reviewStatus;
+
+	/**
+	 * 人工批阅得分
+	 */
+	private Integer reviewScore;
+
+	/**
+	 * 批阅人（管理员账号）
+	 */
+	private String reviewerId;
+
+	/**
+	 * 批阅评语
+	 */
+	private String reviewComment;
+
+	/**
+	 * 批阅时间
+	 */
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+	@DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	private Date reviewTime;
+
 
 	public void setRecordId(Long recordId){
 		this.recordId = recordId;
@@ -185,6 +212,46 @@ public class PracticeRecord implements Serializable {
 
 	public Date getCreateTime(){
 		return this.createTime;
+	}
+
+	public Integer getReviewStatus(){
+		return this.reviewStatus;
+	}
+
+	public void setReviewStatus(Integer reviewStatus){
+		this.reviewStatus = reviewStatus;
+	}
+
+	public Integer getReviewScore(){
+		return this.reviewScore;
+	}
+
+	public void setReviewScore(Integer reviewScore){
+		this.reviewScore = reviewScore;
+	}
+
+	public String getReviewerId(){
+		return this.reviewerId;
+	}
+
+	public void setReviewerId(String reviewerId){
+		this.reviewerId = reviewerId;
+	}
+
+	public String getReviewComment(){
+		return this.reviewComment;
+	}
+
+	public void setReviewComment(String reviewComment){
+		this.reviewComment = reviewComment;
+	}
+
+	public Date getReviewTime(){
+		return this.reviewTime;
+	}
+
+	public void setReviewTime(Date reviewTime){
+		this.reviewTime = reviewTime;
 	}
 
 	@Override

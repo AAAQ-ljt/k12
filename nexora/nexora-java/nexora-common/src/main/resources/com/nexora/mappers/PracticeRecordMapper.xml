@@ -31,6 +31,16 @@
 		<result column="biz_id" property="bizId"  />
 		<!--创建时间-->
 		<result column="create_time" property="createTime"  />
+		<!--批阅状态：0待批阅 1已批阅 2无需批阅(客观题)-->
+		<result column="review_status" property="reviewStatus"  />
+		<!--人工批阅得分-->
+		<result column="review_score" property="reviewScore"  />
+		<!--批阅人（管理员账号）-->
+		<result column="reviewer_id" property="reviewerId"  />
+		<!--批阅评语-->
+		<result column="review_comment" property="reviewComment"  />
+		<!--批阅时间-->
+		<result column="review_time" property="reviewTime"  />
 	</resultMap>
 
 
@@ -38,7 +48,8 @@
 	<sql id="base_column_list">
 		 p.record_id,p.user_id,p.knowledge_point_id,p.stage,p.question_id,
 		 p.question_type,p.user_answer,p.is_correct,p.score,p.duration,
-		 p.source,p.biz_id,p.create_time
+		 p.source,p.biz_id,p.create_time,
+		 p.review_status,p.review_score,p.reviewer_id,p.review_comment,p.review_time
 	</sql>
 
 	<sql id="base_condition_filed">
@@ -84,6 +95,30 @@
 	</sql>
 
 	<!-- 通用查询条件列-->
+	<!-- 课时测验最近一次作答统计：按 biz_id 取最近提交批次聚合 -->
+	<select id="selectQuizLastAttemptStats" resultType="com.nexora.entity.vo.LessonQuizAttemptStatVO">
+		 SELECT r.biz_id AS bizId,
+				SUM(r.score) AS lastScore,
+				SUM(r.is_correct) AS correctCount,
+				COUNT(*) AS questionCount,
+				MAX(r.create_time) AS lastTime
+		 FROM practice_record r
+		 INNER JOIN (
+			 SELECT biz_id, MAX(create_time) AS max_time
+			 FROM practice_record
+			 WHERE user_id = #{userId} AND source = 3
+			 <if test="bizIds != null and bizIds.size() > 0">
+				 AND biz_id IN
+				 <foreach collection="bizIds" item="idItem" open="(" close=")" separator=",">
+					 #{idItem}
+				 </foreach>
+			 </if>
+			 GROUP BY biz_id
+		 ) t ON t.biz_id = r.biz_id AND t.max_time = r.create_time
+		 WHERE r.user_id = #{userId} AND r.source = 3
+		 GROUP BY r.biz_id
+	</select>
+
 	<sql id="query_condition">
 	 <where>
 			<include refid="base_condition_filed" />
@@ -99,7 +134,10 @@
 			<if test="query.userAnswerFuzzy!= null  and query.userAnswerFuzzy!=''">
 				 and  p.user_answer like concat('%', #{query.userAnswerFuzzy}, '%')
 			</if>
-			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+			<if test="query.reviewStatus != null">
+			 and  p.review_status = #{query.reviewStatus}
+		</if>
+		<if test="query.createTimeStart!= null and query.createTimeStart!=''">
 				 <![CDATA[ and  p.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
 			</if>
 			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
@@ -167,6 +205,21 @@
 			<if test="bean.createTime != null">
 				 create_time,
 			</if>
+			<if test="bean.reviewStatus != null">
+				 review_status,
+			</if>
+			<if test="bean.reviewScore != null">
+				 review_score,
+			</if>
+			<if test="bean.reviewerId != null">
+				 reviewer_id,
+			</if>
+			<if test="bean.reviewComment != null">
+				 review_comment,
+			</if>
+			<if test="bean.reviewTime != null">
+				 review_time,
+			</if>
 		 </trim>
 		 <trim prefix="values (" suffix=")" suffixOverrides="," >
 			<if test="bean.userId!=null">
@@ -204,6 +257,21 @@
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
+			</if>
+			<if test="bean.reviewStatus!=null">
+				 #{bean.reviewStatus},
+			</if>
+			<if test="bean.reviewScore!=null">
+				 #{bean.reviewScore},
+			</if>
+			<if test="bean.reviewerId!=null">
+				 #{bean.reviewerId},
+			</if>
+			<if test="bean.reviewComment!=null">
+				 #{bean.reviewComment},
+			</if>
+			<if test="bean.reviewTime!=null">
+				 #{bean.reviewTime},
 			</if>
 		 </trim>
 	</insert>
@@ -251,6 +319,21 @@
 			<if test="bean.createTime != null">
 				 create_time,
 			</if>
+			<if test="bean.reviewStatus != null">
+				 review_status,
+			</if>
+			<if test="bean.reviewScore != null">
+				 review_score,
+			</if>
+			<if test="bean.reviewerId != null">
+				 reviewer_id,
+			</if>
+			<if test="bean.reviewComment != null">
+				 review_comment,
+			</if>
+			<if test="bean.reviewTime != null">
+				 review_time,
+			</if>
 		 </trim>
 		 <trim prefix="values (" suffix=")" suffixOverrides=",">
 			<if test="bean.recordId!=null">
@@ -292,6 +375,21 @@
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
 			</if>
+			<if test="bean.reviewStatus!=null">
+				 #{bean.reviewStatus},
+			</if>
+			<if test="bean.reviewScore!=null">
+				 #{bean.reviewScore},
+			</if>
+			<if test="bean.reviewerId!=null">
+				 #{bean.reviewerId},
+			</if>
+			<if test="bean.reviewComment!=null">
+				 #{bean.reviewComment},
+			</if>
+			<if test="bean.reviewTime!=null">
+				 #{bean.reviewTime},
+			</if>
 		 </trim>
 		 on DUPLICATE key update 
 		 <trim prefix="" suffix="" suffixOverrides=",">
@@ -331,6 +429,21 @@
 			<if test="bean.createTime!=null">
 				 create_time = VALUES(create_time),
 			</if>
+			<if test="bean.reviewStatus!=null">
+				 review_status = VALUES(review_status),
+			</if>
+			<if test="bean.reviewScore!=null">
+				 review_score = VALUES(review_score),
+			</if>
+			<if test="bean.reviewerId!=null">
+				 reviewer_id = VALUES(reviewer_id),
+			</if>
+			<if test="bean.reviewComment!=null">
+				 review_comment = VALUES(review_comment),
+			</if>
+			<if test="bean.reviewTime!=null">
+				 review_time = VALUES(review_time),
+			</if>
 		 </trim>
 	</insert>
 
@@ -348,7 +461,12 @@
 			 duration,
 			 source,
 			 biz_id,
-			 create_time
+			 create_time,
+			 review_status,
+			 review_score,
+			 reviewer_id,
+			 review_comment,
+			 review_time
 		 )values
 		 <foreach collection="list" item="item" separator=",">
 			 (
@@ -363,7 +481,12 @@
 				 #{item.duration},
 				 #{item.source},
 				 #{item.bizId},
-				 #{item.createTime}
+				 #{item.createTime},
+				 #{item.reviewStatus},
+				 #{item.reviewScore},
+				 #{item.reviewerId},
+				 #{item.reviewComment},
+				 #{item.reviewTime}
 			 )
 		 </foreach>
 	</insert>
@@ -382,7 +505,12 @@
 			 duration,
 			 source,
 			 biz_id,
-			 create_time
+			 create_time,
+			 review_status,
+			 review_score,
+			 reviewer_id,
+			 review_comment,
+			 review_time
 		 )values
 		 <foreach collection="list" item="item" separator=",">
 			 (
@@ -397,7 +525,12 @@
 				 #{item.duration},
 				 #{item.source},
 				 #{item.bizId},
-				 #{item.createTime}
+				 #{item.createTime},
+				 #{item.reviewStatus},
+				 #{item.reviewScore},
+				 #{item.reviewerId},
+				 #{item.reviewComment},
+				 #{item.reviewTime}
 			 )
 		 </foreach>
 			on DUPLICATE key update 
@@ -455,6 +588,21 @@
 			<if test="bean.createTime != null">
 				 create_time = #{bean.createTime},
 			</if>
+			<if test="bean.reviewStatus != null">
+				 review_status = #{bean.reviewStatus},
+			</if>
+			<if test="bean.reviewScore != null">
+				 review_score = #{bean.reviewScore},
+			</if>
+			<if test="bean.reviewerId != null">
+				 reviewer_id = #{bean.reviewerId},
+			</if>
+			<if test="bean.reviewComment != null">
+				 review_comment = #{bean.reviewComment},
+			</if>
+			<if test="bean.reviewTime != null">
+				 review_time = #{bean.reviewTime},
+			</if>
 	 		 </set>
  		 <include refid="query_condition" />
 	</update>
@@ -504,6 +652,21 @@
 			</if>
 			<if test="bean.createTime != null">
 				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.reviewStatus != null">
+				 review_status = #{bean.reviewStatus},
+			</if>
+			<if test="bean.reviewScore != null">
+				 review_score = #{bean.reviewScore},
+			</if>
+			<if test="bean.reviewerId != null">
+				 reviewer_id = #{bean.reviewerId},
+			</if>
+			<if test="bean.reviewComment != null">
+				 review_comment = #{bean.reviewComment},
+			</if>
+			<if test="bean.reviewTime != null">
+				 review_time = #{bean.reviewTime},
 			</if>
 	 		 </set>
  		 where record_id=#{recordId}

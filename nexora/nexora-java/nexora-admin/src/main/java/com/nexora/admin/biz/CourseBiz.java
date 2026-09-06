@@ -4,9 +4,11 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.nexora.admin.component.LessonQuizAiComponent;
+import com.nexora.admin.component.LessonQuizTaskComponent;
 import com.nexora.admin.dto.LessonQuizSaveDTO;
 import com.nexora.admin.dto.LessonResourceBindDTO;
 import com.nexora.admin.vo.LessonQuizDetailVO;
+import com.nexora.admin.vo.LessonQuizTaskVO;
 import com.nexora.constants.Constants;
 import com.nexora.entity.enums.StageEnum;
 import com.nexora.entity.po.CourseChapter;
@@ -14,6 +16,7 @@ import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseInfo;
 import com.nexora.entity.po.CourseLessonQuiz;
+import com.nexora.entity.po.KnowledgePoint;
 import com.nexora.entity.po.QuestionInfo;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.CourseChapterLessonQuery;
@@ -36,6 +39,7 @@ import com.nexora.service.CourseChapterLessonResourceService;
 import com.nexora.service.CourseChapterLessonService;
 import com.nexora.service.CourseChapterService;
 import com.nexora.service.CourseInfoService;
+import com.nexora.service.KnowledgePointService;
 import com.nexora.service.CourseLessonQuizService;
 import com.nexora.service.CourseStudyLessonProgressService;
 import com.nexora.service.CourseStudyLogService;
@@ -96,6 +100,12 @@ public class CourseBiz {
 
     @Resource
     private LessonQuizAiComponent lessonQuizAiComponent;
+
+    @Resource
+    private LessonQuizTaskComponent lessonQuizTaskComponent;
+
+    @Resource
+    private KnowledgePointService knowledgePointService;
 
     private static final int QUIZ_MODE_CLOSED = 0;
     private static final int QUIZ_MODE_LIBRARY = 1;
@@ -446,6 +456,7 @@ public class CourseBiz {
             vo.setQuiz(null);
             vo.setQuestions(List.of());
             vo.setQuestionScores(Map.of());
+            vo.setPartialCredit(false);
             return vo;
         }
         List<String> ids = parseQuestionIds(quiz.getQuestionIds());
@@ -453,11 +464,13 @@ public class CourseBiz {
         vo.setQuiz(quiz);
         vo.setQuestions(questions);
         vo.setQuestionScores(parseQuestionScores(quiz.getQuizConfig()));
+        vo.setPartialCredit(parsePartialCreditConfig(quiz.getQuizConfig()));
         return vo;
     }
 
     /**
-     * 保存课时通关测验配置；quizMode=2 时自动 AI 出题并落题库后关联。
+     * 保存课时通关测验配置（关闭/题库选题）；AI 出题走异步接口 quizGenerateAsync。
+     * 题库模式校验：每题分值必填（≥1），合计总分必须达到及格线。
      */
     @Transactional(rollbackFor = Exception.class)
     public void saveLessonQuiz(LessonQuizSaveDTO dto) {
@@ -466,6 +479,9 @@ public class CourseBiz {
         }
         if (dto.getQuizMode() == null || dto.getQuizMode() < 0 || dto.getQuizMode() > 2) {
             throw new BusinessException("非法的测验方式");
+        }
+        if (QUIZ_MODE_AI == dto.getQuizMode()) {
+            throw new BusinessException("AI 出题已改为异步生成，请使用 quizGenerateAsync 接口");
         }
         CourseChapterLesson lesson = courseChapterLessonService.getCourseChapterLessonByLessonId(dto.getLessonId());
         if (lesson == null) {
@@ -483,19 +499,13 @@ public class CourseBiz {
         }
 
         Date now = new Date();
-        CourseLessonQuiz exist = courseLessonQuizService.getCourseLessonQuizByLessonId(dto.getLessonId());
         List<String> questionIds = new ArrayList<>();
         if (QUIZ_MODE_CLOSED == dto.getQuizMode()) {
             // 关闭测验：清空关联题目
-        } else if (QUIZ_MODE_AI == dto.getQuizMode()) {
-            String topic = StringTools.isEmpty(dto.getTopic()) ? lesson.getLessonName() : dto.getTopic().trim();
-            int count = dto.getQuestionCount() == null ? 5 : dto.getQuestionCount();
-            int difficulty = dto.getDifficulty() == null ? 1 : dto.getDifficulty();
-            questionIds.addAll(lessonQuizAiComponent.generateAndSave(
-                    course.getStage(), course.getGrade(), topic, count, difficulty));
         } else {
-            // 题库选题：校验题目可用
+            // 题库选题：校验题目可用 + 分值必填 + 总分达到及格线
             questionIds.addAll(requireQuestions(dto.getQuestionIds()));
+            validateQuestionScores(dto, questionIds, dto.getPassScore());
         }
 
         CourseLessonQuiz bean = new CourseLessonQuiz();
@@ -509,6 +519,7 @@ public class CourseBiz {
         bean.setQuizConfig(buildQuizConfig(dto, questionIds));
         bean.setStatus(1);
         bean.setUpdateTime(now);
+        CourseLessonQuiz exist = courseLessonQuizService.getCourseLessonQuizByLessonId(dto.getLessonId());
         if (exist == null) {
             bean.setLessonId(dto.getLessonId());
             bean.setCreateTime(now);
@@ -529,8 +540,77 @@ public class CourseBiz {
         courseLessonQuizService.deleteCourseLessonQuizByLessonId(lessonId);
     }
 
-    private List<String> requireQuestions(List<String> questionIds) {
-        if (questionIds == null || questionIds.isEmpty()) {
+    /**
+     * 题库模式分值校验：每道已选题必须设置分值（≥1），合计总分必须达到及格线
+     */
+    private void validateQuestionScores(LessonQuizSaveDTO dto, List<String> questionIds, int passScore) {
+        Map<String, Integer> scores = dto.getQuestionScores();
+        if (scores == null || scores.isEmpty()) {
+            throw new BusinessException("请为每道题设置分值");
+        }
+        int total = 0;
+        for (String questionId : questionIds) {
+            Integer score = scores.get(questionId);
+            if (score == null || score < 1) {
+                throw new BusinessException("请为每道题设置分值（存在未设置或非法分值的题目）");
+            }
+            total += Math.min(score, 100);
+        }
+        if (total < passScore) {
+            throw new BusinessException("测验总分为 " + total + " 分，未达到及格线 " + passScore + " 分，请调整各题分值");
+        }
+    }
+
+    /**
+     * AI 出题异步入口：校验课程/知识点后提交任务，立即返回任务状态（前端轮询 quizTask）
+     */
+    public LessonQuizTaskVO startQuizGenerateAsync(LessonQuizSaveDTO dto) {
+        if (dto == null || StringTools.isEmpty(dto.getLessonId())) {
+            throw new BusinessException("课时ID不能为空");
+        }
+        CourseChapterLesson lesson = courseChapterLessonService.getCourseChapterLessonByLessonId(dto.getLessonId());
+        if (lesson == null) {
+            throw new BusinessException("课时不存在");
+        }
+        CourseInfo course = courseInfoService.getCourseInfoByCourseId(lesson.getCourseId());
+        if (course == null || course.getStatus() == null || course.getStatus() != 1) {
+            throw new BusinessException("课程不存在或暂不可用");
+        }
+        if (dto.getPassScore() == null || dto.getPassScore() < 1 || dto.getPassScore() > 100) {
+            throw new BusinessException("及格分必须为 1-100");
+        }
+        if (dto.getUnlockNext() == null || (dto.getUnlockNext() != 0 && dto.getUnlockNext() != 1)) {
+            throw new BusinessException("非法的门禁设置");
+        }
+        if (StringTools.isEmpty(dto.getKnowledgePointId())) {
+            throw new BusinessException("请选择知识点（AI 出题的题目将挂载到该知识点）");
+        }
+        KnowledgePoint point = knowledgePointService.getKnowledgePointByKnowledgePointId(dto.getKnowledgePointId());
+        if (point == null) {
+            throw new BusinessException("知识点不存在");
+        }
+        if (point.getStage() != null && !point.getStage().equals(course.getStage())) {
+            throw new BusinessException("知识点与课程学段不匹配");
+        }
+        String topic = StringTools.isEmpty(dto.getTopic()) ? lesson.getLessonName() : dto.getTopic().trim();
+        int count = dto.getQuestionCount() == null ? 5 : Math.max(1, Math.min(dto.getQuestionCount(), 6));
+
+        LessonQuizTaskVO task = new LessonQuizTaskVO();
+        task.setLessonId(lesson.getLessonId());
+        task.setCourseId(lesson.getCourseId());
+        task.setStage(course.getStage());
+        task.setGrade(course.getGrade());
+        task.setTopic(topic);
+        task.setKnowledgePointId(dto.getKnowledgePointId());
+        task.setTotal(count);
+        task.setDifficulty(dto.getDifficulty() == null ? 1 : dto.getDifficulty());
+        task.setPassScore(dto.getPassScore());
+        task.setUnlockNext(dto.getUnlockNext());
+        task.setPartialCredit(Boolean.TRUE.equals(dto.getPartialCredit()));
+        return lessonQuizTaskComponent.start(task);
+    }
+
+    private List<String> requireQuestions(List<String> questionIds) {        if (questionIds == null || questionIds.isEmpty()) {
             throw new BusinessException("请选择测验题目");
         }
         List<String> distinct = new ArrayList<>(new HashSet<>(questionIds));
@@ -601,7 +681,23 @@ public class CourseBiz {
         if (!scores.isEmpty()) {
             config.put("questionScores", scores);
         }
+        if (Boolean.TRUE.equals(dto.getPartialCredit())) {
+            config.put("partialCredit", true);
+        }
         return config.isEmpty() ? null : config.toJSONString();
+    }
+
+    /** quiz_config.partialCredit：多选题漏选（未错选）按比例部分给分 */
+    private boolean parsePartialCreditConfig(String quizConfig) {
+        if (StringTools.isEmpty(quizConfig)) {
+            return false;
+        }
+        try {
+            JSONObject config = JSON.parseObject(quizConfig);
+            return config != null && Boolean.TRUE.equals(config.getBoolean("partialCredit"));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private Map<String, Integer> parseQuestionScores(String quizConfig) {

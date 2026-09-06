@@ -20,6 +20,9 @@ public class LessonQuizDetailVO {
     /** 每题分值（questionId → 分）；缺省用题目自带分值 */
     private Map<String, Integer> questionScores;
 
+    /** 多选题漏选（未错选）按比例部分给分 */
+    private Boolean partialCredit;
+
     public CourseLessonQuiz getQuiz() {
         return quiz;
     }
@@ -42,5 +45,13 @@ public class LessonQuizDetailVO {
 
     public void setQuestionScores(Map<String, Integer> questionScores) {
         this.questionScores = questionScores;
+    }
+
+    public Boolean getPartialCredit() {
+        return partialCredit;
+    }
+
+    public void setPartialCredit(Boolean partialCredit) {
+        this.partialCredit = partialCredit;
     }
 }

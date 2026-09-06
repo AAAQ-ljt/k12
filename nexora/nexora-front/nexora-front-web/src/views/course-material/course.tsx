@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { App, Button, Empty, Skeleton, Tag } from 'antd';
+import { App, Button, Empty, Skeleton, Space, Tag } from 'antd';
 import {
   ArrowLeft,
   BookOpen,
@@ -53,8 +53,12 @@ export default function CourseDetail() {
   const [joining, setJoining] = useState(false);
   /** 课时测验/解锁状态 map（lessonId → 状态） */
   const [quizStatusMap, setQuizStatusMap] = useState<Record<string, LessonQuizStatus>>({});
-  /** 正在做题的课时 */
-  const [quizLesson, setQuizLesson] = useState<{ lessonId: string; lessonName: string } | null>(null);
+  /** 做题/回看的课时（mode: answer 做题 / result 回看最近一次结果） */
+  const [quizLesson, setQuizLesson] = useState<{
+    lessonId: string;
+    lessonName: string;
+    mode: 'answer' | 'result';
+  } | null>(null);
 
   const loadDetail = useCallback(
     (active: { current: boolean }) => {
@@ -141,8 +145,9 @@ export default function CourseDetail() {
       }
       return;
     }
+    // 携带来源与课时：预览页返回课程详情，并上报学习进度
     navigate(`/course-material/resource/${resource.resourceId}`, {
-      state: { from: `/course-material/${courseId}` },
+      state: { from: `/course-material/${courseId}`, lessonId: resource.lessonId },
     });
   };
 
@@ -318,14 +323,32 @@ export default function CourseDetail() {
                             <Lock size={13} />
                             需先通过上一课时的通关测验
                           </span>
-                        ) : status?.hasQuiz && !passed ? (
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={() => setQuizLesson({ lessonId: lesson.lesson.lessonId, lessonName: lesson.lesson.lessonName })}
-                          >
-                            做通关测验
-                          </Button>
+                        ) : status?.hasQuiz ? (
+                          <Space size={8} wrap>
+                            {status.hasAttempt && status.totalScore ? (
+                              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)' }}>
+                                最近得分 <b style={{ color: passed ? '#389e0d' : '#d46b08' }}>{status.lastScore}</b>
+                                /{status.totalScore} 分（及格线 {status.passScore}）
+                              </span>
+                            ) : null}
+                            {!passed ? (
+                              <Button
+                                type="primary"
+                                size="small"
+                                onClick={() => setQuizLesson({ lessonId: lesson.lesson.lessonId, lessonName: lesson.lesson.lessonName, mode: 'answer' })}
+                              >
+                                做通关测验
+                              </Button>
+                            ) : null}
+                            {status.hasAttempt ? (
+                              <Button
+                                size="small"
+                                onClick={() => setQuizLesson({ lessonId: lesson.lesson.lessonId, lessonName: lesson.lesson.lessonName, mode: 'result' })}
+                              >
+                                查看结果
+                              </Button>
+                            ) : null}
+                          </Space>
                         ) : null}
                       </div>
                     </div>
@@ -342,6 +365,7 @@ export default function CourseDetail() {
         open={!!quizLesson}
         lessonId={quizLesson?.lessonId}
         lessonName={quizLesson?.lessonName}
+        initialMode={quizLesson?.mode}
         onClose={() => setQuizLesson(null)}
         onPassed={() => {
           message.success('测验通过，该课时已完成');

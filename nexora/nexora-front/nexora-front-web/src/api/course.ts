@@ -54,7 +54,8 @@ export interface LessonQuizQuestion {
   title: string;
   score: number;
   options: {
-    optionId: number;
+    /** 判断题等后端补默认选项时为 null */
+    optionId?: number | null;
     optionLabel: string;
     optionContent: string;
   }[];
@@ -69,7 +70,7 @@ export interface LessonQuizData {
   questions: LessonQuizQuestion[];
 }
 
-/** 课时测验提交结果 */
+/** 课时测验提交结果（提交判分与结果回显共用） */
 export interface LessonQuizSubmitResult {
   passed: boolean;
   correctCount: number;
@@ -77,6 +78,8 @@ export interface LessonQuizSubmitResult {
   score: number;
   totalScore: number;
   passScore: number;
+  /** 结果回显时返回：最近一次提交时间 */
+  submitTime?: string;
   results: {
     questionId: string;
     title: string;
@@ -89,6 +92,12 @@ export interface LessonQuizSubmitResult {
     /** 该题满分（主观题也返回其配置分值） */
     questionScore: number;
     analysis?: string;
+    questionType?: number;
+    options?: LessonQuizQuestion['options'];
+    /** 主观题批阅状态：0待批阅 1已批阅（结果回显时返回） */
+    reviewStatus?: number;
+    reviewScore?: number;
+    reviewComment?: string;
   }[];
 }
 
@@ -99,6 +108,14 @@ export interface LessonQuizStatus {
   strict: boolean;
   passed: boolean;
   unlocked: boolean;
+  /** 是否有过作答记录 */
+  hasAttempt?: boolean;
+  /** 最近一次作答得分 */
+  lastScore?: number;
+  /** 测验总分 */
+  totalScore?: number;
+  /** 及格线 */
+  passScore?: number;
 }
 
 /** 章节详情 */
@@ -135,6 +152,11 @@ export function joinCourse(courseId: string): Promise<void> {
   return post('/courseInfo/join', null, { params: { courseId } });
 }
 
+/** 上报课时资源学习（学习进度一期：服务端校验加入并记课时完成，当日去重） */
+export function reportStudy(lessonId: string, resourceId: string): Promise<void> {
+  return post('/courseInfo/reportStudy', null, { params: { lessonId, resourceId } });
+}
+
 /** 获取课程详情 */
 export function getCourseDetail(courseId: string): Promise<StudentCourseDetail> {
   return get('/courseInfo/getDetail', { courseId });
@@ -157,4 +179,9 @@ export function submitLessonQuiz(
 /** 获取课程内课时测验与解锁状态 */
 export function getLessonQuizStatus(courseId: string): Promise<LessonQuizStatus[]> {
   return get('/courseInfo/lessonQuizStatus', { courseId });
+}
+
+/** 获取课时测验最近一次作答结果（未作答过返回 null） */
+export function getLessonQuizResult(lessonId: string): Promise<LessonQuizSubmitResult | null> {
+  return get('/courseInfo/lessonQuizResult', { lessonId });
 }

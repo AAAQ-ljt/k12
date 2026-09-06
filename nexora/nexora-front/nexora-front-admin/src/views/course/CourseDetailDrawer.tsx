@@ -502,6 +502,7 @@ export default function CourseDetailDrawer({
         open={quizConfigOpen}
         lessonId={selectedLessonId}
         lessonName={selectedLesson?.lesson.lessonName}
+        stage={course?.stage}
         onClose={() => setQuizConfigOpen(false)}
         onSaved={() => {
           if (course?.courseId) {

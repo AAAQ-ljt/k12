@@ -9,6 +9,10 @@ import com.nexora.entity.po.CourseChapter;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.CourseInfo;
+import com.nexora.entity.po.PracticeRecord;
+import com.nexora.entity.po.QuestionOption;
+import com.nexora.entity.query.PracticeRecordQuery;
+import com.nexora.entity.vo.LessonQuizAttemptStatVO;
 import com.nexora.entity.po.CourseLessonQuiz;
 import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.entity.po.PracticeRecord;
@@ -76,6 +80,9 @@ public class CourseQuizBiz {
 
     @Resource
     private CourseEnrollmentService courseEnrollmentService;
+
+    @Resource
+    private com.nexora.mappers.PracticeRecordMapper<PracticeRecord, PracticeRecordQuery> practiceRecordMapper;
 
     /**
      * 课时测验答题面板数据；未配置/关闭时返回 null
@@ -151,6 +158,7 @@ public class CourseQuizBiz {
             throw new BusinessException("测验题目为空，请联系管理员");
         }
         List<QuestionInfo> questions = loadQuestions(ids);
+        Map<String, List<QuestionOption>> optionMap = loadOptions(ids);
 
         Map<String, QuestionInfo> questionMap = new LinkedHashMap<>();
         for (QuestionInfo question : questions) {
@@ -200,6 +208,16 @@ public class CourseQuizBiz {
             result.setQuestionScore(questionScore);
             result.setSubjective(subjective);
             result.setAnalysis(question.getAnalysis());
+            result.setQuestionType(question.getQuestionType());
+            List<LessonQuizSubmitResultVO.QuestionOption> optionVOs = new ArrayList<>();
+            for (QuestionOption option : optionMap.getOrDefault(question.getQuestionId(), List.of())) {
+                LessonQuizSubmitResultVO.QuestionOption optionVO = new LessonQuizSubmitResultVO.QuestionOption();
+                optionVO.setOptionId(option.getOptionId());
+                optionVO.setOptionLabel(option.getOptionLabel());
+                optionVO.setOptionContent(option.getOptionContent());
+                optionVOs.add(optionVO);
+            }
+            result.setOptions(optionVOs);
             results.add(result);
 
             PracticeRecord record = new PracticeRecord();
@@ -216,6 +234,8 @@ public class CourseQuizBiz {
             record.setDuration(durationSeconds);
             record.setSource(PRACTICE_SOURCE_QUIZ);
             record.setBizId(dto.getLessonId());
+            // 批阅状态：主观题进入待批阅队列，客观题无需批阅
+            record.setReviewStatus(subjective ? 0 : 2);
             record.setCreateTime(now);
             records.add(record);
         }
@@ -241,7 +261,8 @@ public class CourseQuizBiz {
     }
 
     /**
-     * 课程内各课时测验与解锁状态（按顺序计算：上一严格门禁课时通过才解锁下一课时）
+     * 课程内各课时测验与解锁状态（按顺序计算：上一严格门禁课时通过才解锁下一课时）。
+     * 附带最近一次作答统计（得分/总分/及格线），供章节卡展示测验战况。
      */
     public List<LessonQuizStatusVO> quizStatus(String userId, String courseId) {
         requireCourseVisible(courseId);
@@ -251,6 +272,7 @@ public class CourseQuizBiz {
         List<CourseChapter> chapters = courseChapterService.findListByParam(chapterQuery);
 
         List<LessonQuizStatusVO> statusList = new ArrayList<>();
+        Map<String, CourseLessonQuiz> quizMap = new LinkedHashMap<>();
         boolean prevUnlocked = true;
         boolean prevStrict = false;
         boolean prevPassed = true;
@@ -264,6 +286,9 @@ public class CourseQuizBiz {
                 CourseLessonQuiz quiz = courseLessonQuizService.getCourseLessonQuizByLessonId(lesson.getLessonId());
                 boolean hasQuiz = quiz != null && quiz.getQuizMode() != null && QUIZ_MODE_CLOSED != quiz.getQuizMode()
                         && quiz.getStatus() != null && quiz.getStatus() == 1;
+                if (hasQuiz) {
+                    quizMap.put(lesson.getLessonId(), quiz);
+                }
                 boolean strict = hasQuiz && quiz.getUnlockNext() != null && quiz.getUnlockNext() == 1;
                 boolean passed = hasQuiz && lessonPassed(userId, lesson.getLessonId());
 
@@ -282,7 +307,166 @@ public class CourseQuizBiz {
                 prevPassed = passed;
             }
         }
+        fillAttemptStats(userId, quizMap, statusList);
         return statusList;
+    }
+
+    /** 填充各课时最近一次作答得分与总分/及格线（一次聚合 SQL + 一次批量题目查询，避免循环查库） */
+    private void fillAttemptStats(String userId, Map<String, CourseLessonQuiz> quizMap,
+                                  List<LessonQuizStatusVO> statusList) {
+        if (quizMap.isEmpty()) {
+            return;
+        }
+        List<String> lessonIds = new ArrayList<>(quizMap.keySet());
+        Map<String, LessonQuizAttemptStatVO> statMap = new LinkedHashMap<>();
+        for (LessonQuizAttemptStatVO stat : practiceRecordMapper.selectQuizLastAttemptStats(userId, lessonIds)) {
+            statMap.put(stat.getBizId(), stat);
+        }
+        // 批量加载全部测验题目，计算每套测验总分（配置分值优先，缺省题目分值）
+        Set<String> allQuestionIds = new HashSet<>();
+        for (CourseLessonQuiz quiz : quizMap.values()) {
+            allQuestionIds.addAll(parseQuestionIds(quiz.getQuestionIds()));
+        }
+        Map<String, QuestionInfo> questionMap = new LinkedHashMap<>();
+        if (!allQuestionIds.isEmpty()) {
+            for (QuestionInfo question : loadQuestions(new ArrayList<>(allQuestionIds))) {
+                questionMap.put(question.getQuestionId(), question);
+            }
+        }
+        for (LessonQuizStatusVO vo : statusList) {
+            CourseLessonQuiz quiz = quizMap.get(vo.getLessonId());
+            if (quiz == null) {
+                continue;
+            }
+            Map<String, Integer> scoreMap = parseQuestionScores(quiz.getQuizConfig());
+            int totalScore = 0;
+            for (String questionId : parseQuestionIds(quiz.getQuestionIds())) {
+                QuestionInfo question = questionMap.get(questionId);
+                Integer configured = scoreMap.get(questionId);
+                if (configured != null && configured > 0) {
+                    totalScore += Math.min(configured, 100);
+                } else {
+                    totalScore += question == null || question.getScore() == null ? 5 : question.getScore();
+                }
+            }
+            vo.setTotalScore(totalScore);
+            vo.setPassScore(quiz.getPassScore() == null ? 60 : quiz.getPassScore());
+            LessonQuizAttemptStatVO stat = statMap.get(vo.getLessonId());
+            if (stat != null) {
+                vo.setHasAttempt(true);
+                vo.setLastScore(stat.getLastScore() == null ? 0 : stat.getLastScore());
+            }
+        }
+    }
+
+    /**
+     * 最近一次作答结果还原（结果回显）：从 practice_record 最近提交批次组装判分明细，
+     * 附带题目选项与主观题批阅信息；未作答过返回 null。
+     */
+    public LessonQuizSubmitResultVO result(String userId, String lessonId) {
+        CourseChapterLesson lesson = requireLesson(lessonId);
+        requireCourseVisible(lesson.getCourseId());
+        requireEnrolled(userId, lesson.getCourseId());
+        CourseLessonQuiz quiz = courseLessonQuizService.getCourseLessonQuizByLessonId(lessonId);
+        if (quiz == null || QUIZ_MODE_CLOSED == quiz.getQuizMode() || quiz.getStatus() == null || quiz.getStatus() != 1) {
+            return null;
+        }
+        List<String> ids = parseQuestionIds(quiz.getQuestionIds());
+        if (ids.isEmpty()) {
+            return null;
+        }
+        PracticeRecordQuery recordQuery = new PracticeRecordQuery();
+        recordQuery.setUserId(userId);
+        recordQuery.setSource(PRACTICE_SOURCE_QUIZ);
+        recordQuery.setBizId(lessonId);
+        recordQuery.setOrderBy("create_time desc");
+        List<PracticeRecord> allRecords = practiceRecordService.findListByParam(recordQuery);
+        if (allRecords.isEmpty()) {
+            return null;
+        }
+        // 最近一次提交批次 = create_time 相同的最新一组
+        Date lastTime = allRecords.get(0).getCreateTime();
+        Map<String, PracticeRecord> recordMap = new LinkedHashMap<>();
+        for (PracticeRecord record : allRecords) {
+            if (lastTime != null && lastTime.equals(record.getCreateTime())) {
+                recordMap.putIfAbsent(record.getQuestionId(), record);
+            } else {
+                break;
+            }
+        }
+
+        List<QuestionInfo> questions = loadQuestions(ids);
+        Map<String, List<QuestionOption>> optionMap = loadOptions(ids);
+        Map<String, Integer> scoreMap = parseQuestionScores(quiz.getQuizConfig());
+        int passScore = quiz.getPassScore() == null ? 60 : quiz.getPassScore();
+        int totalCount = 0;
+        int correctCount = 0;
+        int score = 0;
+        int totalScore = 0;
+        List<LessonQuizSubmitResultVO.QuestionResult> results = new ArrayList<>();
+        for (QuestionInfo question : questions) {
+            int questionScore = effectiveScore(question, scoreMap);
+            PracticeRecord record = recordMap.get(question.getQuestionId());
+            int judgeType = question.getQuestionType() == null ? 0 : question.getQuestionType();
+            boolean subjective = judgeType >= 4;
+            int earned = record == null || record.getScore() == null ? 0 : record.getScore();
+            boolean correct = record != null && record.getIsCorrect() != null && record.getIsCorrect() == 1
+                    && !subjective && questionScore > 0 && earned >= questionScore;
+            if (!subjective) {
+                totalScore += questionScore;
+                score += earned;
+                totalCount++;
+                if (correct) {
+                    correctCount++;
+                }
+            }
+            LessonQuizSubmitResultVO.QuestionResult result = new LessonQuizSubmitResultVO.QuestionResult();
+            result.setQuestionId(question.getQuestionId());
+            result.setTitle(question.getTitle());
+            result.setUserAnswer(record == null || record.getUserAnswer() == null ? "" : record.getUserAnswer());
+            result.setCorrectAnswer(question.getAnswer() == null ? "" : question.getAnswer());
+            result.setCorrect(correct);
+            result.setScore(earned);
+            result.setQuestionScore(questionScore);
+            result.setSubjective(subjective);
+            result.setAnalysis(question.getAnalysis());
+            result.setQuestionType(question.getQuestionType());
+            List<LessonQuizSubmitResultVO.QuestionOption> optionVOs = new ArrayList<>();
+            for (QuestionOption option : optionMap.getOrDefault(question.getQuestionId(), List.of())) {
+                LessonQuizSubmitResultVO.QuestionOption optionVO = new LessonQuizSubmitResultVO.QuestionOption();
+                optionVO.setOptionId(option.getOptionId());
+                optionVO.setOptionLabel(option.getOptionLabel());
+                optionVO.setOptionContent(option.getOptionContent());
+                optionVOs.add(optionVO);
+            }
+            // 判断题库中无选项时补默认 A/B，与答题面板一致
+            if (optionVOs.isEmpty() && judgeType == 2) {
+                for (QuestionOption option : judgeDefaultOptions()) {
+                    LessonQuizSubmitResultVO.QuestionOption optionVO = new LessonQuizSubmitResultVO.QuestionOption();
+                    optionVO.setOptionLabel(option.getOptionLabel());
+                    optionVO.setOptionContent(option.getOptionContent());
+                    optionVOs.add(optionVO);
+                }
+            }
+            result.setOptions(optionVOs);
+            if (subjective && record != null) {
+                result.setReviewStatus(record.getReviewStatus());
+                result.setReviewScore(record.getReviewScore());
+                result.setReviewComment(record.getReviewComment());
+            }
+            results.add(result);
+        }
+        boolean passed = totalScore > 0 && score >= passScore;
+        LessonQuizSubmitResultVO resultVO = new LessonQuizSubmitResultVO();
+        resultVO.setPassed(passed);
+        resultVO.setCorrectCount(correctCount);
+        resultVO.setTotalCount(totalCount);
+        resultVO.setScore(score);
+        resultVO.setTotalScore(totalScore);
+        resultVO.setPassScore(passScore);
+        resultVO.setResults(results);
+        resultVO.setSubmitTime(lastTime);
+        return resultVO;
     }
 
     private LessonQuizAnswerDTO findAnswer(List<LessonQuizAnswerDTO> answers, String questionId) {

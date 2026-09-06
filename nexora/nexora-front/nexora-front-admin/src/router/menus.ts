@@ -49,6 +49,7 @@ export const menus: MenuConfig[] = [
       { key: 'teaching:course', label: '课程管理', path: '/teaching/course', menuCode: 'teaching:course' },
       { key: 'teaching:question', label: '习题管理', path: '/teaching/question', menuCode: 'teaching:question' },
       { key: 'teaching:paper', label: '试卷管理', path: '/teaching/paper', menuCode: 'teaching:paper' },
+      { key: 'teaching:answerReview', label: '答题批阅', path: '/teaching/answer-review', menuCode: 'teaching:answerReview' },
     ],
   },
   {

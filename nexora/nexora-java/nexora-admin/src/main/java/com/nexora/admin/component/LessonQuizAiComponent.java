@@ -22,8 +22,8 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * 课时通关测验 AI 出题组件（admin）：LLM 生成单选客观题 JSON，解析校验后直接落题目库（question_info + question_option）
- * 并返回题目 ID 列表，供课时测验配置关联。
+ * 课时通关测验 AI 出题组件（admin）：LLM 逐题生成单选客观题，解析校验后落题目库
+ * （question_info + question_option，必须挂载知识点），供课时测验异步任务调用。
  * 产物结构：{ "questions": [ { "question": "题干", "options": ["A. ..."], "answer": 0, "analysis": "解析" } ] }
  */
 @Slf4j
@@ -62,12 +62,14 @@ public class LessonQuizAiComponent {
     @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
     private String chatModel;
 
+    /** 单题草稿：校验通过后的生成结果 */
+    public record QuizDraft(String title, List<String> options, int answerIndex, String analysis) {
+    }
+
     /**
-     * 生成并落库单选题，返回生成的题目 ID 列表；LLM 输出不合法时抛出异常
+     * 生成单道单选题（异步任务逐题调用，便于上报进度）；LLM 输出不合法时抛出异常
      */
-    public List<String> generateAndSave(String stage, String grade, String topic,
-                                        int count, int difficulty) {
-        int questionCount = Math.max(1, Math.min(count, 6));
+    public QuizDraft generateSingle(String stage, String grade, String topic, int difficulty) {
         int safeDifficulty = Math.max(1, Math.min(difficulty, 3));
         String stageDesc = stageDesc(stage);
         String difficultyText = switch (safeDifficulty) {
@@ -76,10 +78,10 @@ public class LessonQuizAiComponent {
             default -> "困难";
         };
         String prompt = "知识点/主题：" + topic
-                + "\n请按 JSON 结构生成单选测验题，题目必须围绕该知识点展开。";
+                + "\n请按 JSON 结构生成 1 道单选测验题，题目必须围绕该知识点展开。";
 
         String content = chatClient.prompt()
-                .system(String.format(SYSTEM_PROMPT, stageDesc, blank(grade), questionCount, questionCount, stageDesc, difficultyText))
+                .system(String.format(SYSTEM_PROMPT, stageDesc, blank(grade), 1, 1, stageDesc, difficultyText))
                 .user(prompt)
                 .options(OpenAiChatOptions.builder().model(chatModel).build())
                 .call()
@@ -87,21 +89,62 @@ public class LessonQuizAiComponent {
         if (StringTools.isEmpty(content)) {
             throw new BusinessException("AI 出题失败，请稍后重试");
         }
-        return saveQuestions(stage, grade, safeDifficulty, content, questionCount);
+        return parseSingle(content);
     }
 
-    private List<String> saveQuestions(String stage, String grade, int difficulty,
-                                       String content, int expectCount) {
+    /**
+     * 草稿落库：题目挂载知识点（question_info.knowledge_point_id 非空约束），返回题目ID
+     */
+    public String saveDraft(String stage, String grade, int difficulty, String knowledgePointId,
+                            QuizDraft draft, Date now) {
+        String questionId = StringTools.getRandomNumber(Constants.LENGTH_15);
+        QuestionInfo question = new QuestionInfo();
+        question.setQuestionId(questionId);
+        question.setKnowledgePointId(knowledgePointId);
+        question.setStage(stage);
+        question.setGrade(grade);
+        question.setDifficulty(difficulty);
+        question.setQuestionType(0); // 单选
+        question.setTitle(draft.title());
+        question.setScore(5);
+        question.setAnswer(String.valueOf((char) ('A' + draft.answerIndex())));
+        question.setAnalysis(draft.analysis());
+        question.setSource(2); // 课时测验 AI 生成
+        question.setAuditStatus(1);
+        question.setStatus(1);
+        question.setCreateTime(now);
+        question.setUpdateTime(now);
+        questionInfoService.add(question);
+
+        List<QuestionOption> options = new ArrayList<>();
+        for (int j = 0; j < draft.options().size(); j++) {
+            String optionText = draft.options().get(j);
+            if (StringTools.isEmpty(optionText)) {
+                continue;
+            }
+            QuestionOption option = new QuestionOption();
+            option.setQuestionId(questionId);
+            option.setOptionLabel(String.valueOf((char) ('A' + j)));
+            option.setOptionContent(optionText);
+            option.setIsAnswer(j == draft.answerIndex() ? 1 : 0);
+            option.setSort(j + 1);
+            option.setCreateTime(now);
+            options.add(option);
+        }
+        if (!options.isEmpty()) {
+            questionOptionService.addBatch(options);
+        }
+        return questionId;
+    }
+
+    private QuizDraft parseSingle(String content) {
         String jsonText = extractJson(content);
         JSONObject root = JSON.parseObject(jsonText);
         JSONArray questions = root == null ? null : root.getJSONArray("questions");
         if (questions == null || questions.isEmpty()) {
             throw new BusinessException("AI 出题结果解析失败，请重新生成");
         }
-        Date now = new Date();
-        List<String> questionIds = new ArrayList<>();
-        int saved = 0;
-        for (int i = 0; i < questions.size() && saved < expectCount; i++) {
+        for (int i = 0; i < questions.size(); i++) {
             JSONObject item = questions.getJSONObject(i);
             String title = item.getString("question");
             JSONArray optionsArr = item.getJSONArray("options");
@@ -111,50 +154,13 @@ public class LessonQuizAiComponent {
                     || answerIndex == null || answerIndex < 0 || answerIndex >= optionsArr.size()) {
                 continue;
             }
-            String questionId = StringTools.getRandomNumber(Constants.LENGTH_15);
-            QuestionInfo question = new QuestionInfo();
-            question.setQuestionId(questionId);
-            question.setStage(stage);
-            question.setGrade(grade);
-            question.setDifficulty(difficulty);
-            question.setQuestionType(0); // 单选
-            question.setTitle(title);
-            question.setScore(5);
-            question.setAnswer(String.valueOf((char) ('A' + answerIndex)));
-            question.setAnalysis(analysis);
-            question.setSource(2); // 课时测验 AI 生成
-            question.setAuditStatus(1);
-            question.setStatus(1);
-            question.setCreateTime(now);
-            question.setUpdateTime(now);
-            questionInfoService.add(question);
-
-            List<QuestionOption> options = new ArrayList<>();
+            List<String> options = new ArrayList<>();
             for (int j = 0; j < optionsArr.size(); j++) {
-                String optionText = optionsArr.getString(j);
-                if (StringTools.isEmpty(optionText)) {
-                    continue;
-                }
-                QuestionOption option = new QuestionOption();
-                option.setQuestionId(questionId);
-                option.setOptionLabel(String.valueOf((char) ('A' + j)));
-                option.setOptionContent(optionText);
-                option.setIsAnswer(j == answerIndex ? 1 : 0);
-                option.setSort(j + 1);
-                option.setCreateTime(now);
-                options.add(option);
+                options.add(optionsArr.getString(j));
             }
-            if (!options.isEmpty()) {
-                questionOptionService.addBatch(options);
-            }
-            questionIds.add(questionId);
-            saved++;
+            return new QuizDraft(title, options, answerIndex, analysis == null ? "" : analysis);
         }
-        if (questionIds.isEmpty()) {
-            throw new BusinessException("AI 出题结果校验未通过，请重新生成");
-        }
-        log.info("课时测验 AI 出题完成：{} 题", questionIds.size());
-        return questionIds;
+        throw new BusinessException("AI 出题结果校验未通过，请重新生成");
     }
 
     private String extractJson(String content) {

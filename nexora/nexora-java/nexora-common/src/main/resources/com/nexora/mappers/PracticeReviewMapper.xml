@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.PracticeReviewMapper">
+
+    <sql id="review_condition">
+        <where>
+            <!-- 批阅范围：主观题（简答/解答/论述/材料） -->
+            r.question_type >= 4
+            <if test="query.userId != null and query.userId != ''">
+                and r.user_id = #{query.userId}
+            </if>
+            <if test="query.grade != null and query.grade != ''">
+                and q.grade = #{query.grade}
+            </if>
+            <if test="query.subject != null and query.subject != ''">
+                and kp.subject = #{query.subject}
+            </if>
+            <if test="query.questionType != null">
+                and r.question_type = #{query.questionType}
+            </if>
+            <if test="query.source != null">
+                and r.source = #{query.source}
+            </if>
+            <if test="query.reviewStatus != null">
+                and r.review_status = #{query.reviewStatus}
+            </if>
+            <if test="query.studentFuzzy != null and query.studentFuzzy != ''">
+                and (u.username like concat('%', #{query.studentFuzzy}, '%')
+                    or u.nick_name like concat('%', #{query.studentFuzzy}, '%')
+                    or u.email like concat('%', #{query.studentFuzzy}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectReviewList" resultType="com.nexora.entity.vo.PracticeReviewItemVO">
+        SELECT
+            r.record_id,
+            r.user_id,
+            u.username,
+            u.nick_name,
+            u.grade,
+            r.question_id,
+            q.title AS question_title,
+            q.question_type,
+            q.score AS question_max_score,
+            q.answer AS correct_answer,
+            q.analysis,
+            kp.name AS knowledge_point_name,
+            kp.subject,
+            r.user_answer,
+            r.score,
+            r.source,
+            r.biz_id,
+            l.lesson_name,
+            r.review_status,
+            r.review_score,
+            r.reviewer_id,
+            r.review_comment,
+            r.review_time,
+            r.create_time
+        FROM practice_record r
+        INNER JOIN question_info q ON q.question_id = r.question_id
+        LEFT JOIN user_info u ON u.user_id = r.user_id
+        LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = r.knowledge_point_id
+        LEFT JOIN course_chapter_lesson l ON l.lesson_id = r.biz_id AND r.source = 3
+        <include refid="review_condition" />
+        ORDER BY r.review_status ASC, r.create_time DESC
+        <if test="query.simplePage != null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <select id="selectReviewCount" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM practice_record r
+        INNER JOIN question_info q ON q.question_id = r.question_id
+        LEFT JOIN user_info u ON u.user_id = r.user_id
+        LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = r.knowledge_point_id
+        <include refid="review_condition" />
+    </select>
+
+    <select id="selectReviewStats" resultType="com.nexora.entity.vo.PracticeReviewStatsVO">
+        SELECT
+            (SELECT COUNT(*) FROM practice_record WHERE review_status = 0) AS pending_count,
+            (SELECT COUNT(*) FROM practice_record WHERE review_status = 1) AS reviewed_count,
+            (SELECT COALESCE(ROUND(AVG(review_score), 1), 0) FROM practice_record WHERE review_status = 1) AS review_avg_score,
+            (SELECT COALESCE(ROUND(SUM(is_correct) * 100.0 / NULLIF(COUNT(*), 0), 1), 0)
+                FROM practice_record WHERE question_type &lt; 4) AS objective_accuracy
+    </select>
+</mapper>

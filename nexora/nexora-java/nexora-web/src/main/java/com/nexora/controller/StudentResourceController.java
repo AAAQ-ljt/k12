@@ -2,11 +2,16 @@ package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
 import com.nexora.entity.dto.TokenUserInfoDTO;
+import com.nexora.entity.po.CourseChapterLessonResource;
+import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.ResourceInfo;
+import com.nexora.entity.query.CourseChapterLessonResourceQuery;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.vo.PaginationResultVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
+import com.nexora.service.CourseChapterLessonResourceService;
+import com.nexora.service.CourseEnrollmentService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
@@ -47,6 +52,12 @@ public class StudentResourceController extends ABaseController {
     @Resource
     private ResourceInfoService resourceInfoService;
 
+    @Resource
+    private CourseChapterLessonResourceService courseChapterLessonResourceService;
+
+    @Resource
+    private CourseEnrollmentService courseEnrollmentService;
+
     @Value("${project.folder}")
     private String projectFolder;
 
@@ -82,7 +93,33 @@ public class StudentResourceController extends ABaseController {
                 || !stageMatches(resource.getStage(), current == null ? null : current.getStage())) {
             throw new BusinessException("资源不存在或暂不可用");
         }
+        // 学习内容强制加入：绑定到课时的课程教材，未加入对应课程不允许查看
+        requireCourseEnrollment(resourceId, current);
         return getSuccessResponseVO(toVO(resource));
+    }
+
+    /**
+     * 绑定到课时的课程教材资源须先加入课程；未绑定课时（个人/推荐等）资源不受限。
+     */
+    private void requireCourseEnrollment(String resourceId, TokenUserInfoDTO current) {
+        if (current == null || StringTools.isEmpty(current.getUserId())) {
+            return;
+        }
+        CourseChapterLessonResourceQuery bindQuery = new CourseChapterLessonResourceQuery();
+        bindQuery.setResourceId(resourceId);
+        List<CourseChapterLessonResource> binds = courseChapterLessonResourceService.findListByParam(bindQuery);
+        if (binds.isEmpty()) {
+            return;
+        }
+        boolean enrolled = binds.stream().map(CourseChapterLessonResource::getCourseId).distinct()
+                .anyMatch(courseId -> {
+                    CourseEnrollment enrollment = courseEnrollmentService
+                            .getCourseEnrollmentByUserIdAndCourseId(current.getUserId(), courseId);
+                    return enrollment != null && enrollment.getStatus() != null && enrollment.getStatus() == 1;
+                });
+        if (!enrolled) {
+            throw new BusinessException("请先加入课程后再查看该学习内容");
+        }
     }
 
     @GetMapping("/video/{resourceId}/index.m3u8")

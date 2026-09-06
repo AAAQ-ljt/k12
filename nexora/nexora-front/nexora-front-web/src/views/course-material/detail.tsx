@@ -20,6 +20,7 @@ import {
   getResourceVideoUrl,
   type StudentResourceInfo,
 } from '@/api/resource';
+import { reportStudy } from '@/api/course';
 import VideoPlayer from './components/VideoPlayer';
 import DocumentViewer from './components/DocumentViewer';
 import styles from './detail.module.scss';
@@ -72,22 +73,38 @@ export default function CourseMaterialDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { message } = App.useApp();
+  // 课程详情页进入时携带 from + lessonId：返回来源页并上报学习进度
+  const locationState = location.state as { from?: string; lessonId?: string } | null;
+  const lessonId = locationState?.lessonId;
   const [resource, setResource] = useState<StudentResourceInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  /** 课程学习内容强制加入：未加入时展示引导而非报错 */
+  const [needJoin, setNeedJoin] = useState(false);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setNotFound(false);
+    setNeedJoin(false);
     getResourceInfo(resourceId)
       .then((data) => {
-        if (active) {
-          setResource(data);
+        if (!active) {
+          return;
+        }
+        setResource(data);
+        // 课程课时资源：上报学习进度（服务端校验加入并记课时完成，当日去重），失败不阻断预览
+        if (lessonId) {
+          reportStudy(lessonId, resourceId).catch(() => undefined);
         }
       })
-      .catch(() => {
-        if (active) {
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+        if (error instanceof Error && error.message.includes('加入')) {
+          setNeedJoin(true);
+        } else {
           setNotFound(true);
         }
       })
@@ -99,16 +116,34 @@ export default function CourseMaterialDetail() {
     return () => {
       active = false;
     };
-  }, [resourceId]);
+  }, [resourceId, lessonId]);
 
   const type = useMemo(() => normalizeType(resource?.resourceType), [resource]);
   const meta = TYPE_META[type] || TYPE_META.DOCUMENT;
   const Icon = meta.icon;
 
   // 课程详情页进入时携带 from state，返回课程详情；AI 助教/直接访问回教材列表
-  const fromPath = (location.state as { from?: string } | null)?.from;
+  const fromPath = locationState?.from;
   const backTarget = fromPath || '/course-material';
   const backLabel = fromPath && fromPath !== '/course-material' ? '返回课程详情' : '返回教材列表';
+
+  if (needJoin) {
+    return (
+      <div className={styles.detailPage}>
+        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(backTarget)} className={styles.backButton}>
+          {backLabel}
+        </Button>
+        <Empty
+          description="该学习内容属于课程教材，加入课程后即可查看并记录学习进度"
+          style={{ marginTop: 80 }}
+        >
+          <Button type="primary" onClick={() => navigate(backTarget)}>
+            去加入课程
+          </Button>
+        </Empty>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

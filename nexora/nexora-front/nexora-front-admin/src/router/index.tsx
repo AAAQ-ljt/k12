@@ -7,6 +7,7 @@ import UserManagement from '@/views/user/UserManagement';
 import CourseManagement from '@/views/course/CourseManagement';
 import QuestionManagement from '@/views/question/QuestionManagement';
 import PaperManagement from '@/views/paper/PaperManagement';
+import AnswerReview from '@/views/review/AnswerReview';
 import ResourceManagement from '@/views/resource/ResourceManagement';
 import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
 import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
@@ -91,6 +92,10 @@ export const router = createBrowserRouter([
           {
             path: 'paper',
             element: <PaperManagement />,
+          },
+          {
+            path: 'answer-review',
+            element: <AnswerReview />,
           },
         ],
       },

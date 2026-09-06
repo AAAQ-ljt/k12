@@ -41,6 +41,12 @@
         <if test="query.duration != null">
             and r.duration = #{query.duration}
         </if>
+        <if test="query.createTimeStart != null and query.createTimeStart!=''">
+            <![CDATA[ and  r.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.createTimeEnd != null and query.createTimeEnd!=''">
+            <![CDATA[ and  r.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+        </if>
     </sql>
 
     <sql id="query_condition">

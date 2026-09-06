@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   getLessonQuiz,
+  getLessonQuizResult,
   submitLessonQuiz,
   type LessonQuizData,
   type LessonQuizQuestion,
@@ -76,12 +77,21 @@ interface LessonQuizModalProps {
   open: boolean;
   lessonId?: string;
   lessonName?: string;
+  /** 打开模式：result=回看最近一次作答结果 */
+  initialMode?: 'answer' | 'result';
   onClose: () => void;
   onPassed: () => void;
 }
 
-export default function LessonQuizModal({ open, lessonId, lessonName, onClose, onPassed }: LessonQuizModalProps) {
-  const { modal } = App.useApp();
+export default function LessonQuizModal({
+  open,
+  lessonId,
+  lessonName,
+  initialMode = 'answer',
+  onClose,
+  onPassed,
+}: LessonQuizModalProps) {
+  const { message, modal } = App.useApp();
   const [quiz, setQuiz] = useState<LessonQuizData | null>(null);
   const [loading, setLoading] = useState(false);
   /** 作答表：单选/判断/填空/主观存字符串，多选存字母数组 */
@@ -106,6 +116,20 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
     setResult(null);
     setOnlyWrong(false);
     setExpandedMap({});
+    if (initialMode === 'result') {
+      // 回看模式：还原最近一次作答结果（题目选项由结果接口返回）
+      getLessonQuizResult(lessonId)
+        .then((data) => {
+          if (data) {
+            setResult(data);
+          } else {
+            message.info('该课时还没有作答记录');
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => setLoading(false));
+      return;
+    }
     getLessonQuiz(lessonId)
       .then((data) => {
         setQuiz(data);
@@ -113,7 +137,7 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
       })
       .catch(() => setQuiz(null))
       .finally(() => setLoading(false));
-  }, [open, lessonId]);
+  }, [open, lessonId, initialMode]);
 
   const questions = quiz?.questions ?? [];
   const currentQuestion = questions[current];
@@ -207,19 +231,27 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
     setResult(null);
     setOnlyWrong(false);
     setExpandedMap({});
+    // 结果回显模式进入时未拉取答题面板，重做前先加载
+    if (!quiz && lessonId) {
+      setLoading(true);
+      getLessonQuiz(lessonId)
+        .then((data) => {
+          setQuiz(data);
+          startAtRef.current = Date.now();
+        })
+        .catch(() => setQuiz(null))
+        .finally(() => setLoading(false));
+    }
   };
 
-  /** 结果页选择题选项重渲染：正确项绿底、错选红底 */
+  /** 结果页选择题选项重渲染：正确项绿底、错选红底（结果回显模式用 item 自带的选项数据） */
   const renderResultOptions = (item: LessonQuizSubmitResult['results'][number]) => {
     const question = questionMap.get(item.questionId);
-    if (!question) {
+    const type = question?.questionType ?? item.questionType;
+    if (type == null || (type !== 0 && type !== 1 && type !== 2)) {
       return null;
     }
-    const type = question.questionType;
-    if (type !== 0 && type !== 1 && type !== 2) {
-      return null;
-    }
-    const options = effectiveOptions(question);
+    const options = question ? effectiveOptions(question) : (item.options ?? []);
     const userLabels = type === 1 ? (item.userAnswer || '').split('') : [item.userAnswer || ''];
     const correctLabels =
       type === 2
@@ -338,8 +370,6 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
     >
       {loading ? (
         <div className={styles.loadingBox}>加载题目中...</div>
-      ) : !quiz || questions.length === 0 ? (
-        <div className={styles.loadingBox}>该课时暂无可用测验题目，请联系老师。</div>
       ) : result ? (
         <div className={styles.resultBox}>
           <div className={`${styles.resultBanner} ${result.passed ? styles.bannerPass : styles.bannerFail}`}>
@@ -360,6 +390,7 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
               <div className={styles.bannerStats}>
                 <span>答对 {result.correctCount}/{result.totalCount} 题（客观题）</span>
                 <span>及格线 {result.passScore} 分</span>
+                {result.submitTime ? <span>提交时间 {result.submitTime}</span> : null}
               </div>
               {!result.passed ? (
                 <Button ghost icon={<RotateCcw size={14} />} onClick={retry}>
@@ -377,7 +408,7 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
           <div className={styles.resultList}>
             {shownResults.map((item, index) => {
               const question = questionMap.get(item.questionId);
-              const type = question?.questionType;
+              const type = question?.questionType ?? item.questionType;
               const isChoice = type === 0 || type === 1 || type === 2;
               const expanded = expandedMap[item.questionId] ?? (item.subjective || !item.correct);
               return (
@@ -390,7 +421,11 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
                       {item.score}/{item.questionScore} 分
                     </span>
                     {item.subjective ? (
-                      <Tag color="orange">主观题</Tag>
+                      item.reviewStatus === 1 ? (
+                        <Tag color="success">已批阅 {item.reviewScore} 分</Tag>
+                      ) : (
+                        <Tag color="orange">主观题 · 待批阅</Tag>
+                      )
                     ) : !item.correct && item.score > 0 ? (
                       <Tag color="gold">部分正确</Tag>
                     ) : (
@@ -414,7 +449,11 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
                     <div className={styles.answerRow}>你的答案：{item.userAnswer || '未作答'}</div>
                   ) : null}
                   {item.subjective ? (
-                    <div className={styles.subjectiveTip}>主观题不参与自动判分，请对照参考答案自行核对。</div>
+                    <div className={styles.subjectiveTip}>
+                      {item.reviewStatus === 1
+                        ? `老师已批阅：${item.reviewScore ?? 0} 分${item.reviewComment ? ` · 评语：${item.reviewComment}` : ''}`
+                        : '主观题由老师人工批阅，批阅后此处会显示得分与评语。'}
+                    </div>
                   ) : null}
                   {item.analysis ? (
                     <div className={styles.analysisWrap}>
@@ -439,6 +478,12 @@ export default function LessonQuizModal({ open, lessonId, lessonName, onClose, o
             })}
             {shownResults.length === 0 ? <div className={styles.loadingBox}>没有错题，全部答对 🎉</div> : null}
           </div>
+        </div>
+      ) : !quiz || questions.length === 0 ? (
+        <div className={styles.loadingBox}>
+          {initialMode === 'result' && !quiz
+            ? '该课时还没有作答记录，先完成一次通关测验吧'
+            : '该课时暂无可用测验题目，请联系老师。'}
         </div>
       ) : (
         <div className={styles.quizBody}>

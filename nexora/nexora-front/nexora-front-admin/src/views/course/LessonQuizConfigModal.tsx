@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import { App, Button, Empty, Input, InputNumber, Modal, Radio, Space, Switch, Table, Tag } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { App, Button, Empty, Input, InputNumber, Modal, Progress, Radio, Select, Space, Switch, Table, Tag } from 'antd';
 import { Search, Sparkles, Trash2 } from 'lucide-react';
 import {
   deleteLessonQuiz,
+  generateQuizAsync,
   getLessonQuizDetail,
+  getQuizTask,
   saveLessonQuiz,
+  type LessonQuizTask,
   type QuestionLite,
 } from '@/api/course';
 import { loadDataList as loadQuestionList, type QuestionInfo, type QuestionInfoQuery } from '@/api/question';
+import { loadTree, type KnowledgeTreeNode } from '@/api/knowledge';
 import { DIFFICULTY_OPTIONS } from '@/types/common';
 
 const QUESTION_TYPE_MAP: Record<number, { text: string; color: string }> = {
@@ -25,6 +29,8 @@ interface LessonQuizConfigModalProps {
   open: boolean;
   lessonId?: string;
   lessonName?: string;
+  /** 课程学段（AI 出题知识点过滤） */
+  stage?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -33,6 +39,7 @@ export default function LessonQuizConfigModal({
   open,
   lessonId,
   lessonName,
+  stage,
   onClose,
   onSaved,
 }: LessonQuizConfigModalProps) {
@@ -50,7 +57,15 @@ export default function LessonQuizConfigModal({
   const [difficulty, setDifficulty] = useState(1);
   const [passScore, setPassScore] = useState(60);
   const [unlockNext, setUnlockNext] = useState(false);
+  /** 多选题漏选（未错选）按比例部分给分 */
+  const [partialCredit, setPartialCredit] = useState(false);
   const [topic, setTopic] = useState('');
+  /** AI 模式挂载的知识点 */
+  const [knowledgePointId, setKnowledgePointId] = useState<string | undefined>();
+  const [pointOptions, setPointOptions] = useState<{ label: string; value: string }[]>([]);
+  /** AI 出题异步任务（轮询进度） */
+  const [task, setTask] = useState<LessonQuizTask | null>(null);
+  const taskTimerRef = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   // 题库选题弹窗
@@ -62,6 +77,32 @@ export default function LessonQuizConfigModal({
   const [keyword, setKeyword] = useState('');
 
   const PAGE_SIZE = 10;
+
+  /** 知识点下拉（按课程学段过滤，AI 出题挂载用） */
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    loadTree()
+      .then((tree) => {
+        const options: { label: string; value: string }[] = [];
+        const walk = (nodes: KnowledgeTreeNode[]) => {
+          nodes.forEach((node) => {
+            if (node.type === 'point' && node.knowledgePointId && (!stage || node.stage === stage)) {
+              options.push({ label: node.label, value: node.knowledgePointId });
+            }
+            if (node.children?.length) {
+              walk(node.children);
+            }
+          });
+        };
+        walk(tree);
+        setPointOptions(options);
+      })
+      .catch(() => {
+        // 请求层统一提示
+      });
+  }, [open, stage]);
 
   useEffect(() => {
     if (!open || !lessonId) {
@@ -89,9 +130,83 @@ export default function LessonQuizConfigModal({
         setDifficulty(quiz?.difficulty ?? 1);
         setPassScore(quiz?.passScore ?? 60);
         setUnlockNext(quiz?.unlockNext === 1);
+        setPartialCredit(!!detail.partialCredit);
       })
       .finally(() => setLoading(false));
   }, [open, lessonId, lessonName]);
+
+  /** 任务轮询：SUCCESS 刷新配置，FAILED 展示原因；弹窗关闭即停（服务端任务继续） */
+  const stopPolling = () => {
+    if (taskTimerRef.current != null) {
+      window.clearInterval(taskTimerRef.current);
+      taskTimerRef.current = null;
+    }
+  };
+
+  const clearStoredTask = () => {
+    if (lessonId) {
+      sessionStorage.removeItem(`quizTask:${lessonId}`);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || !task || task.status === 'SUCCESS' || task.status === 'FAILED') {
+      stopPolling();
+      return;
+    }
+    stopPolling();
+    taskTimerRef.current = window.setInterval(async () => {
+      try {
+        const latest = await getQuizTask(task.taskId);
+        setTask(latest);
+        if (latest.status === 'SUCCESS') {
+          clearStoredTask();
+          message.success('AI 出题完成，已关联到课时测验');
+          onSaved();
+        } else if (latest.status === 'FAILED') {
+          clearStoredTask();
+          message.error(latest.message || 'AI 出题失败');
+        }
+      } catch {
+        // 任务过期等异常：停止轮询并提示
+        stopPolling();
+        setTask(null);
+        clearStoredTask();
+      }
+    }, 1500);
+    return stopPolling;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, task?.taskId, task?.status]);
+
+  /** 弹窗打开时恢复未完成的历史任务（切页/刷新不丢） */
+  useEffect(() => {
+    if (!open || !lessonId) {
+      return;
+    }
+    const storedTaskId = sessionStorage.getItem(`quizTask:${lessonId}`);
+    if (!storedTaskId) {
+      setTask(null);
+      return;
+    }
+    getQuizTask(storedTaskId)
+      .then((restored) => {
+        if (restored.status === 'SUCCESS') {
+          sessionStorage.removeItem(`quizTask:${lessonId}`);
+          setTask(null);
+          onSaved();
+        } else if (restored.status === 'FAILED') {
+          sessionStorage.removeItem(`quizTask:${lessonId}`);
+          setTask(restored);
+        } else {
+          setTask(restored);
+        }
+      })
+      .catch(() => {
+        sessionStorage.removeItem(`quizTask:${lessonId}`);
+        setTask(null);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lessonId]);
 
   /** 已选题目（按 questionIds 顺序渲染，不随选择过程乱序） */
   const linkedQuestions = useMemo(
@@ -207,8 +322,42 @@ export default function LessonQuizConfigModal({
       message.warning('请输入 AI 出题的知识点/主题');
       return;
     }
+    if (quizMode === 2 && !knowledgePointId) {
+      message.warning('请选择知识点（AI 生成的题目将挂载到该知识点）');
+      return;
+    }
+    // 题库模式：分值必填 + 总分必须达到及格线
+    if (quizMode === 1) {
+      const missing = questionIds.filter((id) => scores[id] == null || scores[id] < 1);
+      if (missing.length > 0) {
+        message.warning('请为每道题设置分值（不能为空或小于 1）');
+        return;
+      }
+      const total = questionIds.reduce((sum, id) => sum + (scores[id] || 0), 0);
+      if (total < passScore) {
+        message.warning(`测验总分为 ${total} 分，未达到及格线 ${passScore} 分，请调整各题分值`);
+        return;
+      }
+    }
     setSaving(true);
     try {
+      if (quizMode === 2) {
+        // AI 出题：异步任务，进度条轮询（任务存服务端，切页不中断）
+        const started = await generateQuizAsync({
+          lessonId,
+          quizMode,
+          questionCount,
+          difficulty,
+          passScore,
+          unlockNext: unlockNext ? 1 : 0,
+          partialCredit,
+          topic: topic.trim(),
+          knowledgePointId,
+        });
+        sessionStorage.setItem(`quizTask:${lessonId}`, started.taskId);
+        setTask(started);
+        return;
+      }
       // 分值表只提交已选题的分值
       const questionScores: Record<string, number> = {};
       questionIds.forEach((id) => {
@@ -222,13 +371,11 @@ export default function LessonQuizConfigModal({
         quizMode,
         questionIds: quizMode === 1 ? questionIds : undefined,
         questionScores: quizMode === 1 ? questionScores : undefined,
-        questionCount: quizMode === 2 ? questionCount : undefined,
-        difficulty: quizMode === 2 ? difficulty : undefined,
         passScore,
         unlockNext: unlockNext ? 1 : 0,
-        topic: quizMode === 2 ? topic.trim() : undefined,
+        partialCredit,
       });
-      message.success(quizMode === 2 ? 'AI 出题成功并已保存' : '通关测验已保存');
+      message.success('通关测验已保存');
       onSaved();
       onClose();
     } catch {
@@ -332,14 +479,56 @@ export default function LessonQuizConfigModal({
                     <Empty description="尚未选题" imageStyle={{ height: 48 }} />
                   )}
                 </div>
+              ) : task && task.status !== 'SUCCESS' && task.status !== 'FAILED' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Sparkles size={14} color="#722ed1" />
+                    <span style={{ fontWeight: 600 }}>{task.step || 'AI 正在出题'}</span>
+                  </div>
+                  <Progress
+                    percent={task.total ? Math.round(((task.generated || 0) / task.total) * 100) : 0}
+                    status="active"
+                  />
+                  <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                    任务在服务端执行，切换页面不会中断；完成后将自动刷新本弹窗的题目列表。
+                  </div>
+                </div>
+              ) : task && task.status === 'FAILED' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ color: '#cf1322' }}>AI 出题失败：{task.message || '请稍后重试'}</div>
+                  <Button onClick={() => setTask(null)}>重新配置并生成</Button>
+                </div>
+              ) : task && task.status === 'SUCCESS' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ color: '#389e0d' }}>AI 出题完成，已生成 {task.total} 道单选题并自动按满分均分（合计 100 分）。</div>
+                  <Button onClick={() => setTask(null)}>继续调整配置</Button>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <Input
-                    placeholder="AI 出题主题/知识点，例如：冒泡排序原理"
+                    placeholder="AI 出题主题/知识点描述，例如：冒泡排序原理"
                     value={topic}
                     maxLength={100}
                     onChange={(e) => setTopic(e.target.value)}
                   />
+                  <div>
+                    <div style={{ marginBottom: 6 }}>
+                      挂载知识点
+                      <span style={{ color: 'rgba(0,0,0,0.45)', marginLeft: 6, fontSize: 12 }}>
+                        生成的题目将关联到该知识点
+                      </span>
+                    </div>
+                    <Select
+                      showSearch
+                      optionFilterProp="label"
+                      placeholder="请选择知识点"
+                      style={{ width: '100%' }}
+                      options={pointOptions}
+                      value={knowledgePointId}
+                      onChange={setKnowledgePointId}
+                      notFoundContent="该学段暂无知识点，请先在知识库中新增"
+                    />
+                  </div>
                   <Space size={16} wrap>
                     <span>
                       题量：
@@ -353,7 +542,7 @@ export default function LessonQuizConfigModal({
                   </Space>
                   <div style={{ color: 'rgba(0,0,0,0.45)' }}>
                     <Sparkles size={12} style={{ marginRight: 4 }} />
-                    保存时由 AI 生成单选客观题并自动按满分均分，题目会同步进入题库（已审核可用）。
+                    保存时由 AI 逐题生成单选客观题（可看到实时进度），题目自动按满分均分并进入题库。
                   </div>
                 </div>
               )}
@@ -366,8 +555,17 @@ export default function LessonQuizConfigModal({
                   <span>严格门禁（通过才解锁下一课时）</span>
                   <Switch checked={unlockNext} onChange={setUnlockNext} />
                 </Space>
+                <Space>
+                  <span>多选漏选按比例给分</span>
+                  <Switch checked={partialCredit} onChange={setPartialCredit} />
+                </Space>
                 {quizMode === 2 && questionCount ? <span style={{ color: 'rgba(0,0,0,0.45)' }}>预计满分：{Math.round(100 / questionCount) * questionCount} 分</span> : null}
               </Space>
+              {partialCredit ? (
+                <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                  开启后多选题漏选（未错选）按「选中正确数/正确总数 × 题分」向下取整给分，有错选得 0 分；部分得分不算答对，结果中标记「部分正确」。
+                </div>
+              ) : null}
             </>
           )}
         </div>
