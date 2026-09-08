@@ -149,6 +149,34 @@ export default function LessonQuizConfigModal({
     }
   };
 
+  /** AI 生成完成后刷新本课时配置：回显新生成题目（含均分分值），并切回「从题库选题」模式 */
+  const refreshAfterAiGenerated = () => {
+    if (!lessonId) {
+      return;
+    }
+    getLessonQuizDetail(lessonId)
+      .then((detail) => {
+        const ids = detail.questions?.map((item) => item.questionId) ?? [];
+        setQuestionIds(ids);
+        const map: Record<string, QuestionLite> = {};
+        const scoreMap: Record<string, number> = {};
+        (detail.questions ?? []).forEach((item) => {
+          map[item.questionId] = item;
+          scoreMap[item.questionId] = detail.questionScores?.[item.questionId] ?? item.score ?? 5;
+        });
+        setLinkedMap(map);
+        setScores(scoreMap);
+        setEnabled(true);
+        setPassScore(detail.quiz?.passScore ?? passScore);
+        setUnlockNext(detail.quiz?.unlockNext === 1);
+        setPartialCredit(!!detail.partialCredit);
+      })
+      .catch(() => {
+        // 请求层统一提示
+      });
+    setQuizMode(1);
+  };
+
   useEffect(() => {
     if (!open || !task || task.status === 'SUCCESS' || task.status === 'FAILED') {
       stopPolling();
@@ -161,7 +189,8 @@ export default function LessonQuizConfigModal({
         setTask(latest);
         if (latest.status === 'SUCCESS') {
           clearStoredTask();
-          message.success('AI 出题完成，已关联到课时测验');
+          message.success('AI 出题完成，已自动切换到题库选题');
+          refreshAfterAiGenerated();
           onSaved();
         } else if (latest.status === 'FAILED') {
           clearStoredTask();
@@ -192,6 +221,7 @@ export default function LessonQuizConfigModal({
       .then((restored) => {
         if (restored.status === 'SUCCESS') {
           sessionStorage.removeItem(`quizTask:${lessonId}`);
+          refreshAfterAiGenerated();
           setTask(null);
           onSaved();
         } else if (restored.status === 'FAILED') {
@@ -500,7 +530,7 @@ export default function LessonQuizConfigModal({
                 </div>
               ) : task && task.status === 'SUCCESS' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ color: '#389e0d' }}>AI 出题完成，已生成 {task.total} 道单选题并自动按满分均分（合计 100 分）。</div>
+                  <div style={{ color: '#389e0d' }}>AI 出题完成，已自动切换到「从题库选题」，可直接调整分值或保存。</div>
                   <Button onClick={() => setTask(null)}>继续调整配置</Button>
                 </div>
               ) : (

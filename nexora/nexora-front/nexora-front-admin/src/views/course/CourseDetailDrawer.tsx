@@ -106,14 +106,17 @@ export default function CourseDetailDrawer({
     }
   }, [lessonModal.open, lessonModal.record, lessonForm]);
 
-  const loadDetail = async (courseId: string) => {
+  const loadDetail = async (courseId: string, keepSelection = false) => {
     setLoading(true);
     try {
       const data = await getDetail(courseId);
       setDetail(data);
-      const firstChapter = data.chapters[0];
-      setSelectedChapterId(firstChapter?.chapter.chapterId);
-      setSelectedLessonId(firstChapter?.lessons[0]?.lesson.lessonId);
+      // 操作后刷新（keepSelection=true）保持当前章节/课时选择，不跳回第一个
+      if (!keepSelection) {
+        const firstChapter = data.chapters[0];
+        setSelectedChapterId(firstChapter?.chapter.chapterId);
+        setSelectedLessonId(firstChapter?.lessons[0]?.lesson.lessonId);
+      }
     } catch {
       // 请求层已统一提示
     } finally {
@@ -185,7 +188,7 @@ export default function CourseDetailDrawer({
     setChapterModal({ open: false, mode: 'create' });
     chapterForm.resetFields();
     if (course?.courseId) {
-      await loadDetail(course.courseId);
+      await loadDetail(course.courseId, true);
     }
     onChanged();
   };
@@ -212,7 +215,7 @@ export default function CourseDetailDrawer({
     setLessonModal({ open: false, mode: 'create' });
     lessonForm.resetFields();
     if (course?.courseId) {
-      await loadDetail(course.courseId);
+      await loadDetail(course.courseId, true);
     }
     onChanged();
   };
@@ -227,7 +230,7 @@ export default function CourseDetailDrawer({
       setPickerOpen(false);
       setSelectedResourceIds([]);
       if (course?.courseId) {
-        await loadDetail(course.courseId);
+        await loadDetail(course.courseId, true);
       }
       onChanged();
     } catch {
@@ -323,7 +326,7 @@ export default function CourseDetailDrawer({
                         await delChapter(item.chapter.chapterId);
                         message.success('章节已删除');
                         if (course?.courseId) {
-                          await loadDetail(course.courseId);
+                          await loadDetail(course.courseId, true);
                         }
                         onChanged();
                       }}
@@ -394,7 +397,7 @@ export default function CourseDetailDrawer({
                           await delLesson(item.lesson.lessonId);
                           message.success('课时已删除');
                           if (course?.courseId) {
-                            await loadDetail(course.courseId);
+                            await loadDetail(course.courseId, true);
                           }
                           onChanged();
                         }}
@@ -474,7 +477,7 @@ export default function CourseDetailDrawer({
                             await unbindLessonResource(item.id);
                             message.success('资源已解绑');
                             if (course?.courseId) {
-                              await loadDetail(course.courseId);
+                              await loadDetail(course.courseId, true);
                             }
                             onChanged();
                           }}
@@ -506,7 +509,7 @@ export default function CourseDetailDrawer({
         onClose={() => setQuizConfigOpen(false)}
         onSaved={() => {
           if (course?.courseId) {
-            void loadDetail(course.courseId);
+            void loadDetail(course.courseId, true);
           }
           onChanged();
         }}
