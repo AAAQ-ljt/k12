@@ -11,7 +11,7 @@
  Target Server Version : 50744
  File Encoding         : 65001
 
- Date: 06/09/2026 12:54:21
+ Date: 08/09/2026 21:22:03
 */
 
 SET NAMES utf8mb4;
@@ -159,7 +159,7 @@ CREATE TABLE `course_chapter_lesson_resource`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_lesson_id`(`lesson_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '课时资源关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '课时资源关联表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for course_enrollment
@@ -174,7 +174,7 @@ CREATE TABLE `course_enrollment`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_user_course`(`user_id`, `course_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '学生加入课程记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '学生加入课程记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for course_info
@@ -240,7 +240,7 @@ CREATE TABLE `course_study_lesson_progress`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_user_lesson`(`user_id`, `lesson_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '课时学习进度表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '课时学习进度表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for course_study_log
@@ -516,11 +516,17 @@ CREATE TABLE `practice_record`  (
   `source` tinyint(4) NOT NULL DEFAULT 0 COMMENT '来源：0对话练习 1路径快测 2遗忘复习',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `biz_id` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '业务维度：课时测验=lesson_id，后续练习场景可复用',
+  `review_status` tinyint(4) NOT NULL DEFAULT 2 COMMENT '批阅状态：0待批阅 1已批阅 2无需批阅(客观题)',
+  `review_score` int(11) NULL DEFAULT NULL COMMENT '人工批阅得分',
+  `reviewer_id` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '批阅人（管理员账号）',
+  `review_comment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '批阅评语',
+  `review_time` datetime NULL DEFAULT NULL COMMENT '批阅时间',
   PRIMARY KEY (`record_id`) USING BTREE,
   INDEX `idx_user_kp`(`user_id`, `knowledge_point_id`) USING BTREE,
   INDEX `idx_user_time`(`user_id`, `create_time`) USING BTREE,
-  INDEX `idx_biz`(`biz_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '游戏化练习记录表' ROW_FORMAT = Dynamic;
+  INDEX `idx_biz`(`biz_id`) USING BTREE,
+  INDEX `idx_review_status`(`review_status`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '游戏化练习记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for prompt_template
@@ -582,7 +588,7 @@ CREATE TABLE `question_option`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`option_id`) USING BTREE,
   INDEX `idx_question_id`(`question_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 38 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '题目选项表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 173 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '题目选项表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for resource_directory
@@ -650,7 +656,7 @@ CREATE TABLE `student_learning_record`  (
   PRIMARY KEY (`record_id`) USING BTREE,
   INDEX `idx_user_time`(`user_id`, `create_time`) USING BTREE,
   INDEX `idx_user_type`(`user_id`, `action_type`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '学生学习行为记录' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '学生学习行为记录' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for system_config
