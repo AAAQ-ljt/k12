@@ -88,7 +88,8 @@ public class LessonQuizTaskComponent {
             List<String> questionIds = new ArrayList<>();
             for (int i = 1; i <= task.getTotal(); i++) {
                 LessonQuizAiComponent.QuizDraft draft = lessonQuizAiComponent.generateSingle(
-                        task.getStage(), task.getGrade(), task.getTopic(), task.getDifficulty());
+                        task.getStage(), task.getGrade(), task.getKnowledgePointName(),
+                        task.getTopic(), task.getDifficulty());
                 String questionId = lessonQuizAiComponent.saveDraft(task.getStage(), task.getGrade(),
                         task.getDifficulty(), task.getKnowledgePointId(), draft, now);
                 questionIds.add(questionId);

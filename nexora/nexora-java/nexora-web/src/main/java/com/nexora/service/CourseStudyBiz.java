@@ -3,11 +3,13 @@ package com.nexora.service;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseEnrollment;
+import com.nexora.entity.po.CourseLessonQuiz;
 import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.entity.po.StudentLearningRecord;
 import com.nexora.entity.query.CourseChapterLessonResourceQuery;
 import com.nexora.entity.query.StudentLearningRecordQuery;
 import com.nexora.exception.BusinessException;
+import com.nexora.service.CourseLessonQuizService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,9 @@ public class CourseStudyBiz {
 
     @Resource
     private CourseEnrollmentService courseEnrollmentService;
+
+    @Resource
+    private CourseLessonQuizService courseLessonQuizService;
 
     @Resource
     private CourseStudyLessonProgressService courseStudyLessonProgressService;
@@ -66,8 +71,19 @@ public class CourseStudyBiz {
         requireEnrolled(userId, lesson.getCourseId());
 
         Date now = new Date();
-        markLessonCompleted(userId, lesson, now);
+        // 完成口径：配置了启用测验的课时仅通过测验才算完成（走 CourseQuizBiz 既有链路），
+        // 打开资源只记 VIEW 行为流水；无测验课时打开资源即记完成
+        if (!lessonHasActiveQuiz(lesson.getLessonId())) {
+            markLessonCompleted(userId, lesson, now);
+        }
         saveViewRecord(userId, lesson, resourceId, now);
+    }
+
+    /** 课时是否配置了启用中的通关测验（quizMode>0 且 status=1） */
+    private boolean lessonHasActiveQuiz(String lessonId) {
+        CourseLessonQuiz quiz = courseLessonQuizService.getCourseLessonQuizByLessonId(lessonId);
+        return quiz != null && quiz.getQuizMode() != null && quiz.getQuizMode() > 0
+                && quiz.getStatus() != null && quiz.getStatus() == 1;
     }
 
     private void requireEnrolled(String userId, String courseId) {

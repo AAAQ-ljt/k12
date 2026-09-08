@@ -602,6 +602,7 @@ public class CourseBiz {
         task.setGrade(course.getGrade());
         task.setTopic(topic);
         task.setKnowledgePointId(dto.getKnowledgePointId());
+        task.setKnowledgePointName(point.getName());
         task.setTotal(count);
         task.setDifficulty(dto.getDifficulty() == null ? 1 : dto.getDifficulty());
         task.setPassScore(dto.getPassScore());

@@ -31,8 +31,8 @@ import java.util.List;
 public class LessonQuizAiComponent {
 
     private static final String SYSTEM_PROMPT = """
-            你是 K12 人工智能通识课的出题老师。学生学段：%s，年级：%s。
-            根据给出的知识点为「课时通关测验」生成%d道单选题，只输出一个 JSON 对象，不要输出任何解释或 Markdown 代码块标记。
+            你是 K12 命题专家。学生学段：%s，年级：%s。
+            根据给定的「知识点」和出题主题生成%d道单选题，只输出一个 JSON 对象，不要输出任何解释或 Markdown 代码块标记。
             JSON 结构：
             {
               "questions": [
@@ -44,11 +44,14 @@ public class LessonQuizAiComponent {
                 }
               ]
             }
-            要求：
+            硬性要求：
             1. 题数严格为 %d；
             2. 每题 4 个选项且只有一个正确，answer 是正确选项的下标（从 0 开始），必须与 options 一一对应；
             3. analysis 讲清楚为什么对、为什么错，语言生动易懂；
-            4. 面向 %s 学段学生，难度为 %s，避免超出其范围的表述。""";
+            4. 面向 %s 学段学生，难度为 %s，避免超出其范围的表述；
+            5. 【最重要】每道题必须严格围绕给定的知识点《X》与出题主题展开，考查该知识点本身的原理/应用/辨析；
+               不得跑题到与知识点无关的内容，尤其不得因为人设是通识课就偏到人工智能话题，除非知识点本身属于人工智能范畴；
+               与知识点无关的题目视为不合格，必须重新出题。""";
 
     @Resource
     private ChatClient chatClient;
@@ -67,9 +70,11 @@ public class LessonQuizAiComponent {
     }
 
     /**
-     * 生成单道单选题（异步任务逐题调用，便于上报进度）；LLM 输出不合法时抛出异常
+     * 生成单道单选题（异步任务逐题调用，便于上报进度）；LLM 输出不合法时抛出异常。
+     * knowledgePointName：挂载知识点名称（强锚定防跑偏）；topic：课时主题/补充描述。
      */
-    public QuizDraft generateSingle(String stage, String grade, String topic, int difficulty) {
+    public QuizDraft generateSingle(String stage, String grade, String knowledgePointName,
+                                    String topic, int difficulty) {
         int safeDifficulty = Math.max(1, Math.min(difficulty, 3));
         String stageDesc = stageDesc(stage);
         String difficultyText = switch (safeDifficulty) {
@@ -77,8 +82,12 @@ public class LessonQuizAiComponent {
             case 2 -> "中等";
             default -> "困难";
         };
-        String prompt = "知识点/主题：" + topic
-                + "\n请按 JSON 结构生成 1 道单选测验题，题目必须围绕该知识点展开。";
+        String pointPart = knowledgePointName == null || knowledgePointName.isBlank()
+                ? topic
+                : "《" + knowledgePointName.trim() + "》";
+        String prompt = "知识点：" + pointPart + "\n"
+                + "出题主题：" + topic
+                + "\n请按 JSON 结构生成 1 道单选测验题，题目必须严格围绕该知识点展开，考查该知识点本身的原理、应用或辨析，禁止跑题。";
 
         String content = chatClient.prompt()
                 .system(String.format(SYSTEM_PROMPT, stageDesc, blank(grade), 1, 1, stageDesc, difficultyText))

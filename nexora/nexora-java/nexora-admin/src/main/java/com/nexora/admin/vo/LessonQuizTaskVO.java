@@ -41,6 +41,9 @@ public class LessonQuizTaskVO {
 
     private String knowledgePointId;
 
+    /** 挂载知识点名称（出题强锚定，防提示词跑偏） */
+    private String knowledgePointName;
+
     private Integer difficulty;
 
     private Integer passScore;
@@ -149,6 +152,14 @@ public class LessonQuizTaskVO {
 
     public void setKnowledgePointId(String knowledgePointId) {
         this.knowledgePointId = knowledgePointId;
+    }
+
+    public String getKnowledgePointName() {
+        return knowledgePointName;
+    }
+
+    public void setKnowledgePointName(String knowledgePointName) {
+        this.knowledgePointName = knowledgePointName;
     }
 
     public Integer getDifficulty() {
