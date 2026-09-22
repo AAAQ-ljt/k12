@@ -19,11 +19,6 @@ import java.util.Map;
 public class KnowledgeVectorComponent {
 
     /**
-     * 向量化接口单批上限建议 10-15 条，避开 20 条限制并留余量。
-     */
-    private static final int EMBEDDING_BATCH_SIZE = 15;
-
-    /**
      * 删除 ID 上界防御余量：ES 中该 docId 可能残留历史更大 chunkIndex
      * （旧版本 chunkCount 被清零/多次入库叠加/中断未清等），统一按固定宽限清理，
      * 保证重新入库后不会命中旧向量。
@@ -32,6 +27,18 @@ public class KnowledgeVectorComponent {
 
     @Autowired
     private ObjectProvider<VectorStore> vectorStoreProvider;
+
+    @Autowired
+    private SystemConfigComponent systemConfigComponent;
+
+    /**
+     * 向量化单批条数：管理端「RAG 配置」可调，缺省 15（接口单批建议 10-15 条，避开 20 条限制并留余量）
+     */
+    private int embeddingBatchSize() {
+        return systemConfigComponent.getIntValue(SystemConfigComponent.GROUP_RAG,
+                SystemConfigComponent.KEY_RAG_EMBEDDING_BATCH_SIZE,
+                SystemConfigComponent.DEFAULT_RAG_EMBEDDING_BATCH_SIZE);
+    }
 
     public void saveChunks(String docId, String title, String stage, String knowledgePointId,
                            Integer difficulty, String sourceUrl, String sourceResourceId,
@@ -61,8 +68,9 @@ public class KnowledgeVectorComponent {
         }
         if (!documents.isEmpty()) {
             VectorStore vectorStore = vectorStoreProvider.getObject();
-            for (int i = 0; i < documents.size(); i += EMBEDDING_BATCH_SIZE) {
-                int end = Math.min(i + EMBEDDING_BATCH_SIZE, documents.size());
+            int batchSize = embeddingBatchSize();
+            for (int i = 0; i < documents.size(); i += batchSize) {
+                int end = Math.min(i + batchSize, documents.size());
                 vectorStore.add(new ArrayList<>(documents.subList(i, end)));
             }
         }

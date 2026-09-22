@@ -2,6 +2,7 @@ package com.nexora.component;
 
 import com.nexora.constants.Constants;
 import com.nexora.entity.enums.PromptTypeEnum;
+import com.nexora.entity.enums.StageEnum;
 import com.nexora.entity.po.PromptTemplate;
 import com.nexora.entity.query.PromptTemplateQuery;
 import com.nexora.service.PromptTemplateService;
@@ -25,17 +26,39 @@ public class PromptTemplateComponent {
     public String resolvePrompt(String stage, String scene) {
         String redisValue = redisComponent.getString(Constants.REDIS_KEY_PROMPT_TEMPLATE + stage + ":" + scene);
         if (redisValue != null && !redisValue.isBlank()) {
-            return redisValue;
+            return substituteStageDesc(redisValue, stage);
         }
         String dbValue = findDbTemplate(stage, scene);
         if (dbValue != null) {
-            return dbValue;
+            return substituteStageDesc(dbValue, stage);
         }
         PromptTypeEnum promptType = PromptTypeEnum.getByScene(scene);
         if (promptType == null) {
             return PromptTypeEnum.CHAT.getDefaultPrompt(stage);
         }
         return promptType.getDefaultPrompt(stage);
+    }
+
+    /**
+     * 数据库 / Redis 维护的模板同样支持 {stageDesc} 占位符（与枚举默认值口径一致，避免管理端编辑后占位符原样下发）
+     */
+    private String substituteStageDesc(String template, String stage) {
+        if (template == null || !template.contains("{stageDesc}")) {
+            return template;
+        }
+        return template.replace("{stageDesc}", stageDesc(stage));
+    }
+
+    private String stageDesc(String stage) {
+        if (stage == null) {
+            return "未知学段";
+        }
+        for (StageEnum item : StageEnum.values()) {
+            if (item.getCode().equals(stage)) {
+                return item.getDesc();
+            }
+        }
+        return "未知学段";
     }
 
     private String findDbTemplate(String stage, String scene) {

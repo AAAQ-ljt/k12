@@ -1,6 +1,7 @@
 package com.nexora.admin.biz;
 
 import com.nexora.admin.dto.PracticeReviewSubmitDTO;
+import com.nexora.component.KnowledgeMasteryComponent;
 import com.nexora.entity.enums.PageSize;
 import com.nexora.entity.po.PracticeRecord;
 import com.nexora.entity.po.QuestionInfo;
@@ -45,6 +46,9 @@ public class QuestionReviewBiz {
 
     @Resource
     private QuestionInfoService questionInfoService;
+
+    @Resource
+    private KnowledgeMasteryComponent knowledgeMasteryComponent;
 
     public PaginationResultVO<PracticeReviewItemVO> loadList(PracticeReviewQuery query) {
         if (query.getPageNo() == null) {
@@ -100,6 +104,9 @@ public class QuestionReviewBiz {
         update.setReviewComment(dto.getReviewComment());
         update.setReviewTime(new Date());
         practiceRecordService.updatePracticeRecordByRecordId(update, dto.getRecordId());
+        // 批阅即判分：回写知识点掌握度（得分率 ≥ 80% 记为答对；题目未挂知识点则跳过）
+        boolean correct = dto.getReviewScore() * 100 >= maxScore * KnowledgeMasteryComponent.REVIEW_CORRECT_PERCENT;
+        knowledgeMasteryComponent.recordAnswer(record.getUserId(), record.getStage(), record.getKnowledgePointId(), correct);
         log.info("答题批阅完成 recordId={} reviewer={} score={}", dto.getRecordId(), reviewerId, dto.getReviewScore());
     }
 }

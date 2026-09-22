@@ -3,6 +3,7 @@ package com.nexora.service;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.nexora.component.KnowledgeMasteryComponent;
 import com.nexora.dto.LessonQuizAnswerDTO;
 import com.nexora.dto.LessonQuizSubmitDTO;
 import com.nexora.entity.po.CourseChapter;
@@ -83,6 +84,9 @@ public class CourseQuizBiz {
 
     @Resource
     private com.nexora.mappers.PracticeRecordMapper<PracticeRecord, PracticeRecordQuery> practiceRecordMapper;
+
+    @Resource
+    private KnowledgeMasteryComponent knowledgeMasteryComponent;
 
     /**
      * 课时测验答题面板数据；未配置/关闭时返回 null
@@ -179,6 +183,8 @@ public class CourseQuizBiz {
                 ? 0 : Math.min(dto.getDuration(), 24 * 3600);
         List<LessonQuizSubmitResultVO.QuestionResult> results = new ArrayList<>();
         List<PracticeRecord> records = new ArrayList<>();
+        // 掌握度回写入参：客观题且学生实际作答的才计入（未作答不计练习次数，主观题待批阅后再回写）
+        List<KnowledgeMasteryComponent.AnswerOutcome> masteryOutcomes = new ArrayList<>();
 
         for (QuestionInfo question : questions) {
             int questionScore = effectiveScore(question, scoreMap);
@@ -238,9 +244,16 @@ public class CourseQuizBiz {
             record.setReviewStatus(subjective ? 0 : 2);
             record.setCreateTime(now);
             records.add(record);
+            if (!subjective && !StringTools.isEmpty(userAnswer) && !StringTools.isEmpty(record.getKnowledgePointId())) {
+                masteryOutcomes.add(new KnowledgeMasteryComponent.AnswerOutcome(record.getKnowledgePointId(), correct));
+            }
         }
         if (!records.isEmpty()) {
             practiceRecordService.addBatch(records);
+        }
+        // 判分 → 掌握度回写（供学习分析 / 学生端学习进度 / 个性化学习路径消费）
+        if (!masteryOutcomes.isEmpty()) {
+            knowledgeMasteryComponent.recordAnswers(userId, stage, masteryOutcomes);
         }
 
         // 全部为主观题的测验无可判分内容，不自动判定通过

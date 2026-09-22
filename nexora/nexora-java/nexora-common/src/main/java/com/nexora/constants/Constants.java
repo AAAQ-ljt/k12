@@ -78,6 +78,11 @@ public class Constants {
     public static final String REDIS_KEY_STUDENT_KNOWLEDGE_QUEUE = "student:knowledge:import:queue";
 
     /**
+     * Redis key：学生个人知识页向量清理队列（无向量库的进程投递，由 web 端消费执行）
+     */
+    public static final String REDIS_KEY_STUDENT_KNOWLEDGE_CLEANUP_QUEUE = "student:knowledge:cleanup:queue";
+
+    /**
      * Redis key：绘本生成异步任务队列与任务前缀（任务体 = 绘本任务 JSON）
      */
     public static final String REDIS_KEY_PICTURE_BOOK_TASK_QUEUE = "picturebook:task:queue";

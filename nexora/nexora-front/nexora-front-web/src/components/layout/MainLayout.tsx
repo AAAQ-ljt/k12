@@ -25,10 +25,21 @@ const TABS: TabItem[] = [
 const ANIMATION_TAB: TabItem = { path: '/animation', label: '动画讲解', icon: PlaySquare };
 const PICTURE_BOOK_TAB: TabItem = { path: '/picture-book', label: '绘本生成', icon: BookImage };
 
-const PRIMARY_TABS: TabItem[] = [
+// 小学低年级：无动画讲解、无编程环境（见 AGENTS「小学低年级不展示编程环境入口」）
+const PRIMARY_LOW_TABS: TabItem[] = [
   TABS[0],
   PICTURE_BOOK_TAB,
   TABS[2],
+  TABS[4],
+  TABS[5],
+];
+
+// 小学高年级：含编程环境（面向小高及以上），绘本仍可见
+const PRIMARY_HIGH_TABS: TabItem[] = [
+  TABS[0],
+  PICTURE_BOOK_TAB,
+  TABS[2],
+  TABS[3],
   TABS[4],
   TABS[5],
 ];
@@ -56,9 +67,11 @@ export default function MainLayout() {
   const stage = userInfo?.stage;
   const visibleTabs = !stage
     ? GUEST_TABS
-    : stage === 'PRIMARY_LOW' || stage === 'PRIMARY_HIGH'
-      ? PRIMARY_TABS
-      : JUNIOR_SENIOR_TABS;
+    : stage === 'PRIMARY_LOW'
+      ? PRIMARY_LOW_TABS
+      : stage === 'PRIMARY_HIGH'
+        ? PRIMARY_HIGH_TABS
+        : JUNIOR_SENIOR_TABS;
 
   /** 退出登录 */
   const handleLogout = async () => {

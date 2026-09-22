@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { App, Button, Empty, Popconfirm, Tag } from 'antd';
-import { GraduationCap, Map, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { App, Button, Empty, Popconfirm, Progress, Tag } from 'antd';
+import { GraduationCap, Map, Plus, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import {
   deleteLearningPath,
@@ -10,6 +10,7 @@ import {
   type LearningPathRecord,
   type LearningPlanStep,
 } from '@/api/learningPath';
+import { loadMyMasteryOverview, type MasteryOverview } from '@/api/knowledgeMastery';
 import styles from './index.module.scss';
 
 const KIND_META: Record<string, { label: string; color: string }> = {
@@ -25,6 +26,13 @@ const STAGE_LABELS: Record<string, string> = {
   SENIOR: '高中',
 };
 
+/** 掌握状态：0未解锁 1进行中 2已掌握 */
+const MASTERY_STATUS: Record<number, { label: string; color: string }> = {
+  0: { label: '未解锁', color: 'default' },
+  1: { label: '进行中', color: 'blue' },
+  2: { label: '已掌握', color: 'green' },
+};
+
 function formatTime(value?: string): string {
   if (!value) {
     return '';
@@ -36,6 +44,7 @@ export default function LearningPath() {
   const { message } = App.useApp();
   const userInfo = useAuthStore((state) => state.userInfo);
   const [list, setList] = useState<LearningPathRecord[]>([]);
+  const [overview, setOverview] = useState<MasteryOverview | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
@@ -43,6 +52,11 @@ export default function LearningPath() {
     setLoading(true);
     try {
       setList(await loadMyLearningPaths());
+      try {
+        setOverview(await loadMyMasteryOverview());
+      } catch {
+        // 学习进度属于附加信息，失败不影响路径列表展示（错误已统一提示）
+      }
     } catch {
       // 错误已统一提示
     } finally {
@@ -118,6 +132,76 @@ export default function LearningPath() {
         >
           AI 生成学习路径
         </Button>
+      </div>
+
+      <div className={styles.progressCard}>
+        <div className={styles.progressHeader}>
+          <div className={styles.progressTitle}>
+            <Target size={17} />
+            <span>学习进度</span>
+          </div>
+          <div className={styles.progressMeta}>
+            {overview && overview.dueReviewCount > 0 ? (
+              <Tag color="red">待复习 {overview.dueReviewCount}</Tag>
+            ) : null}
+            <span className={styles.progressHint}>数据来自课时测验判分与主观题批阅</span>
+          </div>
+        </div>
+        {overview && overview.totalCount > 0 ? (
+          <>
+            <div className={styles.statRow}>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{overview.masteredCount}</span>
+                <span className={styles.statLabel}>已掌握知识点</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{overview.learningCount}</span>
+                <span className={styles.statLabel}>进行中</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{overview.avgMasteryScore}%</span>
+                <span className={styles.statLabel}>平均掌握度</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{overview.correctRate}%</span>
+                <span className={styles.statLabel}>
+                  正确率（{overview.totalCorrect}/{overview.totalPractice}）
+                </span>
+              </div>
+            </div>
+            <div className={styles.masteryList}>
+              {overview.items.map((item) => {
+                const meta = MASTERY_STATUS[item.status] || MASTERY_STATUS[1];
+                return (
+                  <div key={item.knowledgePointId} className={styles.masteryItem}>
+                    <div className={styles.masteryName}>
+                      <span className={styles.masteryPoint}>{item.knowledgePointName}</span>
+                      <Tag color={meta.color}>{meta.label}</Tag>
+                      {item.due ? <Tag color="red">该复习了</Tag> : null}
+                    </div>
+                    <div className={styles.masteryBar}>
+                      <Progress
+                        percent={item.masteryScore}
+                        showInfo={false}
+                        size="small"
+                        strokeColor={item.status === 2 ? '#52c41a' : '#1677ff'}
+                      />
+                    </div>
+                    <div className={styles.masteryScore}>{item.masteryScore}%</div>
+                    <div className={styles.masteryInfo}>
+                      练习 {item.practiceCount} 次 · 答对 {item.correctCount} 次
+                      {item.nextReviewTime ? ` · 下次复习 ${item.nextReviewTime}` : ''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className={styles.progressEmpty}>
+            还没有掌握度数据：去做课时通关测验，答完题这里就会显示真实进度（主观题批阅后也会计入）
+          </div>
+        )}
       </div>
 
       <div className={styles.body}>

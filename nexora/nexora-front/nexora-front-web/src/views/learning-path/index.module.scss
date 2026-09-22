@@ -144,3 +144,130 @@
   color: var(--text-tertiary);
   font-size: 13px;
 }
+/* 学习进度（知识点掌握度）卡片 —— 数据来自判分回写 */
+.progressCard {
+  background: var(--card-white);
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.progressTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressHint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.statRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--warm-bg-mid);
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statValue {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.statLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.masteryList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.masteryItem {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.2fr) minmax(120px, 1fr) 52px minmax(200px, 1.4fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.masteryName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.masteryPoint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.masteryBar {
+  min-width: 0;
+}
+
+.masteryScore {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.masteryInfo {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progressEmpty {
+  padding: 14px 0 6px;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 960px) {
+  .masteryItem {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .masteryScore {
+    text-align: left;
+  }
+}

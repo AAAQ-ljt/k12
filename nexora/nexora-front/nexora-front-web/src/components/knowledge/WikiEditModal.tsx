@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { App, Modal, Input, Segmented, Space, Button } from 'antd';
+import MathMarkdown from '@/components/multimodal/MathMarkdown';
 import {
   confirmStudentWiki,
   updateStudentWikiDraft,
   type StudentWikiDoc,
 } from '@/api/studentWiki';
+import styles from './knowledge.module.scss';
 
 interface Props {
   doc: StudentWikiDoc | null;
@@ -101,9 +103,9 @@ export default function WikiEditModal({ doc, generating, onClose, onSaved }: Pro
               placeholder="AI 整理的 Markdown 内容，可在此编辑..."
             />
           ) : (
-            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 520, overflow: 'auto', margin: 0 }}>
-              {content}
-            </pre>
+            <div className={styles.viewContent} style={{ maxHeight: 520, overflow: 'auto' }}>
+              <MathMarkdown>{content}</MathMarkdown>
+            </div>
           )}
         </>
       ) : null}

@@ -5,7 +5,7 @@ import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.AiGenerationRecord;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
-import com.nexora.service.LearningPathService;
+import com.nexora.service.StudentLearningPathService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -27,22 +27,22 @@ import java.util.List;
 public class LearningPathController extends ABaseController {
 
     @Resource
-    private LearningPathService learningPathService;
+    private StudentLearningPathService studentLearningPathService;
 
     @PostMapping("/generate")
     public ResponseVO<AiGenerationRecord> generate() {
         TokenUserInfoDTO current = LoginUserContext.get();
-        return getSuccessResponseVO(learningPathService.generate(current.getUserId(), current.getStage()));
+        return getSuccessResponseVO(studentLearningPathService.generate(current.getUserId(), current.getStage()));
     }
 
     @GetMapping("/myList")
     public ResponseVO<List<AiGenerationRecord>> myList() {
-        return getSuccessResponseVO(learningPathService.myList(currentUserId()));
+        return getSuccessResponseVO(studentLearningPathService.myList(currentUserId()));
     }
 
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String recordId) {
-        learningPathService.delete(currentUserId(), recordId);
+        studentLearningPathService.delete(currentUserId(), recordId);
         return getSuccessResponseVO(null);
     }
 

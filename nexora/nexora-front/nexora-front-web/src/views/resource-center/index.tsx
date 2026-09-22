@@ -16,8 +16,8 @@ import {
 } from '@/api/studentResource';
 import type { StudentDirectory, StudentResource, StudentStorageInfo } from '@/api/studentResource';
 import { generateStudentWiki, type StudentWikiDoc } from '@/api/studentWiki';
-import WikiListPanel from './components/WikiListPanel';
-import WikiEditModal from './components/WikiEditModal';
+import WikiListPanel from '@/components/knowledge/WikiListPanel';
+import WikiEditModal from '@/components/knowledge/WikiEditModal';
 import LearningProfileModal from './components/LearningProfileModal';
 import styles from './index.module.scss';
 

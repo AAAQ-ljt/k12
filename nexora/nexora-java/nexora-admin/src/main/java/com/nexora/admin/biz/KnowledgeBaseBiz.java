@@ -8,6 +8,7 @@ import com.nexora.admin.vo.KnowledgeOverviewVO;
 import com.nexora.admin.vo.KnowledgeSearchResultVO;
 import com.nexora.admin.vo.ResourceKnowledgeImportResultVO;
 import com.nexora.admin.vo.KnowledgeTreeNodeVO;
+import com.nexora.component.SystemConfigComponent;
 import com.nexora.component.AiStructureComponent;
 import com.nexora.component.KnowledgeVectorComponent;
 import com.nexora.component.RedisComponent;
@@ -56,9 +57,17 @@ public class KnowledgeBaseBiz {
 
     private static final Pattern FRONTMATTER_PATTERN = Pattern.compile(
             "^---\\s*\\n(.*?)\\n---\\s*\\n", Pattern.DOTALL);
-    private static final int CHUNK_SIZE = 500;
     /** AI 整理接口返回的原始文本展示上限 */
     private static final int MAX_ORIGINAL_TEXT_CHARS = 60000;
+
+    @Resource
+    private SystemConfigComponent systemConfigComponent;
+
+    /** 入库分块大小：管理端「RAG 配置」可调，缺省 500 */
+    private int chunkSize() {
+        return systemConfigComponent.getIntValue(SystemConfigComponent.GROUP_RAG,
+                SystemConfigComponent.KEY_RAG_CHUNK_SIZE, SystemConfigComponent.DEFAULT_RAG_CHUNK_SIZE);
+    }
 
     @Resource
     private KnowledgeDocService knowledgeDocService;
@@ -555,7 +564,7 @@ public class KnowledgeBaseBiz {
         processing.setUpdateTime(new Date());
         knowledgeDocService.updateKnowledgeDocByDocId(processing, docId);
         try {
-            List<String> chunks = TextChunker.split(doc.getContent(), CHUNK_SIZE);
+            List<String> chunks = TextChunker.split(doc.getContent(), chunkSize());
             if (chunks.isEmpty()) {
                 throw new BusinessException("文档分块结果为空");
             }
@@ -632,8 +641,10 @@ public class KnowledgeBaseBiz {
         List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
         List<KnowledgeSearchResultVO> results = new ArrayList<>();
         String lowerQuery = request.getQuestion().toLowerCase();
+        // 配置读取放循环外：避免每篇文档都查一次配置表
+        int chunkSize = chunkSize();
         for (KnowledgeDoc doc : docs) {
-            List<String> chunks = TextChunker.split(doc.getContent(), CHUNK_SIZE);
+            List<String> chunks = TextChunker.split(doc.getContent(), chunkSize);
             for (int i = 0; i < chunks.size(); i++) {
                 String chunk = chunks.get(i);
                 int hits = countHits(chunk.toLowerCase(), lowerQuery);

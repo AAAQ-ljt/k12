@@ -67,6 +67,8 @@ spring:
     mcp:
       client:
         enabled: ${NEXORA_MCP_CLIENT_ENABLED:false}
+        # 不在启动时握手：MCP 服务（8084）未启动也不影响 web 启动，工具首次调用时才连接
+        initialized: false
         name: nexora-mcp-client
         version: 1.0.0
         request-timeout: 30s

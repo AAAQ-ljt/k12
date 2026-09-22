@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Image, Input, Space, Spin, Tag } from 'antd';
 import { MessageSquareText, Paintbrush, Waves } from 'lucide-react';
 import {
@@ -8,10 +8,12 @@ import {
   type EmbeddingTestVO,
   type ImageTestVO,
 } from '@/api/modelTest';
+import { loadRuntimeInfo, type RuntimeInfo } from '@/api/systemSetting';
 import styles from './ModelTest.module.scss';
 
-/** 模型连通性验证：DeepSeek 对话 / 百炼向量 / 百炼文生图 */
+/** 模型连通性验证：对话 / 向量 / 文生图（模型名从后端运行时配置读取，不在页面硬编码） */
 export default function ModelTest() {
+  const [runtime, setRuntime] = useState<RuntimeInfo | null>(null);
   const [chatText, setChatText] = useState('你好，请做个自我介绍');
   const [chatResult, setChatResult] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -23,6 +25,19 @@ export default function ModelTest() {
   const [imagePrompt, setImagePrompt] = useState('一只可爱的卡通小猫，儿童绘本插画风格，色彩明亮');
   const [imageResult, setImageResult] = useState<ImageTestVO | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        setRuntime(await loadRuntimeInfo());
+      } catch {
+        // 运行时信息读取失败不影响三路测试（模型名 Tag 会回落为占位）
+      }
+    })();
+  }, []);
+
+  /** 按标签取当前生效配置（如「对话模型」「向量模型」「文生图模型」） */
+  const modelOf = (label: string) => runtime?.models.find((item) => item.label === label)?.value;
 
   const handleChat = async () => {
     setChatLoading(true);
@@ -74,8 +89,8 @@ export default function ModelTest() {
           title={(
             <Space>
               <MessageSquareText size={16} />
-              1. DeepSeek 对话模型
-              <Tag color="blue">deepseek-v4-flash</Tag>
+              1. 对话模型（连通性测试）
+              <Tag color="blue">{modelOf('对话模型') || '对话模型'}</Tag>
             </Space>
           )}
           className={styles.card}
@@ -102,8 +117,8 @@ export default function ModelTest() {
           title={(
             <Space>
               <Waves size={16} />
-              2. 百炼向量模型
-              <Tag color="green">qwen3.7-text-embedding</Tag>
+              2. 向量模型（连通性测试）
+              <Tag color="green">{modelOf('向量模型') || '向量模型'}</Tag>
             </Space>
           )}
           className={styles.card}
@@ -132,8 +147,8 @@ export default function ModelTest() {
           title={(
             <Space>
               <Paintbrush size={16} />
-              3. 百炼文生图
-              <Tag color="purple">doubao-seedream-5-0-pro</Tag>
+              3. 文生图（连通性测试）
+              <Tag color="purple">{modelOf('文生图模型') || '文生图模型'}</Tag>
             </Space>
           )}
           className={styles.card}

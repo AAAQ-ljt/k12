@@ -39,6 +39,15 @@ public class StudentKnowledgeImportQueueListener {
     @Resource
     private KnowledgeVectorComponent knowledgeVectorComponent;
 
+    @Resource
+    private SystemConfigComponent systemConfigComponent;
+
+    /** 入库分块大小：管理端「RAG 配置」可调，缺省 500 */
+    private int chunkSize() {
+        return systemConfigComponent.getIntValue(SystemConfigComponent.GROUP_RAG,
+                SystemConfigComponent.KEY_RAG_CHUNK_SIZE, SystemConfigComponent.DEFAULT_RAG_CHUNK_SIZE);
+    }
+
     @Scheduled(fixedDelay = 1000)
     public void consume() {
         Object task = redisComponent.rightPop(Constants.REDIS_KEY_STUDENT_KNOWLEDGE_QUEUE);
@@ -59,17 +68,24 @@ public class StudentKnowledgeImportQueueListener {
             return;
         }
         KnowledgeDoc doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
-        if (doc == null || StringTools.isEmpty(doc.getSourceResourceId())) {
+        if (doc == null) {
             return;
         }
         markProcessing(docId);
         try {
-            ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(doc.getSourceResourceId());
-            if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
-                throw new IllegalArgumentException("源资源不存在或暂不可用");
+            // AI 新建/归档整合的知识页没有来源资源（纯 AI 整理内容），只在有来源资源时才校验资源状态
+            ResourceInfo resource = null;
+            if (!StringTools.isEmpty(doc.getSourceResourceId())) {
+                resource = resourceInfoService.getResourceInfoByResourceId(doc.getSourceResourceId());
+                if (resource == null || resource.getStatus() == null || resource.getStatus() != 1) {
+                    throw new IllegalArgumentException("源资源不存在或暂不可用");
+                }
             }
             // 两段式：确认后的知识页已有 AI 整理内容，直接用其分块向量化，不再用源文件解析结果覆盖
             if (StringTools.isEmpty(doc.getContent())) {
+                if (resource == null) {
+                    throw new IllegalArgumentException("知识页内容为空，无法入库");
+                }
                 ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
 
                 KnowledgeDoc contentUpdate = new KnowledgeDoc();
@@ -79,7 +95,7 @@ public class StudentKnowledgeImportQueueListener {
                 doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
             }
 
-            List<String> chunks = TextChunker.split(doc.getContent(), 500);
+            List<String> chunks = TextChunker.split(doc.getContent(), chunkSize());
             if (chunks.isEmpty()) {
                 throw new IllegalArgumentException("文档分块结果为空");
             }

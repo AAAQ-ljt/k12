@@ -17,6 +17,7 @@ import LearningAnalysis from '@/views/learning/LearningAnalysis';
 import LearningUser from '@/views/learning/LearningUser';
 import AdminAccount from '@/views/system/AdminAccount';
 import ModelPrompt from '@/views/system/ModelPrompt';
+import RagConfig from '@/views/system/RagConfig';
 import EnvConfig from '@/views/system/EnvConfig';
 import ModelTest from '@/views/system/ModelTest';
 
@@ -130,6 +131,10 @@ export const router = createBrowserRouter([
           {
             path: 'model',
             element: <ModelPrompt />,
+          },
+          {
+            path: 'rag',
+            element: <RagConfig />,
           },
           {
             path: 'config',

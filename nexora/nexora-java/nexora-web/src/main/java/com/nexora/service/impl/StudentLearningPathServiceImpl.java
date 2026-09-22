@@ -9,7 +9,7 @@ import com.nexora.entity.query.KnowledgeDocQuery;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.AiGenerationRecordService;
 import com.nexora.service.KnowledgeDocService;
-import com.nexora.service.LearningPathService;
+import com.nexora.service.StudentLearningPathService;
 import com.nexora.service.UserWikiProfileService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -25,9 +25,9 @@ import java.util.UUID;
  * 学生个性化学习路径业务实现：学习档案 + 已学知识 → AI 生成学习计划 → ai_generation_record
  */
 @Service
-public class LearningPathServiceImpl implements LearningPathService {
+public class StudentLearningPathServiceImpl implements StudentLearningPathService {
 
-    private static final Logger log = LoggerFactory.getLogger(LearningPathServiceImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(StudentLearningPathServiceImpl.class);
 
     private static final String RECORD_TYPE = "LEARNING_PATH";
 

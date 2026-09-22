@@ -30,10 +30,6 @@ import java.util.stream.Collectors;
 @Component
 public class RagSearchComponent {
 
-    private static final int TOP_K = 10;
-    private static final double THRESHOLD = 0.5;
-    private static final int CHUNK_SIZE = 500;
-
     @Resource
     private KnowledgeVectorComponent knowledgeVectorComponent;
 
@@ -42,6 +38,27 @@ public class RagSearchComponent {
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private SystemConfigComponent systemConfigComponent;
+
+    /** 检索召回条数（管理端「RAG 配置」可调，缺省 10） */
+    private int topK() {
+        return systemConfigComponent.getIntValue(SystemConfigComponent.GROUP_RAG,
+                SystemConfigComponent.KEY_RAG_TOP_K, SystemConfigComponent.DEFAULT_RAG_TOP_K);
+    }
+
+    /** 相似度阈值（管理端「RAG 配置」可调，缺省 0.5） */
+    private double threshold() {
+        return systemConfigComponent.getDoubleValue(SystemConfigComponent.GROUP_RAG,
+                SystemConfigComponent.KEY_RAG_SIMILARITY_THRESHOLD, SystemConfigComponent.DEFAULT_RAG_SIMILARITY_THRESHOLD);
+    }
+
+    /** 关键词回退检索的分块大小（管理端「RAG 配置」可调，缺省 500） */
+    private int chunkSize() {
+        return systemConfigComponent.getIntValue(SystemConfigComponent.GROUP_RAG,
+                SystemConfigComponent.KEY_RAG_CHUNK_SIZE, SystemConfigComponent.DEFAULT_RAG_CHUNK_SIZE);
+    }
 
     public String buildRagData(String userId, String stage, String question) {
         return buildRagResult(userId, stage, question).ragData();
@@ -80,7 +97,7 @@ public class RagSearchComponent {
         // 复用 KnowledgeVectorComponent.search：官方库（ownerId 为空）不下发 ownerId 过滤，
         // 由组件内超量取回后按 metadata 过滤（ES 过滤表达式不支持空字符串等值）
         List<Document> documents = knowledgeVectorComponent.search(
-                question, stage, null, null, ownerId, TOP_K, THRESHOLD);
+                question, stage, null, null, ownerId, topK(), threshold());
         return documents.stream()
                 .map(doc -> new RagHit(
                         asString(doc.getMetadata().get("docId")),
@@ -107,8 +124,11 @@ public class RagSearchComponent {
         List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(query);
         List<RagHit> hits = new ArrayList<>();
         String lowerQuery = question.toLowerCase();
+        // 配置读取放循环外：避免每篇文档都查一次配置表
+        int chunkSize = chunkSize();
+        int topK = topK();
         for (KnowledgeDoc doc : docs) {
-            List<String> chunks = TextChunker.split(doc.getContent(), CHUNK_SIZE);
+            List<String> chunks = TextChunker.split(doc.getContent(), chunkSize);
             for (String chunk : chunks) {
                 int hitsCount = countHits(chunk.toLowerCase(), lowerQuery);
                 if (hitsCount <= 0) {
@@ -120,7 +140,7 @@ public class RagSearchComponent {
             }
         }
         hits.sort(Comparator.comparing(RagHit::score).reversed());
-        return hits.stream().limit(TOP_K).toList();
+        return hits.stream().limit(topK).toList();
     }
 
     private RagEnrichResult enrichHits(List<RagHit> hits, String stage, String userId) {

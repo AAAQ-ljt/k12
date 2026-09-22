@@ -1,0 +1,66 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  width: 240px;
+}
+
+.countHint {
+  margin-left: auto;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.viewMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--warm-bg-mid);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.viewContent {
+  line-height: 1.75;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.viewContent :global(h1),
+.viewContent :global(h2),
+.viewContent :global(h3) {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.viewContent :global(pre) {
+  background: var(--warm-bg-light);
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.viewContent :global(code) {
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+}
+
+.titleCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.titleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

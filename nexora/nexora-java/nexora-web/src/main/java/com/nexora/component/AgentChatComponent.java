@@ -28,6 +28,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MimeType;
@@ -39,7 +40,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -94,6 +97,9 @@ public class AgentChatComponent {
 
     @Resource
     private StudentKnowledgeBaseService studentKnowledgeBaseService;
+
+    @Resource
+    private KnowledgeAgentToolComponent knowledgeAgentToolComponent;
 
     @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
     private String chatModel;
@@ -299,10 +305,23 @@ public class AgentChatComponent {
             AtomicInteger promptTokens = new AtomicInteger(intentResult.promptTokens());
             AtomicInteger completionTokens = new AtomicInteger(intentResult.completionTokens());
 
-            chatClient.prompt()
+            // 知识页工具：MCP 未启用时返回空数组，对话照常降级（挂工具后模型可列表/读取/新建/覆盖/入库学生个人知识页）
+            ToolCallback[] knowledgeTools = knowledgeAgentToolComponent.buildCallbacks();
+            AtomicInteger wikiOps = new AtomicInteger();
+            ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt()
                     .system(systemPrompt)
                     .messages(historyMessages)
-                    .options(options)
+                    .options(options);
+            if (knowledgeTools.length > 0) {
+                Map<String, Object> toolContext = new HashMap<>();
+                toolContext.put(KnowledgeAgentToolComponent.CTX_USER_ID, user.getUserId());
+                toolContext.put(KnowledgeAgentToolComponent.CTX_STAGE, user.getStage());
+                toolContext.put(KnowledgeAgentToolComponent.CTX_WIKI_OPS, wikiOps);
+                KnowledgeAgentToolComponent.setFallbackContext(toolContext);
+                requestSpec = requestSpec.toolCallbacks(knowledgeTools).toolContext(toolContext);
+            }
+
+            requestSpec
                     .stream()
                     .chatResponse()
                     .doOnNext(response -> {
@@ -329,13 +348,20 @@ public class AgentChatComponent {
                             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
                         }
                     })
-                    .doOnComplete(() -> finishMessage(user, message, answer.toString(), true, null, recommends,
-                            promptTokens.get(), completionTokens.get()))
-                    .doOnError(error -> finishMessage(user, message, answer.toString(), false, error, List.of(),
-                            promptTokens.get(), completionTokens.get()))
+                    .doOnComplete(() -> {
+                        KnowledgeAgentToolComponent.clearFallbackContext();
+                        finishMessage(user, message, answer.toString(), true, null, recommends,
+                                promptTokens.get(), completionTokens.get(), wikiOps.get());
+                    })
+                    .doOnError(error -> {
+                        KnowledgeAgentToolComponent.clearFallbackContext();
+                        finishMessage(user, message, answer.toString(), false, error, List.of(),
+                                promptTokens.get(), completionTokens.get(), wikiOps.get());
+                    })
                     .subscribe();
         } catch (Exception e) {
             log.error("AI 对话流式调用失败", e);
+            KnowledgeAgentToolComponent.clearFallbackContext();
             finishMessage(user, message, answer.toString(), false, e, List.of(), 0, 0);
         }
     }
@@ -494,16 +520,35 @@ public class AgentChatComponent {
 
     private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
                                List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens) {
+        finishMessage(user, message, answer, completed, error, recommends, promptTokens, completionTokens, 0);
+    }
+
+    /**
+     * @param wikiOps 本轮知识页工具被调用次数，&gt;0 时给消息打 WIKI 标记（前端据此刷新知识页抽屉）
+     */
+    private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
+                               List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens, int wikiOps) {
         boolean cancelled = redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId());
+        // 本轮动过知识页：完成/取消/失败都要标记，前端收到 WIKI 标记即刷新抽屉（数据已变化）
+        boolean wikiChanged = wikiOps > 0;
+        String wikiBizData = "{\"ops\":" + wikiOps + "}";
         AgentMessagePushDTO push = new AgentMessagePushDTO();
         push.setMessageId(message.getMessageId());
         push.setSessionId(message.getSessionId());
+        if (wikiChanged) {
+            push.setBizType("WIKI");
+            push.setBizData(wikiBizData);
+        }
 
         AgentMessage updateBean = new AgentMessage();
         updateBean.setAssistantMessage(answer);
         updateBean.setPromptTokens(promptTokens);
         updateBean.setCompletionTokens(completionTokens);
         updateBean.setUpdateTime(new Date());
+        if (wikiChanged) {
+            updateBean.setBizType("WIKI");
+            updateBean.setBizData(wikiBizData);
+        }
         String errorInfo = extractError(error);
 
         if (cancelled) {
@@ -516,13 +561,14 @@ public class AgentChatComponent {
         } else if (completed) {
             push.setType("done");
             push.setContent(answer);
-            if (recommends != null && !recommends.isEmpty()) {
+            // 同轮既有推荐卡片又有知识页操作时以 WIKI 标记为准（推荐卡片已由独立 recommend 事件推送）
+            if (!wikiChanged && recommends != null && !recommends.isEmpty()) {
                 push.setBizType("RESOURCE_RECOMMEND");
                 push.setBizData(JSON.toJSONString(recommends));
             }
             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
             updateBean.setStatus(1);
-            if (recommends != null && !recommends.isEmpty()) {
+            if (!wikiChanged && recommends != null && !recommends.isEmpty()) {
                 updateBean.setBizType("RESOURCE_RECOMMEND");
                 updateBean.setBizData(JSON.toJSONString(recommends));
             }

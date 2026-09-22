@@ -40,6 +40,7 @@ import { parseQuizScript, type QuizScript } from '@/api/quiz';
 import QuizCard from '@/components/multimodal/QuizCard';
 import SvgStepPlayer from '@/components/multimodal/SvgStepPlayer';
 import { syncStudentWikiFromMessage } from '@/api/studentWiki';
+import KnowledgeDrawer from './components/KnowledgeDrawer';
 import {
   getStudentResourceImageUrl,
   prepareStudentUpload,
@@ -210,6 +211,9 @@ export default function AiTutor() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
   const [attachedImages, setAttachedImages] = useState<ChatImage[]>([]);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [wikiReloadKey, setWikiReloadKey] = useState(0);
+  const knowledgeOpenRef = useRef(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const messagesStateRef = useRef<ChatMessage[]>([]);
   const pendingRecommendsRef = useRef<Record<string, ResourceRecommendItem[]>>({});
@@ -217,6 +221,11 @@ export default function AiTutor() {
   const stageOption = useMemo(() => {
     return userInfo?.stage ? getStageOption(userInfo.stage) : undefined;
   }, [userInfo?.stage]);
+
+  const openKnowledge = useCallback((open: boolean) => {
+    knowledgeOpenRef.current = open;
+    setKnowledgeOpen(open);
+  }, []);
 
   const handleAgentPush = useCallback((data: AgentPushMessage) => {
     if (!data?.messageId) {
@@ -278,11 +287,18 @@ export default function AiTutor() {
         };
       }),
     );
+    // 本轮对话动过知识页（后端完成消息带 WIKI 标记）：刷新抽屉列表并提示
+    if (data.type === 'done' && data.bizType === 'WIKI') {
+      setWikiReloadKey((key) => key + 1);
+      if (!knowledgeOpenRef.current) {
+        message.info('知识页已更新，可点右上角「知识页」查看');
+      }
+    }
     if (data.type !== 'outputting') {
       setStreaming(false);
       setStreamingMessageId('');
     }
-  }, []);
+  }, [message]);
 
   const loadSessionList = useCallback(async () => {
     pendingRecommendsRef.current = {};
@@ -632,6 +648,13 @@ export default function AiTutor() {
             </div>
           </div>
           <div className={styles.headerActions}>
+            {token ? (
+              <Tooltip title="查看 AI 为你生成与整理的知识页">
+                <Button size="small" type="text" icon={<FileText size={14} />} onClick={() => openKnowledge(true)}>
+                  知识页
+                </Button>
+              </Tooltip>
+            ) : null}
             {userInfo ? <Tag color={stageOption?.color}>{getGradeText(userInfo)}</Tag> : null}
             <Tag color="success">DeepSeek V4 Flash</Tag>
           </div>
@@ -872,6 +895,8 @@ export default function AiTutor() {
           )}
         </footer>
       </section>
+
+      <KnowledgeDrawer open={knowledgeOpen} onClose={() => openKnowledge(false)} reloadKey={wikiReloadKey} />
     </div>
   );
 }
