@@ -33,6 +33,7 @@ import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentWikiService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
+import com.nexora.vo.CourseProgressVO;
 import com.nexora.vo.LessonQuizStatusVO;
 import com.nexora.vo.LessonQuizSubmitResultVO;
 import com.nexora.vo.LessonQuizVO;
@@ -124,6 +125,18 @@ public class StudentCourseController extends ABaseController {
         }
         query.setOrderBy("sort asc, create_time desc");
         return getSuccessResponseVO(courseInfoService.findListByPage(query));
+    }
+
+    /**
+     * 我的课程学习进度（我的页面 / 我的课程卡进度条复用）：返回已加入课程完成进度列表
+     */
+    @GetMapping("/loadMyCourseProgress")
+    public ResponseVO<List<CourseProgressVO>> loadMyCourseProgress() {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        if (current == null || StringTools.isEmpty(current.getUserId())) {
+            throw new BusinessException("登录状态异常");
+        }
+        return getSuccessResponseVO(courseStudyBiz.loadMyCourseProgress(current.getUserId()));
     }
 
     /**

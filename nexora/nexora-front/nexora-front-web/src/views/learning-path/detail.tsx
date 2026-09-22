@@ -3,7 +3,7 @@ import { App, Button, Collapse, Drawer, Empty, Modal, Progress, Radio, Space, Sp
 import {
   ArrowLeft, CheckCircle2, Circle, Clock, Compass, Lock, PenLine, Play, Rocket, Sparkles, Target,
 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   genNodeQuiz,
   getNodeQuizTask,
@@ -16,6 +16,7 @@ import {
   type NodeQuizResult,
   type NodeQuizTask,
 } from '@/api/learningPath';
+import { sanitizeAnimationSvg } from '@/api/animation';
 import styles from './index.module.scss';
 
 const NODE_STATUS: Record<number, { label: string; color: string; className: string; tip: string }> = {
@@ -41,6 +42,7 @@ function nodeKeyOf(node: LearningPathNode): string {
  */
 export default function LearningPathDetailPage() {
   const { pathId = '' } = useParams();
+  const location = useLocation();
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<LearningPathDetail | null>(null);
@@ -69,6 +71,23 @@ export default function LearningPathDetailPage() {
         ? stages.find((stage) => (stage.nodes ?? []).some((node) => node.itemId === currentNode.itemId))
         : undefined;
       setActiveStageKeys(currentStage ? [currentStage.name] : stages.length > 0 ? [stages[0].name] : []);
+      // 「待复习」从我的页面跳转定位：自动打开对应节点抽屉（并展开所在阶段）
+      const focusItemId = (location.state as { focusItemId?: string } | null)?.focusItemId;
+      if (focusItemId) {
+        const focusNode = [...stages.flatMap((stage) => stage.nodes ?? [])]
+          .find((node) => node.itemId === focusItemId);
+        if (focusNode) {
+          if (focusNode.status !== 0) {
+            setActiveNode(focusNode);
+          }
+          // 展开该节点所在阶段（优先于当前节点所在阶段）
+          const focusStage = stages.find((stage) =>
+            (stage.nodes ?? []).some((node) => node.itemId === focusItemId));
+          if (focusStage) {
+            setActiveStageKeys([focusStage.name]);
+          }
+        }
+      }
     } catch {
       // 错误已统一提示
     } finally {
@@ -235,6 +254,27 @@ export default function LearningPathDetailPage() {
     }
   };
 
+  /** 图表题题干 SVG 配图：清洗后渲染（不信任 LLM 原生字符串，后端/前端双保险） */
+  const renderQuizSvg = (svg?: string) => {
+    const clean = sanitizeAnimationSvg(svg);
+    if (!clean) {
+      return null;
+    }
+    return (
+      <div
+        style={{
+          maxWidth: 360,
+          margin: '8px 0',
+          border: '1px solid #eee',
+          borderRadius: 8,
+          padding: 8,
+          background: '#fff',
+        }}
+        dangerouslySetInnerHTML={{ __html: clean }}
+      />
+    );
+  };
+
   /** 快测弹窗内容：出题中 / 失败态 / 结果态 / 答题态 */
   const renderQuizBody = () => {
     // 出题中：轮询期间展示运行状态（PENDING → QUIZ_GENERATING）
@@ -277,11 +317,13 @@ export default function LearningPathDetailPage() {
           </div>
           {(quizResult.results ?? []).map((r) => {
             const opts = r.options ?? [];
+            const source = (quiz.questions ?? []).find((q) => q.index === r.index);
             return (
               <div key={r.index} style={{ border: '1px solid #eee', borderRadius: 8, padding: 12 }}>
                 <div style={{ fontWeight: 500 }}>
                   {r.index + 1}. {r.question}
                 </div>
+                {renderQuizSvg(source?.svg)}
                 <div style={{ marginTop: 6 }}>
                   {opts.map((opt) => {
                     const isCorrect = opt === r.correctAnswer;
@@ -316,6 +358,7 @@ export default function LearningPathDetailPage() {
         {(quiz.questions ?? []).map((q) => (
           <div key={q.index}>
             <div style={{ fontWeight: 500, marginBottom: 8 }}>{q.index + 1}. {q.question}</div>
+            {renderQuizSvg(q.svg)}
             <Radio.Group
               value={quizAnswers[q.index]}
               onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [q.index]: e.target.value }))}

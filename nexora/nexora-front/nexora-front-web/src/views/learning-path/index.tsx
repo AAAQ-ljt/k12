@@ -1,18 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, App, Button, Collapse, Empty, Popconfirm, Progress, Space, Spin, Tag } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, App, Button, Empty, Popconfirm, Progress, Space, Spin, Tag } from 'antd';
 import { BookOpen, Compass, GraduationCap, Plus, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import {
   deleteLearningPath,
-  deleteLearningPathHistory,
   generateLearningPath,
   getLearningPathGenTask,
-  loadLearningPathHistory,
   loadMyLearningPaths,
-  parseLegacyPlan,
   type LearningPathGenTask,
-  type LearningPathHistoryItem,
   type LearningPathSummary,
 } from '@/api/learningPath';
 import { loadMyMasteryOverview, type MasteryOverview } from '@/api/knowledgeMastery';
@@ -51,7 +47,6 @@ export default function LearningPath() {
   const userInfo = useAuthStore((state) => state.userInfo);
   const [list, setList] = useState<LearningPathSummary[]>([]);
   const [overview, setOverview] = useState<MasteryOverview | null>(null);
-  const [history, setHistory] = useState<LearningPathHistoryItem[]>([]);
   const [profile, setProfile] = useState<StudentWikiProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -59,11 +54,28 @@ export default function LearningPath() {
   const [genProgress, setGenProgress] = useState('');
   /** 组件卸载后停止轮询 */
   const mountedRef = useRef(true);
+  /** 学习进度明细折叠：默认只展示前 N 条 */
+  const [masteryExpanded, setMasteryExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   /** 因缺少学习目标被拦下时置位：档案保存后自动继续生成 */
   const pendingGenerateRef = useRef(false);
 
   const hasGoal = !!profile?.learningGoal?.trim();
+
+  /** 学习进度折叠：默认展示 5 条；排序 待复习 > 进行中 > 已掌握，重点前置 */
+  const MASTERY_PREVIEW_COUNT = 5;
+  const masteryItems = useMemo(() => {
+    const items = [...(overview?.items ?? [])];
+    items.sort((a, b) => {
+      const byDue = Number(!!a.due) - Number(!!b.due);
+      if (byDue !== 0) {
+        return -byDue;
+      }
+      return a.status - b.status;
+    });
+    return items;
+  }, [overview]);
+  const shownMasteryItems = masteryExpanded ? masteryItems : masteryItems.slice(0, MASTERY_PREVIEW_COUNT);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,11 +85,6 @@ export default function LearningPath() {
         setOverview(await loadMyMasteryOverview());
       } catch {
         // 学习进度属于附加信息，失败不影响路线展示（错误已统一提示）
-      }
-      try {
-        setHistory(await loadLearningPathHistory());
-      } catch {
-        // 历史计划失败不影响主流程
       }
       try {
         setProfile(await loadStudentWikiProfile());
@@ -179,16 +186,6 @@ export default function LearningPath() {
     }
   };
 
-  const removeHistory = async (recordId: string) => {
-    try {
-      await deleteLearningPathHistory(recordId);
-      message.success('历史计划已删除');
-      await load();
-    } catch {
-      // 错误已统一提示
-    }
-  };
-
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -269,7 +266,7 @@ export default function LearningPath() {
               </div>
             </div>
             <div className={styles.masteryList}>
-              {overview.items.map((item) => {
+              {shownMasteryItems.map((item) => {
                 const meta = MASTERY_STATUS[item.status] || MASTERY_STATUS[1];
                 return (
                   <div key={item.knowledgePointId} className={styles.masteryItem}>
@@ -295,6 +292,13 @@ export default function LearningPath() {
                 );
               })}
             </div>
+            {masteryItems.length > MASTERY_PREVIEW_COUNT ? (
+              <div className={styles.masteryToggle}>
+                <Button type="link" size="small" onClick={() => setMasteryExpanded((v) => !v)}>
+                  {masteryExpanded ? '收起' : `展开全部（共 ${masteryItems.length} 个）`}
+                </Button>
+              </div>
+            ) : null}
           </>
         ) : (
           <div className={styles.progressEmpty}>
@@ -359,50 +363,6 @@ export default function LearningPath() {
             ))}
           </div>
         )}
-
-        {history.length > 0 ? (
-          <Collapse
-            ghost
-            items={[
-              {
-                key: 'history',
-                label: `历史计划（旧版生成，${history.length} 条）`,
-                children: (
-                  <div className={styles.historyList}>
-                    {history.map((item) => {
-                      const plan = parseLegacyPlan(item.content);
-                      return (
-                        <div key={item.recordId} className={styles.historyItem}>
-                          <div className={styles.historyHeader}>
-                            <span className={styles.historyTitle}>
-                              {item.title || plan?.title || '学习计划'}
-                            </span>
-                            <span className={styles.pathTime}>{formatTime(item.createTime)}</span>
-                            <Popconfirm
-                              title="删除这条历史计划？"
-                              onConfirm={() => void removeHistory(item.recordId)}
-                            >
-                              <Button type="text" size="small" danger icon={<Trash2 size={13} />} />
-                            </Popconfirm>
-                          </div>
-                          {plan ? (
-                            <div className={styles.historySteps}>
-                              {plan.steps.map((step, index) => (
-                                <span key={`${step.title}-${index}`} className={styles.historyStep}>
-                                  {index + 1}. {step.title}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        ) : null}
       </div>
 
       <LearningProfileModal

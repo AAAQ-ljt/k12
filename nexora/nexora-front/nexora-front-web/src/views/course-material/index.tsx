@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, Button, Empty, Spin, Tabs, Tag } from 'antd';
+import { App, Button, Empty, Progress, Spin, Tabs, Tag } from 'antd';
 import { BookOpen, Layers, GraduationCap, PlusCircle } from 'lucide-react';
 import {
   joinCourse,
   loadJoinCourses,
   loadMyCourses,
+  loadMyCourseProgress,
+  type CourseProgress,
   type StudentCourseInfo,
 } from '@/api/course';
 import { getGradeText } from '@/types/common';
@@ -20,6 +22,8 @@ export default function CourseMaterial() {
   const [joining, setJoining] = useState<string | null>(null);
   const [myCourses, setMyCourses] = useState<StudentCourseInfo[]>([]);
   const [joinCourses, setJoinCourses] = useState<StudentCourseInfo[]>([]);
+  /** 课程学习进度（按 courseId 关联到我的课程卡） */
+  const [courseProgress, setCourseProgress] = useState<Record<string, CourseProgress>>({});
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -30,6 +34,17 @@ export default function CourseMaterial() {
       ]);
       setMyCourses(myResult.list || []);
       setJoinCourses(joinResult.list || []);
+      // 学习进度失败不影响课程列表展示
+      try {
+        const progressList = await loadMyCourseProgress();
+        const map: Record<string, CourseProgress> = {};
+        for (const item of progressList || []) {
+          map[item.courseId] = item;
+        }
+        setCourseProgress(map);
+      } catch {
+        setCourseProgress({});
+      }
     } catch {
       // 请求层已统一提示
     } finally {
@@ -90,6 +105,21 @@ export default function CourseMaterial() {
           </span>
         ) : null}
       </div>
+      {!joinable ? (
+        <div className={styles.cardProgress}>
+          <Progress
+            percent={courseProgress[course.courseId]?.progress || 0}
+            size="small"
+            showInfo
+            strokeColor="#1677ff"
+          />
+          <span className={styles.cardProgressTip}>
+            {courseProgress[course.courseId]
+              ? `已完成 ${courseProgress[course.courseId].finishedLessons}/${courseProgress[course.courseId].lessonCount} 课时`
+              : '学习展开课时后自动记录'}
+          </span>
+        </div>
+      ) : null}
       {joinable ? (
         <Button
           type="primary"

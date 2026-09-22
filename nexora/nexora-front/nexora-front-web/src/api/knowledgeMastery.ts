@@ -33,3 +33,34 @@ export interface MasteryOverview {
 export function loadMyMasteryOverview(limit = 20): Promise<MasteryOverview> {
   return get('/knowledgeMastery/myOverview', { limit });
 }
+
+/** 近 7 天单日练习 */
+export interface TrendDay {
+  day: string;
+  count: number;
+}
+
+/** 我的学习趋势（学习天数/连续打卡/练习次数） */
+export interface LearningTrend {
+  studyDays: number;
+  streakDays: number;
+  totalPractice: number;
+  weekTrend: TrendDay[];
+}
+
+export function loadMyLearningTrend(): Promise<LearningTrend> {
+  return get('/knowledgeMastery/loadMyTrend');
+}
+
+/** 待复习知识点定位结果 */
+export interface ReviewLocate {
+  /** 是否在我的学习路径中找到对应节点 */
+  located: boolean;
+  pathId?: string;
+  itemId?: string;
+  knowledgePointName?: string;
+}
+
+export function locateReviewPoint(knowledgePointId: string): Promise<ReviewLocate> {
+  return get('/knowledgeMastery/locateReview', { knowledgePointId });
+}

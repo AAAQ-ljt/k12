@@ -176,7 +176,7 @@ export function deleteLearningPathHistory(recordId: string): Promise<void> {
   return del('/learningPath/historyDel', { recordId });
 }
 
-/** 节点快测题（含答案，答题阶段不展示 answer/analysis） */
+/** 节点快测题（含答案，答题阶段不展示 answer/analysis；svg 为图表题题干配图） */
 export interface NodeQuizQuestion {
   index: number;
   type: string;
@@ -184,6 +184,8 @@ export interface NodeQuizQuestion {
   options: string[];
   answer: number;
   analysis?: string;
+  /** 题干 SVG 配图（图表类知识点，渲染前需清洗） */
+  svg?: string;
 }
 
 /** 节点快测出题响应 */
@@ -264,6 +266,7 @@ export function parseNodeQuizTask(task: NodeQuizTask): NodeQuiz | null {
       options: Array.isArray(q.options) ? q.options : [],
       answer: typeof q.answer === 'number' ? q.answer : 0,
       analysis: q.analysis ?? '',
+      svg: typeof q.svg === 'string' ? q.svg : '',
     }));
     return {
       itemId: task.itemId,

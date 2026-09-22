@@ -3,20 +3,33 @@ package com.nexora.service;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseEnrollment;
+import com.nexora.entity.po.CourseInfo;
 import com.nexora.entity.po.CourseLessonQuiz;
 import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.entity.po.StudentLearningRecord;
 import com.nexora.entity.query.CourseChapterLessonResourceQuery;
+import com.nexora.entity.query.CourseEnrollmentQuery;
+import com.nexora.entity.query.CourseInfoQuery;
+import com.nexora.entity.query.CourseStudyLessonProgressQuery;
 import com.nexora.entity.query.StudentLearningRecordQuery;
 import com.nexora.exception.BusinessException;
+import com.nexora.service.CourseChapterLessonResourceService;
+import com.nexora.service.CourseEnrollmentService;
+import com.nexora.service.CourseInfoService;
 import com.nexora.service.CourseLessonQuizService;
+import com.nexora.service.CourseStudyLessonProgressService;
 import com.nexora.utils.StringTools;
+import com.nexora.vo.CourseProgressVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 学生端课程学习上报（学习进度一期）：
@@ -46,6 +59,78 @@ public class CourseStudyBiz {
 
     @Resource
     private StudentLearningRecordService studentLearningRecordService;
+
+    @Resource
+    private CourseInfoService courseInfoService;
+
+    /**
+     * 我的课程学习进度（我的页面 / 我的课程卡复用）：
+     * 一次查出该生全部课时完成记录按课程聚合，一次查已加入课程，内存组装，避免循环查库。
+     * 口径沿用现有完成链路：无测验课时打开资源即完成；启用测验课时以测验通过计完成。
+     */
+    public List<CourseProgressVO> loadMyCourseProgress(String userId) {
+        List<CourseProgressVO> result = new ArrayList<>();
+        if (StringTools.isEmpty(userId)) {
+            return result;
+        }
+        // 已加入课程（按加入时间正序）
+        CourseEnrollmentQuery enrollmentQuery = new CourseEnrollmentQuery();
+        enrollmentQuery.setUserId(userId);
+        enrollmentQuery.setStatus(1);
+        enrollmentQuery.setOrderBy("create_time asc");
+        List<CourseEnrollment> enrollments = courseEnrollmentService.findListByParam(enrollmentQuery);
+        if (enrollments == null || enrollments.isEmpty()) {
+            return result;
+        }
+        List<String> courseIds = new ArrayList<>();
+        for (CourseEnrollment enrollment : enrollments) {
+            if (!courseIds.contains(enrollment.getCourseId())) {
+                courseIds.add(enrollment.getCourseId());
+            }
+        }
+        // 一次查课程信息
+        CourseInfoQuery courseQuery = new CourseInfoQuery();
+        courseQuery.setCourseIds(courseIds);
+        courseQuery.setStatus(1);
+        Map<String, CourseInfo> courseMap = new LinkedHashMap<>();
+        List<CourseInfo> courseList = courseInfoService.findListByParam(courseQuery);
+        if (courseList != null) {
+            for (CourseInfo course : courseList) {
+                courseMap.put(course.getCourseId(), course);
+            }
+        }
+        // 一次查全部课时完成记录，按课程聚合
+        CourseStudyLessonProgressQuery progressQuery = new CourseStudyLessonProgressQuery();
+        progressQuery.setUserId(userId);
+        Map<String, Integer> finishedMap = new LinkedHashMap<>();
+        List<CourseStudyLessonProgress> progressList = courseStudyLessonProgressService.findListByParam(progressQuery);
+        if (progressList != null) {
+            for (CourseStudyLessonProgress progress : progressList) {
+                if (progress.getFinished() == null || progress.getFinished() != 1) {
+                    continue;
+                }
+                finishedMap.merge(progress.getCourseId(), 1, Integer::sum);
+            }
+        }
+        for (String courseId : courseIds) {
+            CourseInfo course = courseMap.get(courseId);
+            if (course == null) {
+                continue;
+            }
+            CourseProgressVO vo = new CourseProgressVO();
+            vo.setCourseId(course.getCourseId());
+            vo.setCourseName(course.getCourseName());
+            vo.setCover(course.getCover());
+            vo.setStage(course.getStage());
+            int total = course.getLessonCount() == null ? 0 : course.getLessonCount();
+            int finished = finishedMap.getOrDefault(courseId, 0);
+            vo.setLessonCount(total);
+            vo.setFinishedLessons(total > 0 ? Math.min(finished, total) : finished);
+            vo.setProgress(total <= 0 ? 0 : Math.min(100, (int) Math.round(finished * 100.0 / total)));
+            result.add(vo);
+        }
+        return result;
+    }
 
     /**
      * 上报课时资源学习：校验加入与资源归属，记课时完成（幂等）并落当日去重的 VIEW 流水。

@@ -137,9 +137,28 @@ export interface StudentCourseDetail {
   enrolled?: boolean;
 }
 
+/** 我的课程学习进度（course_study_lesson_progress 聚合） */
+export interface CourseProgress {
+  courseId: string;
+  courseName: string;
+  cover?: string;
+  stage?: string;
+  /** 总课时数 */
+  lessonCount: number;
+  /** 已完成课时数 */
+  finishedLessons: number;
+  /** 完成进度 0-100 */
+  progress: number;
+}
+
 /** 加载我已加入的课程 */
 export function loadMyCourses(query: PageParam): Promise<PageResult<StudentCourseInfo>> {
   return get('/courseInfo/loadMyCourses', query);
+}
+
+/** 我的课程学习进度（我的课程卡进度条 / 我的页面复用） */
+export function loadMyCourseProgress(): Promise<CourseProgress[]> {
+  return get('/courseInfo/loadMyCourseProgress');
 }
 
 /** 加载可加入课程（同年级上架且未加入） */

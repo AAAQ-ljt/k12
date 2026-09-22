@@ -35,6 +35,7 @@ public class QuizGenerateComponent {
                 {
                   "type": "SINGLE",
                   "question": "题干（简洁清晰）",
+                  "svg": "（可选）题干配图，SVG 字符串",
                   "options": ["A. 选项内容", "B. 选项内容", "C. 选项内容", "D. 选项内容"],
                   "answer": 0,
                   "analysis": "答案解析（适合该学段，中文）"
@@ -45,7 +46,16 @@ public class QuizGenerateComponent {
             1. 生成 3-5 道单选客观题，围绕「人工智能通识课」或用户指定主题，难度循序渐进；
             2. 每题 4 个选项且只有一个正确，answer 是正确选项的下标（从 0 开始），必须与 options 一一对应；
             3. analysis 讲清楚为什么对、为什么错，语言生动易懂；
-            4. 面向 %s 学段学生，避免超出其范围的表述。""";
+            4. 面向 %s 学段学生，避免超出其范围的表述。
+            5. 若主题涉及统计图表 / 数据可视化 / 图形理解（如柱状图、折线图、饼图、占比、趋势），至少 1 道题在题干中配一张
+               SVG 示意图，让题目必须看图才能作答；svg 用矩形/折线/圆形等基础形状绘制柱状图/折线图/饼图示意，必须：
+               ① 包含 viewBox 属性（如 viewBox="0 0 400 200"），不写 width/height；
+               ② 用图形本身表达信息（柱子高度、折线走势），禁止用文字代替图形，SVG 内文字不超过 20 个字符；
+               ③ 颜色干净（≤3 种），背景淡，适合白底展示；
+               ④ 其余纯概念题可不带 svg，普通知识点不要强行配图。""";
+
+    /** 图表题 SVG 最大长度，超限丢弃（防止坏图/超长文本拖垮判分与渲染） */
+    private static final int SVG_MAX_LENGTH = 8000;
 
     @Resource
     private ChatClient chatClient;
@@ -108,6 +118,7 @@ public class QuizGenerateComponent {
             JSONArray options = item.getJSONArray("options");
             Integer answer = item.getInteger("answer");
             String analysis = item.getString("analysis");
+            String svg = validateSvg(item.getString("svg"));
             if (question == null || question.isBlank() || options == null || options.size() < 2
                     || answer == null || answer < 0 || answer >= options.size()) {
                 continue;
@@ -128,7 +139,8 @@ public class QuizGenerateComponent {
                     question,
                     optionList,
                     answer,
-                    analysis == null ? "" : analysis));
+                    analysis == null ? "" : analysis,
+                    svg));
         }
         if (list.isEmpty()) {
             throw new RuntimeException("有效题目为空");
@@ -148,7 +160,23 @@ public class QuizGenerateComponent {
         return "未知学段";
     }
 
-    public record QuizQuestion(String type, String question, List<String> options, int answer, String analysis) {
+    /**
+     * SVG 配图宽松校验：非空、以 &lt;svg 开头、长度受限才保留；异常值时返回 null（该题降级为纯文字题）
+     */
+    private String validateSvg(String svg) {
+        if (svg == null) {
+            return null;
+        }
+        String text = svg.trim();
+        if (text.isEmpty() || text.length() > SVG_MAX_LENGTH
+                || !text.startsWith("<svg") || !text.contains("</svg>")) {
+            return null;
+        }
+        return text;
+    }
+
+    public record QuizQuestion(String type, String question, List<String> options, int answer, String analysis,
+                               String svg) {
     }
 
     public record QuizScript(String title, List<QuizQuestion> questions) {
@@ -160,6 +188,9 @@ public class QuizGenerateComponent {
                 JSONObject item = new JSONObject();
                 item.put("type", q.type());
                 item.put("question", q.question());
+                if (q.svg() != null && !q.svg().isEmpty()) {
+                    item.put("svg", q.svg());
+                }
                 item.put("options", q.options());
                 item.put("answer", q.answer());
                 item.put("analysis", q.analysis());

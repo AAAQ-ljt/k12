@@ -1,22 +1,359 @@
 /* 我的页面 */
 .profileWrapper {
-  max-width: 640px;
+  max-width: 1160px;
+  margin: 0 auto;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loadingBlock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 48px 0;
+  color: var(--text-tertiary);
+}
+
+/* 左右双栏：左栏固定 300px，右栏自适应；窄屏收单列 */
+.profileCols {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.colLeft,
+.colRight {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .profileCols {
+    grid-template-columns: 1fr;
+  }
 }
 
 .userHeader {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 14px;
+}
+
+.userMeta {
+  flex: 1;
+  min-width: 0;
 }
 
 .userName {
   font-size: 18px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .userEmail {
   color: var(--text-tertiary, #999);
   font-size: 13px;
+}
+
+.userTags {
+  margin-top: 6px;
+}
+
+.gradeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--warm-bg-dark, #eee);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+/* 学习概览（左栏两列） */
+.statRow2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--surface-2, #f6f7f9);
+  border-radius: 10px;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+}
+
+.emptyTip {
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--text-tertiary, #999);
+}
+
+/* 学习趋势 */
+.trendMeters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  background: var(--surface-2, #f6f7f9);
+  border-radius: 10px;
+}
+
+.meter b {
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.meter span {
+  font-size: 10px;
+  color: var(--text-tertiary, #999);
+}
+
+.weekChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 2px 0;
+}
+
+.weekCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.weekBarWrap {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.weekBar {
+  width: 14px;
+  border-radius: 4px 4px 0 0;
+  background: var(--surface-2, #e5e7eb);
+  transition: height 0.2s ease;
+}
+
+.weekBarActive {
+  background: var(--brand-primary, #7c5cf0);
+}
+
+.weekDay {
+  font-size: 9px;
+  color: var(--text-tertiary, #999);
+}
+
+.weekCount {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* 我的创作 */
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background: var(--surface-2, #f6f7f9);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.tile:hover {
+  border-color: var(--brand-primary, #7c5cf0);
+}
+
+.tileIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--brand-soft, #efeaff);
+  color: var(--brand-primary, #7c5cf0);
+}
+
+.tileCount {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+  background: var(--surface, #fff);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+.tileLabel {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+/* 今日待办 */
+.dueList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dueItem {
+  width: fit-content;
+}
+
+.dueTip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary, #999);
+}
+
+/* 最近路线 */
+.pathItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pathRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pathTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pathGoal {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pathMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-tertiary, #999);
+}
+
+/* 课程学习进度 */
+.courseList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.courseItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--warm-bg-dark, #eee);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.courseItem:hover {
+  border-color: var(--brand-primary, #7c5cf0);
+}
+
+.courseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.courseName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coursePercent {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-primary, #7c5cf0);
+  flex: none;
+}
+
+.courseMeta {
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+}
+
+.centerLink {
+  display: flex;
+  justify-content: center;
+}
+
+/* 账号 */
+.accountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
