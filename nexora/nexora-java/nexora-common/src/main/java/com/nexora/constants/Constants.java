@@ -100,6 +100,20 @@ public class Constants {
     public static final String REDIS_KEY_ANIMATION_TASK_PREFIX = "animation:task:";
 
     /**
+     * Redis key：学习路径节点快测异步出题任务队列/任务前缀/用户运行锁（任务体 = 节点快测任务 JSON）
+     */
+    public static final String REDIS_KEY_LEARNING_PATH_QUIZ_TASK_QUEUE = "learningpath:quiztask:queue";
+    public static final String REDIS_KEY_LEARNING_PATH_QUIZ_TASK_PREFIX = "learningpath:quiztask:";
+    public static final String REDIS_KEY_LEARNING_PATH_QUIZ_RUNNING_PREFIX = "learningpath:quiztask:running:";
+
+    /**
+     * Redis key：学习路径 AI 生成异步任务队列/任务前缀/用户运行锁（任务体 = 路线生成任务 JSON）
+     */
+    public static final String REDIS_KEY_LEARNING_PATH_GEN_TASK_QUEUE = "learningpath:gentask:queue";
+    public static final String REDIS_KEY_LEARNING_PATH_GEN_TASK_PREFIX = "learningpath:gentask:";
+    public static final String REDIS_KEY_LEARNING_PATH_GEN_RUNNING_PREFIX = "learningpath:gentask:running:";
+
+    /**
      * Redis key：知识库解析入库异步队列
      */
     public static final String REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE = "knowledge:import:queue";

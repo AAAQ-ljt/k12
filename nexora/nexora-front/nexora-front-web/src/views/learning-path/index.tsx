@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, App, Button, Collapse, Empty, Popconfirm, Progress, Space, Tag } from 'antd';
+import { Alert, App, Button, Collapse, Empty, Popconfirm, Progress, Space, Spin, Tag } from 'antd';
 import { BookOpen, Compass, GraduationCap, Plus, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -7,9 +7,11 @@ import {
   deleteLearningPath,
   deleteLearningPathHistory,
   generateLearningPath,
+  getLearningPathGenTask,
   loadLearningPathHistory,
   loadMyLearningPaths,
   parseLegacyPlan,
+  type LearningPathGenTask,
   type LearningPathHistoryItem,
   type LearningPathSummary,
 } from '@/api/learningPath';
@@ -53,6 +55,10 @@ export default function LearningPath() {
   const [profile, setProfile] = useState<StudentWikiProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  /** 生成进度文案（异步任务轮询期间展示） */
+  const [genProgress, setGenProgress] = useState('');
+  /** 组件卸载后停止轮询 */
+  const mountedRef = useRef(true);
   const [profileOpen, setProfileOpen] = useState(false);
   /** 因缺少学习目标被拦下时置位：档案保存后自动继续生成 */
   const pendingGenerateRef = useRef(false);
@@ -87,18 +93,53 @@ export default function LearningPath() {
 
   useEffect(() => {
     void load();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [load]);
+
+  /** 轮询 AI 生成路线任务：每 2 秒推进一次，返回终态任务体；组件卸载时停止 */
+  const pollGenTask = async (taskId: string): Promise<LearningPathGenTask> => {
+    for (;;) {
+      if (!mountedRef.current) {
+        return { taskId, status: 'PENDING' };
+      }
+      let snapshot: LearningPathGenTask;
+      try {
+        snapshot = await getLearningPathGenTask(taskId);
+      } catch {
+        return { taskId, status: 'FAILED', message: '任务状态查询失败，请刷新页面查看' };
+      }
+      if (snapshot.status === 'COMPLETED' || snapshot.status === 'FAILED') {
+        return snapshot;
+      }
+      setGenProgress(
+        snapshot.status === 'PATH_GENERATING'
+          ? 'AI 正在结合你的学习档案规划路线（约需十几秒）...'
+          : '任务已提交，正在排队执行...',
+      );
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  };
 
   const doGenerate = useCallback(async () => {
     setGenerating(true);
+    setGenProgress('任务提交中...');
     try {
-      const detail = await generateLearningPath();
-      message.success(`学习路线《${detail.title}》已生成`);
-      navigate(`/learning-path/${detail.pathId}`);
+      // 异步任务：提交后轮询状态，生成完成跳转详情；生成期间按钮禁用，防止重复生成
+      const task = await generateLearningPath();
+      const result = await pollGenTask(task.taskId);
+      if (result.status === 'COMPLETED' && result.pathId) {
+        message.success(`学习路线《${result.title || ''}》已生成`);
+        navigate(`/learning-path/${result.pathId}`);
+      } else {
+        message.warning(result.message || '路线生成失败，请稍后重试');
+      }
     } catch {
-      // 错误已统一提示
+      // 提交失败已统一提示
     } finally {
       setGenerating(false);
+      setGenProgress('');
     }
   }, [message, navigate]);
 
@@ -170,6 +211,13 @@ export default function LearningPath() {
           </Button>
         </Space>
       </div>
+
+      {generating ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: '#f6f6f6', marginBottom: 12 }}>
+          <Spin size="small" />
+          <span>{genProgress || '正在生成学习路线...'}</span>
+        </div>
+      ) : null}
 
       {!hasGoal ? (
         <Alert

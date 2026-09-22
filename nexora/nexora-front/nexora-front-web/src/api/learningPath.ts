@@ -129,9 +129,26 @@ export function parseLegacyPlan(content?: string): LegacyPlan | null {
   }
 }
 
-/** 生成学习路径（需先填写学习目标） */
-export function generateLearningPath(): Promise<LearningPathDetail> {
+/** 学习路径 AI 生成任务（异步编排：Redis 状态机 + 前端轮询） */
+export interface LearningPathGenTask {
+  taskId: string;
+  /** PENDING / PATH_GENERATING / COMPLETED / FAILED */
+  status: string;
+  message?: string;
+  title?: string;
+  pathId?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 生成学习路径（需先填写学习目标）——提交异步任务，立即返回 taskId，前端轮询 /genTask 获取进度 */
+export function generateLearningPath(): Promise<LearningPathGenTask> {
   return post('/learningPath/generate');
+}
+
+/** 查询学习路径生成任务进度（生成期间按钮禁用，防止重复生成） */
+export function getLearningPathGenTask(taskId: string): Promise<LearningPathGenTask> {
+  return get('/learningPath/genTask', { taskId });
 }
 
 /** 我的路线库（卡片列表） */
@@ -203,9 +220,61 @@ export interface NodeQuizResult {
   results: NodeQuizQuestionResult[];
 }
 
-/** 节点快测出题 */
-export function genNodeQuiz(itemId: string): Promise<NodeQuiz> {
-  return get('/learningPath/genNodeQuiz', { itemId });
+/** 节点快测异步出题任务（Redis 状态机：PENDING → QUIZ_GENERATING → COMPLETED/FAILED，前端轮询） */
+export interface NodeQuizTask {
+  taskId: string;
+  itemId: string;
+  knowledgePointId?: string;
+  knowledgePointName?: string;
+  status: string;
+  message?: string;
+  /** 完成后的题目 JSON（与 NodeQuiz 同构，含答案与解析；答题阶段不展示 answer/analysis） */
+  quizJson?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 提交节点快测出题任务：立即返回 taskId，前端轮询 /nodeQuizTask 获取进度；生成期间按钮禁用防重复出题 */
+export function genNodeQuiz(itemId: string): Promise<NodeQuizTask> {
+  return post('/learningPath/genNodeQuiz', { itemId });
+}
+
+/** 查询节点快测出题任务进度 */
+export function getNodeQuizTask(taskId: string): Promise<NodeQuizTask> {
+  return get('/learningPath/nodeQuizTask', { taskId });
+}
+
+/** 将快测任务题目 JSON 解析为答题卡（补全 task 层的节点信息与题号） */
+export function parseNodeQuizTask(task: NodeQuizTask): NodeQuiz | null {
+  if (!task.quizJson) {
+    return {
+      itemId: task.itemId,
+      knowledgePointId: task.knowledgePointId ?? '',
+      knowledgePointName: task.knowledgePointName ?? '',
+      title: '节点快测',
+      questions: [],
+    };
+  }
+  try {
+    const parsed = JSON.parse(task.quizJson);
+    const questions = (parsed.questions ?? []).map((q: NodeQuizQuestion, i: number) => ({
+      index: i,
+      type: q.type ?? 'SINGLE',
+      question: q.question ?? '',
+      options: Array.isArray(q.options) ? q.options : [],
+      answer: typeof q.answer === 'number' ? q.answer : 0,
+      analysis: q.analysis ?? '',
+    }));
+    return {
+      itemId: task.itemId,
+      knowledgePointId: task.knowledgePointId ?? '',
+      knowledgePointName: task.knowledgePointName ?? '',
+      title: parsed.title ?? '节点快测',
+      questions,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** 节点快测提交判分 */

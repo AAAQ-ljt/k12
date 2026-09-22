@@ -6,12 +6,15 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   genNodeQuiz,
+  getNodeQuizTask,
   loadLearningPathDetail,
+  parseNodeQuizTask,
   submitNodeQuiz,
   type LearningPathDetail,
   type LearningPathNode,
   type NodeQuiz,
   type NodeQuizResult,
+  type NodeQuizTask,
 } from '@/api/learningPath';
 import styles from './index.module.scss';
 
@@ -44,9 +47,9 @@ export default function LearningPathDetailPage() {
   const [loading, setLoading] = useState(false);
   const [activeNode, setActiveNode] = useState<LearningPathNode | null>(null);
   const [activeStageKeys, setActiveStageKeys] = useState<string[]>([]);
-  // 节点快测弹窗状态
+  // 节点快测弹窗状态（Redis 状态机任务：PENDING → QUIZ_GENERATING → COMPLETED/FAILED）
   const [quiz, setQuiz] = useState<NodeQuiz | null>(null);
-  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizTask, setQuizTask] = useState<NodeQuizTask | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizResult, setQuizResult] = useState<NodeQuizResult | null>(null);
@@ -110,42 +113,98 @@ export default function LearningPathDetailPage() {
     navigate('/ai-tutor', { state: { presetQuestion: question } });
   };
 
-  /** 发起节点快测：现场出题 → 打开答题弹窗 */
+  /** 是否正在出题：生成期间按钮禁用，防止连续点击产生多个快测任务 */
+  const quizRunning = !!quizTask && (quizTask.status === 'PENDING' || quizTask.status === 'QUIZ_GENERATING');
+
+  /** 打开快测弹窗（若尚未打开）并保持空态 */
+  const openQuizBlank = (node: LearningPathNode) => {
+    setQuizResult(null);
+    setQuizAnswers({});
+    setQuizSubmitting(false);
+    setQuiz(null);
+    setQuizTask({
+      taskId: '',
+      itemId: node.itemId,
+      knowledgePointId: node.knowledgePointId,
+      knowledgePointName: node.knowledgePointName,
+      status: 'PENDING',
+      message: '准备出题...',
+    });
+  };
+
+  /** 发起节点快测：提交异步出题任务 → 轮询任务状态 → 出题完成打开答题卡 */
   const startNodeQuiz = async (node: LearningPathNode) => {
     if (node.status === 0) {
       message.info(`请先完成前置节点「${node.prerequisiteName || '上一个节点'}」，本节点会自动解锁`);
       return;
     }
-    setQuizResult(null);
-    setQuizAnswers({});
-    setQuizSubmitting(false);
-    setQuizLoading(true);
+    openQuizBlank(node);
     try {
-      setQuiz(await genNodeQuiz(node.itemId));
+      const task = await genNodeQuiz(node.itemId);
+      setQuizTask(task);
     } catch {
-      // 错误已统一提示
-    } finally {
-      setQuizLoading(false);
+      // 提交失败已统一提示，关闭弹窗
+      setQuizTask(null);
+      setQuiz(null);
     }
   };
 
-  /** 快测「再测一次」：重新为该节点出题 */
+  /** 快测「再测一次」：重新为该节点提交出题任务 */
   const retryNodeQuiz = async () => {
     if (!quiz) {
       return;
     }
+    const itemId = quiz.itemId;
     setQuizResult(null);
     setQuizAnswers({});
     setQuizSubmitting(false);
-    setQuizLoading(true);
+    setQuiz(null);
+    setQuizTask({
+      taskId: '',
+      itemId,
+      knowledgePointId: quiz.knowledgePointId,
+      knowledgePointName: quiz.knowledgePointName,
+      status: 'PENDING',
+      message: '准备重新出题...',
+    });
     try {
-      setQuiz(await genNodeQuiz(quiz.itemId));
+      const task = await genNodeQuiz(itemId);
+      setQuizTask(task);
     } catch {
-      // 错误已统一提示
-    } finally {
-      setQuizLoading(false);
+      // 提交失败已统一提示
+      setQuizTask(null);
     }
   };
+
+  /** 轮询快测任务：未到终态每 2 秒推进一次；到终态后解析题目/提示失败 */
+  useEffect(() => {
+    if (!quizTask || !quizTask.taskId
+      || quizTask.status === 'COMPLETED' || quizTask.status === 'FAILED') {
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const task = await getNodeQuizTask(quizTask.taskId);
+        setQuizTask(task);
+        if (task.status === 'COMPLETED') {
+          const parsed = parseNodeQuizTask(task);
+          if (parsed && parsed.questions.length > 0) {
+            setQuiz(parsed);
+          } else {
+            message.warning('出题结果为空，请再试一次');
+            setQuizTask(null);
+          }
+        } else if (task.status === 'FAILED') {
+          message.warning(task.message || '出题失败，请稍后重试');
+        }
+      } catch {
+        // 任务查询失败（如已过期）：结束轮询并关闭弹窗
+        setQuizTask(null);
+        setQuiz(null);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [quizTask, message]);
 
   /** 提交判分：把题目（含答案）与作答回传，服务端权威判分并回写掌握度 */
   const submitQuiz = async () => {
@@ -176,8 +235,30 @@ export default function LearningPathDetailPage() {
     }
   };
 
-  /** 快测弹窗内容：结果态 / 答题态 */
+  /** 快测弹窗内容：出题中 / 失败态 / 结果态 / 答题态 */
   const renderQuizBody = () => {
+    // 出题中：轮询期间展示运行状态（PENDING → QUIZ_GENERATING）
+    if (quizRunning) {
+      return (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Spin />
+          <div style={{ marginTop: 12, color: '#888' }}>
+            {quizTask?.status === 'QUIZ_GENERATING'
+              ? (quizTask.message || 'AI 正在出题，请稍候...')
+              : '任务已提交，正在排队出题...'}
+          </div>
+          <div style={{ marginTop: 4, color: '#bbb', fontSize: 12 }}>生成期间按钮已锁定，防止重复出题</div>
+        </div>
+      );
+    }
+    if (quizTask?.status === 'FAILED') {
+      return (
+        <Space direction="vertical" size={12} style={{ width: '100%', textAlign: 'center' }}>
+          <div style={{ color: '#888' }}>{quizTask.message || '出题失败，请稍后重试'}</div>
+          <Button onClick={() => setQuizTask(null)}>关闭</Button>
+        </Space>
+      );
+    }
     if (!quiz) {
       return null;
     }
@@ -224,7 +305,7 @@ export default function LearningPathDetailPage() {
               </div>
             );
           })}
-          <Button type="primary" loading={quizLoading} onClick={retryNodeQuiz}>
+          <Button type="primary" loading={quizRunning} onClick={retryNodeQuiz}>
             再测一次
           </Button>
         </Space>
@@ -403,8 +484,8 @@ export default function LearningPathDetailPage() {
             </div>
           </div>
           <Space wrap>
-            <Button type="primary" icon={<PenLine size={14} />} onClick={() => startNodeQuiz(currentNode)}>
-              节点快测
+            <Button type="primary" icon={<PenLine size={14} />} disabled={quizRunning} onClick={() => startNodeQuiz(currentNode)}>
+              {quizRunning ? '正在出题...' : '节点快测'}
             </Button>
             <Button icon={<Play size={14} />} onClick={() => askAi(currentNode, 'explain')}>
               让 AI 讲这个知识点
@@ -531,8 +612,8 @@ export default function LearningPathDetailPage() {
             <div className={styles.drawerBlock}>
               <div className={styles.drawerLabel}>下一步</div>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Button type="primary" block icon={<PenLine size={14} />} onClick={() => startNodeQuiz(activeNode)}>
-                  节点快测（计入掌握度）
+                <Button type="primary" block icon={<PenLine size={14} />} disabled={quizRunning} onClick={() => startNodeQuiz(activeNode)}>
+                  {quizRunning ? '正在出题...' : '节点快测（计入掌握度）'}
                 </Button>
                 <Button block onClick={() => askAi(activeNode, 'explain')}>
                   让 AI 讲这个知识点
@@ -549,15 +630,17 @@ export default function LearningPathDetailPage() {
       </Drawer>
 
       <Modal
-        open={!!quiz}
-        title={quiz ? `节点快测 · ${quiz.knowledgePointName}` : '节点快测'}
+        open={!!quiz || !!quizTask}
+        title={quiz ? `节点快测 · ${quiz.knowledgePointName}` : quizTask ? `节点快测 · ${quizTask.knowledgePointName}` : '节点快测'}
         width={640}
         footer={null}
-        onCancel={() => setQuiz(null)}
+        onCancel={() => {
+          setQuiz(null);
+          setQuizTask(null);
+          setQuizResult(null);
+        }}
       >
-        <Spin spinning={quizLoading}>
-          <div style={{ maxHeight: 560, overflowY: 'auto' }}>{renderQuizBody()}</div>
-        </Spin>
+        <div style={{ maxHeight: 560, overflowY: 'auto' }}>{renderQuizBody()}</div>
       </Modal>
     </div>
   );

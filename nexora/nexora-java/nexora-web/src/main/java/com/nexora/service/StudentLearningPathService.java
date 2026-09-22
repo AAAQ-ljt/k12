@@ -5,7 +5,6 @@ import com.nexora.entity.po.AiGenerationRecord;
 import com.nexora.vo.LearningPathSummaryVO;
 import com.nexora.vo.LearningPathVO;
 import com.nexora.vo.NodeQuizSubmitResultVO;
-import com.nexora.vo.NodeQuizVO;
 
 import java.util.List;
 
@@ -48,12 +47,8 @@ public interface StudentLearningPathService {
     void deleteHistory(String userId, String recordId);
 
     /**
-     * 节点快测出题：依节点知识点现场生成 3 题（不依赖课程题库），返回题目含答案供判分回传
-     */
-    NodeQuizVO genNodeQuiz(String userId, String itemId);
-
-    /**
      * 节点快测提交判分：服务端权威判分 → 落练习流水 → 掌握度回写 → 刷新节点状态
+     * （出题走异步任务：NodeQuizTaskService + 前端轮询，见 /learningPath/genNodeQuiz）
      */
     NodeQuizSubmitResultVO submitNodeQuiz(String userId, NodeQuizSubmitDTO dto);
 }

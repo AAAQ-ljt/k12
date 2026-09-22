@@ -6,7 +6,6 @@ import com.alibaba.fastjson2.JSONObject;
 import com.nexora.component.KnowledgeMasteryComponent;
 import com.nexora.component.LearningPathComponent;
 import com.nexora.component.LearningPathGenerateComponent;
-import com.nexora.component.QuizGenerateComponent;
 import com.nexora.dto.NodeQuizAnswerDTO;
 import com.nexora.dto.NodeQuizSubmitDTO;
 import com.nexora.entity.enums.DateTimePatternEnum;
@@ -70,9 +69,6 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
     /** 知识页向量状态：已确认入库（视为已学） */
     private static final int VECTOR_STATUS_CONFIRMED = 2;
 
-    /** 节点快测每轮固定题目数 */
-    private static final int NODE_QUIZ_QUESTION_COUNT = 3;
-
     /** 节点快测单题满分（客观题答对记 1 分） */
     private static final int NODE_QUIZ_QUESTION_SCORE = 1;
 
@@ -90,9 +86,6 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
     @Resource
     private PracticeRecordService practiceRecordService;
-
-    @Resource
-    private QuizGenerateComponent quizGenerateComponent;
 
     @Resource
     private KnowledgeMasteryComponent knowledgeMasteryComponent;
@@ -230,44 +223,17 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
     // ==================== 节点快测（路径节点自测闭环） ====================
 
     @Override
-    public NodeQuizVO genNodeQuiz(String userId, String itemId) {
-        LearningPathItem item = requireActiveItem(userId, itemId);
-        LearningPath path = learningPathComponent.requireOwnedPath(userId, item.getPathId());
-        QuizGenerateComponent.QuizScript script;
-        try {
-            script = quizGenerateComponent.generate(path.getStage(), item.getKnowledgePointName());
-        } catch (Exception e) {
-            log.warn("节点快测出题失败 itemId={}", itemId, e);
-            throw new BusinessException("出题失败，请稍后重试");
-        }
-        NodeQuizVO vo = new NodeQuizVO();
-        vo.setItemId(item.getItemId());
-        vo.setKnowledgePointId(item.getKnowledgePointId());
-        vo.setKnowledgePointName(item.getKnowledgePointName());
-        vo.setTitle(script.title());
-        List<NodeQuizVO.NodeQuizQuestionVO> questions = new ArrayList<>();
-        int limit = Math.min(script.questions().size(), NODE_QUIZ_QUESTION_COUNT);
-        for (int i = 0; i < limit; i++) {
-            QuizGenerateComponent.QuizQuestion question = script.questions().get(i);
-            NodeQuizVO.NodeQuizQuestionVO questionVO = new NodeQuizVO.NodeQuizQuestionVO();
-            questionVO.setIndex(i);
-            questionVO.setType(question.type());
-            questionVO.setQuestion(question.question());
-            questionVO.setOptions(question.options());
-            questionVO.setAnswer(question.answer());
-            questionVO.setAnalysis(question.analysis());
-            questions.add(questionVO);
-        }
-        vo.setQuestions(questions);
-        return vo;
-    }
-
-    @Override
     public NodeQuizSubmitResultVO submitNodeQuiz(String userId, NodeQuizSubmitDTO dto) {
         if (dto == null || StringTools.isEmpty(dto.getItemId())) {
             throw new BusinessException("节点不能为空");
         }
-        LearningPathItem item = requireActiveItem(userId, dto.getItemId());
+        LearningPathItem item = learningPathItemService.getLearningPathItemByItemId(dto.getItemId());
+        if (item == null || !userId.equals(item.getUserId())) {
+            throw new BusinessException("节点不存在或无权操作");
+        }
+        if (item.getStatus() != null && item.getStatus() == LearningPathComponent.ITEM_STATUS_LOCKED) {
+            throw new BusinessException("该节点还未解锁，请先完成前置节点");
+        }
         LearningPath path = learningPathComponent.requireOwnedPath(userId, item.getPathId());
 
         // 把提交的题目按题号建索引（判分依据），作答按题号合并
@@ -368,23 +334,6 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
                 && mastery.getStatus() == KnowledgeMasteryComponent.STATUS_MASTERED);
         resultVO.setResults(results);
         return resultVO;
-    }
-
-    /**
-     * 取可参与快测的节点：校验归属，且未锁定时才允许出题/作答
-     */
-    private LearningPathItem requireActiveItem(String userId, String itemId) {
-        if (StringTools.isEmpty(itemId)) {
-            throw new BusinessException("节点不能为空");
-        }
-        LearningPathItem item = learningPathItemService.getLearningPathItemByItemId(itemId);
-        if (item == null || !userId.equals(item.getUserId())) {
-            throw new BusinessException("节点不存在或无权操作");
-        }
-        if (item.getStatus() != null && item.getStatus() == LearningPathComponent.ITEM_STATUS_LOCKED) {
-            throw new BusinessException("该节点还未解锁，请先完成前置节点");
-        }
-        return item;
     }
 
     // ==================== 详情组装 ====================
