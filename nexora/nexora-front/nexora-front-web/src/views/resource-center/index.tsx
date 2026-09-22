@@ -18,7 +18,7 @@ import type { StudentDirectory, StudentResource, StudentStorageInfo } from '@/ap
 import { generateStudentWiki, type StudentWikiDoc } from '@/api/studentWiki';
 import WikiListPanel from '@/components/knowledge/WikiListPanel';
 import WikiEditModal from '@/components/knowledge/WikiEditModal';
-import LearningProfileModal from './components/LearningProfileModal';
+import LearningProfileModal from '@/components/profile/LearningProfileModal';
 import styles from './index.module.scss';
 
 interface UploadTask {

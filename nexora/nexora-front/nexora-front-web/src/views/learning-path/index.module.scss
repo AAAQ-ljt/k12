@@ -271,3 +271,506 @@
     text-align: left;
   }
 }
+
+/* ===== 节点墙（P1：路径节点化 + 三态） ===== */
+.pathSummary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pathSummaryText {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.mainLine {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.node {
+  display: grid;
+  grid-template-columns: 28px 1fr 120px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--warm-bg-dark);
+  background: var(--card-white);
+  cursor: pointer;
+  transition: var(--motion-fast);
+}
+
+.node:hover {
+  border-color: var(--warm-brown-300);
+  transform: translateY(-1px);
+}
+
+.nodeLocked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nodeLearning {
+  border-left: 3px solid #1677ff;
+}
+
+.nodeMastered {
+  border-left: 3px solid #52c41a;
+}
+
+.nodeIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--warm-bg-light);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.nodeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nodeTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nodeTitle {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  flex-wrap: wrap;
+}
+
+.nodeBar {
+  min-width: 0;
+}
+
+.iconMastered {
+  color: #52c41a;
+}
+
+.iconLearning {
+  color: #1677ff;
+}
+
+.iconLocked {
+  color: var(--text-tertiary);
+}
+
+.branches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.branchCard {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--warm-bg-dark);
+  background: var(--warm-bg-light);
+}
+
+.branchTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.branchNodes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ===== 历史计划 ===== */
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.historyItem {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warm-bg-light);
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.historyTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.historySteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.historyStep {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+/* ===== 节点抽屉 ===== */
+.drawerBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawerLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.drawerHint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.drawerText {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.nodeMetaText {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 960px) {
+  .node {
+    grid-template-columns: 24px 1fr;
+  }
+
+  .nodeBar {
+    grid-column: 2;
+  }
+}
+
+/* ===== 路线库（卡片式） ===== */
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.routeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 14px;
+}
+
+.routeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--warm-bg-dark);
+  background: var(--card-white);
+  transition: var(--motion-fast);
+}
+
+.routeCard:hover {
+  border-color: var(--warm-brown-300);
+  transform: translateY(-1px);
+}
+
+.routeHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.routeTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routeGoal {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  min-height: 40px;
+}
+
+.routeMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.routeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.routeCurrent {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 路线详情 ===== */
+.loadingBlock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: var(--text-tertiary);
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detailTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.detailTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailProgress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+}
+
+.goalCard {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--warm-bg-dark);
+  background: var(--warm-bg-light);
+}
+
+.goalTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.goalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.goalItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goalLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.goalValue {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.focusCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--warm-brown-300);
+  background: var(--gradient-selected-nav, var(--card-white));
+}
+
+.focusHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.focusBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.focusName {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.focusTask {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.focusMeta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.focusNote {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+
+.finishedCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px dashed var(--warm-green-300, #95de64);
+  background: var(--warm-bg-light);
+}
+
+.finishedTitle {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.finishedDesc {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.finishedAction {
+  margin-left: auto;
+}
+
+.stageHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stageName {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stageGoal {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.stageBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stageCheckpoint {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--warm-bg-light);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.branchesBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nodeTask {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeLockHint {
+  color: #d46b08;
+}

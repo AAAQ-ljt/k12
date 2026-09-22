@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { App, Button, Input, Segmented, Tag, Tooltip } from 'antd';
 import {
   BookOpen,
@@ -197,6 +197,7 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
 export default function AiTutor() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const token = useAuthStore((state) => state.token);
   const userInfo = useAuthStore((state) => state.userInfo);
   const openLoginModal = useUiStore((state) => state.openLoginModal);
@@ -211,6 +212,15 @@ export default function AiTutor() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
   const [attachedImages, setAttachedImages] = useState<ChatImage[]>([]);
+  // 学习路径节点「问 AI 助教」跳转过来时预填问题（用完即清，避免刷新重复填充）
+  useEffect(() => {
+    const state = location.state as { presetQuestion?: string } | null;
+    if (state?.presetQuestion) {
+      setInput(state.presetQuestion);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate]);
+
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const [wikiReloadKey, setWikiReloadKey] = useState(0);
   const knowledgeOpenRef = useRef(false);

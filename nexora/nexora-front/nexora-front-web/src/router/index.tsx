@@ -4,6 +4,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import AiTutor from '@/views/ai-tutor';
 import LearningPath from '@/views/learning-path';
+import LearningPathDetailPage from '@/views/learning-path/detail';
 import CourseMaterial from '@/views/course-material';
 import CourseDetail from '@/views/course-material/course';
 import CourseMaterialDetail from '@/views/course-material/detail';
@@ -34,6 +35,14 @@ const routes: RouteObject[] = [
         element: (
           <ProtectedRoute title="个性化学习路径" description="登录后查看你的个性化学习路径">
             <LearningPath />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'learning-path/:pathId',
+        element: (
+          <ProtectedRoute title="学习路线详情" description="登录后查看你的学习路线">
+            <LearningPathDetailPage />
           </ProtectedRoute>
         ),
       },
