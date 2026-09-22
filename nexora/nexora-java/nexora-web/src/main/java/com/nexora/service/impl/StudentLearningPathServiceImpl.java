@@ -3,8 +3,12 @@ package com.nexora.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.nexora.component.KnowledgeMasteryComponent;
 import com.nexora.component.LearningPathComponent;
 import com.nexora.component.LearningPathGenerateComponent;
+import com.nexora.component.QuizGenerateComponent;
+import com.nexora.dto.NodeQuizAnswerDTO;
+import com.nexora.dto.NodeQuizSubmitDTO;
 import com.nexora.entity.enums.DateTimePatternEnum;
 import com.nexora.entity.po.AiGenerationRecord;
 import com.nexora.entity.po.KnowledgeDoc;
@@ -12,6 +16,7 @@ import com.nexora.entity.po.KnowledgeMastery;
 import com.nexora.entity.po.KnowledgePoint;
 import com.nexora.entity.po.LearningPath;
 import com.nexora.entity.po.LearningPathItem;
+import com.nexora.entity.po.PracticeRecord;
 import com.nexora.entity.po.UserWikiProfile;
 import com.nexora.entity.query.AiGenerationRecordQuery;
 import com.nexora.entity.query.KnowledgeDocQuery;
@@ -22,6 +27,8 @@ import com.nexora.service.AiGenerationRecordService;
 import com.nexora.service.KnowledgeDocService;
 import com.nexora.service.KnowledgeMasteryService;
 import com.nexora.service.KnowledgePointService;
+import com.nexora.service.LearningPathItemService;
+import com.nexora.service.PracticeRecordService;
 import com.nexora.service.StudentLearningPathService;
 import com.nexora.service.UserWikiProfileService;
 import com.nexora.utils.DateUtil;
@@ -31,6 +38,8 @@ import com.nexora.vo.LearningPathNodeVO;
 import com.nexora.vo.LearningPathStageVO;
 import com.nexora.vo.LearningPathSummaryVO;
 import com.nexora.vo.LearningPathVO;
+import com.nexora.vo.NodeQuizSubmitResultVO;
+import com.nexora.vo.NodeQuizVO;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +69,33 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
     /** 知识页向量状态：已确认入库（视为已学） */
     private static final int VECTOR_STATUS_CONFIRMED = 2;
+
+    /** 节点快测每轮固定题目数 */
+    private static final int NODE_QUIZ_QUESTION_COUNT = 3;
+
+    /** 节点快测单题满分（客观题答对记 1 分） */
+    private static final int NODE_QUIZ_QUESTION_SCORE = 1;
+
+    /** 练习流水来源：路径快测 */
+    private static final int PRACTICE_SOURCE_PATH_QUIZ = 1;
+
+    /** 练习流水批阅状态：客观题无需批阅 */
+    private static final int REVIEW_STATUS_UNNEEDED = 2;
+
+    /** 题型：单选 */
+    private static final int QUESTION_TYPE_SINGLE = 0;
+
+    @Resource
+    private LearningPathItemService learningPathItemService;
+
+    @Resource
+    private PracticeRecordService practiceRecordService;
+
+    @Resource
+    private QuizGenerateComponent quizGenerateComponent;
+
+    @Resource
+    private KnowledgeMasteryComponent knowledgeMasteryComponent;
 
     @Resource
     private AiGenerationRecordService aiGenerationRecordService;
@@ -189,6 +225,166 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             throw new BusinessException("学习路径记录不存在或无权操作");
         }
         aiGenerationRecordService.deleteAiGenerationRecordByRecordId(recordId);
+    }
+
+    // ==================== 节点快测（路径节点自测闭环） ====================
+
+    @Override
+    public NodeQuizVO genNodeQuiz(String userId, String itemId) {
+        LearningPathItem item = requireActiveItem(userId, itemId);
+        LearningPath path = learningPathComponent.requireOwnedPath(userId, item.getPathId());
+        QuizGenerateComponent.QuizScript script;
+        try {
+            script = quizGenerateComponent.generate(path.getStage(), item.getKnowledgePointName());
+        } catch (Exception e) {
+            log.warn("节点快测出题失败 itemId={}", itemId, e);
+            throw new BusinessException("出题失败，请稍后重试");
+        }
+        NodeQuizVO vo = new NodeQuizVO();
+        vo.setItemId(item.getItemId());
+        vo.setKnowledgePointId(item.getKnowledgePointId());
+        vo.setKnowledgePointName(item.getKnowledgePointName());
+        vo.setTitle(script.title());
+        List<NodeQuizVO.NodeQuizQuestionVO> questions = new ArrayList<>();
+        int limit = Math.min(script.questions().size(), NODE_QUIZ_QUESTION_COUNT);
+        for (int i = 0; i < limit; i++) {
+            QuizGenerateComponent.QuizQuestion question = script.questions().get(i);
+            NodeQuizVO.NodeQuizQuestionVO questionVO = new NodeQuizVO.NodeQuizQuestionVO();
+            questionVO.setIndex(i);
+            questionVO.setType(question.type());
+            questionVO.setQuestion(question.question());
+            questionVO.setOptions(question.options());
+            questionVO.setAnswer(question.answer());
+            questionVO.setAnalysis(question.analysis());
+            questions.add(questionVO);
+        }
+        vo.setQuestions(questions);
+        return vo;
+    }
+
+    @Override
+    public NodeQuizSubmitResultVO submitNodeQuiz(String userId, NodeQuizSubmitDTO dto) {
+        if (dto == null || StringTools.isEmpty(dto.getItemId())) {
+            throw new BusinessException("节点不能为空");
+        }
+        LearningPathItem item = requireActiveItem(userId, dto.getItemId());
+        LearningPath path = learningPathComponent.requireOwnedPath(userId, item.getPathId());
+
+        // 把提交的题目按题号建索引（判分依据），作答按题号合并
+        Map<Integer, NodeQuizVO.NodeQuizQuestionVO> questionMap = new HashMap<>();
+        if (dto.getQuestions() != null) {
+            for (NodeQuizVO.NodeQuizQuestionVO question : dto.getQuestions()) {
+                if (question != null) {
+                    questionMap.put(question.getIndex(), question);
+                }
+            }
+        }
+        Map<Integer, NodeQuizAnswerDTO> answerMap = new HashMap<>();
+        if (dto.getAnswers() != null) {
+            for (NodeQuizAnswerDTO answer : dto.getAnswers()) {
+                if (answer != null) {
+                    answerMap.put(answer.getIndex(), answer);
+                }
+            }
+        }
+        if (questionMap.isEmpty()) {
+            throw new BusinessException("题目数据缺失，请重新出题作答");
+        }
+
+        Date now = new Date();
+        List<PracticeRecord> records = new ArrayList<>();
+        List<KnowledgeMasteryComponent.AnswerOutcome> outcomes = new ArrayList<>();
+        List<NodeQuizSubmitResultVO.QuestionResult> results = new ArrayList<>();
+        int correctCount = 0;
+
+        // 服务端权威判分：以题目携带的正确答案比对学生选项，不信任前端自带的判分
+        for (Map.Entry<Integer, NodeQuizVO.NodeQuizQuestionVO> entry : questionMap.entrySet()) {
+            NodeQuizVO.NodeQuizQuestionVO question = entry.getValue();
+            List<String> options = question.getOptions();
+            String correctAnswer = (question.getAnswer() >= 0 && options != null && question.getAnswer() < options.size())
+                    ? options.get(question.getAnswer()) : "";
+            NodeQuizAnswerDTO given = answerMap.get(question.getIndex());
+            String userAnswer = given == null ? "" : (given.getUserAnswer() == null ? "" : given.getUserAnswer());
+            boolean correct = !StringTools.isEmpty(correctAnswer) && correctAnswer.equals(userAnswer);
+            if (correct) {
+                correctCount++;
+            }
+
+            PracticeRecord record = new PracticeRecord();
+            record.setUserId(userId);
+            // knowledge_point_id 非空约束：异常缺失时落空串保证流水可写
+            record.setKnowledgePointId(StringTools.isEmpty(item.getKnowledgePointId())
+                    ? "" : item.getKnowledgePointId());
+            record.setStage(path.getStage());
+            // LLM 现场出题无题目库身份，questionId 置空串
+            record.setQuestionId("");
+            record.setQuestionType(QUESTION_TYPE_SINGLE);
+            record.setUserAnswer(userAnswer);
+            record.setIsCorrect(correct ? 1 : 0);
+            record.setScore(correct ? NODE_QUIZ_QUESTION_SCORE : 0);
+            record.setDuration(dto.getDuration() == null ? 0 : dto.getDuration());
+            record.setSource(PRACTICE_SOURCE_PATH_QUIZ);
+            record.setBizId(item.getItemId());
+            // 客观题无需人工批阅
+            record.setReviewStatus(REVIEW_STATUS_UNNEEDED);
+            record.setCreateTime(now);
+            records.add(record);
+            if (!StringTools.isEmpty(record.getKnowledgePointId())) {
+                outcomes.add(new KnowledgeMasteryComponent.AnswerOutcome(record.getKnowledgePointId(), correct));
+            }
+
+            NodeQuizSubmitResultVO.QuestionResult result = new NodeQuizSubmitResultVO.QuestionResult();
+            result.setIndex(question.getIndex());
+            result.setQuestion(question.getQuestion());
+            result.setOptions(options);
+            result.setUserAnswer(userAnswer);
+            result.setCorrectAnswer(correctAnswer);
+            result.setCorrect(correct);
+            result.setAnalysis(question.getAnalysis());
+            results.add(result);
+        }
+
+        if (!records.isEmpty()) {
+            practiceRecordService.addBatch(records);
+        }
+        // 掌握度回写（本次得分率达标 + 足够练习次数 → 节点跨入已掌握，闭环即时生效）
+        if (!outcomes.isEmpty()) {
+            knowledgeMasteryComponent.recordAnswers(userId, path.getStage(), outcomes);
+        }
+        // 回写后刷新节点三态与路径进度，再取最新掌握度
+        learningPathComponent.getMyPath(userId, item.getPathId());
+        KnowledgeMastery mastery = StringTools.isEmpty(item.getKnowledgePointId())
+                ? null : loadMasteryMap(userId).get(item.getKnowledgePointId());
+
+        int total = results.size();
+        int score = total == 0 ? 0 : (int) Math.round(correctCount * 100.0 / total);
+        NodeQuizSubmitResultVO resultVO = new NodeQuizSubmitResultVO();
+        resultVO.setPassed(total > 0 && score >= KnowledgeMasteryComponent.REVIEW_CORRECT_PERCENT);
+        resultVO.setCorrectCount(correctCount);
+        resultVO.setTotalCount(total);
+        resultVO.setScore(score);
+        resultVO.setMasteryScore(mastery == null || mastery.getMasteryScore() == null ? 0 : mastery.getMasteryScore());
+        resultVO.setMastered(mastery != null && mastery.getStatus() != null
+                && mastery.getStatus() == KnowledgeMasteryComponent.STATUS_MASTERED);
+        resultVO.setResults(results);
+        return resultVO;
+    }
+
+    /**
+     * 取可参与快测的节点：校验归属，且未锁定时才允许出题/作答
+     */
+    private LearningPathItem requireActiveItem(String userId, String itemId) {
+        if (StringTools.isEmpty(itemId)) {
+            throw new BusinessException("节点不能为空");
+        }
+        LearningPathItem item = learningPathItemService.getLearningPathItemByItemId(itemId);
+        if (item == null || !userId.equals(item.getUserId())) {
+            throw new BusinessException("节点不存在或无权操作");
+        }
+        if (item.getStatus() != null && item.getStatus() == LearningPathComponent.ITEM_STATUS_LOCKED) {
+            throw new BusinessException("该节点还未解锁，请先完成前置节点");
+        }
+        return item;
     }
 
     // ==================== 详情组装 ====================

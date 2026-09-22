@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { App, Button, Collapse, Drawer, Empty, Progress, Space, Spin, Tag, Tooltip } from 'antd';
+import { App, Button, Collapse, Drawer, Empty, Modal, Progress, Radio, Space, Spin, Tag, Tooltip } from 'antd';
 import {
-  ArrowLeft, CheckCircle2, Circle, Clock, Compass, Lock, Play, Rocket, Sparkles, Target,
+  ArrowLeft, CheckCircle2, Circle, Clock, Compass, Lock, PenLine, Play, Rocket, Sparkles, Target,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  genNodeQuiz,
   loadLearningPathDetail,
+  submitNodeQuiz,
   type LearningPathDetail,
   type LearningPathNode,
+  type NodeQuiz,
+  type NodeQuizResult,
 } from '@/api/learningPath';
 import styles from './index.module.scss';
 
@@ -40,6 +44,12 @@ export default function LearningPathDetailPage() {
   const [loading, setLoading] = useState(false);
   const [activeNode, setActiveNode] = useState<LearningPathNode | null>(null);
   const [activeStageKeys, setActiveStageKeys] = useState<string[]>([]);
+  // 节点快测弹窗状态
+  const [quiz, setQuiz] = useState<NodeQuiz | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizResult, setQuizResult] = useState<NodeQuizResult | null>(null);
 
   const load = useCallback(async () => {
     if (!pathId) {
@@ -98,6 +108,149 @@ export default function LearningPathDetailPage() {
       : `针对《${node.knowledgePointName}》出 3 道题考考我。`;
     setActiveNode(null);
     navigate('/ai-tutor', { state: { presetQuestion: question } });
+  };
+
+  /** 发起节点快测：现场出题 → 打开答题弹窗 */
+  const startNodeQuiz = async (node: LearningPathNode) => {
+    if (node.status === 0) {
+      message.info(`请先完成前置节点「${node.prerequisiteName || '上一个节点'}」，本节点会自动解锁`);
+      return;
+    }
+    setQuizResult(null);
+    setQuizAnswers({});
+    setQuizSubmitting(false);
+    setQuizLoading(true);
+    try {
+      setQuiz(await genNodeQuiz(node.itemId));
+    } catch {
+      // 错误已统一提示
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  /** 快测「再测一次」：重新为该节点出题 */
+  const retryNodeQuiz = async () => {
+    if (!quiz) {
+      return;
+    }
+    setQuizResult(null);
+    setQuizAnswers({});
+    setQuizSubmitting(false);
+    setQuizLoading(true);
+    try {
+      setQuiz(await genNodeQuiz(quiz.itemId));
+    } catch {
+      // 错误已统一提示
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  /** 提交判分：把题目（含答案）与作答回传，服务端权威判分并回写掌握度 */
+  const submitQuiz = async () => {
+    if (!quiz) {
+      return;
+    }
+    const questions = quiz.questions ?? [];
+    const missing = questions.find((q) => !quizAnswers[q.index]);
+    if (missing) {
+      message.warning('还有题目未作答，请完成后再提交');
+      return;
+    }
+    setQuizSubmitting(true);
+    try {
+      const answers = questions.map((q) => ({ index: q.index, userAnswer: quizAnswers[q.index] }));
+      const result = await submitNodeQuiz({ itemId: quiz.itemId, questions, answers });
+      setQuizResult(result);
+      if (result.mastered) {
+        message.success('已全部掌握，该节点解锁下一个！');
+      } else if (result.passed) {
+        message.success('本轮全对，继续保持');
+      } else {
+        message.warning('有答错的题，已计入练习次数，可随时重测');
+      }
+      void load();
+    } finally {
+      setQuizSubmitting(false);
+    }
+  };
+
+  /** 快测弹窗内容：结果态 / 答题态 */
+  const renderQuizBody = () => {
+    if (!quiz) {
+      return null;
+    }
+    if (quizResult) {
+      return (
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>
+              {quizResult.passed ? '本轮通过' : '本轮未通过'}
+              {quizResult.mastered ? <Tag color="green" style={{ marginLeft: 8 }}>已掌握</Tag> : null}
+            </div>
+            <div style={{ marginTop: 4, color: '#888' }}>
+              答对 {quizResult.correctCount}/{quizResult.totalCount}，本次得分率 {quizResult.score}%（≥80% 判通过）
+              {quizResult.mastered ? '，练习次数已达标，节点标记为已掌握并解锁下一个' : '，未全对可随时再测' }
+            </div>
+          </div>
+          {(quizResult.results ?? []).map((r) => {
+            const opts = r.options ?? [];
+            return (
+              <div key={r.index} style={{ border: '1px solid #eee', borderRadius: 8, padding: 12 }}>
+                <div style={{ fontWeight: 500 }}>
+                  {r.index + 1}. {r.question}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  {opts.map((opt) => {
+                    const isCorrect = opt === r.correctAnswer;
+                    const isUser = opt === r.userAnswer;
+                    const bg = isCorrect ? '#f6ffed' : isUser ? '#fff1f0' : 'transparent';
+                    const fg = isCorrect ? '#389e0d' : isUser ? '#cf1322' : 'inherit';
+                    return (
+                      <div key={opt} style={{ background: bg, color: fg, borderRadius: 6, padding: '4px 8px', marginTop: 4 }}>
+                        {opt}
+                        {isCorrect ? ' ✓' : ''}
+                        {isUser && !isCorrect ? ' ✗（你的选择）' : ''}
+                      </div>
+                    );
+                  })}
+                </div>
+                {r.analysis ? (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #eee', color: '#888' }}>
+                    解析：{r.analysis}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+          <Button type="primary" loading={quizLoading} onClick={retryNodeQuiz}>
+            再测一次
+          </Button>
+        </Space>
+      );
+    }
+    return (
+      <Space direction="vertical" size={20} style={{ width: '100%' }}>
+        {(quiz.questions ?? []).map((q) => (
+          <div key={q.index}>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>{q.index + 1}. {q.question}</div>
+            <Radio.Group
+              value={quizAnswers[q.index]}
+              onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [q.index]: e.target.value }))}
+            >
+              <Space direction="vertical">
+                {(q.options ?? []).map((opt) => <Radio key={opt} value={opt}>{opt}</Radio>)}
+              </Space>
+            </Radio.Group>
+          </div>
+        ))}
+        <Button type="primary" block loading={quizSubmitting} onClick={submitQuiz}>
+          提交判分
+        </Button>
+        <div style={{ color: '#bbb', fontSize: 12 }}>提交后服务端自动判分并计入掌握度，全对即可解锁下一个节点</div>
+      </Space>
+    );
   };
 
   const renderNode = (node: LearningPathNode, index: number) => {
@@ -250,16 +403,19 @@ export default function LearningPathDetailPage() {
             </div>
           </div>
           <Space wrap>
-            <Button type="primary" icon={<Play size={14} />} onClick={() => askAi(currentNode, 'explain')}>
+            <Button type="primary" icon={<PenLine size={14} />} onClick={() => startNodeQuiz(currentNode)}>
+              节点快测
+            </Button>
+            <Button icon={<Play size={14} />} onClick={() => askAi(currentNode, 'explain')}>
               让 AI 讲这个知识点
             </Button>
             <Button icon={<Sparkles size={14} />} onClick={() => askAi(currentNode, 'quiz')}>
-              练一练
+              对话练一练
             </Button>
             <Button onClick={() => navigate('/course-material')}>去课程教材找材料</Button>
           </Space>
           <div className={styles.focusNote}>
-            练一练用对话内答题卡自测，本次自测不记入掌握度；掌握度由课时通关测验、节点快测和主观题批阅写入
+            节点快测自动判分并计入掌握度；对话内「练一练」仅自测，不计入掌握度
           </div>
         </div>
       ) : null}
@@ -375,12 +531,15 @@ export default function LearningPathDetailPage() {
             <div className={styles.drawerBlock}>
               <div className={styles.drawerLabel}>下一步</div>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Button type="primary" block onClick={() => askAi(activeNode, 'explain')}>
+                <Button type="primary" block icon={<PenLine size={14} />} onClick={() => startNodeQuiz(activeNode)}>
+                  节点快测（计入掌握度）
+                </Button>
+                <Button block onClick={() => askAi(activeNode, 'explain')}>
                   让 AI 讲这个知识点
                 </Button>
-                <Tooltip title="用对话内答题卡自测（本次自测不记入掌握度）">
+                <Tooltip title="对话内答题卡自测，不计入掌握度">
                   <Button block icon={<Sparkles size={14} />} onClick={() => askAi(activeNode, 'quiz')}>
-                    练一练（自测，不记掌握度）
+                    对话练一练（不计掌握度）
                   </Button>
                 </Tooltip>
               </Space>
@@ -388,6 +547,18 @@ export default function LearningPathDetailPage() {
           </Space>
         ) : null}
       </Drawer>
+
+      <Modal
+        open={!!quiz}
+        title={quiz ? `节点快测 · ${quiz.knowledgePointName}` : '节点快测'}
+        width={640}
+        footer={null}
+        onCancel={() => setQuiz(null)}
+      >
+        <Spin spinning={quizLoading}>
+          <div style={{ maxHeight: 560, overflowY: 'auto' }}>{renderQuizBody()}</div>
+        </Spin>
+      </Modal>
     </div>
   );
 }

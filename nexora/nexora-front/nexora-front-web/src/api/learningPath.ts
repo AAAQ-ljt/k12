@@ -158,3 +158,62 @@ export function loadLearningPathHistory(): Promise<LearningPathHistoryItem[]> {
 export function deleteLearningPathHistory(recordId: string): Promise<void> {
   return del('/learningPath/historyDel', { recordId });
 }
+
+/** 节点快测题（含答案，答题阶段不展示 answer/analysis） */
+export interface NodeQuizQuestion {
+  index: number;
+  type: string;
+  question: string;
+  options: string[];
+  answer: number;
+  analysis?: string;
+}
+
+/** 节点快测出题响应 */
+export interface NodeQuiz {
+  itemId: string;
+  knowledgePointId: string;
+  knowledgePointName: string;
+  title: string;
+  questions: NodeQuizQuestion[];
+}
+
+/** 节点快测逐题判分明细 */
+export interface NodeQuizQuestionResult {
+  index: number;
+  question: string;
+  options: string[];
+  userAnswer: string;
+  correctAnswer: string;
+  correct: boolean;
+  analysis: string;
+}
+
+/** 节点快测提交判分结果 */
+export interface NodeQuizResult {
+  passed: boolean;
+  correctCount: number;
+  totalCount: number;
+  /** 本次得分率（百分制） */
+  score: number;
+  /** 回写后掌握度 0-100 */
+  masteryScore: number;
+  /** 是否已跨入「已掌握」 */
+  mastered: boolean;
+  results: NodeQuizQuestionResult[];
+}
+
+/** 节点快测出题 */
+export function genNodeQuiz(itemId: string): Promise<NodeQuiz> {
+  return get('/learningPath/genNodeQuiz', { itemId });
+}
+
+/** 节点快测提交判分 */
+export function submitNodeQuiz(payload: {
+  itemId: string;
+  duration?: number;
+  questions: NodeQuizQuestion[];
+  answers: { index: number; userAnswer: string }[];
+}): Promise<NodeQuizResult> {
+  return post('/learningPath/submitNodeQuiz', payload);
+}

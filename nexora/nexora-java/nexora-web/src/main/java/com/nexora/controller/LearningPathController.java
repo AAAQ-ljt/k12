@@ -1,6 +1,7 @@
 package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
+import com.nexora.dto.NodeQuizSubmitDTO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.AiGenerationRecord;
 import com.nexora.entity.vo.ResponseVO;
@@ -10,10 +11,13 @@ import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
 import com.nexora.vo.LearningPathSummaryVO;
 import com.nexora.vo.LearningPathVO;
+import com.nexora.vo.NodeQuizSubmitResultVO;
+import com.nexora.vo.NodeQuizVO;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,6 +72,18 @@ public class LearningPathController extends ABaseController {
     public ResponseVO<Void> historyDel(@RequestParam String recordId) {
         studentLearningPathService.deleteHistory(currentUserId(), recordId);
         return getSuccessResponseVO(null);
+    }
+
+    /** 节点快测出题（节点自己出题自测，不依赖课程题库） */
+    @GetMapping("/genNodeQuiz")
+    public ResponseVO<NodeQuizVO> genNodeQuiz(@RequestParam String itemId) {
+        return getSuccessResponseVO(studentLearningPathService.genNodeQuiz(currentUserId(), itemId));
+    }
+
+    /** 节点快测提交判分（服务端权威判分 → 掌握度回写 → 节点解锁联动） */
+    @PostMapping("/submitNodeQuiz")
+    public ResponseVO<NodeQuizSubmitResultVO> submitNodeQuiz(@RequestBody NodeQuizSubmitDTO dto) {
+        return getSuccessResponseVO(studentLearningPathService.submitNodeQuiz(currentUserId(), dto));
     }
 
     private String currentUserId() {
