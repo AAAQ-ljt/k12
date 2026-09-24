@@ -1,6 +1,10 @@
 package com.nexora.admin.controller;
 
+import com.nexora.admin.biz.AiOrganizeTaskBiz;
 import com.nexora.admin.biz.KnowledgeBaseBiz;
+import com.nexora.admin.biz.KnowledgeImportTaskBiz;
+import com.nexora.admin.dto.AiOrganizeTaskVO;
+import com.nexora.admin.dto.KnowledgeImportTaskVO;
 import com.nexora.admin.dto.KnowledgeSearchTestRequest;
 import com.nexora.admin.dto.ResourceKnowledgeImportRequest;
 import com.nexora.admin.vo.KnowledgeAIDocVO;
@@ -36,6 +40,33 @@ public class KnowledgeBaseController extends ABaseController {
 
     @Resource
     private KnowledgeBaseBiz knowledgeBaseBiz;
+
+    @Resource
+    private KnowledgeImportTaskBiz knowledgeImportTaskBiz;
+
+    @Resource
+    private AiOrganizeTaskBiz aiOrganizeTaskBiz;
+
+    /** 解析入库任务状态查询（前端轮询：PENDING/EXTRACTING/VECTORIZING/COMPLETED/FAILED + 进度） */
+    @GetMapping("/importTask")
+    public ResponseVO<KnowledgeImportTaskVO> importTask(@RequestParam String taskId) {
+        return getSuccessResponseVO(knowledgeImportTaskBiz.get(taskId));
+    }
+
+    /**
+     * 提交 AI 文档整理任务（异步任务状态机，前端轮询 /aiOrganizeTask 获取进度）；
+     * 运行中同一资源重复提交直接返回进行中任务，防止重复发起大模型整理
+     */
+    @PostMapping("/aiOrganizeTask")
+    public ResponseVO<AiOrganizeTaskVO> aiOrganizeTask(@RequestParam String resourceId) {
+        return getSuccessResponseVO(aiOrganizeTaskBiz.submit(resourceId));
+    }
+
+    /** AI 文档整理任务状态查询（前端轮询：PENDING/ORGANIZING/COMPLETED/FAILED；完成带整理稿） */
+    @GetMapping("/aiOrganizeTask")
+    public ResponseVO<AiOrganizeTaskVO> aiOrganizeTaskStatus(@RequestParam String taskId) {
+        return getSuccessResponseVO(aiOrganizeTaskBiz.get(taskId));
+    }
 
     @GetMapping("/overview")
     public ResponseVO<KnowledgeOverviewVO> overview() {

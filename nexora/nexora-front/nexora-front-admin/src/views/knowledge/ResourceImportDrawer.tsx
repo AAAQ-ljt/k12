@@ -28,8 +28,10 @@ import {
   type ResourceInfoQuery,
 } from '@/api/resource';
 import {
+  getImportTask,
   loadDocList,
   resourceImport,
+  type KnowledgeImportTask,
   type ResourceKnowledgeImportResult,
 } from '@/api/knowledge';
 
@@ -165,12 +167,41 @@ export default function ResourceImportDrawer({
   };
 
   useEffect(() => {
-    if (!importResult || importResult.vectorStatus !== 1 || !importResult.docId) {
+    if (!importResult || importResult.vectorStatus !== 1) {
       return;
     }
     let cancelled = false;
+    // 任务化存储：优先轮询解析入库任务（阶段/进度），无 taskId（旧链路）回退文档状态轮询
     const timer = window.setInterval(async () => {
       try {
+        if (importResult.taskId) {
+          const task: KnowledgeImportTask = await getImportTask(importResult.taskId!);
+          if (task.status === 'COMPLETED' || task.status === 'FAILED') {
+            if (!cancelled) {
+              window.clearInterval(timer);
+            }
+            setImportResult((prev) => (prev ? {
+              ...prev,
+              vectorStatus: task.status === 'COMPLETED' ? 2 : 3,
+              message: task.message || (task.status === 'COMPLETED' ? '解析入库完成' : '解析失败'),
+            } : prev));
+            if (task.status === 'COMPLETED') {
+              message.success('后台解析完成，已入库');
+            }
+            if (task.status === 'FAILED') {
+              message.error(task.message || '解析失败');
+            }
+            onSuccess();
+            return;
+          }
+          setImportResult((prev) => (prev ? {
+            ...prev,
+            taskStatus: task.status,
+            progress: task.progress,
+            message: task.message,
+          } : prev));
+          return;
+        }
         const page = await loadDocList({
           docId: importResult.docId,
           pageNo: 1,
@@ -460,14 +491,14 @@ export default function ResourceImportDrawer({
                   style={{ marginTop: 12 }}
                   message={
                     importResult.vectorStatus === 1
-                      ? '解析任务处理中'
+                      ? (importResult.message || '解析任务处理中')
                       : importResult.vectorStatus === 2
                         ? `已入库：${importResult.title}`
                         : `解析失败：${importResult.title}`
                   }
                   description={
                     importResult.vectorStatus === 1
-                      ? '已提交到后台队列，处理完成后会自动更新入库状态'
+                      ? `进度 ${importResult.progress ?? 0}% · ${importResult.taskStatus || 'PENDING'}（后台处理中，完成自动更新状态）`
                       : `分块 ${importResult.chunkCount}${
                           importResult.warnings.length > 0
                             ? `；提示：${importResult.warnings.join('；')}`

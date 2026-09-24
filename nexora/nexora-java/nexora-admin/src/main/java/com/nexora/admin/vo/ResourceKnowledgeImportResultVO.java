@@ -20,6 +20,14 @@ public class ResourceKnowledgeImportResultVO {
     private Integer vectorStatus;
     private List<String> warnings = new ArrayList<>();
     private Boolean async;
+    /** 解析入库任务ID（异步任务状态机轮询用） */
+    private String taskId;
+    /** 任务状态：PENDING / EXTRACTING / VECTORIZING / COMPLETED / FAILED */
+    private String taskStatus;
+    /** 任务进度 0-100 */
+    private Integer progress;
+    /** 任务阶段说明 / 失败信息 */
+    private String message;
 
     public String getDocId() {
         return docId;
@@ -115,5 +123,37 @@ public class ResourceKnowledgeImportResultVO {
 
     public void setAsync(Boolean async) {
         this.async = async;
+    }
+
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
+    }
+
+    public String getTaskStatus() {
+        return taskStatus;
+    }
+
+    public void setTaskStatus(String taskStatus) {
+        this.taskStatus = taskStatus;
+    }
+
+    public Integer getProgress() {
+        return progress;
+    }
+
+    public void setProgress(Integer progress) {
+        this.progress = progress;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

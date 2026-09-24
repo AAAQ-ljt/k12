@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   App,
   Button,
+  Drawer,
   Form,
   Input,
   Popconfirm,
@@ -13,13 +14,16 @@ import {
   type TreeDataNode,
   type TreeProps,
 } from 'antd';
-import { FileText, FileUp, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, FileText, FileUp, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import BaseFormModal from '@/components/BaseFormModal';
 import SearchForm from '@/components/SearchForm';
+import MathMarkdown from '@/components/MathMarkdown';
+import DocumentPreviewModal from '@/views/resource/DocumentPreviewModal';
 import StageTag from '@/components/StageTag';
 import styles from '@/assets/styles/utilities.module.scss';
 import ResourceImportDrawer from './ResourceImportDrawer';
+import type { ResourceInfo } from '@/api/resource';
 import {
   DIFFICULTY_OPTIONS,
   STAGE_OPTIONS,
@@ -103,6 +107,18 @@ export default function KnowledgeCatalog() {
   useEffect(() => {
     fetchDocs();
   }, [fetchDocs]);
+
+  /** 解析入库实时轮询：列表存在处理中文档时每 2 秒刷新一次，直到全部终态（成功/失败） */
+  const hasProcessingDoc = docs.some((doc) => doc.vectorStatus === 1);
+  useEffect(() => {
+    if (!hasProcessingDoc) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void fetchDocs();
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [hasProcessingDoc, fetchDocs]);
 
   const selectedNode = useMemo(() => {
     if (!selectedKey) {
@@ -340,8 +356,13 @@ export default function KnowledgeCatalog() {
           <Button type="link" size="small" onClick={() => setDocModal({ open: true, mode: 'edit', initialValues: record })}>
             编辑
           </Button>
-          <Button type="link" size="small" onClick={() => handleVectorize(record.docId)}>
-            {record.vectorStatus === 2 ? '重新入库' : '入库'}
+          <Button
+            type="link"
+            size="small"
+            disabled={record.vectorStatus === 1}
+            onClick={() => handleVectorize(record.docId)}
+          >
+            {record.vectorStatus === 1 ? '解析中…' : record.vectorStatus === 2 ? '重新入库' : '入库'}
           </Button>
           <Popconfirm title="确认删除该文档？" onConfirm={() => handleDeleteDoc(record.docId)}>
             <Button type="link" size="small" danger>
@@ -519,6 +540,19 @@ interface DocFormModalProps {
 function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModalProps) {
   const { message } = App.useApp();
   const isCreate = state.mode === 'create';
+  const isView = state.mode === 'view';
+  const [form] = Form.useForm();
+  /** 源文件在线预览（资料解析来源的文档带 sourceResourceId） */
+  const [previewResource, setPreviewResource] = useState<ResourceInfo | null>(null);
+
+  const record = state.initialValues ?? {};
+  // 正文/链接展示值：编辑态取表单实时值（左输入右实时渲染）；查看态 content 字段未渲染、useWatch 读不到，
+  // 必须回退到记录原始值，否则正文会被误判为空 / 无法渲染 Markdown
+  const content = isView ? record.content : Form.useWatch('content', form);
+  const sourceUrl = isView ? record.sourceUrl : Form.useWatch('sourceUrl', form);
+  const hasContent = !!content && !!String(content).trim();
+  const hasSourceUrl = !!sourceUrl && !!String(sourceUrl).trim();
+  const sourceResourceId = record.sourceResourceId;
 
   const handleSubmit = async (values: Record<string, any>) => {
     if (!values.content?.trim() && !values.sourceUrl?.trim()) {
@@ -534,47 +568,134 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
     }
   };
 
+  /** 预览源文件：仅需 resourceId 与名称即可拼出下载/预览地址 */
+  const openSourcePreview = () => {
+    if (!sourceResourceId) {
+      return;
+    }
+    setPreviewResource({
+      resourceId: sourceResourceId,
+      resourceName: record.title || '源文件预览',
+    } as ResourceInfo);
+  };
+
   return (
-    <BaseFormModal
+    <Drawer
       open={state.open}
-      title={isCreate ? '文档录入' : state.mode === 'edit' ? '编辑文档' : '查看文档'}
-      mode={state.mode}
-      initialValues={state.initialValues}
-      onCancel={onCancel}
-      onSuccess={onSuccess}
-      onSubmit={handleSubmit}
+      title={isCreate ? '文档录入' : isView ? '查看文档' : '编辑文档'}
+      width={920}
+      onClose={onCancel}
+      footer={
+        !isView ? (
+          <Space>
+            <Button onClick={onCancel}>取消</Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                form.validateFields().then(handleSubmit).then(onSuccess).catch(() => undefined);
+              }}
+            >
+              保存
+            </Button>
+          </Space>
+        ) : null
+      }
     >
-      <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
-        <Input placeholder="请输入标题" maxLength={200} />
-      </Form.Item>
-      <Form.Item name="stage" label="学段" rules={[{ required: true, message: '请选择学段' }]}>
-        <Select placeholder="请选择学段" options={STAGE_OPTIONS} />
-      </Form.Item>
-      <Form.Item name="knowledgePointId" label="知识点" rules={[{ required: true, message: '请选择知识点' }]}>
-        <Select placeholder="请选择知识点" showSearch optionFilterProp="label" options={pointOptions} />
-      </Form.Item>
-      <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
-        <Select placeholder="请选择难度" options={DIFFICULTY_OPTIONS} />
-      </Form.Item>
-      <Form.Item
-        name="sourceUrl"
-        label="资料链接"
-        rules={[{ type: 'url', message: '请输入正确的链接' }]}
+      <Form
+        form={form}
+        layout="vertical"
+        disabled={isView}
+        initialValues={state.initialValues}
       >
-        <Input placeholder="https://...（超链接文档可只填链接）" maxLength={500} />
-      </Form.Item>
-      <Form.Item name="content" label="正文">
-        <Input.TextArea rows={12} placeholder="支持 Markdown" />
-      </Form.Item>
-      <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
-        <Select
-          options={[
-            { label: '上架', value: 1 },
-            { label: '下架', value: 0 },
-          ]}
-        />
-      </Form.Item>
-    </BaseFormModal>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '0 16px',
+          }}
+        >
+          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+            <Input placeholder="请输入标题" maxLength={200} />
+          </Form.Item>
+          <Form.Item name="stage" label="学段" rules={[{ required: true, message: '请选择学段' }]}>
+            <Select placeholder="请选择学段" options={STAGE_OPTIONS} />
+          </Form.Item>
+          <Form.Item name="knowledgePointId" label="知识点" rules={[{ required: true, message: '请选择知识点' }]}>
+            <Select placeholder="请选择知识点" showSearch optionFilterProp="label" options={pointOptions} />
+          </Form.Item>
+          <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
+            <Select placeholder={isView ? '-' : '请选择难度'} options={DIFFICULTY_OPTIONS} />
+          </Form.Item>
+          <Form.Item
+            name="sourceUrl"
+            label="资料链接"
+            rules={[{ type: 'url', message: '请输入正确的链接' }]}
+          >
+            <Input placeholder="https://...（超链接文档可只填链接）" maxLength={500} />
+          </Form.Item>
+          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+            <Select
+              options={[
+                { label: '上架', value: 1 },
+                { label: '下架', value: 0 },
+              ]}
+            />
+          </Form.Item>
+        </div>
+
+        {!isView ? (
+          <Form.Item name="content" label="正文（编辑左侧输入，右侧实时渲染）" className="doc-content-item">
+            <Input.TextArea rows={22} style={{ fontFamily: 'monospace' }} placeholder="支持 Markdown、GFM 表格与 $...$ 公式" />
+          </Form.Item>
+        ) : null}
+      </Form>
+      <div
+        style={{
+          border: '1px solid rgba(0,0,0,0.08)',
+          borderRadius: 8,
+          padding: '4px 16px',
+          minHeight: 420,
+          maxHeight: 560,
+          overflow: 'auto',
+          background: '#fafafa',
+        }}
+      >
+        {hasContent ? (
+          <MathMarkdown>{content}</MathMarkdown>
+        ) : (
+          <div style={{ color: '#666', padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontWeight: 600 }}>该文档暂无正文内容</div>
+            {hasSourceUrl ? (
+              <div>
+                本文档为资料链接型文档，正文未填写。
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
+                  打开资料链接 <ExternalLink size={12} />
+                </a>
+              </div>
+            ) : null}
+            {sourceResourceId ? (
+              <div>
+                <Button size="small" onClick={openSourcePreview}>预览源文件</Button>
+                <span style={{ fontSize: 12, marginLeft: 8 }}>
+                  可直接查看导入前的原始文档（PDF / Word / PPT 等）
+                </span>
+              </div>
+            ) : null}
+            <div style={{ fontSize: 12, color: '#999' }}>
+              {isView
+                ? '如需展示正文：资料解析来源可「重新入库」提取文本（扫描版 PDF 可能提取不到文字，建议改用「AI 文档整理」补充或手动编辑正文）；纯链接文档只提供资料链接。'
+                : '保存后可按「入库」解析提取文本，或在此手动填写正文。'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <DocumentPreviewModal
+        open={!!previewResource}
+        resource={previewResource}
+        onClose={() => setPreviewResource(null)}
+      />
+    </Drawer>
   );
 }
 

@@ -124,6 +124,29 @@ export interface ResourceKnowledgeImportResult {
   vectorStatus: number;
   warnings: string[];
   async?: boolean;
+  /** 解析入库任务 ID（任务状态机轮询用） */
+  taskId?: string;
+  /** 任务状态：PENDING / EXTRACTING / VECTORIZING / COMPLETED / FAILED */
+  taskStatus?: string;
+  /** 任务进度 0-100 */
+  progress?: number;
+  /** 任务阶段说明 / 失败信息 */
+  message?: string;
+}
+
+/** 知识库解析入库异步任务 */
+export interface KnowledgeImportTask {
+  taskId: string;
+  docId: string;
+  resourceId?: string;
+  sourceType?: number;
+  /** PENDING / EXTRACTING / VECTORIZING / COMPLETED / FAILED */
+  status: string;
+  message?: string;
+  /** 进度 0-100 */
+  progress?: number;
+  createTime?: string;
+  updateTime?: string;
 }
 
 /** AI 文档整理结果 */
@@ -179,6 +202,11 @@ export function resourceImport(data: ResourceKnowledgeImportParams): Promise<Res
   return request.post('/knowledgeBase/resourceImport', data);
 }
 
+/** 查询知识库解析入库任务状态（前端轮询） */
+export function getImportTask(taskId: string): Promise<KnowledgeImportTask> {
+  return request.get('/knowledgeBase/importTask', { params: { taskId } });
+}
+
 export function vectorize(docId: string): Promise<void> {
   return request.post('/knowledgeBase/vectorize', null, { params: { docId } });
 }
@@ -190,4 +218,31 @@ export function searchTest(params: KnowledgeSearchTestParams): Promise<Knowledge
 export function aiOrganize(resourceId: string): Promise<KnowledgeAIDocVO> {
   // AI 整理为同步调用,大文档可能耗时较长
   return request.post('/knowledgeBase/aiOrganize', null, { params: { resourceId }, timeout: 300000 });
+}
+
+/** AI 文档整理异步任务（Redis 状态机：PENDING → ORGANIZING → COMPLETED/FAILED，前端轮询） */
+export interface AiOrganizeTask {
+  taskId: string;
+  resourceId: string;
+  resourceName?: string;
+  stage?: string;
+  /** PENDING / ORGANIZING / COMPLETED / FAILED */
+  status: string;
+  message?: string;
+  /** 完成后的整理稿 Markdown */
+  organizedMd?: string;
+  /** 完成后的原始提取文本（对照参考） */
+  originalText?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 提交 AI 文档整理任务：立即返回 taskId，前端轮询 /aiOrganizeTask 获取进度；切页按 taskId 恢复不丢状态 */
+export function submitAiOrganize(resourceId: string): Promise<AiOrganizeTask> {
+  return request.post('/knowledgeBase/aiOrganizeTask', null, { params: { resourceId } });
+}
+
+/** 查询 AI 文档整理任务状态（前端轮询 / 切页恢复） */
+export function getAiOrganizeTask(taskId: string): Promise<AiOrganizeTask> {
+  return request.get('/knowledgeBase/aiOrganizeTask', { params: { taskId } });
 }

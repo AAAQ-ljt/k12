@@ -15,9 +15,11 @@ import {
   type ResourceInfoQuery,
 } from '@/api/resource';
 import {
-  aiOrganize,
+  getAiOrganizeTask,
   loadTree,
   resourceImport,
+  submitAiOrganize,
+  type AiOrganizeTask,
   type KnowledgeAIDocVO,
   type KnowledgeTreeNode,
 } from '@/api/knowledge';
@@ -28,6 +30,53 @@ function formatBytes(bytes?: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** 会话快照：切页不丢状态（资源选择 / 整理任务 / 整理稿 / 编辑内容） */
+const SESSION_KEY = 'AIDOC_ARRANGE_SESSION';
+
+interface ArrangeSession {
+  resource: ResourceInfo | null;
+  task: AiOrganizeTask | null;
+  aiDoc: KnowledgeAIDocVO | null;
+  editedText: string;
+}
+
+function loadSession(): ArrangeSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as ArrangeSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(patch: Partial<ArrangeSession>) {
+  try {
+    const current = loadSession() ?? { resource: null, task: null, aiDoc: null, editedText: '' };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...current, ...patch }));
+  } catch {
+    // 存储失败不影响使用
+  }
+}
+
+function clearSession() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // 忽略
+  }
+}
+
+/** 由任务结果组装整理文档 VO（与旧同步接口返回结构一致） */
+function toAIDoc(task: AiOrganizeTask): KnowledgeAIDocVO {
+  return {
+    resourceId: task.resourceId,
+    resourceName: task.resourceName,
+    stage: task.stage,
+    originalText: task.originalText,
+    organizedMd: task.organizedMd,
+  };
 }
 
 interface ConfirmForm {
@@ -47,11 +96,14 @@ export default function AIDocArrange() {
   const [typeDraft, setTypeDraft] = useState<string>();
   const [tree, setTree] = useState<KnowledgeTreeNode[]>([]);
   const [selected, setSelected] = useState<ResourceInfo | null>(null);
-  const [organizing, setOrganizing] = useState(false);
+  const [task, setTask] = useState<AiOrganizeTask | null>(null);
   const [aiDoc, setAiDoc] = useState<KnowledgeAIDocVO | null>(null);
   const [organized, setOrganized] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  /** AI 整理运行中：任务未到终态（PENDING / ORGANIZING），期间按钮禁用防重复 */
+  const busy = !!task && (task.status === 'PENDING' || task.status === 'ORGANIZING');
 
   const loadResources = useCallback(async () => {
     setLoading(true);
@@ -77,6 +129,68 @@ export default function AIDocArrange() {
     void loadResources();
     void loadPointTree();
   }, [loadResources, loadPointTree]);
+
+  /** 切页回到本页：从会话快照恢复资源选择 / 整理任务 / 整理稿与编辑内容 */
+  useEffect(() => {
+    const saved = loadSession();
+    if (!saved) {
+      return;
+    }
+    if (saved.resource) {
+      setSelected(saved.resource);
+    }
+    if (saved.task && (saved.task.status === 'COMPLETED' || saved.task.status === 'FAILED')) {
+      // 任务已到终态：直接恢复结果（编辑稿优先）
+      if (saved.task.status === 'COMPLETED') {
+        const doc = saved.aiDoc ?? toAIDoc(saved.task);
+        setAiDoc(doc);
+        setOrganized(saved.editedText || doc.organizedMd || '');
+      } else {
+        setTask(saved.task);
+        message.warning(saved.task.message || '上次 AI 整理失败，请重新整理');
+      }
+    } else if (saved.task) {
+      // 任务仍在运行：恢复任务态，交由轮询 effect 继续推进
+      setTask(saved.task);
+      if (saved.aiDoc) {
+        setAiDoc(saved.aiDoc);
+        setOrganized(saved.editedText || saved.aiDoc.organizedMd || '');
+      }
+    } else if (saved.aiDoc) {
+      setAiDoc(saved.aiDoc);
+      setOrganized(saved.editedText || saved.aiDoc.organizedMd || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** 轮询整理任务：未到终态每 2 秒推进；COMPLETED 落整理稿；FAILED 提示 */
+  useEffect(() => {
+    if (!task || task.status === 'COMPLETED' || task.status === 'FAILED') {
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const snapshot = await getAiOrganizeTask(task.taskId);
+        setTask(snapshot);
+        saveSession({ task: snapshot });
+        if (snapshot.status === 'COMPLETED') {
+          const doc = toAIDoc(snapshot);
+          setAiDoc(doc);
+          setOrganized((prev) => prev || doc.organizedMd || '');
+          saveSession({ aiDoc: doc });
+          message.success('AI 整理完成，可编辑后确认入库');
+        } else if (snapshot.status === 'FAILED') {
+          message.error(snapshot.message || 'AI 整理失败，请重试');
+        }
+      } catch {
+        // 任务查询失败（如已过期）：结束轮询并提示
+        setTask(null);
+        saveSession({ task: null });
+        message.warning('整理任务状态查询失败，请重新整理');
+      }
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [task, message]);
 
   const pointOptions = useMemo(() => {
     const options: { label: string; value: string }[] = [];
@@ -113,23 +227,44 @@ export default function AIDocArrange() {
     setSelected(record);
     setAiDoc(null);
     setOrganized('');
+    setTask(null);
+    // 切换资源 = 开启新会话
+    saveSession({ resource: record, task: null, aiDoc: null, editedText: '' });
   };
 
+  /** 发起 AI 整理：提交异步任务 → 轮询任务状态（busy 期间按钮禁用防重复） */
   const handleOrganize = async () => {
-    if (!selected) {
+    if (!selected || busy) {
       return;
     }
-    setOrganizing(true);
+    setAiDoc(null);
+    setOrganized('');
+    setTask(null);
     try {
-      const result = await aiOrganize(selected.resourceId);
-      setAiDoc(result);
-      setOrganized(result.organizedMd || '');
-      message.success('AI 整理完成，可编辑后确认入库');
+      const submitted = await submitAiOrganize(selected.resourceId);
+      setTask(submitted);
+      saveSession({ resource: selected, task: submitted, aiDoc: null, editedText: '' });
+      // 极少数情况提交即终态（如兜底运行锁已释放但任务已结束），直接落结果
+      if (submitted.status === 'COMPLETED') {
+        const doc = toAIDoc(submitted);
+        setAiDoc(doc);
+        setOrganized(doc.organizedMd || '');
+        saveSession({ aiDoc: doc, editedText: doc.organizedMd || '' });
+        message.success('AI 整理完成，可编辑后确认入库');
+      } else if (submitted.status === 'FAILED') {
+        setTask(null);
+        message.error(submitted.message || 'AI 整理失败，请重试');
+      }
     } catch {
-      // 错误已由请求拦截器统一提示
-    } finally {
-      setOrganizing(false);
+      setTask(null);
+      saveSession({ task: null });
     }
+  };
+
+  /** 编辑整理稿：实时落会话快照，切页不丢 */
+  const handleOrganizedChange = (value: string) => {
+    setOrganized(value);
+    saveSession({ editedText: value });
   };
 
   const openConfirm = () => {
@@ -169,6 +304,8 @@ export default function AIDocArrange() {
         setConfirmOpen(false);
         setAiDoc(null);
         setOrganized('');
+        setTask(null);
+        clearSession();
         if (result.vectorStatus === 1 || result.async) {
           message.success('已提交向量化任务，正在后台处理');
         } else {
@@ -216,7 +353,7 @@ export default function AIDocArrange() {
           <span>AI 文档整理</span>
         </div>
         <div className={styles.pageDesc}>
-          选择官方资源 → AI 提取整理为结构化 Markdown（可编辑）→ 确认后带知识点向量化入库，官方知识库检索与回答质量更高。
+          选择官方资源 → AI 提取整理为结构化 Markdown（可编辑）→ 确认后带知识点向量化入库；任务异步执行，切页按任务恢复进度不丢状态。
         </div>
       </div>
 
@@ -266,6 +403,12 @@ export default function AIDocArrange() {
         <section className={styles.workPanel}>
           {!selected ? (
             <Empty description="请先在左侧选择要整理的官方资源" />
+          ) : busy ? (
+            <div className={styles.stepBlock}>
+              <Tag color="processing">{task?.status === 'ORGANIZING' ? 'AI 整理中' : '任务排队中'}</Tag>
+              <div className={styles.tip}>{task?.message || 'AI 正在提取文本并整理为结构化 Markdown，大文档可能耗时较长...'}</div>
+              <div className={styles.tip}>切到其它页面也没关系，回来会自动继续显示进度与结果。</div>
+            </div>
           ) : !aiDoc ? (
             <div className={styles.stepBlock}>
               <Descriptions
@@ -280,7 +423,7 @@ export default function AIDocArrange() {
                   { key: 'desc', label: '简介', span: 2, children: selected.description || '-' },
                 ]}
               />
-              <Button type="primary" icon={<Sparkles size={15} />} loading={organizing} onClick={() => void handleOrganize()}>
+              <Button type="primary" icon={<Sparkles size={15} />} onClick={() => void handleOrganize()}>
                 AI 整理
               </Button>
               <div className={styles.tip}>AI 将提取文档文本并整理为标题层级 + 摘要 + 要点的结构化 Markdown；超长文档自动分段。</div>
@@ -297,7 +440,7 @@ export default function AIDocArrange() {
                 <Input.TextArea
                   className={styles.organized}
                   value={organized}
-                  onChange={(event) => setOrganized(event.target.value)}
+                  onChange={(event) => handleOrganizedChange(event.target.value)}
                   autoSize={{ minRows: 14, maxRows: 30 }}
                   placeholder="AI 整理的 Markdown，可在此编辑..."
                 />
@@ -305,7 +448,7 @@ export default function AIDocArrange() {
               <div className={styles.colFooter}>
                 <span className={styles.count}>{organized.length} 字</span>
                 <Space>
-                  <Button onClick={() => void handleOrganize()} loading={organizing}>
+                  <Button onClick={() => void handleOrganize()} loading={busy}>
                     重新整理
                   </Button>
                   <Button type="primary" icon={<UploadCloud size={15} />} onClick={openConfirm}>

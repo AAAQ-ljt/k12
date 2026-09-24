@@ -1,5 +1,6 @@
 package com.nexora.admin.biz;
 
+import com.nexora.admin.dto.KnowledgeImportTaskVO;
 import com.nexora.admin.dto.KnowledgeSearchTestRequest;
 import com.nexora.admin.dto.ResourceKnowledgeImportRequest;
 import com.nexora.admin.vo.KnowledgeAIDocVO;
@@ -11,7 +12,6 @@ import com.nexora.admin.vo.KnowledgeTreeNodeVO;
 import com.nexora.component.SystemConfigComponent;
 import com.nexora.component.AiStructureComponent;
 import com.nexora.component.KnowledgeVectorComponent;
-import com.nexora.component.RedisComponent;
 import com.nexora.component.ResourceKnowledgeParser;
 import com.nexora.constants.Constants;
 import com.nexora.entity.po.KnowledgeDoc;
@@ -88,7 +88,7 @@ public class KnowledgeBaseBiz {
     private AiStructureComponent aiStructureComponent;
 
     @Resource
-    private RedisComponent redisComponent;
+    private KnowledgeImportTaskBiz knowledgeImportTaskBiz;
 
     @Value("${project.folder}")
     private String projectFolder;
@@ -326,7 +326,8 @@ public class KnowledgeBaseBiz {
             knowledgeDocService.add(bean);
         }
 
-        redisComponent.leftPush(Constants.REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE, docId);
+        // 走解析入库任务状态机（docId 运行锁防重复），不再直接投递旧队列
+        KnowledgeImportTaskVO task = knowledgeImportTaskBiz.submit(docId, resource.getResourceId(), sourceType);
         ResourceKnowledgeImportResultVO result = new ResourceKnowledgeImportResultVO();
         result.setDocId(docId);
         result.setTitle(title);
@@ -339,13 +340,26 @@ public class KnowledgeBaseBiz {
         result.setChunkCount(0);
         result.setVectorStatus(1);
         result.setAsync(true);
+        result.setTaskId(task.getTaskId());
+        result.setTaskStatus(task.getStatus());
+        result.setProgress(task.getProgress() == null ? 0 : task.getProgress());
+        result.setMessage(task.getMessage());
         return result;
     }
 
     /**
-     * 官方资源 AI 文档整理：提取文本 → AI 整理为结构化 Markdown，返回供管理员编辑确认后走 resourceImport 入库
+     * 官方资源 AI 文档整理（保留同步接口，供旧调用方/单次直用）：
+     * 提取文本 → AI 整理为结构化 Markdown，返回供管理员编辑确认后走 resourceImport 入库
      */
     public KnowledgeAIDocVO aiOrganize(String resourceId) {
+        return aiOrganizeCore(resourceId);
+    }
+
+    /**
+     * AI 文档整理执行核心（异步任务消费者调用，同步接口 aiOrganize 复用）：
+     * 解析逻辑保持不变（ResourceKnowledgeParser 文本提取 + AiStructureComponent 结构化）
+     */
+    public KnowledgeAIDocVO aiOrganizeCore(String resourceId) {
         if (StringTools.isEmpty(resourceId)) {
             throw new BusinessException("请选择要整理的资源");
         }
@@ -388,7 +402,41 @@ public class KnowledgeBaseBiz {
         update.setVectorError(null);
         update.setUpdateTime(new Date());
         knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
-        redisComponent.leftPush(Constants.REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE, docId);
+        // 走解析入库任务状态机（docId 运行锁防重复），不再直接投递旧队列
+        knowledgeImportTaskBiz.submit(docId, doc.getSourceResourceId(),
+                doc.getSourceType() == null ? 0 : doc.getSourceType());
+    }
+
+    /**
+     * 提取并回填文档正文（解析入库任务 EXTRACTING 阶段调用）：
+     * 仅资源解析来源(sourceType=1)且正文为空时解析资源并写入 content，解析算法与原有链路一致（零改动）。
+     *
+     * @return 解析过程中的提示（如 PDF 扫描页提取不到文字等）
+     */
+    public List<String> extractParsedContent(String docId) {
+        List<String> warnings = new ArrayList<>();
+        if (StringTools.isEmpty(docId)) {
+            return warnings;
+        }
+        KnowledgeDoc doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
+        if (doc == null
+                || doc.getSourceType() == null || doc.getSourceType() != 1
+                || !StringTools.isEmpty(doc.getContent())) {
+            return warnings;
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(doc.getSourceResourceId());
+        if (resource == null) {
+            return warnings;
+        }
+        ResourceKnowledgeParser.ParseResult parsed = resourceKnowledgeParser.parse(resource);
+        if (parsed != null) {
+            warnings.addAll(parsed.getWarnings());
+            KnowledgeDoc update = new KnowledgeDoc();
+            update.setContent(parsed.getText());
+            update.setUpdateTime(new Date());
+            knowledgeDocService.updateKnowledgeDocByDocId(update, docId);
+        }
+        return warnings;
     }
 
     public void processKnowledgeImport(String docId) {
