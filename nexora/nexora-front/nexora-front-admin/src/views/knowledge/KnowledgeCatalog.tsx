@@ -547,9 +547,12 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
 
   const record = state.initialValues ?? {};
   // 正文/链接展示值：编辑态取表单实时值（左输入右实时渲染）；查看态 content 字段未渲染、useWatch 读不到，
-  // 必须回退到记录原始值，否则正文会被误判为空 / 无法渲染 Markdown
-  const content = isView ? record.content : Form.useWatch('content', form);
-  const sourceUrl = isView ? record.sourceUrl : Form.useWatch('sourceUrl', form);
+  // 必须回退到记录原始值。注意：Form.useWatch 是 Hook，必须无条件调用，否则模式切换时触发
+  // 「Rendered fewer hooks than expected」崩溃，因此先取 watch 值再按模式选择数据源。
+  const watchedContent = Form.useWatch('content', form);
+  const watchedSourceUrl = Form.useWatch('sourceUrl', form);
+  const content = isView ? record.content : watchedContent;
+  const sourceUrl = isView ? record.sourceUrl : watchedSourceUrl;
   const hasContent = !!content && !!String(content).trim();
   const hasSourceUrl = !!sourceUrl && !!String(sourceUrl).trim();
   const sourceResourceId = record.sourceResourceId;

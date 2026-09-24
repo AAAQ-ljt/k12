@@ -1,8 +1,8 @@
 /* 我的页面 */
 .profileWrapper {
-  max-width: 1160px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -17,10 +17,10 @@
   color: var(--text-tertiary);
 }
 
-/* 左右双栏：左栏固定 300px，右栏自适应；窄屏收单列 */
+/* 左右双栏：左栏固定 340px，右栏自适应；窄屏收单列 */
 .profileCols {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 340px 1fr;
   gap: 16px;
   align-items: start;
 }
@@ -244,19 +244,74 @@
   color: var(--text-primary);
 }
 
-/* 今日待办 */
-.dueList {
+/* 今日待办：多列网格紧凑卡片，默认折叠前 8 条防溢出 */
+.dueWrap {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.dueItem {
-  width: fit-content;
+.dueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.dueCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--warm-bg-dark, #eee);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.dueCard:hover {
+  border-color: var(--brand-primary, #7c5cf0);
+}
+
+.dueCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dueFlame {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.dueName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.dueArrow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  color: var(--text-tertiary, #999);
+}
+
+.dueToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
 }
 
 .dueTip {
-  margin-top: 8px;
+  margin-top: 2px;
   font-size: 12px;
   color: var(--text-tertiary, #999);
 }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { App, Avatar, Button, Card, Progress, Select, Space, Spin, Tag } from 'antd';
+import { App, Avatar, Button, Card, Progress, Select, Space, Spin, Tag, Tooltip } from 'antd';
 import {
   BookImage, Compass, FolderOpen, GraduationCap, PenLine, PlaySquare, Route, Sparkles, LogOut,
-  CalendarCheck, Flame, Target,
+  CalendarCheck, ChevronDown, ChevronRight, ChevronUp, Flame, Target,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -27,6 +27,10 @@ import styles from './index.module.scss';
  * 数据复用现有接口 + knowledgeMastery/loadMyTrend、locateReview、courseInfo/loadMyCourseProgress，
  * 任一失败不影响整页。
  */
+
+/** 今日待办默认展示条数：超出折叠为「展开全部」，避免待办多时右栏溢出难看 */
+const DUE_PREVIEW_COUNT = 8;
+
 export default function Profile() {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -43,7 +47,9 @@ export default function Profile() {
   const [wikiCount, setWikiCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [locating, setLocating] = useState(false);
+  const [locatingId, setLocatingId] = useState<string | null>(null);
+  /** 今日待办是否展开全部（默认折叠展示前 DUE_PREVIEW_COUNT 条） */
+  const [dueExpanded, setDueExpanded] = useState(false);
 
   const stage = userInfo?.stage;
   const stageLabel = stage ? getStageOption(stage)?.label : '';
@@ -117,10 +123,10 @@ export default function Profile() {
 
   /** 待复习知识点：命中学习路径节点 → 跳路线做节点快测；未命中 → AI 助教对话复习 */
   const handleReviewPoint = async (point: { knowledgePointId: string; knowledgePointName: string }) => {
-    if (locating) {
+    if (locatingId) {
       return;
     }
-    setLocating(true);
+    setLocatingId(point.knowledgePointId);
     try {
       const locate: ReviewLocate = await locateReviewPoint(point.knowledgePointId);
       if (locate.located && locate.pathId) {
@@ -134,7 +140,7 @@ export default function Profile() {
     } catch {
       // 错误已统一提示
     } finally {
-      setLocating(false);
+      setLocatingId(null);
     }
   };
 
@@ -286,18 +292,36 @@ export default function Profile() {
               <span>今日待办 · 待复习知识点</span>
             </div>
             {overview && overview.dueItems.length > 0 ? (
-              <div className={styles.dueList}>
-                {overview.dueItems.map((item) => (
+              <div className={styles.dueWrap}>
+                <div className={styles.dueGrid}>
+                  {(dueExpanded ? overview.dueItems : overview.dueItems.slice(0, DUE_PREVIEW_COUNT)).map((item) => (
+                    <Tooltip key={item.knowledgePointId} title={item.knowledgePointName}>
+                      <button
+                        type="button"
+                        className={styles.dueCard}
+                        disabled={locatingId !== null}
+                        onClick={() => void handleReviewPoint(item)}
+                      >
+                        <Flame size={14} className={styles.dueFlame} />
+                        <span className={styles.dueName}>{item.knowledgePointName}</span>
+                        <span className={styles.dueArrow}>
+                          {locatingId === item.knowledgePointId ? <Spin size="small" /> : <ChevronRight size={14} />}
+                        </span>
+                      </button>
+                    </Tooltip>
+                  ))}
+                </div>
+                {overview.dueItems.length > DUE_PREVIEW_COUNT ? (
                   <Button
-                    key={item.knowledgePointId}
-                    className={styles.dueItem}
-                    loading={locating}
-                    onClick={() => void handleReviewPoint(item)}
+                    type="link"
+                    size="small"
+                    className={styles.dueToggle}
+                    onClick={() => setDueExpanded((v) => !v)}
                   >
-                    <Flame size={13} />
-                    去复习：{item.knowledgePointName}
+                    {dueExpanded ? '收起待复习列表' : `展开全部 ${overview.dueItems.length} 个待复习`}
+                    {dueExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   </Button>
-                ))}
+                ) : null}
                 <div className={styles.dueTip}>点击会在学习路线中定位该知识点做节点快测；不在路线内则转 AI 助教对话复习</div>
               </div>
             ) : (
