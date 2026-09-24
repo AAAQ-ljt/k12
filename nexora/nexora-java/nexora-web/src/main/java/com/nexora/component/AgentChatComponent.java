@@ -2,6 +2,7 @@ package com.nexora.component;
 
 import com.alibaba.fastjson2.JSON;
 import com.nexora.dto.AgentMessagePushDTO;
+import com.nexora.dto.PictureBookTaskVO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.AgentMessage;
 import com.nexora.entity.po.AgentSession;
@@ -16,6 +17,7 @@ import com.nexora.service.AgentSessionService;
 import com.nexora.service.AiGenerationRecordService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentKnowledgeBaseService;
+import com.nexora.service.PictureBookTaskService;
 import com.nexora.utils.StringTools;
 import com.nexora.vo.ResourceRecommendVO;
 import com.nexora.websocket.ChannelContextUtils;
@@ -88,6 +90,9 @@ public class AgentChatComponent {
 
     @Resource
     private QuizGenerateComponent quizGenerateComponent;
+
+    @Resource
+    private PictureBookTaskService pictureBookTaskService;
 
     @Resource
     private AiGenerationRecordService aiGenerationRecordService;
@@ -276,6 +281,16 @@ public class AgentChatComponent {
                 intent = "CHAT";
             }
 
+            // 对话内绘本：提交异步生成任务并推送进度卡片（与「绘本生成」页共用状态机，前端按 taskId 轮询）；提交失败降级为文字讲解
+            if ("PICTURE_BOOK".equals(intent)) {
+                if (handlePictureBookAnswer(user, message, intentResult, push)) {
+                    return;
+                }
+                log.warn("绘本任务提交失败，降级为文字讲解");
+                degradeToChat(message);
+                intent = "CHAT";
+            }
+
             List<Message> historyMessages = buildHistory(user.getUserId(), session.getSessionId(), message.getMessageId());
             boolean withImage = imageDataUrls != null && !imageDataUrls.isEmpty();
             if (withImage) {
@@ -453,6 +468,52 @@ public class AgentChatComponent {
             return true;
         } catch (Exception e) {
             log.error("出题生成失败 messageId={}", message.getMessageId(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 对话内绘本产物链路：提交绘本异步生成任务（与「绘本生成」页共用 Redis 状态机与队列，主题净化在消费端执行），
+     * 推送 PICTURE_BOOK 卡片消息（前端按 taskId 轮询进度、完成展示「查看绘本」）。
+     * 返回 true 表示任务已提交并推送；false 表示提交失败（调用方降级为文字讲解）
+     */
+    private boolean handlePictureBookAnswer(TokenUserInfoDTO user, AgentMessage message,
+                                            IntentAnalyzerComponent.IntentResult intent, AgentMessagePushDTO push) {
+        try {
+            String topic = message.getUserMessage() == null ? "" : message.getUserMessage().trim();
+            if (topic.isEmpty()) {
+                topic = "我的AI小故事";
+            }
+            PictureBookTaskVO task = pictureBookTaskService.submit(user.getUserId(), user.getStage(), topic);
+
+            Map<String, Object> bizData = new HashMap<>();
+            bizData.put("taskId", task.getTaskId());
+            bizData.put("topic", topic);
+            bizData.put("status", task.getStatus());
+            String bizJson = JSON.toJSONString(bizData);
+
+            String text = "收到！已开始为你创作绘本，AI 正在编写故事并绘制插图（通常需要几分钟）。"
+                    + "进度就在下方卡片里，切到其他页面也不会中断；完成后卡片会变成「查看绘本」～";
+
+            Date now = new Date();
+            AgentMessage update = new AgentMessage();
+            update.setAssistantMessage(text);
+            update.setStatus(1);
+            update.setBizType("PICTURE_BOOK");
+            update.setBizData(bizJson);
+            update.setPromptTokens(intent.promptTokens());
+            update.setCompletionTokens(intent.completionTokens());
+            update.setUpdateTime(now);
+            agentMessageService.updateAgentMessageByMessageId(update, message.getMessageId());
+
+            push.setType("done");
+            push.setContent(text);
+            push.setBizType("PICTURE_BOOK");
+            push.setBizData(bizJson);
+            channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
+            return true;
+        } catch (Exception e) {
+            log.error("绘本任务提交失败 messageId={}", message.getMessageId(), e);
             return false;
         }
     }

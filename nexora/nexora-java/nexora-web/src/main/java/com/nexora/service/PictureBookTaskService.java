@@ -26,4 +26,10 @@ public interface PictureBookTaskService {
      * 更新任务并落 Redis（消费者使用）
      */
     void update(PictureBookTaskVO task);
+
+    /**
+     * 服务启动自愈：把中断在中间态（未被队列持有的孤儿）的绘本任务标记为 FAILED，
+     * 让前端轮询拿到终态并提示「重新生成」，避免重启后任务永久卡死
+     */
+    void failInterruptedTasks();
 }

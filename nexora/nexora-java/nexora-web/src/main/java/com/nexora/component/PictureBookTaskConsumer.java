@@ -11,6 +11,7 @@ import com.nexora.service.PictureBookService;
 import com.nexora.service.PictureBookTaskService;
 import com.nexora.service.UserInfoService;
 import com.nexora.utils.StringTools;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,19 @@ public class PictureBookTaskConsumer {
 
     @Resource
     private ImageProvider imageProvider;
+
+    /**
+     * 启动自愈：把上次进程中断遗留的中间态绘本任务标记为 FAILED（仍在队列中的除外），
+     * 前端轮询可拿到终态提示「重新生成」，避免永久卡在生成中
+     */
+    @PostConstruct
+    public void init() {
+        try {
+            pictureBookTaskService.failInterruptedTasks();
+        } catch (Exception e) {
+            log.warn("绘本孤儿任务自愈扫描失败", e);
+        }
+    }
 
     @Scheduled(fixedDelay = 1000)
     public void consume() {
@@ -138,14 +152,55 @@ public class PictureBookTaskConsumer {
             generateImagesConcurrently(task, email, story, texts, pageObjects, lastImageError, maxConcurrency);
         }
 
+        // 2.5 失败页补画：对仍未落库的空图页逐页重试两次，尽力保证读者看到完整绘本
+        List<Integer> missingIndexes = new ArrayList<>();
+        for (int i = 0; i < pageObjects.size(); i++) {
+            if (StringTools.isEmpty(pageObjects.get(i).getString("imageFile"))) {
+                missingIndexes.add(i);
+            }
+        }
+        if (!missingIndexes.isEmpty()) {
+            task.setMessage("正在补画失败页插图...");
+            pictureBookTaskService.update(task);
+        }
+        for (int index : missingIndexes) {
+            String patched = null;
+            for (int attempt = 1; attempt <= 2 && patched == null; attempt++) {
+                try {
+                    patched = pictureBookGenerateComponent.generatePageImage(
+                            email, task.getStage(), texts.get(index), story.title(), index);
+                    if (patched == null) {
+                        log.warn("绘本补画失败 page={} title={} 第{}次",
+                                index + 1, story.title(), attempt);
+                    }
+                } catch (Exception e) {
+                    log.warn("绘本补画异常 page={} title={} 第{}次",
+                            index + 1, story.title(), attempt, e);
+                }
+            }
+            if (patched != null) {
+                pageObjects.get(index).put("imageFile", patched);
+                String failure = pictureBookGenerateComponent.getLastFailureReason();
+                if (failure != null) {
+                    lastImageError.set(failure);
+                }
+                task.setMessage("失败页补画完成");
+                pictureBookTaskService.update(task);
+            }
+        }
+
         // 3. 组装产物并落库
         JSONObject ext = new JSONObject();
         ext.put("type", "PICTURE_BOOK");
         ext.put("pages", pages);
         boolean allFailed = pageObjects.stream()
                 .allMatch(page -> StringTools.isEmpty(page.getString("imageFile")));
-        if (allFailed && lastImageError.get() != null) {
-            ext.put("imageError", lastImageError.get());
+        if (allFailed) {
+            // 全数失败务必给前端可读原因（下载失败等路径此前未记录，兜底文案补全）
+            String reason = lastImageError.get() == null
+                    ? "插图生成失败：请稍后重试，或到管理端检查生图供应商配置与额度"
+                    : lastImageError.get();
+            ext.put("imageError", reason);
         }
 
         ResourceInfo book = pictureBookService.saveBook(

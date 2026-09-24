@@ -34,8 +34,8 @@ import java.util.UUID;
 public class PictureBookGenerateComponent {
 
     private static final int MAX_PAGES = 8;
-    /** 失败图片下载超时（生成后的结果图较大，单独放宽） */
-    private static final int IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 60;
+    /** 图片下载单次超时（网关大图/跨境下载偏慢，放宽到 120s，失败重试 3 次） */
+    private static final int IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 120;
 
     private static final String STORY_SYSTEM_PROMPT = """
             你是 K12 人工智能通识课的儿童绘本编辑。学生学段：%s。
@@ -133,8 +133,14 @@ public class PictureBookGenerateComponent {
                 lastFailure.set(result.errorMessage() == null ? "图片生成失败" : result.errorMessage());
                 return null;
             }
-            return downloadImage(email, result.imageUrl());
+            String saved = downloadImage(email, result.imageUrl());
+            if (saved == null) {
+                // 下载失败也要记录原因：全数失败时才能把 imageError 带给前端
+                lastFailure.set("插图下载失败：图片地址下载超时或不可访问，请稍后重试或更换生图供应商");
+            }
+            return saved;
         } catch (Exception e) {
+            lastFailure.set("插图生成失败：" + (e.getMessage() == null ? "未知错误" : e.getMessage()));
             log.warn("绘本插图生成失败 page={} title={}", pageIndex + 1, bookTitle, e);
             return null;
         }
@@ -189,12 +195,18 @@ public class PictureBookGenerateComponent {
                 + " 页画面（面向" + stageDesc + "儿童）：" + pageText;
     }
 
-    private String downloadImage(String email, String imageUrl) throws Exception {
+    private String downloadImage(String email, String imageUrl) {
         String monthDir = java.time.LocalDate.now().toString().replace("-", "");
         Path targetDir = Paths.get(projectFolder, resourceFileDir, "student", emailDir(email), "picture-book", monthDir);
-        Files.createDirectories(targetDir);
         String fileName = UUID.randomUUID().toString().replace("-", "") + ".png";
-        Path target = targetDir.resolve(fileName);
+        Path target;
+        try {
+            Files.createDirectories(targetDir);
+            target = targetDir.resolve(fileName);
+        } catch (Exception e) {
+            log.warn("绘本插图目录创建失败 email={}", email, e);
+            return null;
+        }
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -204,15 +216,34 @@ public class PictureBookGenerateComponent {
                 .timeout(Duration.ofSeconds(IMAGE_DOWNLOAD_TIMEOUT_SECONDS))
                 .GET()
                 .build();
-        HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        if (response.statusCode() != 200) {
-            log.warn("绘本插图下载失败 url={} status={}", imageUrl, response.statusCode());
-            return null;
+        // 下载失败/超时重试 3 次（间隔 1.5s），网关大图或临时网络抖动不再直接丢页
+        int maxAttempts = 3;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                if (response.statusCode() != 200) {
+                    log.warn("绘本插图下载失败 url={} status={} 第{}/{}次",
+                            imageUrl, response.statusCode(), attempt, maxAttempts);
+                } else {
+                    try (InputStream input = response.body()) {
+                        Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    return resourceFileDir + "/student/" + emailDir(email) + "/picture-book/" + monthDir + "/" + fileName;
+                }
+            } catch (Exception e) {
+                log.warn("绘本插图下载异常 第{}/{}次: {}", attempt, maxAttempts,
+                        e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+            }
+            if (attempt < maxAttempts) {
+                try {
+                    Thread.sleep(1500);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
         }
-        try (InputStream input = response.body()) {
-            Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
-        }
-        return resourceFileDir + "/student/" + emailDir(email) + "/picture-book/" + monthDir + "/" + fileName;
+        return null;
     }
 
     /**

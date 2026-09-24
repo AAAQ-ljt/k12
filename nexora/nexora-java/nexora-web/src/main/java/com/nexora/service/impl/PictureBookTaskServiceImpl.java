@@ -8,15 +8,20 @@ import com.nexora.exception.BusinessException;
 import com.nexora.service.PictureBookTaskService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 绘本生成异步任务业务实现：Redis 任务体持久化 + 队列解耦
  */
+@Slf4j
 @Service
 public class PictureBookTaskServiceImpl implements PictureBookTaskService {
 
@@ -68,6 +73,37 @@ public class PictureBookTaskServiceImpl implements PictureBookTaskService {
         }
         task.setUpdateTime(new Date());
         save(task);
+    }
+
+    @Override
+    public void failInterruptedTasks() {
+        Set<String> queued = new HashSet<>();
+        List<Object> queueMembers = redisComponent.listMembers(Constants.REDIS_KEY_PICTURE_BOOK_TASK_QUEUE);
+        for (Object member : queueMembers) {
+            if (member != null) {
+                queued.add(member.toString());
+            }
+        }
+        for (String key : redisComponent.keys(Constants.REDIS_KEY_PICTURE_BOOK_TASK_PREFIX + "*")) {
+            // 跳过队列列表本身的 key（picturebook:task:queue 匹配前缀通配）
+            if (Constants.REDIS_KEY_PICTURE_BOOK_TASK_QUEUE.equals(key)) {
+                continue;
+            }
+            String taskId = key.substring(Constants.REDIS_KEY_PICTURE_BOOK_TASK_PREFIX.length());
+            // 仍在队列中的任务会由消费者正常执行，不处理
+            if (queued.contains(taskId)) {
+                continue;
+            }
+            PictureBookTaskVO task = loadInternal(taskId);
+            if (task == null || "COMPLETED".equals(task.getStatus()) || "FAILED".equals(task.getStatus())) {
+                continue;
+            }
+            String previous = task.getStatus();
+            task.setStatus("FAILED");
+            task.setMessage("任务被服务重启中断，请重新生成");
+            update(task);
+            log.info("绘本孤儿任务已标记失败 taskId={} 原状态={}", taskId, previous);
+        }
     }
 
     private void save(PictureBookTaskVO task) {

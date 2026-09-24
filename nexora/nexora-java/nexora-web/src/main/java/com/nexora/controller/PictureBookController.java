@@ -2,6 +2,8 @@ package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
 import com.nexora.dto.PictureBookGenerateRequest;
+import com.nexora.dto.PictureBookPageFixRequest;
+import com.nexora.dto.PictureBookPageFixVO;
 import com.nexora.dto.PictureBookTaskVO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.ResourceInfo;
@@ -82,6 +84,27 @@ public class PictureBookController extends ABaseController {
     public ResponseVO<Void> del(@RequestParam String resourceId) {
         pictureBookService.delete(currentUserId(), resourceId);
         return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 提交指定页补画任务（异步）：对已生成绘本中没有插图/插画丢失的页手动补画，前端轮询 /pageFixTask 获取状态
+     */
+    @PostMapping("/regeneratePage")
+    public ResponseVO<PictureBookPageFixVO> regeneratePage(@RequestBody PictureBookPageFixRequest request) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        if (request == null || StringTools.isEmpty(request.getResourceId()) || request.getPage() == null) {
+            throw new BusinessException("补画参数不完整");
+        }
+        return getSuccessResponseVO(pictureBookService.submitPageFix(
+                current.getUserId(), request.getResourceId(), request.getPage()));
+    }
+
+    /**
+     * 查询指定页补画任务状态
+     */
+    @GetMapping("/pageFixTask")
+    public ResponseVO<PictureBookPageFixVO> pageFixTask(@RequestParam String resourceId, @RequestParam Integer page) {
+        return getSuccessResponseVO(pictureBookService.getPageFix(currentUserId(), resourceId, page));
     }
 
     /**

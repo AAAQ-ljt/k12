@@ -7,6 +7,7 @@ import { useUiStore } from '@/stores/ui';
 import {
   deletePictureBook,
   generatePictureBook,
+  getPictureBookInfo,
   getPictureBookTask,
   loadMyPictureBooks,
   parsePictureBook,
@@ -14,6 +15,7 @@ import {
   type PictureBookScript,
 } from '@/api/pictureBook';
 import PictureBookReader from '@/components/multimodal/PictureBookReader';
+import { usePictureBookPageFix } from '@/components/multimodal/usePictureBookPageFix';
 import styles from './index.module.scss';
 
 /** 绘本生成任务持久化（sessionStorage），切页不丢进度 */
@@ -57,6 +59,27 @@ export default function PictureBook() {
   const [list, setList] = useState<PictureBookItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [reading, setReading] = useState<{ item: PictureBookItem; script: PictureBookScript } | null>(null);
+
+  /** 单页补画完成：刷新阅读脚本与列表（任务状态保持见 usePictureBookPageFix，切页可恢复） */
+  const handleFixCompleted = useCallback(async (resourceId: string) => {
+    try {
+      const info = await getPictureBookInfo(resourceId);
+      const fresh = parsePictureBook(info?.extJson);
+      if (fresh) {
+        setReading((prev) =>
+          prev && prev.item.resourceId === resourceId
+            ? { item: { ...prev.item, extJson: info?.extJson }, script: fresh }
+            : prev,
+        );
+      }
+      void load();
+    } catch {
+      // 刷新失败不影响主流程
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { fixingPage, fixPage } = usePictureBookPageFix(reading?.item.resourceId, handleFixCompleted);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -336,7 +359,14 @@ export default function PictureBook() {
         width={760}
         styles={{ body: { padding: '12px 16px' } }}
       >
-        {reading ? <PictureBookReader resourceId={reading.item.resourceId} script={reading.script} /> : null}
+        {reading ? (
+          <PictureBookReader
+            resourceId={reading.item.resourceId}
+            script={reading.script}
+            fixingPage={fixingPage}
+            onFixPage={(page) => void fixPage(page)}
+          />
+        ) : null}
       </Modal>
     </div>
   );

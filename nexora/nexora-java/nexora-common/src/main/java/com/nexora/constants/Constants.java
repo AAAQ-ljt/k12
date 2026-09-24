@@ -89,6 +89,12 @@ public class Constants {
     public static final String REDIS_KEY_PICTURE_BOOK_TASK_PREFIX = "picturebook:task:";
 
     /**
+     * Redis key：绘本单页补画任务状态体与运行锁（resourceId:page 粒度，前端 2s 轮询）
+     */
+    public static final String REDIS_KEY_PICTURE_BOOK_PAGE_FIX_PREFIX = "picturebook:pagefix:";
+    public static final String REDIS_KEY_PICTURE_BOOK_PAGE_FIX_RUNNING = "picturebook:pagefix:running:";
+
+    /**
      * Redis key：课时测验 AI 出题异步任务前缀（任务体 = 测验任务 JSON）
      */
     public static final String REDIS_KEY_QUIZ_TASK_PREFIX = "quiztask:";

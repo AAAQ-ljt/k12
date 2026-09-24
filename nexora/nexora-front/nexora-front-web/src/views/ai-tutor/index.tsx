@@ -39,6 +39,7 @@ import { parseAnimationScript, type AnimationScript } from '@/api/animation';
 import { parseQuizScript, type QuizScript } from '@/api/quiz';
 import QuizCard from '@/components/multimodal/QuizCard';
 import SvgStepPlayer from '@/components/multimodal/SvgStepPlayer';
+import PictureBookChatCard from '@/components/multimodal/PictureBookChatCard';
 import { syncStudentWikiFromMessage } from '@/api/studentWiki';
 import KnowledgeDrawer from './components/KnowledgeDrawer';
 import {
@@ -70,6 +71,8 @@ interface ChatMessage {
   recommends?: ResourceRecommendItem[];
   animation?: AnimationScript | null;
   quiz?: QuizScript | null;
+  /** 对话内绘本任务（异步生成，卡片内轮询进度） */
+  pictureBook?: { taskId: string; topic?: string } | null;
   images?: ChatImage[];
 }
 
@@ -156,6 +159,21 @@ function parseHistoryImages(bizType?: string, bizData?: string): ChatImage[] | u
   }
 }
 
+function parsePictureBookCard(bizData?: string): { taskId: string; topic?: string } | null {
+  if (!bizData) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(bizData);
+    if (!parsed || typeof parsed.taskId !== 'string' || !parsed.taskId) {
+      return null;
+    }
+    return { taskId: parsed.taskId, topic: typeof parsed.topic === 'string' ? parsed.topic : undefined };
+  } catch {
+    return null;
+  }
+}
+
 function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
   const result: ChatMessage[] = [];
   list.forEach((item) => {
@@ -177,6 +195,7 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
         recommends: item.bizType === 'RESOURCE_RECOMMEND' ? parseRecommends(item.bizData) : [],
         animation: item.bizType === 'ANIMATION' ? parseAnimationScript(item.bizData) : undefined,
         quiz: item.bizType === 'QUIZ' ? parseQuizScript(item.bizData) : undefined,
+        pictureBook: item.bizType === 'PICTURE_BOOK' ? parsePictureBookCard(item.bizData) : undefined,
       });
     }
   });
@@ -288,6 +307,7 @@ export default function AiTutor() {
             recommends: nextRecommends,
             animation: data.bizType === 'ANIMATION' ? parseAnimationScript(data.bizData) : item.animation,
             quiz: data.bizType === 'QUIZ' ? parseQuizScript(data.bizData) : item.quiz,
+            pictureBook: data.bizType === 'PICTURE_BOOK' ? parsePictureBookCard(data.bizData) : item.pictureBook,
           };
         }
         return {
@@ -773,7 +793,12 @@ export default function AiTutor() {
                       <QuizCard quiz={item.quiz} />
                     </div>
                   ) : null}
-                  {item.role === 'assistant' && !item.pending && item.content && !item.animation && !item.quiz ? (
+                  {item.role === 'assistant' && item.pictureBook ? (
+                    <div className={styles.pictureBookCard}>
+                      <PictureBookChatCard taskId={item.pictureBook.taskId} topic={item.pictureBook.topic} />
+                    </div>
+                  ) : null}
+                  {item.role === 'assistant' && !item.pending && item.content && !item.animation && !item.quiz && !item.pictureBook ? (
                     <div className={styles.actionRow}>
                       <Button size="small" type="text" icon={<BookOpen size={13} />} onClick={() => void handleSyncKnowledge(item)}>
                         同步知识页

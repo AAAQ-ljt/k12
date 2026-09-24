@@ -47,12 +47,36 @@
   min-height: 300px;
   width: 100%;
   display: flex;
+  flex-direction: column;
+  gap: 12px;
   align-items: center;
   justify-content: center;
   color: rgba(0, 0, 0, 0.3);
   font-size: 14px;
   border: 1px dashed rgba(0, 0, 0, 0.12);
   border-radius: 8px;
+  padding: 16px;
+}
+
+.fixButton {
+  border: 1px solid #d9a34a;
+  border-radius: 8px;
+  background: #fff7e6;
+  color: #b36b00;
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fixButton:hover:not(:disabled) {
+  border-color: #faad14;
+  color: #d48806;
+}
+
+.fixButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .pageText {

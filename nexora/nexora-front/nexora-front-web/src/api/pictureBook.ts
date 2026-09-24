@@ -63,11 +63,33 @@ export function generatePictureBook(topic: string): Promise<PictureBookTask> {
   return post('/pictureBook/generate', { topic });
 }
 
-/**
- * 查询绘本生成任务进度
- */
+/** 查询绘本生成任务进度 */
 export function getPictureBookTask(taskId: string): Promise<PictureBookTask> {
   return get('/pictureBook/task', { taskId });
+}
+
+/** 查询绘本详情（含分页脚本 extJson） */
+export function getPictureBookInfo(resourceId: string): Promise<PictureBookItem> {
+  return get('/pictureBook/getInfo', { resourceId });
+}
+
+/** 绘本单页补画任务状态（前端 2s 轮询） */
+export interface PictureBookPageFix {
+  resourceId: string;
+  page: number;
+  /** RUNNING / COMPLETED / FAILED */
+  status: string;
+  message?: string;
+}
+
+/** 提交指定页补画任务（异步） */
+export function regeneratePictureBookPage(resourceId: string, page: number): Promise<PictureBookPageFix> {
+  return post('/pictureBook/regeneratePage', { resourceId, page });
+}
+
+/** 查询指定页补画任务状态 */
+export function getPictureBookPageFix(resourceId: string, page: number): Promise<PictureBookPageFix> {
+  return get('/pictureBook/pageFixTask', { resourceId, page });
 }
 
 export function loadMyPictureBooks(): Promise<PictureBookItem[]> {

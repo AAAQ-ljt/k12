@@ -7,8 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -194,5 +196,21 @@ public class RedisComponent {
      */
     public Object rightPop(String key) {
         return redisTemplate.opsForList().rightPop(key);
+    }
+
+    /**
+     * 按通配模式获取匹配的 key（仅用于小规模扫描，如启动时的孤儿任务自愈，禁止高频调用）
+     */
+    public Set<String> keys(String pattern) {
+        Set<String> keys = redisTemplate.keys(pattern);
+        return keys == null ? new HashSet<>() : keys;
+    }
+
+    /**
+     * 读取整个列表成员（任务队列判重用）
+     */
+    public List<Object> listMembers(String key) {
+        List<Object> members = redisTemplate.opsForList().range(key, 0, -1);
+        return members == null ? List.of() : members;
     }
 }
