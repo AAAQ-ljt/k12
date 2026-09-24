@@ -93,6 +93,11 @@ project:
       ark-model: ${NEXORA_ARK_MODEL:doubao-seedream-5-0-pro-260628}
       ark-base-url: ${NEXORA_ARK_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
       ark-api-key: ${NEXORA_ARK_API_KEY:ark-xxx}
+      gpt-model: ${NEXORA_GPT_IMAGE_MODEL:gpt-image-2}
+      gpt-base-url: ${NEXORA_GPT_IMAGE_BASE_URL:https://img.zikl.dev}
+      gpt-path: ${NEXORA_GPT_IMAGE_PATH:/v1/images/generations}
+      gpt-api-key: ${NEXORA_GPT_IMAGE_API_KEY:sk-xxx}
+      gpt-size: ${NEXORA_GPT_IMAGE_SIZE:1024x1024}
   folder: d:/dev/ai/k12/nexora/
 resource:
   temp-dir: resource/temp

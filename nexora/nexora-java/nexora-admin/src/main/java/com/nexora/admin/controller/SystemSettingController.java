@@ -1,8 +1,10 @@
 package com.nexora.admin.controller;
 
 import com.nexora.admin.biz.SystemSettingBiz;
+import com.nexora.admin.dto.ImageProviderSwitchDTO;
 import com.nexora.admin.dto.PromptSaveDTO;
 import com.nexora.admin.dto.RagConfigSaveDTO;
+import com.nexora.admin.vo.ImageProviderOptionsVO;
 import com.nexora.admin.vo.PromptEffectiveVO;
 import com.nexora.admin.vo.RagConfigItemVO;
 import com.nexora.admin.vo.RuntimeInfoVO;
@@ -119,6 +121,22 @@ public class SystemSettingController extends ABaseController {
     @GetMapping("/runtimeInfo")
     public ResponseVO<RuntimeInfoVO> runtimeInfo() {
         return getSuccessResponseVO(systemSettingBiz.runtimeInfo());
+    }
+
+    /** 文生图供应商选项（当前生效值 + 可选项，管理端「环境配置」切换） */
+    @GetMapping("/imageProvider")
+    public ResponseVO<ImageProviderOptionsVO> imageProviderOptions() {
+        return getSuccessResponseVO(systemSettingBiz.imageProviderOptions());
+    }
+
+    /** 切换文生图供应商（白名单校验，写库即生效） */
+    @PostMapping("/imageProvider")
+    public ResponseVO<Void> switchImageProvider(@RequestBody ImageProviderSwitchDTO dto) {
+        if (dto == null) {
+            throw new BusinessException("参数不能为空");
+        }
+        systemSettingBiz.switchImageProvider(dto.getProvider());
+        return getSuccessResponseVO(null);
     }
 
     /** 各场景提示词生效情况（默认 ALL 学段，可指定学段） */

@@ -1,9 +1,11 @@
 package com.nexora.admin.biz;
 
+import com.nexora.admin.vo.ImageProviderOptionsVO;
 import com.nexora.admin.vo.PromptEffectiveVO;
 import com.nexora.admin.vo.RagConfigItemVO;
 import com.nexora.admin.vo.RuntimeInfoVO;
 import com.nexora.admin.vo.RuntimeItemVO;
+import com.nexora.component.ImageProviderRouter;
 import com.nexora.component.RedisComponent;
 import com.nexora.component.SystemConfigComponent;
 import com.nexora.constants.Constants;
@@ -60,6 +62,9 @@ public class SystemSettingBiz {
     @Resource
     private RedisComponent redisComponent;
 
+    @Resource
+    private ImageProviderRouter imageProviderRouter;
+
     @Value("${spring.profiles.active:default}")
     private String activeProfile;
 
@@ -111,9 +116,6 @@ public class SystemSettingBiz {
     @Value("${spring.ai.vectorstore.elasticsearch.index-name:}")
     private String vectorIndexName;
 
-    @Value("${project.ai.image.provider:dashscope}")
-    private String imageProvider;
-
     @Value("${project.ai.image.model:}")
     private String imageModel;
 
@@ -128,6 +130,18 @@ public class SystemSettingBiz {
 
     @Value("${project.ai.image.ark-api-key:}")
     private String imageArkApiKey;
+
+    @Value("${project.ai.image.ark-base-url:}")
+    private String imageArkBaseUrl;
+
+    @Value("${project.ai.image.gpt-model:}")
+    private String imageGptModel;
+
+    @Value("${project.ai.image.gpt-base-url:}")
+    private String imageGptBaseUrl;
+
+    @Value("${project.ai.image.gpt-api-key:}")
+    private String imageGptApiKey;
 
     // ==================== RAG 配置 ====================
 
@@ -240,13 +254,23 @@ public class SystemSettingBiz {
                 "阿里百炼；env NEXORA_DASHSCOPE_API_KEY / NEXORA_EMBEDDING_API_KEY"));
         models.add(new RuntimeItemVO("向量 base-url", embeddingBaseUrl, "改动需重启服务"));
         models.add(new RuntimeItemVO("向量 Key", maskKey(embeddingApiKey), "只读展示（已掩码）"));
-        boolean ark = "ark".equalsIgnoreCase(imageProvider);
-        models.add(new RuntimeItemVO("文生图供应商", ark ? "ark（火山方舟/豆包）" : "dashscope（阿里百炼）",
-                "env NEXORA_IMAGE_PROVIDER；改动需重启服务"));
-        models.add(new RuntimeItemVO("文生图模型", ark ? imageArkModel : imageModel,
-                ark ? "env NEXORA_ARK_MODEL" : "env NEXORA_IMAGE_MODEL（本机默认按 application-local.yml）"));
-        models.add(new RuntimeItemVO("文生图 base-url", imageBaseUrl, "百炼地址；ark 走方舟地址"));
-        models.add(new RuntimeItemVO("文生图 Key", maskKey(ark ? imageArkApiKey : imageApiKey), "只读展示（已掩码）"));
+        String effectiveProvider = imageProviderRouter.currentCode();
+        boolean ark = SystemConfigComponent.PROVIDER_ARK.equals(effectiveProvider);
+        boolean gpt = SystemConfigComponent.PROVIDER_GPT_IMAGE_2.equals(effectiveProvider);
+        String providerLabel = gpt ? "gpt-image-2（img.zikl.dev 网关）"
+                : ark ? "ark（火山方舟/豆包）" : "dashscope（阿里百炼）";
+        String effectiveImageModel = gpt ? imageGptModel : ark ? imageArkModel : imageModel;
+        String effectiveImageBaseUrl = gpt ? imageGptBaseUrl : ark ? imageArkBaseUrl : imageBaseUrl;
+        String effectiveImageKey = gpt ? imageGptApiKey : ark ? imageArkApiKey : imageApiKey;
+        String effectiveImageKeyEnv = gpt ? "NEXORA_GPT_IMAGE_API_KEY"
+                : ark ? "NEXORA_ARK_API_KEY" : "NEXORA_DASHSCOPE_API_KEY";
+        models.add(new RuntimeItemVO("文生图供应商", providerLabel,
+                "「文生图供应商」卡片可切换且保存即生效；表里无覆盖时跟随 env NEXORA_IMAGE_PROVIDER"));
+        models.add(new RuntimeItemVO("文生图模型", effectiveImageModel,
+                "env " + effectiveImageKeyEnv + " 对应的模型"));
+        models.add(new RuntimeItemVO("文生图 base-url", effectiveImageBaseUrl, "地址随供应商变化"));
+        models.add(new RuntimeItemVO("文生图 Key", maskKey(effectiveImageKey),
+                "只读展示（已掩码）；env " + effectiveImageKeyEnv));
         vo.setModels(models);
         return vo;
     }
@@ -263,6 +287,60 @@ public class SystemSettingBiz {
             return "****";
         }
         return value.substring(0, 6) + "****" + value.substring(value.length() - 4);
+    }
+
+    // ==================== 文生图供应商切换 ====================
+
+    /**
+     * 文生图供应商选项：当前生效值 + 可选项列表（管理端「环境配置」切换控件）
+     */
+    public ImageProviderOptionsVO imageProviderOptions() {
+        ImageProviderOptionsVO vo = new ImageProviderOptionsVO();
+        vo.setCurrent(imageProviderRouter.currentCode());
+        List<ImageProviderOptionsVO.Option> options = new ArrayList<>();
+        options.add(new ImageProviderOptionsVO.Option(
+                SystemConfigComponent.PROVIDER_DASHSCOPE, "阿里百炼（dashscope）",
+                "qwen-image 系列；env NEXORA_DASHSCOPE_API_KEY"));
+        options.add(new ImageProviderOptionsVO.Option(
+                SystemConfigComponent.PROVIDER_ARK, "豆包方舟（ark）",
+                "doubao-seedream 系列；env NEXORA_ARK_API_KEY"));
+        options.add(new ImageProviderOptionsVO.Option(
+                SystemConfigComponent.PROVIDER_GPT_IMAGE_2, "gpt-image-2",
+                "img.zikl.dev OpenAI 兼容网关；env NEXORA_GPT_IMAGE_API_KEY"));
+        vo.setOptions(options);
+        return vo;
+    }
+
+    /**
+     * 切换文生图供应商（白名单校验，写 system_config 保存即生效；
+     * 删除该行恢复默认时不传 null，前端恢复默认请切换回 env 默认值编码）
+     */
+    public void switchImageProvider(String provider) {
+        if (!SystemConfigComponent.isSupportedImageProvider(provider)) {
+            throw new BusinessException("不支持的文生图供应商：" + provider);
+        }
+        String value = provider.trim();
+        SystemConfig existing = systemConfigService.getSystemConfigByConfigGroupAndConfigKey(
+                SystemConfigComponent.GROUP_AI_MODEL, SystemConfigComponent.KEY_IMAGE_PROVIDER);
+        Date now = new Date();
+        if (existing == null) {
+            SystemConfig config = new SystemConfig();
+            config.setConfigGroup(SystemConfigComponent.GROUP_AI_MODEL);
+            config.setConfigKey(SystemConfigComponent.KEY_IMAGE_PROVIDER);
+            config.setConfigValue(value);
+            config.setConfigType(SystemConfigComponent.TYPE_STRING);
+            config.setDescription("文生图供应商：dashscope / ark / gpt-image-2（保存即生效）");
+            config.setStatus(1);
+            config.setCreateTime(now);
+            config.setUpdateTime(now);
+            systemConfigService.add(config);
+        } else {
+            SystemConfig update = new SystemConfig();
+            update.setConfigValue(value);
+            update.setUpdateTime(now);
+            systemConfigService.updateSystemConfigByConfigId(update, existing.getConfigId());
+        }
+        log.info("文生图供应商已切换 provider={}", value);
     }
 
     // ==================== 提示词三层生效 ====================

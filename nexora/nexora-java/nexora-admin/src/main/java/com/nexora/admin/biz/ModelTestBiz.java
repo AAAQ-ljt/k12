@@ -1,7 +1,5 @@
 package com.nexora.admin.biz;
 
-import com.nexora.component.ImageGenerateResult;
-import com.nexora.component.ImageProvider;
 import com.nexora.exception.BusinessException;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -17,7 +15,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * 模型连通性验证（开发/排障用）：DeepSeek 对话 / 百炼向量 / 文生图供应商
+ * 模型连通性验证（开发/排障用）：DeepSeek 对话 / 百炼向量。
+ * 文生图测试为异步任务，见 {@link ImageGenTaskBiz} 与 ImageGenTaskConsumer。
  */
 @Slf4j
 @Service
@@ -28,9 +27,6 @@ public class ModelTestBiz {
 
     @Resource
     private EmbeddingModel embeddingModel;
-
-    @Resource
-    private ImageProvider imageProvider;
 
     /**
      * 1) 对话模型连通性
@@ -87,32 +83,8 @@ public class ModelTestBiz {
     }
 
     /**
-     * 3) 文生图模型连通性（当前注入的 ImageProvider 供应商；成功返回临时 URL，24 小时有效）
+     * 向量采样格式化（前 5 维展示）
      */
-    public ImageTestVO testImage(String prompt) {
-        if (StringTools.isEmpty(prompt)) {
-            throw new BusinessException("请输入画面描述");
-        }
-        try {
-            ImageGenerateResult result = imageProvider.generate(prompt.trim());
-            if (!result.success()) {
-                throw new BusinessException(result.errorMessage() == null ? "文生图调用失败" : result.errorMessage());
-            }
-            ImageTestVO vo = new ImageTestVO();
-            vo.setSuccess(true);
-            vo.setUrl(result.imageUrl());
-            vo.setMessage("图片生成成功（临时链接 24 小时内有效）");
-            log.info("模型验证-文生图成功 provider={}", imageProvider.getClass().getSimpleName());
-            return vo;
-        } catch (BusinessException e) {
-            log.error("模型验证-文生图失败: {}", e.getMessage(), e);
-            throw e;
-        } catch (Exception e) {
-            log.error("模型验证-文生图异常", e);
-            throw new BusinessException("文生图调用失败：" + e.getMessage());
-        }
-    }
-
     private String formatSample(float[] values) {
         StringBuilder sb = new StringBuilder("[");
         int count = Math.min(5, values.length);
@@ -145,36 +117,6 @@ public class ModelTestBiz {
 
         public void setSample(String sample) {
             this.sample = sample;
-        }
-    }
-
-    public static class ImageTestVO {
-        private boolean success;
-        private String url;
-        private String message;
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public void setSuccess(boolean success) {
-            this.success = success;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public void setUrl(String url) {
-            this.url = url;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
         }
     }
 }

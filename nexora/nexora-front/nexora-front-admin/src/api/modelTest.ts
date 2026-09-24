@@ -6,11 +6,18 @@ export interface EmbeddingTestVO {
   sample: string;
 }
 
-/** 文生图测试结果 */
-export interface ImageTestVO {
-  success: boolean;
-  url?: string;
-  message: string;
+/** 文生图测试异步任务体（Redis 持久化，前端轮询；切页可凭 taskId 恢复） */
+export interface ImageGenTaskVO {
+  taskId: string;
+  prompt?: string;
+  /** 提交时生效的文生图供应商：dashscope / ark / gpt-image-2 */
+  provider?: string;
+  /** PENDING / GENERATING / COMPLETED / FAILED */
+  status: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
+  message?: string;
+  imageUrl?: string;
+  createTime?: string;
+  updateTime?: string;
 }
 
 /** 对话模型连通性 */
@@ -23,8 +30,12 @@ export function modelTestEmbedding(text: string): Promise<EmbeddingTestVO> {
   return request.post('/modelTest/embedding', { text }, { timeout: 120000 });
 }
 
-/** 文生图模型连通性 */
-export function modelTestImage(prompt: string): Promise<ImageTestVO> {
-  // qwen-image-2.0-pro 同步出图实测约 112s，前端等待上限放到 5 分钟，避免先于后端报超时
-  return request.post('/modelTest/image', { prompt }, { timeout: 300000 });
+/** 提交文生图测试任务（异步，立即返回任务体；进行中重复提交返回原任务） */
+export function submitImageTest(prompt: string): Promise<ImageGenTaskVO> {
+  return request.post('/modelTest/image', { prompt });
+}
+
+/** 轮询文生图测试任务状态 */
+export function loadImageTestTask(taskId: string): Promise<ImageGenTaskVO> {
+  return request.get('/modelTest/imageTask', { params: { taskId } });
 }

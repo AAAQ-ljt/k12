@@ -5,7 +5,6 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -16,11 +15,10 @@ import java.time.Duration;
 
 /**
  * 百炼（DashScope）文生图实现：qwen-image 同步接口 + 异步任务轮询兜底。
- * 通过配置 project.ai.image.provider=dashscope 自动装配；缺省时也使用本实现。
+ * 常驻注册，由 {@link ImageProviderRouter} 按 system_config 切换使用（非法值兜底本实现）。
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "project.ai.image.provider", havingValue = "dashscope", matchIfMissing = true)
 public class DashscopeImageProvider implements ImageProvider {
 
     /** qwen-image-2.0-pro 实测约 112s 出图，放宽到 240s，避免把正常生图误判为超时 */

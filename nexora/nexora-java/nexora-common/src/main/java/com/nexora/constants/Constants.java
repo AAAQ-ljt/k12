@@ -119,6 +119,27 @@ public class Constants {
     public static final String REDIS_KEY_KNOWLEDGE_IMPORT_QUEUE = "knowledge:import:queue";
 
     /**
+     * Redis key：知识库解析入库任务队列/任务前缀/文档运行锁（任务体 = 解析入库任务 JSON，docId 粒度互斥）
+     */
+    public static final String REDIS_KEY_KNOWLEDGE_IMPORT_TASK_QUEUE = "knowledge:import:task:queue";
+    public static final String REDIS_KEY_KNOWLEDGE_IMPORT_TASK_PREFIX = "knowledge:import:task:";
+    public static final String REDIS_KEY_KNOWLEDGE_IMPORT_RUNNING_PREFIX = "knowledge:import:task:running:";
+
+    /**
+     * Redis key：AI 文档整理任务队列/任务前缀/资源运行锁（任务体 = AI 整理任务 JSON，resourceId 粒度互斥）
+     */
+    public static final String REDIS_KEY_AI_ORGANIZE_TASK_QUEUE = "knowledge:aiorganize:task:queue";
+    public static final String REDIS_KEY_AI_ORGANIZE_TASK_PREFIX = "knowledge:aiorganize:task:";
+    public static final String REDIS_KEY_AI_ORGANIZE_RUNNING_PREFIX = "knowledge:aiorganize:task:running:";
+
+    /**
+     * Redis key：模型测试文生图异步任务队列/任务前缀/运行锁（任务体 = 生图测试任务 JSON，全局单任务互斥）
+     */
+    public static final String REDIS_KEY_MODEL_IMAGE_TASK_QUEUE = "modeltest:imagetask:queue";
+    public static final String REDIS_KEY_MODEL_IMAGE_TASK_PREFIX = "modeltest:imagetask:";
+    public static final String REDIS_KEY_MODEL_IMAGE_RUNNING = "modeltest:imagetask:running";
+
+    /**
      * 心跳超时时间（秒）
      */
     public static final int HEART_BEAT_TIMEOUT = 30;

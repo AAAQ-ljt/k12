@@ -26,9 +26,21 @@ public class SystemConfigComponent {
     /** 配置分组：RAG 检索与入库参数 */
     public static final String GROUP_RAG = "RAG";
 
+    /** 配置分组：AI 模型参数（文生图供应商切换） */
+    public static final String GROUP_AI_MODEL = "AI_MODEL";
+
+    /** 文生图供应商配置键（值白名单：dashscope / ark / gpt-image-2） */
+    public static final String KEY_IMAGE_PROVIDER = "image_provider";
+
+    /** 文生图供应商编码 */
+    public static final String PROVIDER_DASHSCOPE = "dashscope";
+    public static final String PROVIDER_ARK = "ark";
+    public static final String PROVIDER_GPT_IMAGE_2 = "gpt-image-2";
+
     /** 配置类型 */
     public static final String TYPE_INT = "INT";
     public static final String TYPE_FLOAT = "FLOAT";
+    public static final String TYPE_STRING = "STRING";
 
     public static final String KEY_RAG_TOP_K = "rag_top_k";
     public static final int DEFAULT_RAG_TOP_K = 10;
@@ -165,5 +177,35 @@ public class SystemConfigComponent {
      */
     public List<ConfigDefinition> listDefinitions() {
         return new ArrayList<>(RAG_DEFINITIONS);
+    }
+
+    // ==================== 文生图供应商切换 ====================
+
+    /**
+     * 读取文生图供应商：优先 system_config 表覆盖值，其次回落启动配置默认值。
+     */
+    public String getImageProviderValue(String defaultProvider) {
+        return getValue(GROUP_AI_MODEL, KEY_IMAGE_PROVIDER, defaultProvider);
+    }
+
+    /**
+     * 供应商编码规范化：白名单内直接返回；非法 / 空值回落 dashscope。
+     */
+    public static String normalizeImageProvider(String provider) {
+        if (PROVIDER_DASHSCOPE.equals(provider) || PROVIDER_ARK.equals(provider) || PROVIDER_GPT_IMAGE_2.equals(provider)) {
+            return provider;
+        }
+        return PROVIDER_DASHSCOPE;
+    }
+
+    /**
+     * 是否为受支持的文生图供应商编码
+     */
+    public static boolean isSupportedImageProvider(String provider) {
+        if (provider == null) {
+            return false;
+        }
+        String value = provider.trim();
+        return PROVIDER_DASHSCOPE.equals(value) || PROVIDER_ARK.equals(value) || PROVIDER_GPT_IMAGE_2.equals(value);
     }
 }
