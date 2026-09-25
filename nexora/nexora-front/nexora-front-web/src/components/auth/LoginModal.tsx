@@ -82,11 +82,10 @@ export default function LoginModal() {
         checkCodeKey,
         checkCode: values.checkCode,
       };
-      // 注册即登录：后端直接返回 token + userInfo
-      const result = await studentRegister(params);
-      setLoginData({ token: result.token, userInfo: result.userInfo });
-      message.success('注册成功，已自动登录');
-      closeLoginModal();
+      // 注册后进入待审核：不返回登录态，审核通过后学生自行登录（验证码一次性，切回登录时自动刷新）
+      await studentRegister(params);
+      message.success('注册成功，请等待管理员审核通过后登录');
+      switchMode('login');
     } catch {
       refreshCheckCode();
     } finally {

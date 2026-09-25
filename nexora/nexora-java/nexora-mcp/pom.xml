@@ -35,6 +35,16 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-vector-store</artifactId>
         </dependency>
+        <!-- 公共组件 AiUsageAdvisor 实现 Spring AI 的 CallAdvisor / StreamAdvisor，
+             而 MCP 组件扫描 com.nexora 时会去解析它实现的接口。
+             MCP 自身不装配对话模型（advisor 只挂在 admin / web 的 ChatClient 上），
+             这里显式声明纯粹是为了保证组件扫描阶段这些接口类可加载——
+             不能依赖从 nexora-common 传递：IDEA 解析出的模块 classpath 曾漏掉该 jar，
+             启动直接抛 FileNotFoundException: .../advisor/api/CallAdvisor.class -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-client-chat</artifactId>
+        </dependency>
         <!-- MCP Server（响应式） -->
         <dependency>
             <groupId>org.springframework.ai</groupId>

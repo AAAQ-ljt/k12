@@ -189,4 +189,19 @@ public class Constants {
      * 状态：禁用
      */
     public static final Integer STATUS_DISABLE = 0;
+
+    /**
+     * 审核状态：待审核（注册后的初始状态，不通过审核不能登录使用）
+     */
+    public static final Integer AUDIT_PENDING = 0;
+
+    /**
+     * 审核状态：已通过
+     */
+    public static final Integer AUDIT_PASSED = 1;
+
+    /**
+     * 审核状态：已驳回
+     */
+    public static final Integer AUDIT_REJECTED = 2;
 }

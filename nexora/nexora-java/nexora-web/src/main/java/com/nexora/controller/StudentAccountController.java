@@ -68,12 +68,11 @@ public class StudentAccountController extends ABaseController {
     }
 
     /**
-     * 学生注册（公开）：注册即登录，返回 { token, userInfo }（外层仍是统一 ResponseVO）
-     * 注：验证码一次性，注册后直接返回登录态，避免用户二次输入验证码
+     * 学生注册（公开）：注册后进入「待审核」，由管理员审核通过后学生自行登录
      */
     @PostMapping("/register")
     @GlobalInterceptor(checkLogin = false)
-    public ResponseVO<StudentLoginVO> register(@RequestBody(required = false) StudentRegisterRequest request) {
+    public ResponseVO<Void> register(@RequestBody(required = false) StudentRegisterRequest request) {
         if (request == null || StringTools.isEmpty(request.getCheckCodeKey()) || StringTools.isEmpty(request.getCheckCode())) {
             throw new BusinessException("请先获取图形验证码");
         }
@@ -111,6 +110,8 @@ public class StudentAccountController extends ABaseController {
             userInfo.setGrade(request.getGrade());
             userInfo.setStage(stage);
             userInfo.setStatus(Constants.STATUS_ENABLE);
+            // 注册后为待审核：管理员在管理端用户管理页审核通过前不能登录使用
+            userInfo.setAuditStatus(Constants.AUDIT_PENDING);
             userInfo.setCreateTime(new Date());
             userInfoService.add(userInfo);
             try {
@@ -119,8 +120,8 @@ public class StudentAccountController extends ABaseController {
                 log.error("注册后初始化个人知识库失败 userId={}", userInfo.getUserId(), e);
             }
 
-            // 注册即登录：生成 token 并返回登录态
-            return getSuccessResponseVO(buildLoginVO(userInfo));
+            // 注册不再自动登录：审核通过后由学生自行登录
+            return getSuccessResponseVO(null);
         } finally {
             redisComponent.cleanCheckCode(request.getCheckCodeKey());
         }
@@ -142,6 +143,12 @@ public class StudentAccountController extends ABaseController {
                     request.getEmail(), StringTools.encodeByMD5(request.getPassword()));
             if (userInfo == null) {
                 throw new BusinessException("邮箱或密码错误");
+            }
+            if (Constants.AUDIT_PENDING.equals(userInfo.getAuditStatus())) {
+                throw new BusinessException("账号正在审核中，请等待管理员审核通过后再登录");
+            }
+            if (Constants.AUDIT_REJECTED.equals(userInfo.getAuditStatus())) {
+                throw new BusinessException("账号审核未通过，请联系管理员");
             }
             if (!Constants.STATUS_ENABLE.equals(userInfo.getStatus())) {
                 throw new BusinessException("账号已被禁用");

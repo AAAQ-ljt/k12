@@ -31,6 +31,10 @@
 		<result column="sex" property="sex"  />
 		<!--状态：0禁用 1启用-->
 		<result column="status" property="status"  />
+		<!--审核状态：0待审核 1已通过 2已驳回-->
+		<result column="audit_status" property="auditStatus"  />
+		<!--审核时间，可空-->
+		<result column="audit_time" property="auditTime"  />
 		<!--最后登录时间-->
 		<result column="last_login_time" property="lastLoginTime"  />
 		<!--创建时间-->
@@ -44,7 +48,7 @@
 	<sql id="base_column_list">
 		 u.user_id,u.username,u.email,u.password,u.nick_name,
 		 u.avatar,u.role_type,u.stage,u.grade,u.interests,
-		 u.learning_style_tags,u.sex,u.status,u.last_login_time,u.create_time,
+		 u.learning_style_tags,u.sex,u.status,u.audit_status,u.audit_time,u.last_login_time,u.create_time,
 		 u.update_time
 	</sql>
 
@@ -87,6 +91,9 @@
 			</if>
 			<if test="query.status != null">
 				 and  u.status = #{query.status}
+			</if>
+			<if test="query.auditStatus != null">
+				 and  u.audit_status = #{query.auditStatus}
 			</if>
 			<if test="query.lastLoginTime != null and query.lastLoginTime!=''">
 				 <![CDATA[ and  u.last_login_time=str_to_date(#{query.lastLoginTime}, '%Y-%m-%d') ]]>
@@ -210,6 +217,12 @@
 			<if test="bean.status != null">
 				 status,
 			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status,
+			</if>
+			<if test="bean.auditTime != null">
+				 audit_time,
+			</if>
 			<if test="bean.lastLoginTime != null">
 				 last_login_time,
 			</if>
@@ -259,6 +272,12 @@
 			</if>
 			<if test="bean.status!=null">
 				 #{bean.status},
+			</if>
+			<if test="bean.auditStatus!=null">
+				 #{bean.auditStatus},
+			</if>
+			<if test="bean.auditTime!=null">
+				 #{bean.auditTime},
 			</if>
 			<if test="bean.lastLoginTime!=null">
 				 #{bean.lastLoginTime},
@@ -561,6 +580,12 @@
 			<if test="bean.status != null">
 				 status = #{bean.status},
 			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status = #{bean.auditStatus},
+			</if>
+			<if test="bean.auditTime != null">
+				 audit_time = #{bean.auditTime},
+			</if>
 			<if test="bean.lastLoginTime != null">
 				 last_login_time = #{bean.lastLoginTime},
 			</if>
@@ -619,6 +644,12 @@
 			</if>
 			<if test="bean.status != null">
 				 status = #{bean.status},
+			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status = #{bean.auditStatus},
+			</if>
+			<if test="bean.auditTime != null">
+				 audit_time = #{bean.auditTime},
 			</if>
 			<if test="bean.lastLoginTime != null">
 				 last_login_time = #{bean.lastLoginTime},
@@ -680,6 +711,12 @@
 			<if test="bean.status != null">
 				 status = #{bean.status},
 			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status = #{bean.auditStatus},
+			</if>
+			<if test="bean.auditTime != null">
+				 audit_time = #{bean.auditTime},
+			</if>
 			<if test="bean.lastLoginTime != null">
 				 last_login_time = #{bean.lastLoginTime},
 			</if>
@@ -739,6 +776,12 @@
 			</if>
 			<if test="bean.status != null">
 				 status = #{bean.status},
+			</if>
+			<if test="bean.auditStatus != null">
+				 audit_status = #{bean.auditStatus},
+			</if>
+			<if test="bean.auditTime != null">
+				 audit_time = #{bean.auditTime},
 			</if>
 			<if test="bean.lastLoginTime != null">
 				 last_login_time = #{bean.lastLoginTime},

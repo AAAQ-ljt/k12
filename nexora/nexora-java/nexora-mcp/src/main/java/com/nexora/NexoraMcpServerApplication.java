@@ -10,6 +10,10 @@ import org.springframework.context.annotation.FilterType;
 /**
  * Nexora MCP 教学工具服务启动类
  * 排除 AiStructureComponent：它依赖 ChatClient Bean（对话端能力），MCP 不装配对话模型
+ *
+ * <p>不要顺手把 AiUsageAdvisor 也加进 excludeFilters：注解里的类字面量会强制加载该类，
+ * 而加载它必须能解析其实现的 Spring AI 接口，classpath 缺 spring-ai-client-chat 时反而会抛
+ * NoClassDefFoundError。该依赖已显式声明在 nexora-mcp/pom.xml。
  */
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.nexora"},

@@ -97,6 +97,13 @@ export const USER_STATUS_MAP: Record<string, { text: string; color: string }> = 
   '1': { text: '启用', color: 'green' },
 };
 
+/** 用户审核状态映射：0=待审核 1=已通过 2=已驳回 */
+export const USER_AUDIT_STATUS_MAP: Record<string, { text: string; color: string }> = {
+  '0': { text: '待审核', color: 'orange' },
+  '1': { text: '已通过', color: 'green' },
+  '2': { text: '已驳回', color: 'red' },
+};
+
 /** 学科选项 */
 export const SUBJECT_OPTIONS = [
   { label: '语文', value: '语文' },

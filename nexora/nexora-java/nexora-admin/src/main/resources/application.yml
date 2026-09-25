@@ -66,11 +66,11 @@ spring:
           starttls:
             enable: true
 
-# 管理端管理员账号（初始账号，首次登录后建议修改密码）
+# 管理端管理员账号（密码为 MD5；2026-09-25 更换，明文不写进仓库，改密码后需重启管理端）
 admin:
   account:
     username: admin
-    password: e10adc3949ba59abbe56e057f20f883e  # MD5 加密的 "123456"
+    password: a46e93405a2572003435dfde72d00887
 
 # 登录 Token 派生密钥（生产环境建议通过环境变量覆盖）
 login:

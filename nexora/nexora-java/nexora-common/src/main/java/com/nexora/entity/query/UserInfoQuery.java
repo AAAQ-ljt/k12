@@ -93,6 +93,11 @@ public class UserInfoQuery extends BaseParam {
 	private Integer status;
 
 	/**
+	 * 审核状态：0待审核 1已通过 2已驳回
+	 */
+	private Integer auditStatus;
+
+	/**
 	 * 最后登录时间
 	 */
 	private String lastLoginTime;
@@ -294,6 +299,14 @@ public class UserInfoQuery extends BaseParam {
 
 	public Integer getStatus(){
 		return this.status;
+	}
+
+	public void setAuditStatus(Integer auditStatus){
+		this.auditStatus = auditStatus;
+	}
+
+	public Integer getAuditStatus(){
+		return this.auditStatus;
 	}
 
 	public void setLastLoginTime(String lastLoginTime){

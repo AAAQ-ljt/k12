@@ -41,8 +41,8 @@ export function studentLogin(params: LoginParams): Promise<LoginResult> {
   return post('/studentInfo/login', params);
 }
 
-/** 学生注册（注册即登录，返回 token + userInfo） */
-export function studentRegister(params: RegisterParams): Promise<LoginResult> {
+/** 学生注册（注册后进入待审核，管理员审核通过后才能登录） */
+export function studentRegister(params: RegisterParams): Promise<void> {
   return post('/studentInfo/register', params);
 }
 

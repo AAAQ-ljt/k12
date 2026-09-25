@@ -1,5 +1,6 @@
 package com.nexora.admin.controller;
 
+import com.nexora.admin.biz.UserInfoAdminBiz;
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.enums.StageEnum;
@@ -31,6 +32,9 @@ public class UserInfoController extends ABaseController {
 
     @Resource
     private UserInfoService userInfoService;
+
+    @Resource
+    private UserInfoAdminBiz userInfoAdminBiz;
 
     /**
      * 分页查询用户列表（email / stage / status / roleType 筛选）
@@ -67,9 +71,11 @@ public class UserInfoController extends ABaseController {
             userInfo.setPassword("123456");
         }
         userInfo.setPassword(StringTools.encodeByMD5(userInfo.getPassword()));
-        // 管理端新增用户固定为学生且启用
+        // 管理端新增用户固定为学生且启用，且由管理员直接创建，视为审核通过
         userInfo.setRoleType(Constants.ROLE_STUDENT);
         userInfo.setStatus(Constants.STATUS_ENABLE);
+        userInfo.setAuditStatus(Constants.AUDIT_PASSED);
+        userInfo.setAuditTime(new Date());
         // 年级 -> 学段兜底：传了年级但学段为空时自动匹配
         if (StringTools.isEmpty(userInfo.getStage()) && !StringTools.isEmpty(userInfo.getGrade())) {
             userInfo.setStage(StageEnum.matchByGrade(userInfo.getGrade()));
@@ -114,17 +120,20 @@ public class UserInfoController extends ABaseController {
     }
 
     /**
-     * 启用 / 禁用用户
+     * 启用 / 禁用用户（禁用同时清登录态）
      */
     @PutMapping("/changeStatus")
     public ResponseVO<Void> changeStatus(@RequestParam String userId, @RequestParam Integer status) {
-        if (!Constants.STATUS_ENABLE.equals(status) && !Constants.STATUS_DISABLE.equals(status)) {
-            throw new BusinessException("非法的状态值");
-        }
-        UserInfo updateBean = new UserInfo();
-        updateBean.setStatus(status);
-        updateBean.setUpdateTime(new Date());
-        userInfoService.updateUserInfoByUserId(updateBean, userId);
+        userInfoAdminBiz.changeStatus(userId, status);
+        return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 注册审核：1 通过（可登录使用）/ 2 驳回（同时清登录态）
+     */
+    @PutMapping("/audit")
+    public ResponseVO<Void> audit(@RequestParam String userId, @RequestParam Integer auditStatus) {
+        userInfoAdminBiz.audit(userId, auditStatus);
         return getSuccessResponseVO(null);
     }
 }

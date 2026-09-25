@@ -81,6 +81,18 @@ public class UserInfo implements Serializable {
 	private Integer status;
 
 	/**
+	 * 审核状态：0待审核 1已通过 2已驳回
+	 */
+	private Integer auditStatus;
+
+	/**
+	 * 审核时间，可空
+	 */
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+	@DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	private Date auditTime;
+
+	/**
 	 * 最后登录时间
 	 */
 	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
@@ -206,6 +218,22 @@ public class UserInfo implements Serializable {
 		return this.status;
 	}
 
+	public void setAuditStatus(Integer auditStatus){
+		this.auditStatus = auditStatus;
+	}
+
+	public Integer getAuditStatus(){
+		return this.auditStatus;
+	}
+
+	public void setAuditTime(Date auditTime){
+		this.auditTime = auditTime;
+	}
+
+	public Date getAuditTime(){
+		return this.auditTime;
+	}
+
 	public void setLastLoginTime(Date lastLoginTime){
 		this.lastLoginTime = lastLoginTime;
 	}
@@ -232,6 +260,6 @@ public class UserInfo implements Serializable {
 
 	@Override
 	public String toString (){
-		return "用户ID:"+(userId == null ? "空" : userId)+"，登录名:"+(username == null ? "空" : username)+"，邮箱，登录核心字段，可空（管理员可不填）:"+(email == null ? "空" : email)+"，密码（MD5存储）:"+(password == null ? "空" : password)+"，昵称:"+(nickName == null ? "空" : nickName)+"，头像URL:"+(avatar == null ? "空" : avatar)+"，角色：0管理员 1学生:"+(roleType == null ? "空" : roleType)+"，学段：PRIMARY_LOW/PRIMARY_HIGH/JUNIOR/SENIOR；学生必填，管理员为空:"+(stage == null ? "空" : stage)+"，年级（如三年级）:"+(grade == null ? "空" : grade)+"，兴趣标签，JSON数组字符串:"+(interests == null ? "空" : interests)+"，学习风格标签JSON【冗余：规则引擎按行为周期计算后落地】:"+(learningStyleTags == null ? "空" : learningStyleTags)+"，性别：0女 1男 2保密:"+(sex == null ? "空" : sex)+"，状态：0禁用 1启用:"+(status == null ? "空" : status)+"，最后登录时间:"+(lastLoginTime == null ? "空" : DateUtil.format(lastLoginTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+		return "用户ID:"+(userId == null ? "空" : userId)+"，登录名:"+(username == null ? "空" : username)+"，邮箱，登录核心字段，可空（管理员可不填）:"+(email == null ? "空" : email)+"，密码（MD5存储）:"+(password == null ? "空" : password)+"，昵称:"+(nickName == null ? "空" : nickName)+"，头像URL:"+(avatar == null ? "空" : avatar)+"，角色：0管理员 1学生:"+(roleType == null ? "空" : roleType)+"，学段：PRIMARY_LOW/PRIMARY_HIGH/JUNIOR/SENIOR；学生必填，管理员为空:"+(stage == null ? "空" : stage)+"，年级（如三年级）:"+(grade == null ? "空" : grade)+"，兴趣标签，JSON数组字符串:"+(interests == null ? "空" : interests)+"，学习风格标签JSON【冗余：规则引擎按行为周期计算后落地】:"+(learningStyleTags == null ? "空" : learningStyleTags)+"，性别：0女 1男 2保密:"+(sex == null ? "空" : sex)+"，状态：0禁用 1启用:"+(status == null ? "空" : status)+"，审核状态：0待审核 1已通过 2已驳回:"+(auditStatus == null ? "空" : auditStatus)+"，审核时间，可空:"+(auditTime == null ? "空" : DateUtil.format(auditTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，最后登录时间:"+(lastLoginTime == null ? "空" : DateUtil.format(lastLoginTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
 	}
 }

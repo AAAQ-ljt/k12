@@ -5,8 +5,8 @@ import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import SearchForm from '@/components/SearchForm';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
-import { GRADE_OPTIONS, STAGE_OPTIONS, USER_STATUS_MAP } from '@/types/common';
-import { loadDataList, del, changeStatus } from '@/api/user';
+import { GRADE_OPTIONS, STAGE_OPTIONS, USER_STATUS_MAP, USER_AUDIT_STATUS_MAP } from '@/types/common';
+import { loadDataList, del, changeStatus, audit } from '@/api/user';
 import type { UserInfo, UserQuery } from '@/api/user';
 import UserFormModal from './UserFormModal';
 
@@ -30,6 +30,7 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
   const [draftGrade, setDraftGrade] = useState<string | undefined>(undefined);
   const [draftStage, setDraftStage] = useState<string | undefined>(undefined);
   const [draftStatus, setDraftStatus] = useState<number | undefined>(undefined);
+  const [draftAuditStatus, setDraftAuditStatus] = useState<number | undefined>(undefined);
 
   // 表格数据
   const [data, setData] = useState<UserInfo[]>([]);
@@ -73,6 +74,7 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
       grade: draftGrade,
       stage: draftStage,
       status: draftStatus,
+      auditStatus: draftAuditStatus,
       pageNo: 1,
     }));
   };
@@ -84,6 +86,7 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
     setDraftGrade(undefined);
     setDraftStage(undefined);
     setDraftStatus(undefined);
+    setDraftAuditStatus(undefined);
     setSearchParams({ pageNo: 1, pageSize: 10, roleType });
   };
 
@@ -118,9 +121,58 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
     }
   };
 
+  /** 注册审核：1=通过（可登录使用）2=驳回 */
+  const handleAudit = async (userId: string, auditStatus: number) => {
+    try {
+      await audit(userId, auditStatus);
+      message.success(auditStatus === 1 ? '审核通过，该用户可登录使用' : '已驳回，该用户无法登录使用');
+      fetchData();
+    } catch {
+      // 错误已由请求拦截器统一提示
+    }
+  };
+
   /** 操作列渲染（查看按钮已按要求移除） */
   const renderActions = (record: UserInfo) => {
-    const actions = [
+    const actions = [];
+
+    // 注册审核：待审核可「通过 / 驳回」，已驳回可改判「审核通过」（已通过的账号需要停用时走「禁用」）
+    // 学生账号待审核 / 已驳回时显示审核动作（管理员账号不走注册审核）
+    if (roleType === 1 && record.auditStatus === 0) {
+      actions.push(
+        <Button
+          key="auditPass"
+          type="link"
+          size="small"
+          onClick={() => handleAudit(record.userId, 1)}
+        >
+          审核通过
+        </Button>,
+        <Popconfirm
+          key="auditReject"
+          title="确认驳回该用户？"
+          description="驳回后该用户无法登录使用网站。"
+          onConfirm={() => handleAudit(record.userId, 2)}
+        >
+          <Button type="link" size="small" danger>
+            驳回
+          </Button>
+        </Popconfirm>,
+      );
+    } else if (roleType === 1 && record.auditStatus === 2) {
+      actions.push(
+        <Button
+          key="auditPass"
+          type="link"
+          size="small"
+          onClick={() => handleAudit(record.userId, 1)}
+        >
+          审核通过
+        </Button>,
+      );
+    }
+
+    actions.push(
       <Button key="edit" type="link" size="small" onClick={() => handleEdit(record)}>
         编辑
       </Button>,
@@ -133,7 +185,7 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
           删除
         </Button>
       </Popconfirm>,
-    ];
+    );
 
     if (record.status === 1) {
       actions.push(
@@ -209,6 +261,21 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
         <StatusTag status={String(record.status)} statusMap={USER_STATUS_MAP} />
       ),
     },
+    // 审核状态只针对学生账号（管理员账号不走注册审核）
+    ...(roleType === 1
+      ? [
+          {
+            title: '审核状态',
+            dataIndex: 'auditStatus',
+            key: 'auditStatus',
+            width: 110,
+            align: 'center' as const,
+            render: (_: unknown, record: UserInfo) => (
+              <StatusTag status={String(record.auditStatus)} statusMap={USER_AUDIT_STATUS_MAP} />
+            ),
+          },
+        ]
+      : []),
     {
       title: '创建时间',
       dataIndex: 'createTime',
@@ -218,7 +285,7 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 320,
       render: (_, record) => renderActions(record),
     },
   ];
@@ -307,6 +374,20 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
                 options={[
                   { label: '启用', value: 1 },
                   { label: '禁用', value: 0 },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="审核状态">
+              <Select
+                value={draftAuditStatus}
+                onChange={setDraftAuditStatus}
+                placeholder="全部"
+                allowClear
+                style={{ width: 130 }}
+                options={[
+                  { label: '待审核', value: 0 },
+                  { label: '已通过', value: 1 },
+                  { label: '已驳回', value: 2 },
                 ]}
               />
             </Form.Item>

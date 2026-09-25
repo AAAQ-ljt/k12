@@ -14,6 +14,8 @@ export interface UserInfo {
   grade?: string;
   sex?: number; // 0=女 1=男 2=保密
   status: number; // 0=禁用 1=启用
+  auditStatus?: number; // 0=待审核 1=已通过 2=已驳回
+  auditTime?: string;
   lastLoginTime?: string;
   createTime?: string;
   updateTime?: string;
@@ -28,6 +30,7 @@ export interface UserQuery extends PageParam {
   grade?: string;
   stage?: string;
   status?: number;
+  auditStatus?: number;
   roleType?: number;
 }
 
@@ -59,4 +62,9 @@ export function del(userId: string): Promise<void> {
 /** 修改用户状态 */
 export function changeStatus(userId: string, status: number): Promise<void> {
   return request.put('/userInfo/changeStatus', undefined, { params: { userId, status } });
+}
+
+/** 注册审核：1=通过（可登录使用）2=驳回 */
+export function audit(userId: string, auditStatus: number): Promise<void> {
+  return request.put('/userInfo/audit', undefined, { params: { userId, auditStatus } });
 }
