@@ -21,6 +21,7 @@ public class ImageProviderRouter implements ImageProvider {
     private final DashscopeImageProvider dashscopeImageProvider;
     private final GptImage2Provider gptImage2Provider;
     private final SystemConfigComponent systemConfigComponent;
+    private final AiUsageRecordComponent aiUsageRecordComponent;
 
     /** 启动配置默认供应商（表里无覆盖时生效） */
     @Value("${project.ai.image.provider:dashscope}")
@@ -29,21 +30,29 @@ public class ImageProviderRouter implements ImageProvider {
     public ImageProviderRouter(ArkImageProvider arkImageProvider,
                                DashscopeImageProvider dashscopeImageProvider,
                                GptImage2Provider gptImage2Provider,
-                               SystemConfigComponent systemConfigComponent) {
+                               SystemConfigComponent systemConfigComponent,
+                               AiUsageRecordComponent aiUsageRecordComponent) {
         this.arkImageProvider = arkImageProvider;
         this.dashscopeImageProvider = dashscopeImageProvider;
         this.gptImage2Provider = gptImage2Provider;
         this.systemConfigComponent = systemConfigComponent;
+        this.aiUsageRecordComponent = aiUsageRecordComponent;
     }
 
     @Override
     public ImageGenerateResult generate(String prompt) {
-        return current().generate(prompt);
+        String providerCode = currentCode();
+        ImageGenerateResult result = current(providerCode).generate(prompt);
+        // 生图按张计次（绘本逐页插图、单页补画、管理端生图测试都走这里）：失败无图产出，不计消耗
+        if (result != null && result.success()) {
+            aiUsageRecordComponent.recordImageUsage(providerCode);
+        }
+        return result;
     }
 
     @Override
     public int maxConcurrency() {
-        return current().maxConcurrency();
+        return current(currentCode()).maxConcurrency();
     }
 
     /**
@@ -54,8 +63,7 @@ public class ImageProviderRouter implements ImageProvider {
         return SystemConfigComponent.normalizeImageProvider(code);
     }
 
-    private ImageProvider current() {
-        String code = currentCode();
+    private ImageProvider current(String code) {
         switch (code) {
             case SystemConfigComponent.PROVIDER_ARK:
                 return arkImageProvider;

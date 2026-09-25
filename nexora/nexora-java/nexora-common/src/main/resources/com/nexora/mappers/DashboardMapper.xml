@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.DashboardMapper">
+
+    <!-- 学生总数（role_type=1） -->
+    <select id="selectUserCount" resultType="long">
+        SELECT COUNT(*) FROM user_info WHERE role_type = 1
+    </select>
+
+    <!-- 官方知识库文档数（owner_id IS NULL） -->
+    <select id="selectKnowledgeDocCount" resultType="long">
+        SELECT COUNT(*) FROM knowledge_doc WHERE owner_id IS NULL
+    </select>
+
+    <!-- 今日活跃学生数：今日发过对话消息的去重用户 -->
+    <select id="selectTodayActiveCount" resultType="long">
+        SELECT COUNT(DISTINCT user_id) FROM agent_message
+        WHERE user_message IS NOT NULL AND user_message != '' AND create_time >= CURDATE()
+    </select>
+
+    <!-- AI 对话总条数（用户消息） -->
+    <select id="selectAiMessageCount" resultType="long">
+        SELECT COUNT(*) FROM agent_message WHERE user_message IS NOT NULL AND user_message != ''
+    </select>
+
+    <!-- AI token 总消耗：ai_usage_record 全量累计（生图行 token 为 0，不影响结果） -->
+    <select id="selectTotalTokenCount" resultType="long">
+        SELECT COALESCE(SUM(prompt_tokens + completion_tokens), 0) FROM ai_usage_record
+    </select>
+
+    <!-- 图片生成总张数：文生图按张计次累计 -->
+    <select id="selectImageGenCount" resultType="long">
+        SELECT COALESCE(SUM(call_count), 0) FROM ai_usage_record WHERE usage_type = 'IMAGE'
+    </select>
+
+    <!-- 近 7 天 AI 消耗趋势（含今天）：token 与生图张数按天汇总（GROUP BY 需与 SELECT 表达式一致） -->
+    <select id="selectUsageTrend7d" resultType="com.nexora.entity.vo.DashboardUsageTrendItemVO">
+        SELECT DATE_FORMAT(stat_date, '%m-%d') AS dayLabel,
+               COALESCE(SUM(CASE WHEN usage_type = 'CHAT' THEN prompt_tokens ELSE 0 END), 0) AS promptTokens,
+               COALESCE(SUM(CASE WHEN usage_type = 'CHAT' THEN completion_tokens ELSE 0 END), 0) AS completionTokens,
+               COALESCE(SUM(CASE WHEN usage_type = 'IMAGE' THEN call_count ELSE 0 END), 0) AS imageCount
+        FROM ai_usage_record
+        WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE_FORMAT(stat_date, '%m-%d')
+        ORDER BY MIN(stat_date)
+    </select>
+
+    <!-- 近 7 天 AI 对话趋势（含今天）：GROUP BY 必须与 SELECT 的表达式一致，否则 sql_mode=only_full_group_by 报 1055 -->
+    <select id="selectTrend7d" resultType="com.nexora.entity.vo.DashboardTrendItemVO">
+        SELECT DATE_FORMAT(create_time, '%m-%d') AS dayLabel, COUNT(*) AS count
+        FROM agent_message
+        WHERE user_message IS NOT NULL AND user_message != ''
+          AND create_time >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE_FORMAT(create_time, '%m-%d')
+        ORDER BY MIN(create_time)
+    </select>
+
+    <!-- 学段学生分布 -->
+    <select id="selectStageDistribution" resultType="com.nexora.entity.vo.DashboardStageItemVO">
+        SELECT stage AS stage, COUNT(*) AS count
+        FROM user_info
+        WHERE role_type = 1 AND stage IS NOT NULL AND stage != ''
+        GROUP BY stage
+        ORDER BY count DESC
+    </select>
+
+    <!-- 最近 5 个 AI 会话 -->
+    <select id="selectRecentSessions" resultType="com.nexora.entity.vo.DashboardSessionItemVO">
+        SELECT session_id AS sessionId, title AS title,
+               message_count AS messageCount,
+               DATE_FORMAT(last_message_time, '%m-%d %H:%i') AS lastMessageTime
+        FROM agent_session
+        WHERE last_message_time IS NOT NULL
+        ORDER BY last_message_time DESC
+        LIMIT 5
+    </select>
+
+    <!-- 待审核题目数（AI 出题/批量导入草稿 audit_status=0） -->
+    <select id="selectPendingQuestionCount" resultType="long">
+        SELECT COUNT(*) FROM question_info WHERE audit_status = 0
+    </select>
+
+    <!-- 主观题待批阅数（review_status=0） -->
+    <select id="selectPendingReviewCount" resultType="long">
+        SELECT COUNT(*) FROM practice_record WHERE review_status = 0
+    </select>
+
+    <!-- 官方库入库失败文档数 -->
+    <select id="selectFailedDocCount" resultType="long">
+        SELECT COUNT(*) FROM knowledge_doc WHERE owner_id IS NULL AND vector_status = 3
+    </select>
+
+    <!-- 官方库入库处理中文档数 -->
+    <select id="selectProcessingDocCount" resultType="long">
+        SELECT COUNT(*) FROM knowledge_doc WHERE owner_id IS NULL AND vector_status = 1
+    </select>
+
+</mapper>

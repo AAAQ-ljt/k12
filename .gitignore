@@ -58,3 +58,15 @@ nexora/.maven-settings.xml
 # ===== 注意：以下内容需要提交，勿加入忽略 =====
 # AGENTS.md、.codex/skills/（项目约束体系）、nexora/docs/（设计文档）、
 # nexora-java/nexora.sql（版本化 DDL）、knowledge/（知识库源文件）
+
+# ===== 例外：含明文凭据的运维文档（仅本地保留，不入库）=====
+# 依据：根 AGENTS.md「禁止行为」——禁止把含明文密码/密钥的文档或配置提交入库。
+# 上面「nexora/docs/ 设计文档需提交」的约定不适用于本文件：该文档含
+# 服务器 SSH / MySQL / 管理端 / frp 的明文口令，只应私下传递（发给同事），不得入库。
+# 若哪天把凭据迁走（例如只保留在服务器 /etc/nexora/nexora.env）并确认可公开，
+# 删掉下面这一行即可正常提交。
+nexora/docs/服务器部署与访问.md
+
+# ===== AI 工具本地状态（不入库）=====
+# .zcode/ 是 ZCode 的会话计划与工作数据，属于工具状态而非项目代码。
+.zcode/

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.AiUsageRecordMapper">
+
+    <!-- 按天累计一次 AI 消耗：唯一键命中时次数与 token 相加（model 由调用方保证非空，列 NOT NULL） -->
+    <insert id="upsertUsage">
+        INSERT INTO ai_usage_record (stat_date, usage_type, model, call_count, prompt_tokens, completion_tokens)
+        VALUES (CURDATE(), #{usageType}, #{model}, #{callCount}, #{promptTokens}, #{completionTokens})
+        ON DUPLICATE KEY UPDATE
+            call_count = call_count + VALUES(call_count),
+            prompt_tokens = prompt_tokens + VALUES(prompt_tokens),
+            completion_tokens = completion_tokens + VALUES(completion_tokens)
+    </insert>
+
+</mapper>

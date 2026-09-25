@@ -80,6 +80,7 @@ ResponseVO<T> 统一返回结构:
 - 禁止返回 Map，统一定义对象，比如 vo,dto
 - 禁止在循环里调用数据库
 - 禁止把大模型 API Key / Secret 硬编码进代码（必须走环境变量或外部化配置）
+- 禁止把含明文密码 / 密钥的文档或配置提交入库（`git add` / `commit` / `push` 一律禁止）：例如 `nexora/docs/服务器部署与访问.md`（含服务器 SSH、MySQL、管理端、frp 的明文口令），此类文件只通过私下渠道（直接发文件给同事）传递，绝不入库。批量提交（`git add .` / `git add -A`）前必须先确认没有带上这类文件；对应文件已在 `.gitignore` 里逐条排除，**不得移除这些例外**。新增此类文档时同步补 `.gitignore` 并在文件中注明原因
 - 禁止在 Controller 直接调用 ChatClient / VectorStore / MCP 客户端
 - 禁止让大模型直接执行任意 SQL / 文件操作（教学工具必须白名单化）
 - 禁止把 AI 对话做成同步阻塞接口（必须 Netty WebSocket 流式 / 异步）

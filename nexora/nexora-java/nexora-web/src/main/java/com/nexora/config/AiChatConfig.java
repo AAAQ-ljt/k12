@@ -1,5 +1,6 @@
 package com.nexora.config;
 
+import com.nexora.component.AiUsageAdvisor;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -12,8 +13,9 @@ import org.springframework.context.annotation.Configuration;
 public class AiChatConfig {
 
     @Bean
-    public ChatClient chatClient(OpenAiChatModel openAiChatModel) {
-        return ChatClient.builder(openAiChatModel).build();
+    public ChatClient chatClient(OpenAiChatModel openAiChatModel, AiUsageAdvisor aiUsageAdvisor) {
+        // 统一挂用量上报 Advisor：本端所有大模型调用的 token 消耗自动落 ai_usage_record
+        return ChatClient.builder(openAiChatModel).defaultAdvisors(aiUsageAdvisor).build();
     }
 
     @PostConstruct
