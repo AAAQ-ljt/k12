@@ -1,14 +1,20 @@
 import { Button, Dropdown, App, Tooltip } from 'antd';
-import { ChevronDown, Sparkles, Sun } from 'lucide-react';
+import { ChevronDown, Moon, Sparkles, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
+import { useThemeStore } from '@/stores/theme';
 import { adminLogout } from '@/api/auth';
 
 export default function TopBar() {
   const navigate = useNavigate();
   const userInfo = useAuthStore((s) => s.userInfo);
   const clear = useAuthStore((s) => s.clear);
+  const themeMode = useThemeStore((s) => s.mode);
+  const toggleTheme = useThemeStore((s) => s.toggle);
   const { message } = App.useApp();
+
+  const isDark = themeMode === 'dark';
+  const themeToggleLabel = isDark ? '切换到亮色主题' : '切换到暗色主题';
 
   const handleLogout = async () => {
     try {
@@ -45,12 +51,13 @@ export default function TopBar() {
         </div>
       </div>
       <div className="top-bar-right-area" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Tooltip title="切换主题">
+        {/* 图标表示“点了会切到哪”：暗色时显示太阳（切回亮色），亮色时显示月亮 */}
+        <Tooltip title={themeToggleLabel}>
           <Button
             type="text"
-            aria-label="切换主题"
-            icon={<Sun size={16} />}
-            onClick={() => message.info('主题切换功能开发中')}
+            aria-label={themeToggleLabel}
+            icon={isDark ? <Sun size={16} /> : <Moon size={16} />}
+            onClick={toggleTheme}
           />
         </Tooltip>
         <Dropdown

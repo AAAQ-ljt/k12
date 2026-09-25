@@ -5,6 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nexora-front-admin</title>
+    <style>
+      /* 首屏底色兜底：CSS 变量要等 bundle 执行后才生效，这里先用静态值避免白闪 */
+      html { background: #f5f5f7; }
+      html[data-theme='dark'] { background: #0a0a0a; }
+    </style>
+    <script>
+      // 在 bundle 加载前就把主题写到 <html>，避免暗色用户先闪一下浅色。
+      // 取值逻辑必须与 src/utils/theme.ts 保持一致（存储键 + 跟随系统）。
+      (function () {
+        try {
+          var mode = localStorage.getItem('nexoraAdminTheme');
+          if (mode !== 'light' && mode !== 'dark') {
+            mode =
+              window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', mode);
+          document.documentElement.style.colorScheme = mode;
+        } catch (e) {
+          /* 隐私模式等场景下 localStorage 不可用，忽略即可 */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

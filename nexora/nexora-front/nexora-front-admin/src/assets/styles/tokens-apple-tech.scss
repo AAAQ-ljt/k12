@@ -193,6 +193,112 @@
   --border-color: var(--color-border);
   --text-primary: var(--color-text);
   --text-secondary: var(--color-text-secondary);
+
+  /* ========== 迁移补齐：旧 tokens.scss 有、本文件漏定义的令牌 ==========
+   * 从 tokens.scss 迁到本文件时这批别名没跟过来，引用处解析为空 → 样式静默失效：
+   *   --font-family        → body 字体回退成浏览器默认
+   *   --gradient-selected  → 侧边菜单选中态没有背景
+   *   --motion-* / --ease-* → sidemenu、topbar 的过渡动画失效
+   * 命名沿用旧名，保证既有引用直接可用。
+   */
+  --font-family: var(--font-family-ui);
+  --font-size-base: var(--font-size-caption);
+  --font-size-sm: var(--font-size-fine-print);
+  --font-size-lg: 16px;
+
+  --gradient-selected: linear-gradient(135deg, var(--tech-blue-50) 0%, var(--tech-blue-100) 100%);
+  --gradient-brand: linear-gradient(135deg, var(--tech-blue-600) 0%, var(--tech-blue-500) 100%);
+  --gradient-aurora: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+
+  --motion-duration-fast: var(--motion-fast);
+  --motion-duration-base: var(--motion-base);
+  --motion-duration-slow: var(--motion-slow);
+  --motion-ease-out: var(--ease-out);
+  --motion-ease-in-out: var(--ease-in-out);
+
+  /* antd 风格命名（resource 页在用），映射到本 Token 体系 */
+  --color-border-secondary: var(--divider-soft);
+  --color-bg-container: var(--color-bg-surface);
+  --color-fill-tertiary: rgba(0, 0, 0, 0.04);
+
+  --on-dark: #ffffff;
+
+  /* ========== 外壳令牌（顶栏 / 侧边栏 / 菜单状态）==========
+   * 这些值原先写死在 layout-top-bottom.scss 里，深色下无法适配，收敛为令牌。
+   */
+  --color-glass-header: rgba(245, 245, 247, 0.8);
+  --color-glass-sidebar: rgba(255, 255, 255, 0.6);
+  --color-hover-overlay: rgba(0, 0, 0, 0.04);
+  --color-menu-hover: rgba(91, 110, 245, 0.08);
+  --color-menu-hover-sub: rgba(91, 110, 245, 0.06);
+  --color-menu-group-bg: rgba(245, 245, 247, 0.5);
+  --color-menu-group-hover: rgba(245, 245, 247, 0.8);
+  --color-menu-active-bg: rgb(198, 222, 254);
+  --color-avatar-ring: #ffffff;
+}
+
+/* ============================================================
+ * 暗色主题：只覆盖 Layer 2 语义层 + 外壳令牌，组件 SCSS 无需改动。
+ * 色值向 antd darkAlgorithm 的调色板对齐（容器 #141414 / 布局 #0a0a0a、
+ * 文本 85% / 65% / 45%、边框 #303030 / #262626），
+ * 保证自定义样式与 antd 组件在同一主题下观感一致。
+ * 由 utils/theme.ts 在 <html> 上设置 data-theme 触发。
+ * ============================================================ */
+:root[data-theme='dark'] {
+  /* ---- Layer 1：深色基色 ---- */
+  --ink: rgba(255, 255, 255, 0.85);
+  --ink-muted-80: rgba(255, 255, 255, 0.65);
+  --ink-muted-48: rgba(255, 255, 255, 0.45);
+  --hairline: #303030;
+  --divider-soft: #262626;
+  --canvas: #141414;
+  --canvas-parchment: #0a0a0a;
+  --surface-pearl: #1f1f1f;
+  --surface-black: #141414;
+
+  /* ---- Layer 2：语义层 ---- */
+  --color-text: var(--ink);
+  --color-text-strong: #ffffff;
+  --color-text-secondary: var(--ink-muted-80);
+  --color-text-tertiary: var(--ink-muted-48);
+  --color-text-link: var(--action-dark);
+  --color-text-link-hover: #4da3ff;
+
+  --color-bg: var(--canvas-parchment);
+  --color-bg-surface: var(--canvas);
+  --color-bg-hover: #262626;
+  --color-border: var(--hairline);
+  --color-divider: var(--divider-soft);
+
+  --color-action: var(--action-dark);
+  --color-action-hover: #4da3ff;
+
+  /* 选中渐变：浅色是淡蓝底，深色必须换成主色淡染，否则浅底浅字看不清 */
+  --gradient-selected: linear-gradient(135deg, rgba(91, 110, 245, 0.28) 0%, rgba(91, 110, 245, 0.16) 100%);
+  --gradient-brand-subtle: linear-gradient(135deg, rgba(91, 110, 245, 0.22) 0%, rgba(91, 110, 245, 0.10) 100%);
+
+  /* antd 风格命名 */
+  --color-border-secondary: #303030;
+  --color-bg-container: var(--canvas);
+  --color-fill-tertiary: rgba(255, 255, 255, 0.08);
+
+  /* ---- 外壳令牌 ---- */
+  --color-glass-header: rgba(20, 20, 20, 0.8);
+  --color-glass-sidebar: rgba(20, 20, 20, 0.6);
+  --color-hover-overlay: rgba(255, 255, 255, 0.08);
+  --color-menu-hover: rgba(91, 110, 245, 0.20);
+  --color-menu-hover-sub: rgba(91, 110, 245, 0.14);
+  --color-menu-group-bg: rgba(255, 255, 255, 0.04);
+  --color-menu-group-hover: rgba(255, 255, 255, 0.09);
+  --color-menu-active-bg: rgba(91, 110, 245, 0.30);
+  --color-avatar-ring: #303030;
+
+  /* 阴影：深色下要更重才有层次 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.65);
+  --shadow-sidebar-active: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {
