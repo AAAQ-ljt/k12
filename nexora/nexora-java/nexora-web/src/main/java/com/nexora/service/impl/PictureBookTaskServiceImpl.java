@@ -2,6 +2,7 @@ package com.nexora.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.nexora.component.RedisComponent;
+import com.nexora.component.TtsProvider;
 import com.nexora.constants.Constants;
 import com.nexora.dto.PictureBookTaskVO;
 import com.nexora.exception.BusinessException;
@@ -32,13 +33,14 @@ public class PictureBookTaskServiceImpl implements PictureBookTaskService {
     private RedisComponent redisComponent;
 
     @Override
-    public PictureBookTaskVO submit(String userId, String stage, String topic) {
+    public PictureBookTaskVO submit(String userId, String stage, String topic, String voice) {
         Date now = new Date();
         PictureBookTaskVO task = new PictureBookTaskVO();
         task.setTaskId(UUID.randomUUID().toString().replace("-", ""));
         task.setUserId(userId);
         task.setStage(stage);
         task.setTopic(topic);
+        task.setVoice(TtsProvider.isValidVoice(voice) ? voice : null);
         task.setStatus("PENDING");
         task.setCurrent(0);
         task.setTotal(0);

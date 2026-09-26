@@ -24,6 +24,8 @@ public interface DashboardMapper {
 
     Long selectImageGenCount();
 
+    Long selectTtsGenCount();
+
     List<DashboardUsageTrendItemVO> selectUsageTrend7d();
 
     List<DashboardTrendItemVO> selectTrend7d();

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Row, Col, Card, Table, Tag } from 'antd';
-import { Users, Activity, Database, MessageSquare, Zap, Images, ClipboardList, MessagesSquare } from 'lucide-react';
+import { Users, Activity, Database, MessageSquare, Zap, Images, AudioLines, ClipboardList, MessagesSquare } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import StatCard from '@/components/StatCard';
 import { STAGE_OPTIONS } from '@/types/common';
@@ -150,6 +150,9 @@ export default function Dashboard() {
         </Col>
         <Col xs={24} sm={12} md={8}>
           <StatCard title="图片生成张数" value={formatNumber(data?.imageGenCount)} icon={<Images size={28} />} color="var(--color-info)" />
+        </Col>
+        <Col xs={24} sm={12} md={8}>
+          <StatCard title="语音合成次数" value={formatNumber(data?.ttsGenCount)} icon={<AudioLines size={28} />} color="var(--color-success)" />
         </Col>
       </Row>
 

@@ -23,6 +23,9 @@ public class AiUsageRecordComponent {
     /** 消耗类型：文生图调用（学生绘本插图 / 单页补画 / 管理端生图测试），按张计次 */
     public static final String TYPE_IMAGE = "IMAGE";
 
+    /** 消耗类型：TTS 语音合成（学生绘本旁白 / 单页补录 / 管理端语音测试），按次计 */
+    public static final String TYPE_TTS = "TTS";
+
     @Resource
     private AiUsageRecordMapper aiUsageRecordMapper;
 
@@ -40,6 +43,11 @@ public class AiUsageRecordComponent {
     /** 记录一次成功的文生图调用（按张计次，不产生 token） */
     public void recordImageUsage(String provider) {
         write(TYPE_IMAGE, provider, 1, null, null);
+    }
+
+    /** 记录一次成功的语音合成调用（按次计，不产生 token） */
+    public void recordTtsUsage(String model) {
+        write(TYPE_TTS, model, 1, null, null);
     }
 
     private void write(String usageType, String model, long callCount, Integer promptTokens, Integer completionTokens) {

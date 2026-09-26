@@ -24,9 +24,12 @@ public class PictureBookTaskVO {
 
     /**
      * 状态机：PENDING → STORY_GENERATING → STORY_DONE → IMAGE_GENERATING →
-     * COMPLETED / FAILED
+     * AUDIO_GENERATING → COMPLETED / FAILED
      */
     private String status;
+
+    /** 旁白音色（用户生成时自选，空=学段默认；旁白阶段使用） */
+    private String voice;
 
     /** 当前已完成页数 */
     private int current;
@@ -92,6 +95,14 @@ public class PictureBookTaskVO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getVoice() {
+        return voice;
+    }
+
+    public void setVoice(String voice) {
+        this.voice = voice;
     }
 
     public int getCurrent() {

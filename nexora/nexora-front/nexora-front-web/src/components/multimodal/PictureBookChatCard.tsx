@@ -11,6 +11,7 @@ import {
 } from '@/api/pictureBook';
 import PictureBookReader from './PictureBookReader';
 import { usePictureBookPageFix } from './usePictureBookPageFix';
+import { usePictureBookAudio } from './usePictureBookAudio';
 import styles from './PictureBookChatCard.module.scss';
 
 /** 各任务阶段默认文案（后端 message 优先） */
@@ -19,6 +20,7 @@ const STATUS_TEXT: Record<string, string> = {
   STORY_GENERATING: 'AI 正在编写故事...',
   STORY_DONE: '故事完成，准备绘制插图...',
   IMAGE_GENERATING: '正在绘制插图',
+  AUDIO_GENERATING: '正在录制旁白',
 };
 
 /**
@@ -48,7 +50,21 @@ export default function PictureBookChatCard({ taskId, topic }: { taskId: string;
     }
   }, []);
 
+  /** 旁白录制完成：刷新阅读脚本（新音频落库后阅读器自动重新加载） */
+  const handleAudioCompleted = useCallback(async (resourceId: string) => {
+    try {
+      const info = await getPictureBookInfo(resourceId);
+      const fresh = parsePictureBook(info?.extJson);
+      if (fresh) {
+        setScript(fresh);
+      }
+    } catch {
+      // 刷新失败不影响主流程
+    }
+  }, []);
+
   const { fixingPage, fixPage } = usePictureBookPageFix(task?.bookResourceId, handleFixCompleted);
+  const { audioTask, generateAudio } = usePictureBookAudio(task?.bookResourceId, handleAudioCompleted);
 
   const status = task?.status;
   const terminal = status === 'COMPLETED' || status === 'FAILED' || expired;
@@ -174,6 +190,8 @@ export default function PictureBookChatCard({ taskId, topic }: { taskId: string;
             script={script}
             fixingPage={fixingPage}
             onFixPage={(page) => void fixPage(page)}
+            audioTask={audioTask}
+            onGenerateAudio={(page, selectedVoice) => void generateAudio(page, selectedVoice || undefined)}
           />
         ) : null}
       </Modal>

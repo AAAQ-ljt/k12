@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Image, Input, Space, Spin, Tag } from 'antd';
-import { MessageSquareText, Paintbrush, Waves } from 'lucide-react';
+import { Alert, Button, Card, Image, Input, Select, Space, Spin, Tag } from 'antd';
+import { AudioLines, MessageSquareText, Paintbrush, Waves } from 'lucide-react';
 import {
   modelTestChat,
   modelTestEmbedding,
+  modelTestTts,
   submitImageTest,
   loadImageTestTask,
+  TTS_VOICE_OPTIONS,
   type EmbeddingTestVO,
   type ImageGenTaskVO,
+  type TtsTestVO,
 } from '@/api/modelTest';
 import { loadRuntimeInfo, type RuntimeInfo } from '@/api/systemSetting';
 import styles from './ModelTest.module.scss';
@@ -34,6 +37,14 @@ export default function ModelTest() {
   const [imageTask, setImageTask] = useState<ImageGenTaskVO | null>(null);
   const [imageSubmitting, setImageSubmitting] = useState(false);
   const imageTimerRef = useRef<number | null>(null);
+
+  const [ttsText, setTtsText] = useState('同学们好，今天我们来认识人工智能。');
+  const [ttsVoice, setTtsVoice] = useState<string>('冰糖');
+  const [ttsTone, setTtsTone] = useState('');
+  const [ttsResult, setTtsResult] = useState<TtsTestVO | null>(null);
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsAudioUrl, setTtsAudioUrl] = useState('');
+  const ttsAudioUrlRef = useRef<string | null>(null);
 
   const clearImageTimer = () => {
     if (imageTimerRef.current != null) {
@@ -90,8 +101,14 @@ export default function ModelTest() {
     })();
   }, [startImagePolling]);
 
-  // 组件卸载时停止轮询
+  // 组件卸载时停止轮询并释放音频 Blob URL
   useEffect(() => clearImageTimer, []);
+  useEffect(() => () => {
+    if (ttsAudioUrlRef.current) {
+      window.URL.revokeObjectURL(ttsAudioUrlRef.current);
+      ttsAudioUrlRef.current = null;
+    }
+  }, []);
 
   /** 按标签取当前生效配置（如「对话模型」「向量模型」「文生图模型」） */
   const modelOf = (label: string) => runtime?.models.find((item) => item.label === label)?.value;
@@ -132,6 +149,35 @@ export default function ModelTest() {
       // 错误已统一提示
     } finally {
       setImageSubmitting(false);
+    }
+  };
+
+  const handleTts = async () => {
+    setTtsLoading(true);
+    setTtsResult(null);
+    try {
+      const result = await modelTestTts({
+        text: ttsText,
+        voice: ttsVoice || undefined,
+        tone: ttsTone.trim() ? ttsTone.trim() : undefined,
+      });
+      // base64 → Blob URL 供 <audio> 播放；旧 URL 及时释放
+      if (ttsAudioUrlRef.current) {
+        window.URL.revokeObjectURL(ttsAudioUrlRef.current);
+      }
+      const binary = window.atob(result.audioBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const url = window.URL.createObjectURL(new Blob([bytes], { type: `audio/${result.format}` }));
+      ttsAudioUrlRef.current = url;
+      setTtsResult(result);
+      setTtsAudioUrl(url);
+    } catch {
+      // 错误已统一提示
+    } finally {
+      setTtsLoading(false);
     }
   };
 
@@ -253,10 +299,63 @@ export default function ModelTest() {
             生图为后台异步任务：提交后即使切换页面，返回本页会自动恢复任务状态与结果（任务保留 2 小时）。
           </div>
         </Card>
+
+        <Card
+          title={(
+            <Space>
+              <AudioLines size={16} />
+              4. 语音合成（连通性测试）
+              <Tag color="cyan">mimo-v2.5-tts</Tag>
+            </Space>
+          )}
+          className={styles.card}
+        >
+          <Input.TextArea
+            value={ttsText}
+            onChange={(event) => setTtsText(event.target.value)}
+            autoSize={{ minRows: 2, maxRows: 4 }}
+            placeholder="输入要合成的文本（学生绘本旁白同款链路）"
+          />
+          <Space style={{ marginTop: 12 }} wrap>
+            <Select
+              value={ttsVoice}
+              onChange={setTtsVoice}
+              options={TTS_VOICE_OPTIONS}
+              style={{ width: 140 }}
+              placeholder="音色"
+            />
+            <Input
+              value={ttsTone}
+              onChange={(event) => setTtsTone(event.target.value)}
+              placeholder="语气指令（可选，如：用温柔的语气，语速稍慢）"
+              style={{ width: 240 }}
+            />
+          </Space>
+          <Button type="primary" loading={ttsLoading} onClick={() => void handleTts()} style={{ marginTop: 12 }}>
+            测试语音合成
+          </Button>
+          {ttsLoading ? <div className={styles.loading}><Spin size="small" /> 合成中...</div> : null}
+          {ttsResult && ttsAudioUrl ? (
+            <div className={styles.resultBlock}>
+              <div>
+                <Tag color="success">成功</Tag>
+                <span className={styles.resultLabel}>
+                  音色 {ttsResult.voice} · 耗时 {ttsResult.costMs} ms · {(ttsResult.audioBytes / 1024).toFixed(1)} KB
+                </span>
+              </div>
+              <audio controls src={ttsAudioUrl} style={{ width: '100%', marginTop: 10 }}>
+                您的浏览器不支持音频播放
+              </audio>
+            </div>
+          ) : null}
+          <div className={styles.note}>
+            学生端绘本旁白由同一模型合成：绘本插图完成后自动录制（音色可自选），阅读页也可单页重录。
+          </div>
+        </Card>
       </div>
 
       <div className={styles.note}>
-        <p>排查提示：对话失败 → 检查 NEXORA_DEEPSEEK_API_KEY / 模型名 / 网络；向量失败 → 检查 NEXORA_DASHSCOPE_API_KEY；生图失败 → 额度（FreeTierOnly=免费额度用完，需充值或关闭“仅免费额度”）、Key、限流 429（稍后重试）。</p>
+        <p>排查提示：对话失败 → 检查 NEXORA_DEEPSEEK_API_KEY / 模型名 / 网络；向量失败 → 检查 NEXORA_DASHSCOPE_API_KEY；生图失败 → 额度（FreeTierOnly=免费额度用完，需充值或关闭“仅免费额度”）、Key、限流 429（稍后重试）；语音失败 → 检查 NEXORA_MIMO_TTS_API_KEY 与 MiMo 账户额度。</p>
       </div>
     </div>
   );

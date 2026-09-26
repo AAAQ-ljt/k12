@@ -484,7 +484,7 @@ public class AgentChatComponent {
             if (topic.isEmpty()) {
                 topic = "我的AI小故事";
             }
-            PictureBookTaskVO task = pictureBookTaskService.submit(user.getUserId(), user.getStage(), topic);
+            PictureBookTaskVO task = pictureBookTaskService.submit(user.getUserId(), user.getStage(), topic, null);
 
             Map<String, Object> bizData = new HashMap<>();
             bizData.put("taskId", task.getTaskId());

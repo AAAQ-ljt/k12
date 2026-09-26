@@ -29,8 +29,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 绘本生成异步任务消费者：
- * 状态机 PENDING → STORY_GENERATING → STORY_DONE → IMAGE_GENERATING → COMPLETED / FAILED；
- * 并发策略由 ImageProvider.maxConcurrency() 声明：百炼 1（串行）、豆包 3（并发）；
+ * 状态机 PENDING → STORY_GENERATING → STORY_DONE → IMAGE_GENERATING → AUDIO_GENERATING → COMPLETED / FAILED；
+ * 插图并发策略由 ImageProvider.maxConcurrency() 声明：百炼 1（串行）、豆包 3（并发）；
+ * 旁白在插图全部结束后按所选音色（用户自选/学段默认）合成，失败不阻断出书；
  * 单页失败不废弃整本，进度与结果持久化到 Redis 任务体。
  */
 @Component
@@ -40,6 +41,9 @@ public class PictureBookTaskConsumer {
 
     /** 图片并发生成线程池（并发上限由供应商 maxConcurrency 控制） */
     private static final ExecutorService IMAGE_POOL = Executors.newFixedThreadPool(3);
+
+    /** 旁白并发生成线程池（并发上限由 TtsProvider.maxConcurrency 控制） */
+    private static final ExecutorService AUDIO_POOL = Executors.newFixedThreadPool(2);
 
     /** 并发模式单页生成等待上限（内部已含限流排队与 3 次重试，此处兜底放宽） */
     private static final long PAGE_WAIT_SECONDS = 600;
@@ -61,6 +65,12 @@ public class PictureBookTaskConsumer {
 
     @Resource
     private ImageProvider imageProvider;
+
+    @Resource
+    private PictureBookAudioComponent pictureBookAudioComponent;
+
+    @Resource
+    private AiUsageRecordComponent aiUsageRecordComponent;
 
     /**
      * 启动自愈：把上次进程中断遗留的中间态绘本任务标记为 FAILED（仍在队列中的除外），
@@ -189,6 +199,53 @@ public class PictureBookTaskConsumer {
             }
         }
 
+        // 2.8 旁白合成：逐页 TTS（未配置语音服务时整段跳过，失败不阻断出书）
+        String narrationVoice = null;
+        AtomicReference<String> lastAudioError = new AtomicReference<>();
+        if (pictureBookAudioComponent.isTtsAvailable()) {
+            task.setStatus("AUDIO_GENERATING");
+            task.setMessage("正在录制旁白...");
+            pictureBookTaskService.update(task);
+
+            narrationVoice = pictureBookAudioComponent.resolveVoice(task.getStage(), task.getVoice());
+            generateAudiosConcurrently(task, email, story.title(), texts, pageObjects,
+                    narrationVoice, lastAudioError);
+
+            // 2.9 失败页补录：对仍无音频的页逐页重试两次
+            List<Integer> missingAudio = new ArrayList<>();
+            for (int i = 0; i < pageObjects.size(); i++) {
+                if (StringTools.isEmpty(pageObjects.get(i).getString("audioFile"))) {
+                    missingAudio.add(i);
+                }
+            }
+            for (int index : missingAudio) {
+                String patched = null;
+                for (int attempt = 1; attempt <= 2 && patched == null; attempt++) {
+                    try {
+                        patched = pictureBookAudioComponent.generatePageAudio(
+                                email, texts.get(index), narrationVoice, story.title(), index);
+                        if (patched == null) {
+                            log.warn("绘本旁白补录失败 page={} title={} 第{}次",
+                                    index + 1, story.title(), attempt);
+                        }
+                    } catch (Exception e) {
+                        log.warn("绘本旁白补录异常 page={} title={} 第{}次",
+                                index + 1, story.title(), attempt, e);
+                    }
+                }
+                if (patched != null) {
+                    pageObjects.get(index).put("audioFile", patched);
+                    pageObjects.get(index).put("audioVoice", narrationVoice);
+                    String failure = pictureBookAudioComponent.getLastFailureReason();
+                    if (failure != null) {
+                        lastAudioError.set(failure);
+                    }
+                    task.setMessage("失败页旁白补录完成");
+                    pictureBookTaskService.update(task);
+                }
+            }
+        }
+
         // 3. 组装产物并落库
         JSONObject ext = new JSONObject();
         ext.put("type", "PICTURE_BOOK");
@@ -201,6 +258,17 @@ public class PictureBookTaskConsumer {
                     ? "插图生成失败：请稍后重试，或到管理端检查生图供应商配置与额度"
                     : lastImageError.get();
             ext.put("imageError", reason);
+        }
+        if (narrationVoice != null) {
+            ext.put("voice", narrationVoice);
+            boolean audioAllFailed = pageObjects.stream()
+                    .allMatch(page -> StringTools.isEmpty(page.getString("audioFile")));
+            if (audioAllFailed) {
+                String reason = lastAudioError.get() == null
+                        ? "旁白合成失败：请稍后重试，或到阅读页单页重新生成"
+                        : lastAudioError.get();
+                ext.put("audioError", reason);
+            }
         }
 
         ResourceInfo book = pictureBookService.saveBook(
@@ -267,6 +335,52 @@ public class PictureBookTaskConsumer {
         for (int i = 0; i < futures.length; i++) {
             String imageFile = futures[i].get(PAGE_WAIT_SECONDS, TimeUnit.SECONDS);
             updatePageResult(i, imageFile, task, pageObjects, lastImageError);
+        }
+    }
+
+    /**
+     * 旁白并发生成：按 TtsProvider.maxConcurrency 并发逐页合成，进度实时回写任务体。
+     */
+    private void generateAudiosConcurrently(PictureBookTaskVO task, String email, String bookTitle,
+                                            List<String> texts, List<JSONObject> pageObjects, String voice,
+                                            AtomicReference<String> lastAudioError) throws Exception {
+        @SuppressWarnings("unchecked")
+        CompletableFuture<String>[] futures = new CompletableFuture[texts.size()];
+        Semaphore gate = new Semaphore(pictureBookAudioComponent.maxConcurrency());
+        for (int i = 0; i < texts.size(); i++) {
+            final int index = i;
+            futures[i] = CompletableFuture.supplyAsync(() -> {
+                try {
+                    gate.acquire();
+                    try {
+                        return pictureBookAudioComponent.generatePageAudio(
+                                email, texts.get(index), voice, bookTitle, index);
+                    } finally {
+                        gate.release();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("绘本旁白合成任务被中断 page={} title={}", index + 1, bookTitle, e);
+                    return null;
+                } catch (Exception e) {
+                    log.warn("绘本旁白合成异常 page={} title={}", index + 1, bookTitle, e);
+                    return null;
+                }
+            }, AUDIO_POOL);
+        }
+        for (int i = 0; i < futures.length; i++) {
+            String audioFile = futures[i].get(PAGE_WAIT_SECONDS, TimeUnit.SECONDS);
+            String failure = pictureBookAudioComponent.getLastFailureReason();
+            if (failure != null) {
+                lastAudioError.set(failure);
+            }
+            if (audioFile != null) {
+                pageObjects.get(i).put("audioFile", audioFile);
+                pageObjects.get(i).put("audioVoice", voice);
+            }
+            task.setCurrent(i + 1);
+            task.setMessage("正在录制旁白 " + (i + 1) + "/" + texts.size() + " 页...");
+            pictureBookTaskService.update(task);
         }
     }
 

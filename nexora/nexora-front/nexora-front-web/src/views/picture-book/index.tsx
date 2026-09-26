@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { App, Button, Empty, Input, Modal, Popconfirm, Space } from 'antd';
+import { App, Button, Empty, Input, Modal, Popconfirm, Select, Space } from 'antd';
 import { BookImage, Lock, Play, Sparkles, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -11,11 +11,13 @@ import {
   getPictureBookTask,
   loadMyPictureBooks,
   parsePictureBook,
+  PICTURE_BOOK_VOICES,
   type PictureBookItem,
   type PictureBookScript,
 } from '@/api/pictureBook';
 import PictureBookReader from '@/components/multimodal/PictureBookReader';
 import { usePictureBookPageFix } from '@/components/multimodal/usePictureBookPageFix';
+import { usePictureBookAudio } from '@/components/multimodal/usePictureBookAudio';
 import styles from './index.module.scss';
 
 /** 绘本生成任务持久化（sessionStorage），切页不丢进度 */
@@ -55,6 +57,7 @@ export default function PictureBook() {
   }, []);
 
   const [topic, setTopic] = useState('');
+  const [voice, setVoice] = useState('');
   const [generating, setGenerating] = useState(false);
   const [list, setList] = useState<PictureBookItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,6 +83,25 @@ export default function PictureBook() {
   }, []);
 
   const { fixingPage, fixPage } = usePictureBookPageFix(reading?.item.resourceId, handleFixCompleted);
+
+  /** 旁白录制完成：刷新阅读脚本（新音频以所选音色落库，阅读器自动失效缓存重新加载） */
+  const handleAudioCompleted = useCallback(async (resourceId: string) => {
+    try {
+      const info = await getPictureBookInfo(resourceId);
+      const fresh = parsePictureBook(info?.extJson);
+      if (fresh) {
+        setReading((prev) =>
+          prev && prev.item.resourceId === resourceId
+            ? { item: { ...prev.item, extJson: info?.extJson }, script: fresh }
+            : prev,
+        );
+      }
+    } catch {
+      // 刷新失败不影响主流程
+    }
+  }, []);
+
+  const { audioTask, generateAudio } = usePictureBookAudio(reading?.item.resourceId, handleAudioCompleted);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,8 +132,8 @@ export default function PictureBook() {
     setGenProgress('任务提交中...');
     setTopic('');
     try {
-      // 异步任务：提交后轮询状态，生成完成时自动打开绘本；切页不丢任务
-      const task = await generatePictureBook(text);
+      // 异步任务：提交后轮询状态，生成完成时自动打开绘本；切页不丢任务（voice 为旁白音色，可选）
+      const task = await generatePictureBook(text, voice || undefined);
       sessionStorage.setItem(PB_TASK_KEY, JSON.stringify({ taskId: task.taskId, status: task.status }));
       await pollLoop(task.taskId);
     } catch {
@@ -142,13 +164,15 @@ export default function PictureBook() {
       return snapshot.status === 'COMPLETED' || snapshot.status === 'FAILED';
     }
     if (snapshot.status === 'IMAGE_GENERATING' || snapshot.status === 'STORY_GENERATING'
-        || snapshot.status === 'PENDING') {
+        || snapshot.status === 'AUDIO_GENERATING' || snapshot.status === 'PENDING') {
       setGenProgress(
         snapshot.status === 'IMAGE_GENERATING'
           ? `正在绘制插图 ${Math.max(snapshot.current, 1)}/${snapshot.total} 页...`
-          : snapshot.status === 'STORY_GENERATING'
-            ? 'AI 正在编写故事...'
-            : '任务已提交，正在排队执行...',
+          : snapshot.status === 'AUDIO_GENERATING'
+            ? (snapshot.message || '正在录制旁白...')
+            : snapshot.status === 'STORY_GENERATING'
+              ? 'AI 正在编写故事...'
+              : '任务已提交，正在排队执行...',
       );
       return false;
     }
@@ -291,7 +315,7 @@ export default function PictureBook() {
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.pageTitle}>互动绘本</div>
-          <div className={styles.pageDesc}>输入主题，AI 为你编故事、画插图，生成图文翻页绘本</div>
+          <div className={styles.pageDesc}>输入主题，AI 为你编故事、画插图、配朗读，生成图文有声绘本</div>
         </div>
       </div>
 
@@ -304,6 +328,14 @@ export default function PictureBook() {
           onPressEnter={() => void handleGenerate()}
           maxLength={30}
         />
+        <Select
+          size="large"
+          value={voice}
+          onChange={setVoice}
+          style={{ width: 132 }}
+          options={[{ label: '默认音色', value: '' }, ...PICTURE_BOOK_VOICES.map((v) => ({ label: v, value: v }))]}
+          aria-label="选择旁白音色"
+        />
         <Button
           type="primary"
           size="large"
@@ -311,7 +343,7 @@ export default function PictureBook() {
           loading={generating}
           onClick={() => void handleGenerate()}
         >
-          {generating ? (genProgress || 'AI 创作中（故事 + 插图）...') : '生成绘本'}
+          {generating ? (genProgress || 'AI 创作中（故事 + 插图 + 朗读）...') : '生成绘本'}
         </Button>
       </div>
 
@@ -365,6 +397,8 @@ export default function PictureBook() {
             script={reading.script}
             fixingPage={fixingPage}
             onFixPage={(page) => void fixPage(page)}
+            audioTask={audioTask}
+            onGenerateAudio={(page, selectedVoice) => void generateAudio(page, selectedVoice || undefined)}
           />
         ) : null}
       </Modal>

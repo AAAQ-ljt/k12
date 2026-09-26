@@ -33,6 +33,11 @@
         SELECT COALESCE(SUM(call_count), 0) FROM ai_usage_record WHERE usage_type = 'IMAGE'
     </select>
 
+    <!-- 语音合成总次数：TTS 按次计累计 -->
+    <select id="selectTtsGenCount" resultType="long">
+        SELECT COALESCE(SUM(call_count), 0) FROM ai_usage_record WHERE usage_type = 'TTS'
+    </select>
+
     <!-- 近 7 天 AI 消耗趋势（含今天）：token 与生图张数按天汇总（GROUP BY 需与 SELECT 表达式一致） -->
     <select id="selectUsageTrend7d" resultType="com.nexora.entity.vo.DashboardUsageTrendItemVO">
         SELECT DATE_FORMAT(stat_date, '%m-%d') AS dayLabel,

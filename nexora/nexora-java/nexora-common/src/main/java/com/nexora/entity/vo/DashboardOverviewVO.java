@@ -25,6 +25,9 @@ public class DashboardOverviewVO {
     /** 图片生成张数（文生图累计，供应商一次调用出一张） */
     private Long imageGenCount;
 
+    /** 语音合成次数（TTS 旁白按次累计） */
+    private Long ttsGenCount;
+
     /** 近 7 天 AI 消耗趋势（token 与生图张数） */
     private List<DashboardUsageTrendItemVO> usageTrend;
 
@@ -86,6 +89,14 @@ public class DashboardOverviewVO {
 
     public void setImageGenCount(Long imageGenCount) {
         this.imageGenCount = imageGenCount;
+    }
+
+    public Long getTtsGenCount() {
+        return ttsGenCount;
+    }
+
+    public void setTtsGenCount(Long ttsGenCount) {
+        this.ttsGenCount = ttsGenCount;
     }
 
     public List<DashboardUsageTrendItemVO> getUsageTrend() {

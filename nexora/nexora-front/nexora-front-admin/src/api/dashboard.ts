@@ -43,6 +43,8 @@ export interface DashboardOverview {
   aiMessageCount: number;
   totalTokenCount: number;
   imageGenCount: number;
+  /** 语音合成次数（TTS 旁白按次累计） */
+  ttsGenCount: number;
   trend: DashboardTrendItem[];
   usageTrend: DashboardUsageTrendItem[];
   stageDist: DashboardStageItem[];

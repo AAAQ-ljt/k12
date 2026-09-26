@@ -3,6 +3,7 @@ package com.nexora.admin.controller;
 import com.nexora.admin.biz.ImageGenTaskBiz;
 import com.nexora.admin.biz.ModelTestBiz;
 import com.nexora.admin.dto.ImageGenTaskVO;
+import com.nexora.admin.dto.TtsTestRequest;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.vo.ResponseVO;
 import jakarta.annotation.Resource;
@@ -48,5 +49,11 @@ public class ModelTestController extends ABaseController {
     @GetMapping("/imageTask")
     public ResponseVO<ImageGenTaskVO> imageTask(@RequestParam String taskId) {
         return getSuccessResponseVO(imageGenTaskBiz.get(taskId));
+    }
+
+    /** 语音合成测试（同步返回 base64 音频，前端转 Blob 播放；1~10 秒） */
+    @PostMapping("/tts")
+    public ResponseVO<ModelTestBiz.TtsTestVO> tts(@RequestBody TtsTestRequest request) {
+        return getSuccessResponseVO(modelTestBiz.testTts(request));
     }
 }

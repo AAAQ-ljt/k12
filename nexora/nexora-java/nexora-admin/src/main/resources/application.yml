@@ -98,6 +98,17 @@ project:
       gpt-path: ${NEXORA_GPT_IMAGE_PATH:/v1/images/generations}
       gpt-api-key: ${NEXORA_GPT_IMAGE_API_KEY:sk-xxx}
       gpt-size: ${NEXORA_GPT_IMAGE_SIZE:1024x1024}
+    tts:
+      model: ${NEXORA_MIMO_TTS_MODEL:mimo-v2.5-tts}
+      base-url: ${NEXORA_MIMO_TTS_BASE_URL:https://api.xiaomimimo.com/v1}
+      path: ${NEXORA_MIMO_TTS_PATH:/chat/completions}
+      api-key: ${NEXORA_MIMO_TTS_API_KEY:sk-xxx}
+      format: ${NEXORA_MIMO_TTS_FORMAT:mp3}
+      voice-primary-low: ${NEXORA_MIMO_TTS_VOICE_LOW:冰糖}
+      voice-primary-high: ${NEXORA_MIMO_TTS_VOICE_HIGH:白桦}
+      voice-default: ${NEXORA_MIMO_TTS_VOICE_DEFAULT:mimo_default}
+      tone: 用温柔亲切的语气朗读，语速稍慢，适合讲给小朋友听
+      timeout-seconds: 120
   folder: d:/dev/ai/k12/nexora/
 resource:
   temp-dir: resource/temp
@@ -109,4 +120,4 @@ resource:
 #日志级别
 log:
   root:
-    level: debug
+    level: info

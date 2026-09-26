@@ -36,6 +36,7 @@ public class DashboardBiz {
         vo.setAiMessageCount(safe(dashboardMapper.selectAiMessageCount()));
         vo.setTotalTokenCount(safe(dashboardMapper.selectTotalTokenCount()));
         vo.setImageGenCount(safe(dashboardMapper.selectImageGenCount()));
+        vo.setTtsGenCount(safe(dashboardMapper.selectTtsGenCount()));
         vo.setUsageTrend(buildUsageTrend());
         vo.setTrend(buildTrend());
         vo.setStageDist(dashboardMapper.selectStageDistribution());

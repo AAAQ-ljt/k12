@@ -8,9 +8,10 @@ import com.nexora.dto.PictureBookTaskVO;
 public interface PictureBookTaskService {
 
     /**
-     * 提交绘本生成任务：创建任务(PENDING)并入队，立即返回；由消费者异步执行
+     * 提交绘本生成任务：创建任务(PENDING)并入队，立即返回；由消费者异步执行。
+     * voice 为旁白音色（用户自选，空=学段默认）
      */
-    PictureBookTaskVO submit(String userId, String stage, String topic);
+    PictureBookTaskVO submit(String userId, String stage, String topic, String voice);
 
     /**
      * 查询任务状态（校验归属）

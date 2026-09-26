@@ -1,6 +1,9 @@
 package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
+import com.nexora.component.TtsProvider;
+import com.nexora.dto.PictureBookAudioRequest;
+import com.nexora.dto.PictureBookAudioTaskVO;
 import com.nexora.dto.PictureBookGenerateRequest;
 import com.nexora.dto.PictureBookPageFixRequest;
 import com.nexora.dto.PictureBookPageFixVO;
@@ -58,8 +61,13 @@ public class PictureBookController extends ABaseController {
         if (request == null || StringTools.isEmpty(request.getTopic())) {
             throw new BusinessException("请先输入绘本主题");
         }
+        if (request.getVoice() != null && !request.getVoice().isBlank()
+                && !TtsProvider.isValidVoice(request.getVoice().trim())) {
+            throw new BusinessException("不支持的音色");
+        }
         return getSuccessResponseVO(pictureBookTaskService.submit(
-                current.getUserId(), current.getStage(), request.getTopic().trim()));
+                current.getUserId(), current.getStage(), request.getTopic().trim(),
+                request.getVoice() == null ? null : request.getVoice().trim()));
     }
 
     /**
@@ -124,6 +132,48 @@ public class PictureBookController extends ABaseController {
         }
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
+                .body(new FileSystemResource(path.toFile()));
+    }
+
+    /**
+     * 提交旁白合成任务（异步）：page 为空=整本补录（跳过同音色已合成页），page 给定=单页（重）录制；
+     * voice 为用户自选音色；前端轮询 /audioTask 获取状态
+     */
+    @PostMapping("/generateAudio")
+    public ResponseVO<PictureBookAudioTaskVO> generateAudio(@RequestBody PictureBookAudioRequest request) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        if (request == null || StringTools.isEmpty(request.getResourceId())) {
+            throw new BusinessException("旁白录制参数不完整");
+        }
+        return getSuccessResponseVO(pictureBookService.submitAudioTask(
+                current.getUserId(), request.getResourceId(), request.getPage(), request.getVoice()));
+    }
+
+    /**
+     * 查询旁白合成任务状态
+     */
+    @GetMapping("/audioTask")
+    public ResponseVO<PictureBookAudioTaskVO> audioTask(@RequestParam String taskId) {
+        return getSuccessResponseVO(pictureBookService.getAudioTask(currentUserId(), taskId));
+    }
+
+    /**
+     * 绘本指定页旁白音频：与插图一致公开直连（WebMvcConfig 已排除拦截）
+     */
+    @GetMapping("/audio/{resourceId}")
+    @GlobalInterceptor(checkLogin = false)
+    public ResponseEntity<FileSystemResource> pageAudio(@PathVariable String resourceId,
+                                                        @RequestParam(defaultValue = "0") int page) {
+        String audioFile = pictureBookService.pageAudioFile(resourceId, page);
+        if (StringTools.isEmpty(audioFile)) {
+            throw new BusinessException("旁白音频不存在");
+        }
+        Path path = Paths.get(projectFolder, audioFile);
+        if (!Files.exists(path)) {
+            throw new BusinessException("旁白音频文件不存在");
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .body(new FileSystemResource(path.toFile()));
     }
 

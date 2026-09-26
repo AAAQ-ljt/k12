@@ -39,3 +39,32 @@ export function submitImageTest(prompt: string): Promise<ImageGenTaskVO> {
 export function loadImageTestTask(taskId: string): Promise<ImageGenTaskVO> {
   return request.get('/modelTest/imageTask', { params: { taskId } });
 }
+
+/** MiMo 预置音色（mimo-v2.5-tts），与后端 TtsProvider 白名单一致 */
+export const TTS_VOICE_OPTIONS = [
+  'mimo_default',
+  '冰糖',
+  '茉莉',
+  '苏打',
+  '白桦',
+  'Mia',
+  'Chloe',
+  'Milo',
+  'Dean',
+].map((voice) => ({ label: voice, value: voice }));
+
+/** 语音合成测试结果（base64 音频由前端转 Blob 播放） */
+export interface TtsTestVO {
+  audioBase64: string;
+  /** 音频容器格式（mp3） */
+  format: string;
+  model: string;
+  voice: string;
+  costMs: number;
+  audioBytes: number;
+}
+
+/** 语音合成连通性（同步，1~10 秒） */
+export function modelTestTts(params: { text: string; voice?: string; tone?: string }): Promise<TtsTestVO> {
+  return request.post('/modelTest/tts', params, { timeout: 120000 });
+}
