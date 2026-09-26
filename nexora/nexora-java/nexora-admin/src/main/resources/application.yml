@@ -83,6 +83,8 @@ mybatis:
 project:
   ai:
     vision-model: ${NEXORA_VISION_MODEL:deepseek-v4-flash-vision-exp}
+    embedding:
+      fallback-models: ${NEXORA_EMBEDDING_FALLBACK_MODELS:qwen3.7-text-embedding-flash}
     image:
       provider: ${NEXORA_IMAGE_PROVIDER:ark}
       model: ${NEXORA_IMAGE_MODEL:qwen-image-3.0}
