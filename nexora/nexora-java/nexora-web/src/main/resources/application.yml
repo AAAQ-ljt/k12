@@ -55,7 +55,7 @@ spring:
         base-url: ${NEXORA_CHAT_BASE_URL:https://api.deepseek.com}
         completions-path: ${NEXORA_CHAT_COMPLETIONS_PATH:/chat/completions}
         options:
-          model: ${NEXORA_CHAT_MODEL:deepseek-v4-flash}
+          model: ${NEXORA_CHAT_MODEL:deepseek-flash}
           reasoning-effort: high
       embedding:
         api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
@@ -88,7 +88,7 @@ mybatis:
 #项目目录（按本机实际路径调整）
 project:
   ai:
-    vision-model: ${NEXORA_VISION_MODEL:deepseek-v4-flash-vision-exp}
+    vision-model: ${NEXORA_VISION_MODEL:deepseek-flash}
     embedding:
       fallback-models: ${NEXORA_EMBEDDING_FALLBACK_MODELS:qwen3.7-text-embedding-flash}
     image:

@@ -43,7 +43,7 @@ spring:
         base-url: ${NEXORA_CHAT_BASE_URL:https://api.deepseek.com}
         completions-path: ${NEXORA_CHAT_COMPLETIONS_PATH:/chat/completions}
         options:
-          model: ${NEXORA_CHAT_MODEL:deepseek-v4-flash}
+          model: ${NEXORA_CHAT_MODEL:deepseek-flash}
           reasoning-effort: high
       embedding:
         api-key: ${NEXORA_EMBEDDING_API_KEY:${NEXORA_DASHSCOPE_API_KEY:sk-xxx}}
@@ -75,6 +75,11 @@ admin:
 # 登录 Token 派生密钥（生产环境建议通过环境变量覆盖）
 login:
   token-secret: ${NEXORA_TOKEN_SECRET:nexora-default-token-secret}
+# 跨域 Origin 通配白名单（管理端）：Vite 代理会透传浏览器 Origin，不在白名单会被 Spring 拒成 403
+# 默认放行本机（localhost/回环/IPv6 回环）与内网网段（10.x / 192.168.x / 172.x）及任意 IP 字面量，
+# 覆盖「用局域网 IP 或机器名打开管理端」的联调场景；需要收紧或放开时用环境变量整串覆盖（英文逗号分隔）
+cors:
+  allowed-origin-patterns: ${NEXORA_CORS_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://[::1]:*,http://10.*:*,http://192.168.*:*,http://172.*:*,http://[*]:*}
 mybatis:
   mapper-locations: classpath*:/com/nexora/mappers/*.xml
   configuration:
@@ -82,7 +87,7 @@ mybatis:
 #项目目录（按本机实际路径调整）
 project:
   ai:
-    vision-model: ${NEXORA_VISION_MODEL:deepseek-v4-flash-vision-exp}
+    vision-model: ${NEXORA_VISION_MODEL:deepseek-flash}
     embedding:
       fallback-models: ${NEXORA_EMBEDDING_FALLBACK_MODELS:qwen3.7-text-embedding-flash}
     image:

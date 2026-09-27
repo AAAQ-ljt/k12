@@ -1,12 +1,16 @@
 @echo off
 REM ============================================================
-REM Nexora 数据库一键迁移脚本（给团队成员使用）
-REM 用法:   migrate.bat [mysql用户名] [mysql密码]
-REM 示例:   migrate.bat root 123456
-REM 流程:   清除旧数据库重建 → 导入 nexora_base.sql
-REM         （nexora_base.sql 为从开发者机器导出的最新库结构，
-REM           35 张表全量、业务数据已清除，结构即唯一基线）
-REM 前置:   MySQL 已启动，mysql 命令在 PATH 中
+REM Nexora database one-shot migration (for team members)
+REM Usage:   migrate.bat [mysql_user] [mysql_password]
+REM Example: migrate.bat root 123456
+REM Flow:    drop and recreate the database -> import nexora.sql
+REM          (full baseline) -> run 2026*.sql incremental scripts
+REM          in filename order (they only add tables/columns and are
+REM          re-runnable). Baseline + incrementals = latest schema.
+REM NOTE:    keep this file ASCII-only. cmd.exe parses .bat with the
+REM          system ANSI codepage (GBK on Chinese Windows); UTF-8
+REM          Chinese bytes can swallow line breaks and corrupt parsing.
+REM Requires: MySQL running, mysql client on PATH
 REM ============================================================
 setlocal
 
@@ -17,35 +21,43 @@ if "%DB_USER%"=="" set DB_USER=root
 if "%DB_PASS%"=="" set DB_PASS=123456
 
 set DIR=%~dp0
-set BASE=%~dp0nexora_base.sql
+set BASE=%~dp0nexora.sql
 set DB=nexora
 
 echo ============================================
-echo  Nexora 数据库迁移（全量重建）
-echo  数据库: %DB%   用户: %DB_USER%
+echo  Nexora database migration (full rebuild)
+echo  Database: %DB%   User: %DB_USER%
 echo ============================================
 
 echo.
-echo [1/2] 清除旧数据库并重建 %DB% ...
+echo [1/3] Drop and recreate database %DB% ...
 "%MYSQL%" -u%DB_USER% -p%DB_PASS% -e "DROP DATABASE IF EXISTS %DB%; CREATE DATABASE %DB% DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 if errorlevel 1 goto :fail
 
-echo [2/2] 导入最新库结构（nexora_base.sql，业务数据已清除）...
-REM Windows 下用 cmd 执行输入重定向，避免中文编码问题
+echo [2/3] Import baseline schema (nexora.sql, business data cleared) ...
+REM Run via cmd so the input redirection works with Chinese-safe quoting
 cmd /c ""%MYSQL%" -u%DB_USER% -p%DB_PASS% --default-character-set=utf8mb4 %DB% < "%BASE%""
 if errorlevel 1 goto :fail
 
+echo [3/3] Apply incremental scripts (2026*.sql, re-runnable) ...
+for %%f in ("%DIR%2026*.sql") do (
+    echo   - %%~nxf
+    cmd /c ""%MYSQL%" -u%DB_USER% -p%DB_PASS% --default-character-set=utf8mb4 %DB% < "%%f""
+    if errorlevel 1 goto :fail
+)
+
 echo.
-echo [OK] 数据库 %DB% 迁移完成（35 张表，含三层目录、学习档案与邮箱账号体系）！
-echo 环境变量与启动步骤见 docs\联调验收.md
+echo [OK] Database %DB% migrated (baseline + incrementals, includes user
+echo      audit columns and ai_usage_record)!
+echo See docs/ for env vars and startup steps
 pause
 exit /b 0
 
 :fail
 echo.
-echo [ERROR] 迁移失败！
-echo   1) MySQL 是否已启动？（mysql 命令可用: %MYSQL%）
-echo   2) 账号密码是否正确？（默认 root/123456，可传参覆盖）
-echo   3) 是否能访问 %BASE%
+echo [ERROR] Migration failed!
+echo   1) Is MySQL running? (mysql client available as: %MYSQL%)
+echo   2) Are the credentials correct? (default root/123456, pass args to override)
+echo   3) Can you access %BASE% ?
 pause
 exit /b 1
