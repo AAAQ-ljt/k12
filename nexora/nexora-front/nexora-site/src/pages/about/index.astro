@@ -1,0 +1,198 @@
+---
+import Base from '../../layouts/Base.astro';
+import { SITE } from '../../config/site';
+import CtaSection from '../../components/CtaSection.astro';
+
+const title = '关于 Nexora — Nexus 连接 Aurora 极光';
+const description =
+    'Nexora（Nexus 连接 + Aurora 极光）是面向 K12 的人工智能通识课教学助手，'
+    + '由学生端、管理端与 MCP 教学工具服务组成，AI 承担 7×24 在线教师职责。';
+
+const parts = [
+  {
+    title: '学生端',
+    desc: '孩子的学习主场：AI 助教对话、个性化学习路径、课程教材、编程环境与个人知识库，五页极简导航。',
+  },
+  {
+    title: '管理端',
+    desc: '大人的治理后台：课程与资源、题库与 AI 出题审核、注册审核、提示词与系统配置、AI 用量看板。',
+  },
+  {
+    title: 'MCP 教学工具服务',
+    desc: 'AI 的"手脚"：查进度、出题、维护知识页等教学动作以白名单工具形式提供，AI 只能做被允许的事。',
+  },
+];
+---
+
+<Base title={title} description={description} path="/about/">
+  <section class="ahero">
+    <div class="container">
+      <div class="section-head reveal" style="margin-bottom:0">
+        <p class="eyebrow">About</p>
+        <h1 class="section-title" style="font-size:var(--fs-h1)">
+          Nexus 连接，<span class="grad">Aurora 极光</span>
+        </h1>
+        <p class="section-lede">
+          Nexora = Nexus（连接）+ Aurora（极光）：连接学生与 AI 知识的桥梁；
+          极光象征多元、多彩的多模态交互体验。这是我们做产品的初心，也是视觉语言的来源。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="aparts">
+        {parts.map((p, i) => (
+          <div class="apart glass-card reveal" style={`--reveal-delay:${i * 0.08}s`}>
+            <h2 class="apart__title">{p.title}</h2>
+            <p class="apart__desc">{p.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <div class="acontest glass-card reveal">
+        <h2 class="apart__title">参赛背景</h2>
+        <p class="apart__desc">
+          Nexora 是 2026 年「K12 人工智能通识课教学助手」赛题（JBGS-2026-02）的参赛作品。
+          在 AI 通识逐渐成为基础能力的当下，我们希望回答一个问题：
+          <strong>当每个孩子都能随时向 AI 提问，好的 AI 老师应该长什么样？</strong>
+          我们的答案是——听得懂学段、查得到依据、记得住进度、守得住边界。
+        </p>
+      </div>
+
+      <!-- 视觉语言 -->
+      <section class="section" style="padding-top:var(--section-gap)">
+        <div class="section-head reveal">
+          <p class="eyebrow">Visual language</p>
+          <h2 class="section-title">为什么是<span class="grad">极光</span></h2>
+          <p class="section-lede">
+            Aurora 不是装饰：多模态的每一种产物——动画、绘本、绘画、代码——都是一束不同颜色的光。
+            它们叠在一起，就是孩子学习时眼前的那片极光。所以我们选择深夜色做底，
+            让每一束知识的光都被看见。
+          </p>
+        </div>
+      </section>
+
+      <!-- 产品演进（横向里程碑，与技术页的纵向链路区分） -->
+      <section class="section" style="padding-top:0">
+        <div class="section-head reveal">
+          <p class="eyebrow">Milestones</p>
+          <h2 class="section-title">产品<span class="grad">演进</span></h2>
+          <p class="section-lede">两个月，从底座到个性化——每一个里程碑都来自真实的开发提交。</p>
+        </div>
+        <ol class="milestones">
+          {[
+            { date: '2026.08', title: '底座与素材', desc: '官方 RAG 知识库与检索上线；资源解析入库；学生个人知识库初始化与上传白名单。' },
+            { date: '2026.08 下旬', title: '多模态起航', desc: 'AI 绘本异步生成、文生图供应商化，多模态产物开始进入对话。' },
+            { date: '2026.09 上旬', title: '教学闭环', desc: '课时通关测验闭环、学生加入课程、学习进度一期与答题批阅。' },
+            { date: '2026.09 下旬', title: '个性化深化', desc: '学习路径一期闭环、AI 助教操控个人知识页、注册审核与数据看板、AI 用量统计。' },
+          ].map((m, i) => (
+            <li class="ms-col reveal" style={`--reveal-delay:${i * 0.09}s`}>
+              <span class="ms-col__date">{m.date}</span>
+              <span class="ms-col__dot" aria-hidden="true"></span>
+              <div class="ms-col__card glass-card">
+                <h3 class="ms-col__title">{m.title}</h3>
+                <p class="ms-col__desc">{m.desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <p class="acontact reveal">
+        想聊聊合作或体验部署？<a href={`mailto:${SITE.email}`}>{SITE.email}</a>
+      </p>
+    </div>
+  </section>
+
+  <CtaSection />
+</Base>
+
+<style>
+  .ahero { padding-block: clamp(3.6rem, 7vw, 5.5rem) 0; }
+
+  /* ---------- 演进时间线（横向里程碑，与技术页纵向链路区分） ---------- */
+  .milestones {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.2rem;
+  }
+  /* 横向渐变主线，穿过每列的圆点 */
+  .milestones::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 2.45rem;
+    height: 1px;
+    background: linear-gradient(90deg, var(--aurora-1), var(--aurora-2) 55%, var(--aurora-3));
+    opacity: 0.45;
+  }
+  .ms-col { position: relative; display: grid; gap: 0.5rem; align-content: start; justify-items: start; }
+  .ms-col__date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--brand-400);
+    line-height: 1.4;
+    position: relative;
+    z-index: 1;
+    background: var(--bg-base);
+    padding-block: 0.15rem 0.35rem;
+  }
+  .ms-col__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--gradient-badge);
+    box-shadow: 0 0 0 4px var(--bg-base);
+    margin-block: 0.1rem;
+    position: relative;
+    z-index: 1;
+  }
+  .ms-col__card {
+    width: 100%;
+    padding: 1.05rem 1.15rem;
+    border-radius: var(--r-md);
+    margin-top: 0.35rem;
+  }
+  .ms-col__title { font-size: var(--fs-body); }
+  .ms-col__desc { margin-top: 0.35rem; font-size: var(--fs-xs); color: var(--text-secondary); line-height: 1.7; }
+
+  @media (max-width: 900px) {
+    .milestones { grid-template-columns: 1fr 1fr; }
+    .milestones::before { display: none; }
+  }
+  @media (max-width: 540px) {
+    .milestones { grid-template-columns: 1fr; }
+  }
+
+  .aparts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.1rem;
+  }
+  .apart { padding: 1.7rem 1.6rem; }
+  .apart__title { font-size: var(--fs-h3); margin-bottom: 0.55rem; }
+  .apart__desc { font-size: var(--fs-sm); color: var(--text-secondary); }
+  .acontest {
+    margin-top: 1.1rem;
+    padding: 1.9rem 1.7rem;
+    border-color: var(--stroke-brand);
+    background:
+        linear-gradient(150deg, rgba(134, 59, 255, 0.1), transparent 55%), var(--bg-card);
+  }
+  .acontest strong { color: var(--text-primary); }
+  .acontact {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+  }
+  .acontact a { color: var(--brand-400); border-bottom: 1px dashed rgba(157,107,255,.5); }
+
+  @media (max-width: 860px) {
+    .aparts { grid-template-columns: 1fr; }
+  }
+</style>

@@ -1,0 +1,84 @@
+---
+import Base from '../../../layouts/Base.astro';
+
+const title = '隐私政策 — Nexora';
+const description = 'Nexora 隐私政策：我们收集哪些信息、如何存储与使用、AI 模型处理边界、未成年人保护与您的权利。';
+const updated = '2026-09-27';
+---
+
+<Base title={title} description={description} path="/legal/privacy/">
+  <section class="lhero">
+    <div class="container container--narrow">
+      <p class="eyebrow">Legal</p>
+      <h1 class="section-title" style="font-size:var(--fs-h1)">隐私政策</h1>
+      <p class="lupdated">最后更新：{updated} · 本政策说明 Nexora 如何处理您的个人信息，请与《用户协议》一并阅读</p>
+
+      <div class="lbody glass-card">
+        <p class="lemph">Nexora 是面向 K12 的学习产品，<strong>未成年人个人信息保护是本政策的核心</strong>。我们遵循合法、正当、必要与最小化原则处理个人信息，不向任何第三方出售您的数据。</p>
+
+        <h2>一、我们收集的信息</h2>
+        <p>1.1 <strong>账号信息</strong>：注册时提供的电子邮箱（唯一登录标识）、密码的加密摘要。</p>
+        <p>1.2 <strong>学情信息</strong>：您选择的学段与年级；练习、测验、路径自测产生的作答记录与判分结果；由此计算的知识点掌握度、学习进度与学习趋势。</p>
+        <p>1.3 <strong>对话与生成内容</strong>：您与 AI 助教的对话文本、AI 的回复，以及生成的动画、绘本、绘画等产物记录（含 Token 用量统计）。</p>
+        <p>1.4 <strong>个人知识库资料</strong>：您主动上传的 Markdown、文本、图片、Word、PDF 等文件，以及由 AI 整理、经您确认入库的 Wiki 知识页。</p>
+        <p>1.5 <strong>技术信息</strong>：为保障服务安全所产生的登录状态、操作日志等。</p>
+
+        <h2>二、信息的存储</h2>
+        <p>2.1 业务数据存储于运营方自建的数据库与缓存服务；个人知识库的向量数据存储于自建检索服务中，检索范围严格限定于您的账号。</p>
+        <p>2.2 学习数据在账号有效期内持续保留以支撑学习分析；您删除的资源与知识页，其关联数据（含向量与检索引用）将被级联清理。</p>
+
+        <h2>三、信息的使用</h2>
+        <p>3.1 仅用于提供与改进教学服务：适配 AI 的表达方式与难度、生成学习路径与复习计划、保障账号安全、统计服务用量。</p>
+        <p>3.2 <strong>我们不将您的个人信息用于广告投放，也不向第三方出售。</strong></p>
+
+        <h2>四、AI 模型处理边界</h2>
+        <p>4.1 您与 AI 助教的对话内容会经由大模型服务商的接口进行处理以生成回复。我们仅传输提供服务所必需的内容，并与服务商约定不得将其用于模型训练以外的用途。</p>
+        <p>4.2 个人知识库中的内容<strong>仅在你确认入库后</strong>参与检索并作为回答依据；未确认的草稿不进入检索范围。</p>
+
+        <h2>五、共享与披露</h2>
+        <p>5.1 除以下情形外，我们不会与第三方共享您的个人信息：获得您的明确同意；为实现服务所必需（如 AI 模型供应商、云基础设施，且仅限于最小必要范围）；依法律法规或有权机关的要求。</p>
+
+        <h2>六、未成年人保护</h2>
+        <p>6.1 本产品面向未成年人提供学习服务。<strong>未成年人注册与使用应由监护人知情并同意</strong>，监护人应引导未成年人合理使用。</p>
+        <p>6.2 我们遵循未成年人个人信息保护相关法律法规，对不满十四周岁未成年人的个人信息实行专门保护；监护人可依法行使查阅、更正、删除等权利。</p>
+
+        <h2>七、您的权利</h2>
+        <p>7.1 您有权<strong>查询、更正、导出与删除</strong>您的个人信息；有权删除上传的资料与知识页（删除后相关向量与检索引用级联清理）；有权注销账号。</p>
+        <p>7.2 您可通过产品内功能或页脚联系邮箱行使上述权利，我们将在合理期限内响应。</p>
+
+        <h2>八、数据安全</h2>
+        <p>8.1 我们采取访问控制、传输加密、白名单化的 AI 工具调用、管理端操作审核等措施防止数据被未经授权地访问、使用或泄露。</p>
+
+        <h2>九、政策变更</h2>
+        <p>9.1 本政策可能适时修订并在本页公示；涉及重大变化的，我们将以显著方式提示，并以变化后您继续使用服务视为接受。</p>
+
+        <h2>十、联系我们</h2>
+        <p>10.1 如您对本政策有任何疑问、意见或建议，可通过页脚公示的联系邮箱与运营方取得联系。</p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .lhero { padding-block: clamp(3.4rem, 6vw, 5rem) 0; }
+  .container--narrow { max-width: 820px; }
+  .lupdated { margin-top: 0.9rem; color: var(--text-muted); font-size: var(--fs-xs); }
+  .lbody { margin-top: 1.8rem; padding: clamp(1.6rem, 3.5vw, 2.6rem); }
+  .lemph {
+    padding: 1rem 1.2rem;
+    border-radius: var(--r-md);
+    background: rgba(157, 107, 255, 0.08);
+    border: 1px solid var(--stroke-brand);
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+    line-height: 1.8;
+    margin-bottom: 1.8rem;
+  }
+  .lemph strong { color: var(--text-primary); }
+  .lbody h2 { font-size: var(--fs-h3); margin: 1.9rem 0 0.7rem; }
+  .lbody h2:first-of-type { margin-top: 0; }
+  .lbody p { color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.85; }
+  .lbody p + p { margin-top: 0.5rem; }
+  .lbody a { color: var(--brand-400); border-bottom: 1px dashed rgba(157, 107, 255, 0.5); }
+  .lbody strong { color: var(--text-primary); }
+</style>

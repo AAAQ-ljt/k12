@@ -1,0 +1,202 @@
+---
+/**
+ * 「同一个 AI，三种学段教法」切换器：
+ * tab 切换时配色、交互方式、示例对话整体联动（产品的核心差异化）。
+ * 学段数据内联于 JSON，脚本只负责切换 class。
+ * 说明：产品内小学低/高年级仅提示词轻微不同，官网按小学/初中/高中三档呈现。
+ */
+interface Stage {
+  key: string;
+  name: string;
+  slogan: string;
+  desc: string;
+  chips: string[];
+  ask: string;
+  answer: string;
+}
+const stages: Stage[] = [
+  {
+    key: 'primary',
+    name: '小学',
+    slogan: '像听故事一样认识 AI',
+    desc: '绘本与游戏化为主，图文动画逐步加入。课程和知识库与初中高中同源，只是 AI 的讲法专门为小学做了调校。',
+    chips: ['绘本故事', '游戏化练习', '图文动画'],
+    ask: 'AI 是什么呀？',
+    answer: 'AI 就像一个特别会观察、特别爱学习的小伙伴——我们用一本绘本讲给你听好吗？',
+  },
+  {
+    key: 'junior',
+    name: '初中',
+    slogan: '从提问者到小创造者',
+    desc: '项目式学习为主线，编程入门从浏览器里开始，AI 帮你把想法拆成可执行的步骤。',
+    chips: ['项目式学习', '编程入门', '知识库整理'],
+    ask: '我想做一个垃圾分类小助手',
+    answer: '好想法！我们把它拆成三步：先收集图片数据，再训练识别，最后做界面——从第一步开始？',
+  },
+  {
+    key: 'senior',
+    name: '高中',
+    slogan: '原理、算法与工程实践',
+    desc: '算法层面的讲解与代码实践，掌握度数据驱动复习安排，向课程深水区进发。',
+    chips: ['算法讲解', '编程实践', '掌握度复盘'],
+    ask: '讲讲梯度下降的直觉',
+    answer: '把它想成下山：每一步都朝最陡的下坡走。我们用代码把这个"下山过程"画出来。',
+  },
+];
+---
+
+<div class="ss">
+  <div class="ss__tabs" role="tablist" aria-label="学段切换">
+    {stages.map((stage, i) => (
+      <button
+        type="button"
+        role="tab"
+        id={`stage-tab-${stage.key}`}
+        class:list={['ss__tab', { 'is-active': i === 0 }]}
+        aria-selected={i === 0 ? 'true' : 'false'}
+        aria-controls={`stage-panel-${stage.key}`}
+        data-stage-tab={stage.key}
+      >
+        {stage.name}
+      </button>
+    ))}
+  </div>
+
+  {stages.map((stage, i) => (
+    <div
+      class:list={['ss__panel', { 'is-active': i === 0 }, `ss__panel--${stage.key}`]}
+      role="tabpanel"
+      id={`stage-panel-${stage.key}`}
+      aria-labelledby={`stage-tab-${stage.key}`}
+      data-stage-panel={stage.key}
+      hidden={i !== 0}
+    >
+      <div class="ss__copy">
+        <h3 class="ss__slogan">{stage.slogan}</h3>
+        <p class="ss__desc">{stage.desc}</p>
+        <div class="ss__chips">
+          {stage.chips.map((chip) => <span class="chip chip--brand">{chip}</span>)}
+        </div>
+      </div>
+
+      <div class="ss__chat" aria-hidden="true">
+        <p class="ss__say ss__say--user">{stage.ask}</p>
+        <p class="ss__say ss__say--ai">{stage.answer}</p>
+      </div>
+    </div>
+  ))}
+</div>
+
+<script>
+  const tabs = document.querySelectorAll<HTMLButtonElement>('[data-stage-tab]');
+  const panels = document.querySelectorAll<HTMLElement>('[data-stage-panel]');
+
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => {
+      const key = tab.dataset.stageTab;
+      for (const t of tabs) {
+        const on = t === tab;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', String(on));
+      }
+      for (const p of panels) {
+        const on = p.dataset.stagePanel === key;
+        p.classList.toggle('is-active', on);
+        if (on) {
+          p.removeAttribute('hidden');
+        } else {
+          p.setAttribute('hidden', '');
+        }
+      }
+    });
+  }
+</script>
+
+<style>
+  .ss__tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.32rem;
+    border-radius: var(--r-full);
+    background: var(--bg-card);
+    border: 1px solid var(--stroke-subtle);
+    margin-bottom: 1.8rem;
+  }
+  .ss__tab {
+    padding: 0.55rem 1.6rem;
+    border-radius: var(--r-full);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-secondary);
+    transition: color var(--dur-fast) var(--ease-out),
+        background var(--dur-fast) var(--ease-out);
+  }
+  .ss__tab:hover { color: var(--text-primary); }
+  .ss__tab.is-active {
+    color: var(--text-on-brand);
+    background: var(--gradient-btn);
+    box-shadow: var(--shadow-brand);
+  }
+
+  .ss__panel {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 2.2rem;
+    align-items: center;
+    padding: clamp(1.6rem, 3.5vw, 2.8rem);
+    border-radius: var(--r-xl);
+    background:
+        linear-gradient(150deg, var(--panel-tint, rgba(102, 126, 234, 0.1)), transparent 55%),
+        var(--bg-deep);
+    border: 1px solid var(--stroke-subtle);
+    animation: ss-in var(--dur-slow) var(--ease-out);
+  }
+  .ss__panel[hidden] { display: none; }
+  @keyframes ss-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* 每个学段一个专属色调（切换时整体联动） */
+  .ss__panel--primary { --panel-tint: rgba(240, 147, 251, 0.12); }
+  .ss__panel--junior { --panel-tint: rgba(79, 172, 254, 0.13); }
+  .ss__panel--senior { --panel-tint: rgba(134, 59, 255, 0.15); }
+
+  .ss__slogan { font-size: var(--fs-h2); margin-bottom: 0.7rem; }
+  .ss__desc { color: var(--text-secondary); max-width: 34em; }
+  .ss__chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.3rem; }
+
+  .ss__chat {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1.4rem 1.5rem;
+    border-radius: var(--r-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--stroke-subtle);
+  }
+  .ss__say {
+    padding: 0.68rem 1rem;
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+    line-height: 1.72;
+    width: fit-content;
+    max-width: 96%;
+  }
+  .ss__say--user {
+    justify-self: end;
+    background: var(--gradient-btn);
+    color: var(--text-on-brand);
+  }
+  .ss__say--ai {
+    background: var(--bg-elevated);
+    border: 1px solid var(--stroke-subtle);
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 820px) {
+    .ss__panel { grid-template-columns: 1fr; gap: 1.4rem; }
+    .ss__tabs { display: flex; width: 100%; }
+    .ss__tab { flex: 1; padding-inline: 0.6rem; }
+  }
+</style>

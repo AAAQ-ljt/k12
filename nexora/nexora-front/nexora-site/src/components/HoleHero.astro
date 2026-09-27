@@ -1,0 +1,33 @@
+---
+/**
+ * Hero「无限隧道」背景 — 引擎取自 参考项目/k12bk/1.html（Infinite Hole, WebGL2），
+ * 调成品牌紫粉配色、降低实例密度；离开视口/页签隐藏自动暂停。
+ * 引擎在 public/js/infinite-hole.js，挂载点为父级 [data-hole]（即 hero section 本身，
+ * 这样指针悬停文字区域也能加速隧道）。WebGL2 不可用时静默降级为底层极光。
+ */
+---
+
+<div class="hole-veil" aria-hidden="true"></div>
+
+<style>
+  .hole-veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(7, 8, 18, 0) 55%, var(--bg-base) 97%),
+        linear-gradient(90deg, rgba(7, 8, 18, 0.82) 0%, rgba(7, 8, 18, 0.42) 46%, rgba(7, 8, 18, 0.1) 78%, rgba(7, 8, 18, 0.35) 100%);
+  }
+
+  /* 小屏：文字与演示窗上下排布，遮罩改为纵向渐变保证可读性 */
+  @media (max-width: 1020px) {
+    .hole-veil {
+      background:
+          linear-gradient(180deg, rgba(7, 8, 18, 0) 40%, var(--bg-base) 96%),
+          linear-gradient(180deg, rgba(7, 8, 18, 0.72), rgba(7, 8, 18, 0.38) 55%, rgba(7, 8, 18, 0.12));
+    }
+  }
+</style>
+
+<script is:inline src="/js/infinite-hole.js" defer></script>

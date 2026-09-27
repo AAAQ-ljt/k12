@@ -1,0 +1,170 @@
+---
+import Icon from './Icon.astro';
+/**
+ * Wiki 知识库四步流程：上传资料 → AI 整理成 Wiki 草稿 → 编辑确认入库 → 越用越懂你。
+ * 纯展示型组件（步骤节点 + 连接线 + 成品页样例），无脚本。
+ */
+const steps = [
+  {
+    icon: 'upload',
+    title: '上传资料',
+    desc: 'Markdown、文本、图片、Word、PDF 拖进资源中心，自动归入 raw 原始区。',
+  },
+  {
+    icon: 'sparkles',
+    title: 'AI 整理成 Wiki',
+    desc: 'AI 阅读原文，生成结构化知识页草稿，术语自动挂上双链引用。',
+  },
+  {
+    icon: 'check',
+    title: '编辑确认入库',
+    desc: '草稿逐页可改——确认之后才向量化入库，检索与作答只用你确认过的内容。',
+  },
+  {
+    icon: 'trend',
+    title: '越用越懂你',
+    desc: 'AI 助教引用你的知识页回答问题，知识库越充实，讲解越贴合你的认知。',
+  },
+];
+---
+
+<ol class="wf">
+  {steps.map((step, i) => (
+    <li class="wf__step reveal" style={`--reveal-delay:${i * 0.12}s`}>
+      <span class="wf__no" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+      <span class="wf__icon" aria-hidden="true"><Icon name={step.icon} size={26} /></span>
+      <h3 class="wf__title">{step.title}</h3>
+      <p class="wf__desc">{step.desc}</p>
+    </li>
+  ))}
+</ol>
+
+<div class="wf-demo reveal" style="--reveal-delay:0.2s">
+  <div class="wf-demo__page glass-card" role="img" aria-label="AI 生成的 Wiki 页面样例">
+    <div class="wf-demo__page-bar">
+      <span class="chip chip--brand">Wiki 页 · 已入库</span>
+      <span class="wf-demo__page-meta">向量 1024 维 · AI 整理于今天</span>
+    </div>
+    <h4 class="wf-demo__page-title">机器学习入门笔记</h4>
+    <p class="wf-demo__page-text">
+      监督学习需要带标签的数据……与之相对的是
+      <span class="wf-demo__link">[[无监督学习]]</span>，
+      损失函数的直觉可以参考 <span class="wf-demo__link">[[梯度下降]]</span>。
+    </p>
+    <div class="wf-demo__page-tags">
+      <span class="chip">机器学习</span><span class="chip">入门笔记</span><span class="chip">我的整理</span>
+    </div>
+  </div>
+
+  <div class="wf-demo__chat">
+    <p class="wf-demo__say wf-demo__say--user">把今天课上学的补进我的知识库</p>
+    <p class="wf-demo__say wf-demo__say--ai">
+      好的，已新建 Wiki 页《监督学习 · 课堂要点》并确认入库 ✓ —— 下次提问我会引用它。
+    </p>
+    <p class="wf-demo__tool">MCP 工具调用 · wiki.createPage / wiki.confirm</p>
+  </div>
+</div>
+
+<style>
+  .wf {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.1rem;
+    counter-reset: wf;
+    position: relative;
+  }
+  .wf__step {
+    position: relative;
+    padding: 1.5rem 1.3rem 1.6rem;
+    border-radius: var(--r-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--stroke-subtle);
+  }
+  /* 步骤连接线 */
+  .wf__step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 2.6rem;
+    right: -0.85rem;
+    width: 0.85rem;
+    height: 1px;
+    background: var(--stroke-brand);
+  }
+  .wf__no {
+    position: absolute;
+    top: 1.05rem;
+    right: 1.15rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+  .wf__icon { display: block; margin-bottom: 0.8rem; color: var(--icon-color); }
+  .wf__title { font-size: var(--fs-h3); margin-bottom: 0.5rem; }
+  .wf__desc { font-size: var(--fs-sm); color: var(--text-secondary); }
+
+  .wf-demo {
+    margin-top: 2.4rem;
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 1.2rem;
+    align-items: stretch;
+  }
+  .wf-demo__page { padding: 1.4rem 1.5rem; }
+  .wf-demo__page-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .wf-demo__page-meta { font-size: var(--fs-xs); color: var(--text-muted); }
+  .wf-demo__page-title { font-size: var(--fs-h3); margin-bottom: 0.6rem; }
+  .wf-demo__page-text { font-size: var(--fs-sm); color: var(--text-secondary); }
+  .wf-demo__link {
+    color: var(--accent-cyan);
+    border-bottom: 1px dashed rgba(79, 172, 254, 0.5);
+  }
+  .wf-demo__page-tags { display: flex; gap: 0.45rem; margin-top: 1rem; flex-wrap: wrap; }
+
+  .wf-demo__chat {
+    display: grid;
+    gap: 0.7rem;
+    align-content: center;
+    padding: 1.4rem 1.5rem;
+    border-radius: var(--r-lg);
+    border: 1px dashed var(--stroke-strong);
+  }
+  .wf-demo__say {
+    padding: 0.62rem 0.95rem;
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+    line-height: 1.7;
+    width: fit-content;
+    max-width: 95%;
+  }
+  .wf-demo__say--user {
+    justify-self: end;
+    background: var(--gradient-btn);
+    color: var(--text-on-brand);
+  }
+  .wf-demo__say--ai {
+    background: var(--bg-card);
+    border: 1px solid var(--stroke-subtle);
+    color: var(--text-secondary);
+  }
+  .wf-demo__tool {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .wf { grid-template-columns: 1fr 1fr; }
+    .wf__step:nth-child(2)::after { display: none; }
+  }
+  @media (max-width: 560px) {
+    .wf { grid-template-columns: 1fr; }
+    .wf__step::after { display: none !important; }
+    .wf-demo { grid-template-columns: 1fr; }
+  }
+</style>

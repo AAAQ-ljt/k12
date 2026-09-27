@@ -1,0 +1,241 @@
+---
+import Base from '../../layouts/Base.astro';
+import CtaSection from '../../components/CtaSection.astro';
+
+const title = '产品能力 · 六大模块一体贯通 — Nexora';
+const description =
+    'AI 助教对话、会自己长大的个人知识库、个性化学习路径、课程教材与通关测验、浏览器编程环境、'
+    + '学习分析与遗忘曲线复习——Nexora 的六大能力围绕同一个学习闭环设计。';
+
+const features = [
+  {
+    icon: 'M4 5h16v11H8l-4 4V5z',
+    title: 'AI 助教对话',
+    lede: '7×24 在线，听得懂孩子的每一句为什么。',
+    points: [
+      '流式回复：答案逐字到达，像真人老师一样在"想"',
+      '意图识别：讲解、推荐资料、出题、画图、做动画，说需求就行',
+      '产物卡片：回复里直接长出可交互的卡片，点击全屏体验',
+      '安全护栏：教学工具白名单化，AI 不能越界操作',
+    ],
+  },
+  {
+    icon: 'M6 4h9a3 3 0 0 1 3 3v13H9a3 3 0 0 1-3-3V4zm12 2h2v13a3 3 0 0 1-3 3h-1',
+    title: 'AI 个人知识库',
+    lede: '最具特色：上传资料，AI 维护，越用越懂你。',
+    points: [
+      '上传 Markdown / 文本 / 图片 / Word / PDF，AI 自动整理成 Wiki 页',
+      '草稿逐页可编辑，确认后才向量化入库',
+      '对话里一句话，AI 直接帮你新建或更新知识页',
+      '与课程知识库双库检索，回答既科学又贴合你的学习轨迹',
+    ],
+    star: true,
+    href: '/wiki/',
+  },
+  {
+    icon: 'M4 19V5m0 14h16M8 15l3-4 3 2 4-6',
+    title: '个性化学习路径',
+    lede: '一条会跳题的路径，只为你的进度服务。',
+    points: [
+      'AI 四阶段规划，结合兴趣分支生成专属路径',
+      '节点三态由知识点掌握度驱动，太熟的内容自动跳过',
+      '节点自测：学完即测，判分结果回写掌握度',
+      '解锁联动：过关才点亮下一站，学习有节奏感',
+    ],
+  },
+  {
+    icon: 'M5 4h14v16H5zM9 4v16m0-8h10M12 8h7m-7 8h7',
+    title: '课程教材与通关测验',
+    lede: 'AI 通识课的章节、课时、资源一条线。',
+    points: [
+      '章节—课时—课时资源三级结构，官方课程持续更新',
+      '每课时可配通关测验：题库选题或 AI 出题',
+      '严格门禁模式可选：通过测验才解锁下一课时',
+      '学习进度自动记录，打开资源即计入课时完成',
+    ],
+  },
+  {
+    icon: 'M8 9l-3 3 3 3m8-6l3 3-3 3M13 6l-2 12',
+    title: '浏览器编程环境',
+    lede: '第一行代码，不需要先学安装环境。',
+    points: [
+      'Python 在浏览器内直接运行（WebAssembly），零安装',
+      '预设练习模板，从打印语句到小项目循序渐进',
+      '与 AI 助教联动：看不懂的代码，圈出来就有人讲',
+      '高学段专属入口，随学段逐步开放',
+    ],
+  },
+  {
+    icon: 'M12 20a8 8 0 1 1 8-8m-8 4a4 4 0 1 1 4-4m4 8v-6m-3 3h6',
+    title: '学习分析与复习',
+    lede: '复习什么、什么时候复习，数据说了算。',
+    points: [
+      '知识点掌握度：每次判分实时回写',
+      '遗忘曲线复习：快忘的知识点自动排进复习计划',
+      '学习趋势：练习量、正确率、学习时长一目了然',
+      'AI 用量透明：Token 消耗与生图计次可查',
+    ],
+  },
+];
+---
+
+<Base title={title} description={description} path="/features/">
+  <section class="fhero">
+    <div class="container">
+      <div class="section-head reveal" style="margin-bottom:0">
+        <p class="eyebrow">Capabilities</p>
+        <h1 class="section-title" style="font-size:var(--fs-h1)">六大能力，<span class="grad">一个学习闭环</span></h1>
+        <p class="section-lede">
+          听懂（AI 助教）→ 学深（知识库）→ 练会（路径与测验）→ 记住（分析复习），
+          全部由 AI 与数据驱动。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 学习闭环 ============ -->
+  <section class="section" style="padding-top:2.8rem">
+    <div class="container">
+      <div class="loop reveal" role="img" aria-label="学习闭环示意：听懂、学深、练会、记住，循环往复">
+        {[
+          { key: '听懂', desc: 'AI 助教讲明白', mod: 'AI 助教对话' },
+          { key: '学深', desc: '知识沉淀成体系', mod: '个人知识库' },
+          { key: '练会', desc: '路径与测验驱动', mod: '学习路径 · 通关测验' },
+          { key: '记住', desc: '数据安排复习', mod: '学习分析与遗忘曲线' },
+        ].map((step, i) => (
+          <div class="loop__node glass-card">
+            <span class="loop__no">{String(i + 1).padStart(2, '0')}</span>
+            <h3 class="loop__key">{step.key}</h3>
+            <p class="loop__desc">{step.desc}</p>
+            <span class="chip">{step.mod}</span>
+            {i < 3 && <span class="loop__arrow" aria-hidden="true">→</span>}
+          </div>
+        ))}
+      </div>
+      <p class="loop__note reveal">
+        复盘出的薄弱点会变成下一次提问的起点——闭环转起来，学习就有了惯性。
+      </p>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="container feat-list">
+      {features.map((f, i) => (
+        <article
+          class:list={['feat glass-card reveal', { 'feat--star': f.star }]}
+          style={`--reveal-delay:${(i % 2) * 0.08}s`}
+          data-spotlight
+        >
+          <div class="feat__head">
+            <svg class="feat__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d={f.icon} stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+            <div>
+              <h2 class="feat__title">{f.title}</h2>
+              <p class="feat__lede">{f.lede}</p>
+            </div>
+            {f.star && <span class="chip chip--brand feat__flag">★ 最具特色</span>}
+          </div>
+          <ul class="feat__points">
+            {f.points.map((p) => (
+              <li>{p}</li>
+            ))}
+          </ul>
+          {'href' in f && f.href && (
+            <a class="feat__link" href={f.href}>深入了解 →</a>
+          )}
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <CtaSection />
+</Base>
+
+<style>
+  .fhero { padding-block: clamp(3.6rem, 7vw, 5.5rem) 0; }
+
+  /* ---------- 学习闭环 ---------- */
+  .loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  .loop__node {
+    position: relative;
+    padding: 1.4rem 1.2rem 1.3rem;
+    text-align: left;
+  }
+  .loop__no {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+  .loop__key {
+    font-size: 1.5rem;
+    margin-top: 0.5rem;
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+  }
+  .loop__desc { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0.4rem 0 0.8rem; }
+  .loop__arrow {
+    position: absolute;
+    right: -0.85rem;
+    top: 42%;
+    z-index: 1;
+    width: 1.7rem;
+    height: 1.7rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--stroke-brand);
+    color: var(--brand-400);
+    font-size: 0.8rem;
+  }
+  .loop__note {
+    margin-top: 1.6rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+  }
+  .feat-list { display: grid; gap: 1.2rem; }
+  .feat { padding: clamp(1.6rem, 3vw, 2.3rem); }
+  .feat--star { border-color: var(--stroke-brand); background:
+      linear-gradient(150deg, rgba(134, 59, 255, 0.1), transparent 55%), var(--bg-card); }
+  .feat__head { display: flex; gap: 1.1rem; align-items: flex-start; margin-bottom: 1.2rem; }
+  .feat__icon {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    color: var(--icon-color);
+    margin-top: 0.2rem;
+  }
+  .feat__title { font-size: var(--fs-h2); }
+  .feat__lede { margin-top: 0.45rem; color: var(--text-secondary); font-size: var(--fs-body); }
+  .feat__flag { margin-left: auto; flex-shrink: 0; }
+  .feat__points { display: grid; gap: 0.55rem; }
+  .feat__points li {
+    position: relative;
+    padding-left: 1.4em;
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+  }
+  .feat__points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    background: var(--gradient-badge);
+  }
+  .feat__link {
+    display: inline-block;
+    margin-top: 1.2rem;
+    font-size: var(--fs-sm);
+    color: var(--brand-400);
+  }
+  .feat__link:hover { color: var(--aurora-3); }
+</style>

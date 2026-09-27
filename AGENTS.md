@@ -42,7 +42,7 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）工作空间，使
 
 - nexora：主项目
 - nexora-java 内：admin 管理端 / web 用户端 / common 公共模块 / mcp MCP 教学工具服务
-- nexora-front 内：front-admin 管理后台前端 / front-web 学生端前端
+- nexora-front 内：front-admin 管理后台前端 / front-web 学生端前端 / site 产品官网（Astro 纯静态多页站）
 - knowledge：K12 知识库源文件（RAG 入库资产）
 - 参考项目：smart-campus / easymall 源码，只读
 

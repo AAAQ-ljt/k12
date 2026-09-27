@@ -1,0 +1,246 @@
+/* ============================================================
+   Nexora 官网全局样式 —— reset、基础排版、通用工具类
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+* { margin: 0; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img, svg, video { display: block; max-width: 100%; }
+
+h1, h2, h3, h4 { line-height: var(--lh-tight); font-weight: var(--fw-bold); }
+
+a { color: inherit; text-decoration: none; }
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+ul, ol { list-style: none; padding: 0; }
+
+::selection { background: rgba(134, 59, 255, 0.45); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---------- 通用布局 ---------- */
+.container {
+  width: min(var(--container), 100% - 2.5rem);
+  margin-inline: auto;
+}
+
+.section { padding-block: calc(var(--section-gap) / 1.4); position: relative; }
+
+/* 区块标题组：眉题 + 标题 + 导语 */
+.section-head { max-width: 720px; margin-bottom: clamp(2.2rem, 4vw, 3.4rem); }
+.section-head--center { margin-inline: auto; text-align: center; }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.9rem;
+}
+.eyebrow::before {
+  content: "";
+  width: 1.4em;
+  height: 1px;
+  background: var(--gradient-aurora);
+}
+
+.section-title { font-size: var(--fs-h2); color: var(--text-primary); }
+.section-title .grad {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.section-lede {
+  margin-top: 0.9rem;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.78em 1.6em;
+  border-radius: var(--r-full);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  line-height: 1.2;
+  transition: transform var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px) scale(0.99); }
+
+.btn--primary {
+  position: relative;
+  overflow: hidden;
+  color: var(--text-on-brand);
+  background: var(--gradient-btn);
+  box-shadow: var(--shadow-brand);
+}
+.btn--primary:hover { transform: translateY(-2px); box-shadow: 0 12px 44px rgba(134, 59, 255, 0.5); }
+
+/* 悬停径向显现反色层（脚本在 Base.astro，来自 参考项目/k12bk/7.txt） */
+.btn__reveal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  background: #f5f2ff;
+  color: #4c1d95;
+  clip-path: circle(0% at 50% 50%);
+}
+
+.btn--ghost {
+  color: var(--text-primary);
+  border: 1px solid var(--stroke-strong);
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+}
+.btn--ghost:hover { border-color: var(--stroke-brand); background: var(--bg-card-hover); transform: translateY(-2px); }
+
+.btn--lg { padding: 0.95em 2em; font-size: var(--fs-body); }
+
+/* ---------- 玻璃卡片 ---------- */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--stroke-subtle);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(10px);
+  transition: background-color var(--dur) var(--ease-out),
+      border-color var(--dur) var(--ease-out),
+      box-shadow var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out);
+}
+.glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--stroke-strong);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-4px);
+}
+
+/* ---------- 徽标 chip ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.32em 0.85em;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--stroke-subtle);
+  line-height: 1.5;
+}
+.chip--brand {
+  color: #d9c8ff;
+  background: rgba(134, 59, 255, 0.14);
+  border-color: rgba(157, 107, 255, 0.35);
+}
+.chip--dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+}
+
+/* ---------- 滚动浮现（html.js 门控：无 JS 环境直接可见，不留空白页） ---------- */
+html.js .reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
+  transition-delay: var(--reveal-delay, 0s);
+}
+html.js .reveal.is-in { opacity: 1; transform: none; }
+
+/* ---------- 聚光灯卡片：指针跟随的柔光高亮（脚本在 Base.astro 写入 --mx/--my） ---------- */
+[data-spotlight] { position: relative; }
+[data-spotlight]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(430px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(157, 107, 255, 0.16), transparent 46%);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+  pointer-events: none;
+}
+[data-spotlight]:hover::before { opacity: 1; }
+
+/* ---------- 渐变字流光（配合 .grad 使用） ---------- */
+.text-shimmer {
+  background-size: 220% auto !important;
+  animation: text-shimmer 7s linear infinite;
+}
+@keyframes text-shimmer {
+  to { background-position: 220% center; }
+}
+
+/* ---------- WebGL 画布（无限隧道 / 星球画廊 / 丝带辉光，画布由外部引擎注入） ---------- */
+[data-hole] canvas,
+[data-sphere] canvas,
+[data-ribbon] canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+[data-sphere] canvas { touch-action: pan-y; }
+[data-ribbon] canvas { opacity: 0.72; z-index: 0; }
+
+/* ---------- 全站点击特效：狙击式（脚本在 Base.astro） ---------- */
+.fx-line {
+  position: fixed;
+  z-index: 9999;
+  width: 20px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(233, 225, 255, 0.9);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+.fx-dot {
+  position: fixed;
+  z-index: 9999;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(233, 225, 255, 0.9);
+  pointer-events: none;
+}

@@ -1,0 +1,81 @@
+---
+import { SITE } from '../config/site';
+/**
+ * 底部行动号召：极光渐变大面板 + 双入口按钮。
+ */
+---
+
+<section class="cta">
+  <div class="container">
+    <div class="cta__panel reveal" data-ribbon>
+      <div class="cta__veil" aria-hidden="true"></div>
+      <h2 class="cta__title">准备好让 AI 成为孩子的<span class="grad">全天候老师</span>了吗？</h2>
+      <p class="cta__lede">
+        浏览器打开即用，无需安装。选好学段，AI 会为 ta 规划学习路径——
+        资料存进知识库，ta 就越学越懂你。
+      </p>
+      <div class="cta__actions">
+        <a class="btn btn--primary btn--lg" href={SITE.studentUrl} target="_blank" rel="noopener">
+          进入 Nexora 学生端 ↗
+        </a>
+        <a class="btn btn--ghost btn--lg" href={SITE.adminUrl} target="_blank" rel="noopener">
+          管理端入口
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta { padding-block: calc(var(--section-gap) / 1.2) 0; }
+  .cta__veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(7, 8, 18, 0.42), rgba(7, 8, 18, 0.16) 45%, rgba(7, 8, 18, 0.5));
+  }
+  .cta__panel {
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: clamp(2.8rem, 6vw, 5rem) clamp(1.4rem, 5vw, 4rem);
+    border-radius: var(--r-xl);
+    background:
+        radial-gradient(ellipse 90% 130% at 50% -30%, rgba(118, 75, 162, 0.4), transparent 62%),
+        var(--bg-deep);
+    border: 1px solid var(--stroke-brand);
+    box-shadow: var(--shadow-lg);
+  }
+  .cta__title {
+    position: relative;
+    z-index: 2;
+    font-size: var(--fs-h1);
+    max-width: 22em;
+    margin-inline: auto;
+  }
+  .cta__title .grad {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .cta__lede {
+    position: relative;
+    z-index: 2;
+    margin: 1.1rem auto 0;
+    max-width: 36em;
+    color: var(--text-secondary);
+  }
+  .cta__actions {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    justify-content: center;
+    margin-top: 2.1rem;
+  }
+</style>
+
+<script is:inline src="/js/ribbon-glow.js" defer></script>

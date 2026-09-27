@@ -1,0 +1,98 @@
+---
+import Base from '../../layouts/Base.astro';
+import CtaSection from '../../components/CtaSection.astro';
+
+const title = '常见问题 — Nexora';
+const description = '关于 Nexora 的常见问题：适合多大孩子、是否需要安装、AI 回答的可信度、家长如何参与、学习数据是否保留等。';
+
+const faqs = [
+  {
+    q: '适合多大的孩子使用？',
+    a: '覆盖小学到高中全学段。注册时选择学段后，AI 的表达方式、知识检索范围、题目难度与功能入口都会按学段切换——同一个 AI，不同的教法。',
+  },
+  {
+    q: '需要安装软件吗？',
+    a: '不需要。Nexora 是网页应用，浏览器打开即用；编程环境里的 Python 也直接在浏览器内运行（基于 WebAssembly），全程零安装。',
+  },
+  {
+    q: 'AI 的回答可信吗？会不会乱编？',
+    a: '回答前会先检索课程知识库与你的个人知识库（RAG），带着资料作答；个人 Wiki 页需要你确认后才入库，检索范围可控。即便如此，也建议孩子对关键结论保持查证习惯——这本身就是 AI 通识课要教的能力。',
+  },
+  {
+    q: '家长或学校如何参与管理？',
+    a: '管理端承担内容与用户治理：课程与资源管理、题库与 AI 出题审核、学生注册审核、提示词与系统配置等。教学由 AI 承担，管理由大人把关。',
+  },
+  {
+    q: '学习进度会保留吗？',
+    a: '会。每次练习、测验、路径自测的判分结果都持续回写知识点掌握度与学习记录，学习路径据此解锁节点、安排遗忘复习——换台设备登录，进度照旧。',
+  },
+  {
+    q: '如何开始使用？',
+    a: '注册账号并选择学段，进入课程教材页加入课程即可开始学习；也可以先和 AI 助教随便聊聊，或上传一份资料体验个人知识库。',
+  },
+  {
+    q: '内容安全如何保障？',
+    a: '四道关口：AI 生成的题目先经管理端审核才进题库；AI 绘画接入内容安全校验与版权净化；个人知识页只有确认后才入库参与检索；AI 能调用的教学动作全部白名单化。',
+  },
+  {
+    q: '换一台设备，学习进度还在吗？',
+    a: '在。掌握度、学习记录与个人知识库都跟随账号存储，换设备或换浏览器登录后一切照旧。',
+  },
+  {
+    q: '上传资料有什么限制？',
+    a: '个人知识库支持 Markdown、纯文本、图片以及 Word、PDF 等白名单文档格式；单个文件不超过 20MB，个人总额度 300MB，产品内会实时显示剩余空间。',
+  },
+  {
+    q: '课程内容由谁维护？',
+    a: '课程、课时资源、题库与提示词配置由管理端运营维护；AI 负责教学与个性化，不擅自改动课程内容。',
+  },
+];
+---
+
+<Base title={title} description={description} path="/faq/">
+  <section class="qhero">
+    <div class="container container--narrow">
+      <div class="section-head reveal" style="margin-bottom:2rem">
+        <p class="eyebrow">FAQ</p>
+        <h1 class="section-title" style="font-size:var(--fs-h1)">常见问题</h1>
+      </div>
+      <div class="qlist">
+        {faqs.map((item) => (
+          <details class="qitem glass-card reveal">
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <CtaSection />
+</Base>
+
+<style>
+  .qhero { padding-block: clamp(3.6rem, 7vw, 5.5rem) 0; }
+  .container--narrow { max-width: 820px; }
+  .qlist { display: grid; gap: 0.9rem; }
+  .qitem { padding: 0; overflow: hidden; }
+  .qitem summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1.15rem 1.4rem;
+    font-weight: var(--fw-semibold);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .qitem summary::-webkit-details-marker { display: none; }
+  .qitem summary::after {
+    content: "+";
+    font-size: 1.3rem;
+    color: var(--text-muted);
+    line-height: 1;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .qitem[open] summary::after { transform: rotate(45deg); }
+  .qitem p { padding: 0 1.4rem 1.25rem; color: var(--text-secondary); font-size: var(--fs-sm); }
+</style>

@@ -1,0 +1,91 @@
+/* ============================================================
+   Nexora 官网设计令牌 —— 极光暗色体系（唯一色值来源）
+   页面/组件一律引用变量，禁止写死色值。
+   品牌来源：Logo 主紫 #863bff；极光渐变沿用产品管理端
+   --gradient-aurora（#667eea → #764ba2 → #f093fb）。
+   ============================================================ */
+:root {
+  /* ---------- 色彩 · 夜空基底 ---------- */
+  --bg-base: #070812;                          /* 页面最底色 */
+  --bg-deep: #0b0d1d;                          /* 区块深底/卡片内层 */
+  --bg-card: rgba(255, 255, 255, 0.04);        /* 玻璃卡片底 */
+  --bg-card-hover: rgba(255, 255, 255, 0.075);
+  --bg-elevated: #12142a;                      /* 弹层/导航实底 */
+
+  /* ---------- 色彩 · 品牌与极光 ---------- */
+  --brand-500: #863bff;                        /* 品牌紫（Logo 主色） */
+  --brand-400: #9d6bff;                        /* 品牌紫（亮，悬停/高亮） */
+  --aurora-1: #667eea;                         /* 极光·青蓝 */
+  --aurora-2: #764ba2;                         /* 极光·紫 */
+  --aurora-3: #f093fb;                         /* 极光·品红 */
+  --accent-cyan: #4facfe;
+  --accent-green: #4ade80;                     /* 在线/成功 */
+  --accent-amber: #fbbf24;                     /* 星标/提示 */
+
+  /* ---------- 色彩 · 文字 ---------- */
+  --text-primary: #f2f2fa;
+  --text-secondary: #b9bad6;
+  --text-muted: #8385a8;
+  --text-on-brand: #ffffff;
+
+  /* ---------- 色彩 · 描边与分隔 ---------- */
+  --stroke-subtle: rgba(255, 255, 255, 0.08);  /* 卡片描边（常态） */
+  --stroke-strong: rgba(255, 255, 255, 0.16);  /* 卡片描边（悬停） */
+  --stroke-brand: rgba(157, 107, 255, 0.45);   /* 品牌描边（选中/聚焦） */
+  --divider: rgba(255, 255, 255, 0.06);
+
+  /* ---------- 渐变 ---------- */
+  --gradient-aurora: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  --gradient-aurora-soft: linear-gradient(135deg,
+      rgba(102, 126, 234, 0.16), rgba(118, 75, 162, 0.16) 50%, rgba(240, 147, 251, 0.16) 100%);
+  --gradient-text: linear-gradient(100deg, #8fb0ff 0%, #b98bff 48%, #ff9ff5 100%);
+  --gradient-badge: linear-gradient(135deg, #667eea, #f093fb);
+  --gradient-btn: linear-gradient(135deg, #7c5cff 0%, #a94bfa 55%, #d96af7 100%);
+
+  /* ---------- 字体 ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, Menlo, monospace;
+
+  --fs-display: clamp(2.35rem, 5vw, 4rem);     /* 首屏主标题 */
+  --fs-h1: clamp(1.85rem, 3.4vw, 2.8rem);      /* 页面标题 */
+  --fs-h2: clamp(1.45rem, 2.4vw, 2rem);        /* 区块标题 */
+  --fs-h3: 1.22rem;                            /* 卡片标题 */
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.75rem;
+
+  --lh-tight: 1.18;                            /* 标题行高 */
+  --lh-body: 1.78;                             /* 正文行高（中文偏松） */
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ---------- 图标 ---------- */
+  --icon-stroke: 1.7;                          /* 内联 SVG 线性图标统一描边宽 */
+  --icon-size: 22px;                           /* 卡片图标基准尺寸 */
+  --icon-color: #c9b8ff;                       /* 图标默认着色（品牌浅紫） */
+
+  /* ---------- 圆角 ---------- */
+  --r-sm: 8px;                                 /* 小元素：chip/tag */
+  --r-md: 14px;                                /* 卡片/输入框 */
+  --r-lg: 20px;                                /* 大卡片/面板 */
+  --r-xl: 30px;                                /* 区块容器/hero 卡 */
+  --r-full: 999px;                             /* 圆形/胶囊按钮 */
+
+  /* ---------- 投影 ---------- */
+  --shadow-sm: 0 2px 10px rgba(3, 4, 16, 0.35);
+  --shadow-md: 0 12px 32px rgba(3, 4, 16, 0.45);
+  --shadow-lg: 0 26px 64px rgba(3, 4, 16, 0.55);
+  --shadow-brand: 0 8px 32px rgba(134, 59, 255, 0.35);   /* 品牌按钮发光 */
+  --shadow-card-hover: 0 18px 48px rgba(118, 75, 162, 0.28);
+
+  /* ---------- 布局与动效 ---------- */
+  --container: 1160px;
+  --nav-h: 66px;
+  --section-gap: clamp(4.5rem, 9vw, 8rem);     /* 区块间距 */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 0.18s;
+  --dur: 0.32s;
+  --dur-slow: 0.6s;
+}

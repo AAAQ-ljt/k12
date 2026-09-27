@@ -1,0 +1,412 @@
+---
+import '../styles/tokens.css';
+import '../styles/global.css';
+import { SITE, NAV_ITEMS } from '../config/site';
+import Logo from '../components/Logo.astro';
+import AuroraBackground from '../components/AuroraBackground.astro';
+
+interface Props {
+  /** 页面标题（浏览器标签页 / 分享卡片） */
+  title: string;
+  /** 页面描述（SEO / OG），不传用站点默认 */
+  description?: string;
+  /** 当前页路径（如 /features/），用于导航高亮与 canonical/og:url */
+  path: string;
+}
+
+const { title, description = SITE.description, path } = Astro.props;
+const canonical = new URL(path, SITE.origin).href;
+const currentPath = Astro.url.pathname;
+const isActive = (href: string) =>
+    href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#070812" />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <AuroraBackground />
+
+    <header class="site-nav">
+      <div class="container site-nav__inner">
+        <a href="/" class="site-nav__brand" aria-label={`${SITE.name} 首页`}>
+          <Logo size={30} />
+        </a>
+
+        <nav class="site-nav__links" aria-label="站内导航">
+          {NAV_ITEMS.map((item) => (
+            <a
+              href={item.href}
+              class:list={['site-nav__link', { 'is-active': isActive(item.href) }]}
+              aria-current={isActive(item.href) ? 'page' : undefined}
+            >
+              {item.highlight && <span class="site-nav__star" aria-hidden="true">★</span>}
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <div class="site-nav__actions">
+          <a class="btn btn--primary site-nav__cta" href={SITE.studentUrl} target="_blank" rel="noopener">
+            进入产品
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4"
+                stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </a>
+          <button
+            class="site-nav__toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+            aria-label="打开菜单"
+          >
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="mobile-menu" class="mobile-menu" hidden>
+        {NAV_ITEMS.map((item) => (
+          <a href={item.href} class:list={['mobile-menu__link', { 'is-active': isActive(item.href) }]}>
+            {item.label}
+          </a>
+        ))}
+        <a class="btn btn--primary mobile-menu__cta" href={SITE.studentUrl} target="_blank" rel="noopener">
+          进入产品 ↗
+        </a>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="site-footer__grid">
+          <div class="site-footer__brand">
+            <Logo size={34} withWordmark={true} />
+            <p class="site-footer__slogan">{SITE.brandLine}</p>
+          </div>
+
+          <nav class="site-footer__col" aria-label="产品入口">
+            <h3>产品</h3>
+            <a href={SITE.studentUrl} target="_blank" rel="noopener">学生端 ↗</a>
+            <a href={SITE.adminUrl} target="_blank" rel="noopener">管理端 ↗</a>
+            <a href="/features/">产品能力</a>
+          </nav>
+
+          <nav class="site-footer__col" aria-label="站点探索">
+            <h3>探索</h3>
+            <a href="/wiki/">AI 知识库</a>
+            <a href="/stages/">学段适配</a>
+            <a href="/experience/">多模态体验</a>
+            <a href="/tech/">技术架构</a>
+          </nav>
+
+          <div class="site-footer__col">
+            <h3>联系</h3>
+            <a href={`mailto:${SITE.email}`}>{SITE.email}</a>
+            <a href="/faq/">常见问题</a>
+            <a href="/about/">关于我们</a>
+          </div>
+        </div>
+
+        <div class="site-footer__bottom">
+          <span>{SITE.copyright} Nexora</span>
+          <span class="site-footer__legal">
+            <a href="/legal/terms/">用户协议</a>
+            <a href="/legal/privacy/">隐私政策</a>
+          </span>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // 移动端抽屉开关
+      const toggle = document.querySelector<HTMLButtonElement>('.site-nav__toggle');
+      const menu = document.getElementById('mobile-menu');
+      if (toggle && menu) {
+        toggle.addEventListener('click', () => {
+          const open = menu.hasAttribute('hidden');
+          if (open) {
+            menu.removeAttribute('hidden');
+          } else {
+            menu.setAttribute('hidden', '');
+          }
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+      }
+
+      // 滚动浮现：进入视口即点亮（.reveal 由各页面自行标记）
+      const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-in');
+                observer.unobserve(entry.target);
+              }
+            }
+          },
+          { threshold: 0.14, rootMargin: '0px 0px -6% 0px' },
+      );
+      document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+
+      // 导航滚动加投影
+      const nav = document.querySelector('.site-nav');
+      const onScroll = () => nav?.classList.toggle('is-scrolled', window.scrollY > 12);
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      // 聚光灯卡片：指针移动时更新高亮圆心（触屏/减动效环境自动跳过）
+      if (matchMedia('(pointer: fine)').matches) {
+        for (const card of document.querySelectorAll<HTMLElement>('[data-spotlight]')) {
+          card.addEventListener('pointermove', (e) => {
+            const rect = card.getBoundingClientRect();
+            card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+            card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+          });
+        }
+      }
+
+      // 全站点击特效：狙击式（简化自 参考项目/k12bk/3.html 的 sniper，WAAPI 实现）
+      if (matchMedia('(pointer: fine)').matches) {
+        const FX_SIZE = 90;
+        const FX_EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+        document.addEventListener('click', (e) => {
+          const cx = e.clientX;
+          const cy = e.clientY;
+          const frag = document.createDocumentFragment();
+          const parts = [];
+
+          // 四条十字线：沿各自轴向远处射出
+          for (const deg of [0, 90, 180, 270]) {
+            const line = document.createElement('span');
+            line.className = 'fx-line';
+            line.style.left = `${cx}px`;
+            line.style.top = `${cy}px`;
+            const end = 6 + FX_SIZE * 0.34;
+            parts.push({
+              el: line,
+              kf: [
+                { transform: `rotate(${deg}deg) translateX(6px)`, opacity: 1 },
+                { transform: `rotate(${deg}deg) translateX(${end}px)`, opacity: 1, offset: 0.7 },
+                { transform: `rotate(${deg}deg) translateX(${end}px)`, opacity: 0 },
+              ],
+            });
+            frag.appendChild(line);
+          }
+
+          // 八颗斜向飞散的点
+          for (const deg of [30, 60, 120, 150, 210, 240, 300, 330]) {
+            const rad = (deg * Math.PI) / 180;
+            const dist = FX_SIZE * 0.42;
+            const dot = document.createElement('span');
+            dot.className = 'fx-dot';
+            dot.style.left = `${cx}px`;
+            dot.style.top = `${cy}px`;
+            parts.push({
+              el: dot,
+              kf: [
+                { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                {
+                  transform: `translate(calc(-50% + ${Math.cos(rad) * dist}px), calc(-50% + ${Math.sin(rad) * dist}px)) scale(0.2)`,
+                  opacity: 0,
+                },
+              ],
+            });
+            frag.appendChild(dot);
+          }
+
+          for (const { el, kf } of parts) {
+            document.body.appendChild(el);
+            el.animate(kf, { duration: 420, easing: FX_EASE }).onfinish = () => el.remove();
+          }
+        });
+      }
+    </script>
+
+    <style>
+      .site-nav {
+        position: sticky;
+        top: 0;
+        z-index: 60;
+        height: var(--nav-h);
+        backdrop-filter: blur(14px);
+        background: rgba(7, 8, 18, 0.72);
+        border-bottom: 1px solid transparent;
+        transition: border-color var(--dur) var(--ease-out),
+            background-color var(--dur) var(--ease-out);
+      }
+      .site-nav.is-scrolled {
+        border-bottom-color: var(--divider);
+        background: rgba(7, 8, 18, 0.86);
+      }
+      .site-nav__inner {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+      }
+      .site-nav__brand { flex-shrink: 0; display: inline-flex; }
+      .site-nav__links {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-inline: auto;
+      }
+      .site-nav__link {
+        position: relative;
+        padding: 0.45rem 0.8rem;
+        border-radius: var(--r-sm);
+        font-size: var(--fs-sm);
+        color: var(--text-secondary);
+        transition: color var(--dur-fast) var(--ease-out),
+            background-color var(--dur-fast) var(--ease-out);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35em;
+      }
+      .site-nav__link:hover { color: var(--text-primary); background: var(--bg-card); }
+      .site-nav__link.is-active { color: var(--text-primary); }
+      .site-nav__link.is-active::after {
+        content: "";
+        position: absolute;
+        left: 0.8rem;
+        right: 0.8rem;
+        bottom: -0.28rem;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--gradient-aurora);
+      }
+      .site-nav__star {
+        font-size: 0.62em;
+        color: var(--accent-amber);
+        line-height: 1;
+      }
+      .site-nav__actions { display: flex; align-items: center; gap: 0.7rem; margin-left: auto; }
+      .site-nav__links + .site-nav__actions { margin-left: 0; }
+
+      .site-nav__toggle {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        width: 40px;
+        height: 40px;
+        padding: 9px;
+        border-radius: var(--r-sm);
+        border: 1px solid var(--stroke-subtle);
+      }
+      .site-nav__toggle span {
+        display: block;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--text-primary);
+        transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+      }
+      .site-nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+      .site-nav__toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+      .site-nav__toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+      .mobile-menu {
+        display: none;
+        border-top: 1px solid var(--divider);
+        background: var(--bg-elevated);
+        padding: 0.8rem 1.4rem 1.3rem;
+      }
+      .mobile-menu__link {
+        display: block;
+        padding: 0.72rem 0.4rem;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--divider);
+        font-size: var(--fs-body);
+      }
+      .mobile-menu__link.is-active { color: var(--text-primary); font-weight: var(--fw-semibold); }
+      .mobile-menu__cta { margin-top: 1rem; width: 100%; }
+
+      @media (max-width: 920px) {
+        .site-nav__links { display: none; }
+        .site-nav__toggle { display: flex; }
+        .mobile-menu:not([hidden]) { display: block; }
+        .site-nav { position: sticky; }
+        .site-nav__inner { height: var(--nav-h); }
+      }
+
+      /* ---------- 页脚 ---------- */
+      .site-footer {
+        border-top: 1px solid var(--divider);
+        background: rgba(7, 8, 18, 0.6);
+        margin-top: var(--section-gap);
+        padding-block: 3.4rem 2rem;
+      }
+      .site-footer__grid {
+        display: grid;
+        grid-template-columns: 1.6fr repeat(3, 1fr);
+        gap: 2.4rem;
+        padding-bottom: 2.4rem;
+        border-bottom: 1px solid var(--divider);
+      }
+      .site-footer__slogan {
+        margin-top: 1rem;
+        color: var(--text-muted);
+        font-size: var(--fs-sm);
+        max-width: 30em;
+      }
+      .site-footer__col { display: grid; gap: 0.6rem; align-content: start; }
+      .site-footer__col h3 {
+        font-size: var(--fs-sm);
+        color: var(--text-primary);
+        margin-bottom: 0.3rem;
+        font-weight: var(--fw-semibold);
+      }
+      .site-footer__col a {
+        color: var(--text-muted);
+        font-size: var(--fs-sm);
+        transition: color var(--dur-fast) var(--ease-out);
+        width: fit-content;
+      }
+      .site-footer__col a:hover { color: var(--text-primary); }
+
+      .site-footer__bottom {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem 1.6rem;
+        justify-content: space-between;
+        padding-top: 1.4rem;
+        color: var(--text-muted);
+        font-size: var(--fs-xs);
+      }
+      .site-footer__legal { display: inline-flex; flex-wrap: wrap; gap: 1.2rem; }
+      .site-footer__legal a { color: var(--text-muted); }
+      .site-footer__legal a:hover { color: var(--text-primary); }
+
+      @media (max-width: 760px) {
+        .site-footer__grid { grid-template-columns: 1fr 1fr; }
+      }
+      @media (max-width: 480px) {
+        .site-footer__grid { grid-template-columns: 1fr; }
+      }
+    </style>
+    <script is:inline src="/js/dot-cursor.js" defer></script>
+    <script is:inline src="/js/radial-button.js" defer></script>
+  </body>
+</html>

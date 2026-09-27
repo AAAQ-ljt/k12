@@ -1,0 +1,196 @@
+---
+import Base from '../../layouts/Base.astro';
+import StageSwitcher from '../../components/StageSwitcher.astro';
+import CtaSection from '../../components/CtaSection.astro';
+
+const title = '学段适配 · 同一个 AI，三种教法 — Nexora';
+const description =
+    '小学的绘本与游戏化、初中的项目式编程、高中的算法实践——'
+    + 'Nexora 按学段切换 AI 的表达方式、知识检索范围与难度梯度。';
+
+const dims = [
+  {
+    title: '表达方式',
+    desc: '提示词按学段整体切换：低学段多用比喻与故事，高学段直给原理与推导。',
+  },
+  {
+    title: '知识范围',
+    desc: '课程知识库检索按学段过滤，保证内容适龄、课标对齐。',
+  },
+  {
+    title: '难度梯度',
+    desc: '出题与练习难度随学段与掌握度双重调节，跳过太熟的、重复该复习的。',
+  },
+  {
+    title: '交互形态',
+    desc: '低学段偏绘本与游戏化，高学段偏项目式与编程实践，入口随学段显隐。',
+  },
+];
+---
+
+<Base title={title} description={description} path="/stages/">
+  <section class="shero">
+    <div class="container">
+      <div class="section-head reveal" style="margin-bottom:1.6rem">
+        <p class="eyebrow">Age Adaptive</p>
+        <h1 class="section-title" style="font-size:var(--fs-h1)">
+          同一个 AI，<span class="grad">三种教法</span>
+        </h1>
+        <p class="section-lede">
+          K12 不是一句话的年龄范围。从小学到高中，孩子认识世界的方式在变，
+          AI 的教法也应该跟着变。点下面的学段，看看同一类问题的不同回答。
+        </p>
+      </div>
+      <div class="reveal"><StageSwitcher /></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Behind the scenes</p>
+        <h2 class="section-title">切换的不只是文案，<span class="grad">是四层配置</span></h2>
+      </div>
+      <div class="dims">
+        {dims.map((d, i) => (
+          <div class="dims__item glass-card reveal" style={`--reveal-delay:${i * 0.08}s`}>
+            <h3 class="dims__title">{d.title}</h3>
+            <p class="dims__desc">{d.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 学段侧重矩阵 ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Matrix</p>
+        <h2 class="section-title">各学段的<span class="grad">侧重点</span>一览</h2>
+        <p class="section-lede">课程与知识库全学段共享，切换的是"教法"——同一个知识点，三种打开方式。</p>
+      </div>
+
+      <div class="matrix-wrap reveal">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th scope="col">能力</th>
+              <th scope="col">小学</th>
+              <th scope="col">初中</th>
+              <th scope="col">高中</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">AI 表达方式</th>
+              <td>绘本式比喻 + 图文动画</td>
+              <td>项目式拆解</td>
+              <td>原理与推导</td>
+            </tr>
+            <tr>
+              <th scope="row">练习形态</th>
+              <td>游戏化闯关</td>
+              <td>项目式任务</td>
+              <td>算法实践</td>
+            </tr>
+            <tr>
+              <th scope="row">编程环境</th>
+              <td><span class="matrix__no">高年级起可见</span></td>
+              <td>系统入门</td>
+              <td>工程实践</td>
+            </tr>
+            <tr>
+              <th scope="row">学习数据</th>
+              <td colspan="4" class="matrix__all">全学段一致：掌握度实时回写，遗忘曲线自动排期复习</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 难度递进条 -->
+      <div class="ladder reveal" role="img" aria-label="难度与自主度从小学到高中递进">
+        <span class="ladder__stop ladder__stop--1">启蒙<br /><i>绘本 · 游戏</i></span>
+        <span class="ladder__stop ladder__stop--2">创造<br /><i>项目 · 编程</i></span>
+        <span class="ladder__stop ladder__stop--3">精通<br /><i>算法 · 实践</i></span>
+      </div>
+    </div>
+  </section>
+
+  <CtaSection />
+</Base>
+
+<style>
+  .shero { padding-block: clamp(3.6rem, 7vw, 5.5rem) 0; }
+
+  /* ---------- 学段矩阵 ---------- */
+  .matrix-wrap {
+    overflow-x: auto;
+    border-radius: var(--r-lg);
+    border: 1px solid var(--stroke-subtle);
+    background: var(--bg-deep);
+  }
+  .matrix { width: 100%; border-collapse: collapse; min-width: 640px; }
+  .matrix th, .matrix td {
+    padding: 0.95rem 1.1rem;
+    text-align: left;
+    font-size: var(--fs-sm);
+    border-bottom: 1px solid var(--divider);
+  }
+  .matrix thead th {
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.08em;
+    font-weight: var(--fw-semibold);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .matrix tbody th { color: var(--text-primary); font-weight: var(--fw-semibold); white-space: nowrap; }
+  .matrix td { color: var(--text-secondary); }
+  .matrix tbody tr:last-child th, .matrix tbody tr:last-child td { border-bottom: 0; }
+  .matrix tbody tr:hover td, .matrix tbody tr:hover th { background: rgba(157, 107, 255, 0.05); }
+  .matrix__no { color: var(--text-muted); }
+
+  /* ---------- 难度递进条 ---------- */
+  .ladder {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-radius: var(--r-full);
+    overflow: hidden;
+    border: 1px solid var(--stroke-subtle);
+  }
+  .ladder__stop {
+    padding: 1.1rem 0.6rem;
+    text-align: center;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+  }
+  .ladder__stop i {
+    display: block;
+    font-style: normal;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    font-weight: var(--fw-medium);
+  }
+  .ladder__stop--1 { background: rgba(240, 147, 251, 0.14); }
+  .ladder__stop--2 { background: rgba(79, 172, 254, 0.18); }
+  .ladder__stop--3 { background: rgba(134, 59, 255, 0.24); }
+
+  .dims {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.1rem;
+  }
+  .dims__item { padding: 1.6rem 1.4rem; }
+  .dims__title { font-size: var(--fs-h3); margin-bottom: 0.5rem; }
+  .dims__desc { font-size: var(--fs-sm); color: var(--text-secondary); }
+
+  @media (max-width: 900px) {
+    .dims { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 540px) {
+    .dims { grid-template-columns: 1fr; }
+  }
+</style>

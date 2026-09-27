@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# 占位域名：上线前与 astro.config.mjs 的 site 一并替换
+Sitemap: https://nexora-site.example.com/sitemap-index.xml

@@ -1,0 +1,66 @@
+---
+/**
+ * 滚动计数数字：进入视口后从 0 缓动到目标值。
+ * 用法：<CountUp value={7} suffix="×24" label="全天在线" />
+ */
+interface Props {
+  value: number;
+  suffix?: string;
+  label: string;
+  decimals?: number;
+}
+const { value, suffix = '', label, decimals = 0 } = Astro.props;
+---
+
+<div class="countup reveal">
+  <span class="countup__value">
+    <span data-countup={value} data-decimals={decimals}>0</span><span class="countup__suffix">{suffix}</span>
+  </span>
+  <span class="countup__label">{label}</span>
+</div>
+
+<script>
+  const els = document.querySelectorAll<HTMLElement>('[data-countup]');
+
+  const render = (el: HTMLElement, target: number, decimals: number, progress: number) => {
+    el.textContent = (target * progress).toFixed(decimals);
+  };
+
+  const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          observer.unobserve(el);
+          const target = Number(el.dataset.countup ?? 0);
+          const decimals = Number(el.dataset.decimals ?? 0);
+          const start = performance.now();
+          const duration = 1300;
+          const tick = (now: number) => {
+            const t = Math.min((now - start) / duration, 1);
+            render(el, target, decimals, 1 - Math.pow(1 - t, 3)); // easeOutCubic
+            if (t < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+      },
+      { threshold: 0.6 },
+  );
+  for (const el of els) observer.observe(el);
+</script>
+
+<style>
+  .countup { display: grid; gap: 0.2rem; justify-items: center; text-align: center; }
+  .countup__value {
+    font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+    font-weight: var(--fw-bold);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .countup__suffix { font-size: 0.6em; }
+  .countup__label { font-size: var(--fs-sm); color: var(--text-muted); }
+</style>

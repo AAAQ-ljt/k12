@@ -1,0 +1,205 @@
+---
+import Base from '../../layouts/Base.astro';
+import TiltCard from '../../components/TiltCard.astro';
+import Icon from '../../components/Icon.astro';
+import SphereGallery from '../../components/SphereGallery.astro';
+import CtaSection from '../../components/CtaSection.astro';
+
+const title = '多模态体验 · 学习产物不止是文字 — Nexora';
+const description =
+    'SVG 分步动画讲解、AI 绘本成书、AI 绘画、对话内可交互答题卡、浏览器编程环境——'
+    + '在 Nexora，AI 的每一次回答都可能长出一种新的学习体验。';
+
+const cards = [
+  {
+    icon: 'play',
+    title: 'SVG 分步动画讲解',
+    desc: '抽象概念被拆成一帧帧画面：从"什么是训练数据"到"模型如何收敛"，跟着步骤看懂全过程。支持独立生成入口与轮询进度。',
+    grad: 'linear-gradient(150deg, rgba(102,126,234,.4), rgba(79,172,254,.14))',
+    tags: ['分步播放', '对话内生成', '独立任务'],
+  },
+  {
+    icon: 'book',
+    title: 'AI 绘本',
+    desc: '把知识点写成故事、配上插画，一键成书。低学段孩子的第一堂 AI 课，常常是从一本绘本开始的。',
+    grad: 'linear-gradient(150deg, rgba(240,147,251,.36), rgba(157,107,255,.14))',
+    tags: ['图文成书', '翻页阅读器', '异步生成'],
+  },
+  {
+    icon: 'droplet',
+    title: 'AI 绘画',
+    desc: '把想象力描述出来、画出来。在创作里直观感受生成式 AI 的能力，也理解它的版权与边界。',
+    grad: 'linear-gradient(150deg, rgba(118,75,162,.44), rgba(240,147,251,.12))',
+    tags: ['文生图', '多供应商', '内容安全'],
+  },
+  {
+    icon: 'pencil',
+    title: '可交互答题卡',
+    desc: '对话里说"给我出两道题"，答题卡当场出现：选择、判断、简答都能做，批改结果计入掌握度。',
+    grad: 'linear-gradient(150deg, rgba(79,172,254,.34), rgba(102,126,234,.14))',
+    tags: ['即时批改', '掌握度回写', '主观题批阅'],
+  },
+  {
+    icon: 'code',
+    title: '浏览器编程',
+    desc: 'Python 代码在浏览器里直接运行——写一个循环、画一张图、跑一个小项目，全程零安装。',
+    grad: 'linear-gradient(150deg, rgba(74,222,128,.26), rgba(102,126,234,.16))',
+    tags: ['零安装', '即写即跑', '离线可用'],
+  },
+];
+---
+
+<Base title={title} description={description} path="/experience/">
+  <section class="ehero">
+    <div class="container">
+      <div class="section-head reveal" style="margin-bottom:0">
+        <p class="eyebrow">Multimodal</p>
+        <h1 class="section-title" style="font-size:var(--fs-h1)">
+          学习产物，<span class="grad">不止是文字</span>
+        </h1>
+        <p class="section-lede">
+          多模态是 Nexora 的品牌底色——Aurora 之意。AI 的回答里可以直接长出动画、绘本、
+          绘画与练习，每种产物都为"讲明白一件事"服务。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3D 星球画廊（引擎来自 参考项目/k12bk/4.html） ============ -->
+  <section class="section" style="padding-top:2.8rem">
+    <div class="container">
+      <SphereGallery />
+      <p class="sphere-hint">拖拽环游 · 滚轮缩放 · 悬停弹起 —— 每一张卡，都是一种学习体验</p>
+    </div>
+  </section>
+
+  <!-- ============ 从一句话到产物 ============ -->
+  <section class="section" style="padding-top:2.8rem">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Flow</p>
+        <h2 class="section-title">从一句话，<span class="grad">到一件作品</span></h2>
+      </div>
+      <div class="flow3 reveal">
+        {[
+          { step: '01', title: '说出需求', desc: '对话里直接说："把这个概念做成动画"或"给我出一套练习题"。' },
+          { step: '02', title: 'AI 选择形态生成', desc: '意图路由后进入对应的异步任务：动画分镜、绘本成书、绘画或出题。' },
+          { step: '03', title: '卡片点开即体验', desc: '生成完的产物以卡片回到对话里，点开即全屏体验，可反复回看。' },
+        ].map((s) => (
+          <div class="flow3__step glass-card">
+            <span class="flow3__no">{s.step}</span>
+            <h3 class="flow3__title">{s.title}</h3>
+            <p class="flow3__desc">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 画廊 ============ -->
+  <section class="section" style="padding-top:0">
+    <div class="container exp-grid">
+      {cards.map((card, i) => (
+        <TiltCard class={i < 2 ? 'exp-item exp-item--wide' : 'exp-item'}>
+          <article class="exp glass-card reveal" style={`--reveal-delay:${(i % 3) * 0.08}s`}>
+            <div class="exp__visual" style={`background:${card.grad}`} aria-hidden="true">
+              <Icon name={card.icon} size={44} class="exp__glyph" />
+            </div>
+            <div class="exp__body">
+              <h2 class="exp__title">{card.title}</h2>
+              <p class="exp__desc">{card.desc}</p>
+              <div class="exp__tags">
+                {card.tags.map((tag) => <span class="chip">{tag}</span>)}
+              </div>
+            </div>
+          </article>
+        </TiltCard>
+      ))}
+    </div>
+  </section>
+
+  <!-- ============ 安全与审核 ============ -->
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Safety</p>
+        <h2 class="section-title">炫酷之外，<span class="grad">先过安全关</span></h2>
+      </div>
+      <div class="safety">
+        {[
+          { icon: 'shield', title: 'AI 出题须审核', desc: 'AI 生成的题目先落审核队列，管理员确认后才进入正式题库。' },
+          { icon: 'image', title: '绘画内容安全', desc: '文生图接入内容安全校验与版权净化，不合格直接拦截。' },
+          { icon: 'check', title: '知识页确认入库', desc: '个人知识库只有你确认过的页面才参与检索与作答。' },
+          { icon: 'wrench', title: '工具白名单', desc: 'AI 能调用的教学动作全部白名单化，不存在"越权操作"。' },
+        ].map((s, i) => (
+          <div class="safety__item glass-card reveal" style={`--reveal-delay:${i * 0.08}s`} data-spotlight>
+            <span class="safety__icon" aria-hidden="true"><Icon name={s.icon} size={24} /></span>
+            <h3 class="safety__title">{s.title}</h3>
+            <p class="safety__desc">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <CtaSection />
+</Base>
+
+<style>
+  .ehero { padding-block: clamp(3.6rem, 7vw, 5.5rem) 0; }
+  .sphere-hint { margin-top: 1.1rem; text-align: center; font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: 0.06em; }
+
+  /* ---------- 从一句话到产物 ---------- */
+  .flow3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+  .flow3__step { position: relative; padding: 1.6rem 1.4rem; }
+  .flow3__no {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--brand-400);
+  }
+  .flow3__title { font-size: var(--fs-h3); margin: 0.55rem 0 0.5rem; }
+  .flow3__desc { font-size: var(--fs-sm); color: var(--text-secondary); }
+
+  /* ---------- 安全与审核 ---------- */
+  .safety { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; }
+  .safety__item { padding: 1.5rem 1.3rem; }
+  .safety__icon { display: block; margin-bottom: 0.7rem; color: var(--icon-color); }
+  .safety__title { font-size: 1.02rem; margin-bottom: 0.4rem; }
+  .safety__desc { font-size: var(--fs-xs); color: var(--text-secondary); line-height: 1.7; }
+
+  .exp-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1.1rem;
+  }
+  .exp-grid :global(.exp-item) { grid-column: span 2; }
+  .exp-grid :global(.exp-item--wide) { grid-column: span 3; }
+  .exp { height: 100%; overflow: hidden; }
+  .exp__visual {
+    aspect-ratio: 16 / 7;
+    display: grid;
+    place-items: center;
+    border-bottom: 1px solid var(--stroke-subtle);
+  }
+  .exp__glyph {
+    color: rgba(255, 255, 255, 0.95);
+    filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.5));
+  }
+  .exp__body { padding: 1.25rem 1.35rem 1.45rem; }
+  .exp__title { font-size: var(--fs-h3); margin-bottom: 0.5rem; }
+  .exp__desc { font-size: var(--fs-sm); color: var(--text-secondary); }
+  .exp__tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.95rem; }
+
+  @media (max-width: 980px) {
+    .exp-grid { grid-template-columns: repeat(2, 1fr); }
+    .exp-item, .exp-item--wide { grid-column: span 1; }
+    .safety { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 760px) {
+    .flow3 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .exp-grid { grid-template-columns: 1fr; }
+    .safety { grid-template-columns: 1fr; }
+  }
+</style>

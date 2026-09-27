@@ -19,6 +19,7 @@ K12 人工智能通识课教学助手（赛题 JBGS-2026-02）。Nexora = Nexus�
 
 - `nexora-front-admin`：管理后台前端工程（端口 3001）。
 - `nexora-front-web`：学生端前端工程（端口 3000）。页面结构固定 5 页：AI 助教（首页 / 对话区）/ 个性化学习路径 / 课程教材 / 编程环境（小高及以上可见）/ 我的；多模态产物（SVG 动画、绘本、答题卡片）以对话内卡片 + 全屏体验承载。
+- `nexora-site`：产品官网（Astro 纯静态多页站，无端口依赖，`npm run build` 产物挂 nginx）。页面：首页 / AI 知识库 / 产品能力 / 学段适配 / 多模态体验 / 技术架构 / FAQ / 关于 / 用户协议与隐私政策；对外跳转地址、备案号等占位符集中在 `src/config/site.ts`。工程内约束见 `nexora-site/AGENTS.md`。
 
 > 包名提醒：common 用 `com.nexora`，admin 用 `com.nexora.admin`，web 用 `com.nexora`（websocket 在 `com.nexora.websocket`），mcp 用 `com.nexora`。新增类必须落到正确的包路径，不要混。
 

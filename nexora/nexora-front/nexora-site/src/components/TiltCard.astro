@@ -1,0 +1,44 @@
+---
+/**
+ * 3D 倾斜卡片容器（多模态画廊用）：
+ * 指针悬停时按光标位置做轻微 rotateX/rotateY，离开复位。
+ * reduced-motion / 触屏设备自动关闭。
+ */
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<div class:list={['tilt', className]} data-tilt>
+  <slot />
+</div>
+
+<script>
+  const cards = document.querySelectorAll<HTMLElement>('[data-tilt]');
+  const enabled = matchMedia('(pointer: fine)').matches;
+
+  if (enabled) {
+    for (const card of cards) {
+      card.addEventListener('pointermove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        card.style.setProperty('--tilt-rx', `${(-py * 7).toFixed(2)}deg`);
+        card.style.setProperty('--tilt-ry', `${(px * 9).toFixed(2)}deg`);
+      });
+      card.addEventListener('pointerleave', () => {
+        card.style.setProperty('--tilt-rx', '0deg');
+        card.style.setProperty('--tilt-ry', '0deg');
+      });
+    }
+  }
+</script>
+
+<style>
+  .tilt {
+    transform: perspective(900px) rotateX(var(--tilt-rx, 0deg)) rotateY(var(--tilt-ry, 0deg));
+    transition: transform 0.25s var(--ease-out);
+    will-change: transform;
+  }
+</style>

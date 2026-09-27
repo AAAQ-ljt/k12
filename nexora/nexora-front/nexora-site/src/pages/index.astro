@@ -1,0 +1,371 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../config/site';
+import TypewriterDemo from '../components/TypewriterDemo.astro';
+import CountUp from '../components/CountUp.astro';
+import WikiFlow from '../components/WikiFlow.astro';
+import StageSwitcher from '../components/StageSwitcher.astro';
+import TiltCard from '../components/TiltCard.astro';
+import TrustStrip from '../components/TrustStrip.astro';
+import HoleHero from '../components/HoleHero.astro';
+import Icon from '../components/Icon.astro';
+import CtaSection from '../components/CtaSection.astro';
+
+const title = 'Nexora · K12 人工智能通识课教学助手';
+const description =
+    'Nexora 把 7×24 在线 AI 助教、会自己长大的个人知识库、按学段自适应的学习路径与'
+    + '多模态学习体验连成一片——让每个孩子都有一位随时在线的 AI 老师。';
+
+const capabilities = [
+  {
+    icon: 'M4 5h16v11H8l-4 4V5z',
+    title: 'AI 助教对话',
+    desc: '流式回复秒回，意图识别后直接给出讲解、资料推荐、出题或一张可交互的产物卡片。',
+    href: '/features/',
+  },
+  {
+    icon: 'M6 4h9a3 3 0 0 1 3 3v13H9a3 3 0 0 1-3-3V4zm12 2h2v13a3 3 0 0 1-3 3h-1',
+    title: 'AI 个人知识库',
+    desc: '上传资料，AI 帮你整理成 Wiki 知识页；确认入库后，AI 作答会引用它——越用越懂你。',
+    href: '/wiki/',
+    star: true,
+  },
+  {
+    icon: 'M4 19V5m0 14h16M8 15l3-4 3 2 4-6',
+    title: '个性化学习路径',
+    desc: 'AI 四阶段规划 + 兴趣分支，掌握度决定节点解锁，太简单的内容会自动跳过。',
+    href: '/features/',
+  },
+  {
+    icon: 'M5 4h14v16H5zM9 4v16m0-8h10M12 8h7m-7 8h7',
+    title: '课程教材与通关测验',
+    desc: '章节—课时—资源一条线，每课时配题库选题或 AI 出题的通关测验。',
+    href: '/features/',
+  },
+  {
+    icon: 'M8 9l-3 3 3 3m8-6l3 3-3 3M13 6l-2 12',
+    title: '浏览器编程环境',
+    desc: 'Python 在浏览器里直接运行，零安装零配置，写完立刻看到结果。',
+    href: '/features/',
+  },
+  {
+    icon: 'M12 20a8 8 0 1 1 8-8m-8 4a4 4 0 1 1 4-4m4 8v-6m-3 3h6',
+    title: '学习分析与复习',
+    desc: '掌握度、学习趋势与遗忘曲线持续沉淀，复习时机由数据说了算。',
+    href: '/features/',
+  },
+];
+
+const modalCards = [
+  {
+    icon: 'play',
+    title: 'SVG 分步动画',
+    desc: '抽象概念拆成一帧帧动画，跟着步骤看懂全过程。',
+    grad: 'linear-gradient(150deg, rgba(102,126,234,.35), rgba(79,172,254,.12))',
+  },
+  {
+    icon: 'book',
+    title: 'AI 绘本',
+    desc: '图文成书的故事化学习，低学段孩子的第一堂 AI 课。',
+    grad: 'linear-gradient(150deg, rgba(240,147,251,.32), rgba(157,107,255,.12))',
+  },
+  {
+    icon: 'droplet',
+    title: 'AI 绘画',
+    desc: '把想象力说出来、画出来，理解生成式 AI 的能力与边界。',
+    grad: 'linear-gradient(150deg, rgba(118,75,162,.4), rgba(240,147,251,.1))',
+  },
+  {
+    icon: 'pencil',
+    title: '可交互答题卡',
+    desc: '对话里直接做题、即时批改，结果计入知识点掌握度。',
+    grad: 'linear-gradient(150deg, rgba(79,172,254,.3), rgba(102,126,234,.12))',
+  },
+  {
+    icon: 'code',
+    title: '浏览器编程',
+    desc: 'Python 即写即跑，从第一行代码到小项目都不用装环境。',
+    grad: 'linear-gradient(150deg, rgba(74,222,128,.24), rgba(102,126,234,.14))',
+  },
+];
+---
+
+<Base title={title} description={description} path="/">
+  <!-- ============ Hero（无限隧道 WebGL 背景，来自参考项目/k12bk/1.html） ============ -->
+  <section class="hero" data-hole>
+    <HoleHero />
+    <div class="container hero__grid">
+      <div class="hero__copy">
+        <p class="chip chip--brand hero__badge">K12 人工智能通识课教学助手</p>
+        <h1 class="hero__title">
+          每个孩子，都值得一位<br />
+          <span class="grad text-shimmer">随时在线的 AI 老师</span>
+        </h1>
+        <p class="hero__lede">
+          {SITE.name} = Nexus（连接）+ Aurora（极光）。我们把 AI 助教、会自己长大的个人知识库、
+          按学段自适应的学习路径和多模态学习体验连成一片——把知识讲明白，也把好奇心接住。
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary btn--lg" href={SITE.studentUrl} target="_blank" rel="noopener">
+            免费进入产品 ↗
+          </a>
+          <a class="btn btn--ghost btn--lg" href="/wiki/">看看会长大的知识库</a>
+        </div>
+      </div>
+
+      <div class="hero__demo reveal" style="--reveal-delay:0.15s">
+        <span class="hero__orb hero__orb--1" aria-hidden="true"></span>
+        <span class="hero__orb hero__orb--2" aria-hidden="true"></span>
+        <span class="hero__orb hero__orb--3" aria-hidden="true"></span>
+        <TypewriterDemo />
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 数据条 ============ -->
+  <section class="stats" aria-label="产品数据">
+    <div class="container stats__row glass-card" data-neon>
+      <CountUp value={7} suffix="×24" label="全天在线的 AI 教师" />
+      <CountUp value={3} label="个学段自适应切换" />
+      <CountUp value={5} label="类多模态学习产物" />
+      <CountUp value={6} label="大能力模块一体贯通" />
+    </div>
+  </section>
+
+  <!-- ============ 技术信任条 ============ -->
+  <TrustStrip />
+
+  <!-- ============ 能力概览 ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Capabilities</p>
+        <h2 class="section-title">一套产品，<span class="grad">六种能力</span>，围绕学习闭环</h2>
+        <p class="section-lede">从听懂、练会到记住，AI 负责教学，数据负责因材施教。</p>
+      </div>
+      <div class="caps">
+        {capabilities.map((cap, i) => (
+          <a
+            href={cap.href}
+            class:list={['caps__item glass-card reveal', { 'caps__item--star': cap.star }]}
+            style={`--reveal-delay:${(i % 3) * 0.1}s`}
+            data-spotlight
+          >
+            {cap.star && <span class="caps__flag">最具特色</span>}
+            <svg class="caps__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d={cap.icon} stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+            <h3 class="caps__title">{cap.title}</h3>
+            <p class="caps__desc">{cap.desc}</p>
+            <span class="caps__more" aria-hidden="true">了解 →</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Wiki 主打区 ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Signature · 最具特色</p>
+        <h2 class="section-title">一个<span class="grad">会自己长大</span>的 AI 知识库</h2>
+        <p class="section-lede">
+          把资料交给 AI 整理成你的个人 Wiki——你确认过的每一步，都在让 AI 更懂你。
+        </p>
+      </div>
+      <WikiFlow />
+      <p class="wiki-more reveal">
+        <a class="btn btn--ghost" href="/wiki/">深入了解 AI 知识库 →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 学段切换 ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Age Adaptive</p>
+        <h2 class="section-title">同一个 AI，<span class="grad">三种学段人格</span></h2>
+        <p class="section-lede">提示词、知识检索范围、难度梯度全部按学段切换——不是换个说法，是换一种教法。</p>
+      </div>
+      <div class="reveal"><StageSwitcher /></div>
+    </div>
+  </section>
+
+  <!-- ============ 多模态画廊 ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Multimodal</p>
+        <h2 class="section-title">学习产物，<span class="grad">不止是文字</span></h2>
+        <p class="section-lede">AI 的回复里直接长出动画、绘本、画和练习——都可在对话内全屏体验。</p>
+      </div>
+      <div class="gallery">
+        {modalCards.map((card, i) => (
+          <TiltCard class="gallery__item-wrap" >
+            <div class="gallery__item glass-card reveal" style={`--reveal-delay:${i * 0.08}s`}>
+              <div class="gallery__visual" style={`background:${card.grad}`} aria-hidden="true">
+                <Icon name={card.icon} size={40} class="gallery__glyph" />
+              </div>
+              <h3 class="gallery__title">{card.title}</h3>
+              <p class="gallery__desc">{card.desc}</p>
+            </div>
+          </TiltCard>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <CtaSection />
+
+<style>
+  /* ---------- Hero ---------- */
+  .hero { padding-block: clamp(4rem, 9vw, 7.5rem) clamp(2.5rem, 5vw, 4rem); position: relative; overflow: hidden; }
+  .hero__grid { position: relative; z-index: 2; }
+  .hero__grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: center;
+  }
+  .hero__badge { margin-bottom: 1.4rem; }
+  .hero__title { font-size: clamp(2.1rem, 4.2vw, 3.4rem); text-wrap: balance; }
+  /* 窄屏隐藏手动断行，交给自然换行（此时断点恰好落在词边界） */
+  @media (max-width: 640px) { .hero__title br { display: none; } }
+  .hero__title .grad {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero__lede { margin-top: 1.3rem; color: var(--text-secondary); max-width: 34em; }
+  .hero__actions { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 2.2rem; }
+
+  /* 环绕演示窗的悬浮光球 */
+  .hero__demo { position: relative; }
+  .hero__orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(2px);
+    animation: orb-float 7s ease-in-out infinite;
+  }
+  .hero__orb--1 {
+    top: -6%;
+    right: 4%;
+    width: 14px;
+    height: 14px;
+    background: var(--aurora-3);
+    box-shadow: 0 0 18px rgba(240, 147, 251, 0.8);
+  }
+  .hero__orb--2 {
+    bottom: 8%;
+    left: -3%;
+    width: 10px;
+    height: 10px;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 16px rgba(79, 172, 254, 0.8);
+    animation-delay: 1.6s;
+  }
+  .hero__orb--3 {
+    top: 34%;
+    left: -6%;
+    width: 7px;
+    height: 7px;
+    background: var(--brand-400);
+    box-shadow: 0 0 12px rgba(157, 107, 255, 0.9);
+    animation-delay: 3.1s;
+  }
+  @keyframes orb-float {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -16px, 0); }
+  }
+
+  /* ---------- 数据条 ---------- */
+  .stats { padding-block: 1rem 0; overflow-x: clip; }
+  .stats__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.2rem;
+    padding: clamp(1.6rem, 3.5vw, 2.6rem) 1.5rem;
+  }
+  .stats__row > :nth-child(n + 2) { border-left: 1px solid var(--divider); }
+
+  /* ---------- 能力 ---------- */
+  .caps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.1rem;
+  }
+  .caps__item { position: relative; padding: 1.6rem 1.5rem 1.4rem; }
+  .caps__icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    color: var(--icon-color);
+    margin-bottom: 1rem;
+  }
+  .caps__title { font-size: var(--fs-h3); margin-bottom: 0.5rem; }
+  .caps__desc { font-size: var(--fs-sm); color: var(--text-secondary); }
+  .caps__more {
+    display: inline-block;
+    margin-top: 0.9rem;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .caps__item:hover .caps__more { color: var(--brand-400); }
+  .caps__item--star { border-color: var(--stroke-brand); }
+  .caps__flag {
+    position: absolute;
+    top: 1.1rem;
+    right: 1.1rem;
+    padding: 0.22em 0.7em;
+    border-radius: var(--r-full);
+    font-size: var(--fs-xs);
+    color: #ffd9fb;
+    background: rgba(240, 147, 251, 0.16);
+    border: 1px solid rgba(240, 147, 251, 0.4);
+  }
+
+  .wiki-more { text-align: center; margin-top: 2.2rem; }
+
+  /* ---------- 画廊 ---------- */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+  }
+  .gallery__item { padding: 0.9rem 0.9rem 1.2rem; height: 100%; }
+  .gallery__visual {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--r-md);
+    display: grid;
+    place-items: center;
+    margin-bottom: 0.9rem;
+    border: 1px solid var(--stroke-subtle);
+  }
+  .gallery__glyph { color: rgba(255,255,255,0.95); filter: drop-shadow(0 6px 18px rgba(0,0,0,.45)); }
+  .gallery__title { font-size: 1.02rem; margin-bottom: 0.35rem; }
+  .gallery__desc { font-size: var(--fs-xs); color: var(--text-secondary); line-height: 1.65; }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 1020px) {
+    .hero__grid { grid-template-columns: 1fr; }
+    .hero__demo { max-width: 560px; }
+    .gallery { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 760px) {
+    .stats__row { grid-template-columns: 1fr 1fr; row-gap: 1.8rem; }
+    .stats__row > :nth-child(n + 2) { border-left: 0; }
+    .stats__row > :nth-child(even) { border-left: 1px solid var(--divider); }
+    .caps { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 540px) {
+    .caps { grid-template-columns: 1fr; }
+    .gallery { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</Base>

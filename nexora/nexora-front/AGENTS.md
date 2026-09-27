@@ -2,12 +2,14 @@
 
 React 19 + TypeScript + Vite + antd v6 + Zustand + React Router + Axios + SCSS（CSS Modules）。
 
-两个独立工程：
+三个独立工程：
 
 - `nexora-front-admin`：管理后台，服务管理员（内容运营）。token header 名 `adminToken`，代理目标为管理端后端服务（6061）。
 - `nexora-front-web`：学生端，服务学生。token header 名 `studentToken`，代理目标为用户端后端服务（6060）；WebSocket 经 `/ws` 代理到 6062。
+- `nexora-site`：产品官网（**Astro** 纯静态多页站，非 React/antd 技术栈，不调 `/api`，无登录态）。技术栈与结构约定见 `nexora-site/AGENTS.md`。
 
-> 两个工程互不共享代码。共用约定与组件由各自工程独立维护，不要相互 import。
+> 三个工程互不共享代码。共用约定与组件由各自工程独立维护，不要相互 import。
+> 下方「编码规范」仅约束 admin / web 两个 React 工程；nexora-site 遵循其自身 AGENTS.md。
 
 # 编码规范
 

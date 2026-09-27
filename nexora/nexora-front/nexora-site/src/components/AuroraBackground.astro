@@ -1,0 +1,152 @@
+---
+/**
+ * 全站极光背景：三团模糊光斑缓慢漂移 + 稀疏星点 + 指针跟随光晕。
+ * 纯 CSS 动画（仅 transform/opacity，走 GPU）；指针光晕用 rAF 插值，代价极低。
+ */
+---
+
+<div class="aurora" aria-hidden="true">
+  <div class="aurora__stars"></div>
+  <div class="aurora__blobs">
+    <div class="aurora__blob aurora__blob--1"></div>
+    <div class="aurora__blob aurora__blob--2"></div>
+    <div class="aurora__blob aurora__blob--3"></div>
+  </div>
+  <div class="aurora__pointer"></div>
+</div>
+
+<script>
+  // 指针跟随光晕（仅精确指针设备启用，脚本控制位移）
+  const pointer = document.querySelector<HTMLElement>('.aurora__pointer');
+  if (pointer && matchMedia('(pointer: fine)').matches) {
+    let tx = innerWidth / 2;
+    let ty = innerHeight * 0.3;
+    let cx = tx;
+    let cy = ty;
+    let raf = 0;
+
+    const tick = () => {
+      cx += (tx - cx) * 0.06;
+      cy += (ty - cy) * 0.06;
+      pointer.style.transform = `translate(${cx - 350}px, ${cy - 350}px)`;
+      if (Math.abs(tx - cx) > 0.5 || Math.abs(ty - cy) > 0.5) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        raf = 0;
+      }
+    };
+
+    addEventListener('pointermove', (e) => {
+      tx = e.clientX;
+      ty = e.clientY;
+      if (!raf) raf = requestAnimationFrame(tick);
+    }, { passive: true });
+  }
+
+  // 极光随滚动轻微上移（视差）：只移动裁剪层内的光斑组，容器固定不露底
+  const blobs = document.querySelector<HTMLElement>('.aurora__blobs');
+  if (blobs && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let ticking = false;
+    addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        blobs.style.transform = `translateY(${(window.scrollY * -0.04).toFixed(1)}px)`;
+        ticking = false;
+      });
+    }, { passive: true });
+  }
+</script>
+
+<style>
+  .aurora {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 120% 70% at 50% -20%, rgba(118, 75, 162, 0.22), transparent 60%),
+        var(--bg-base);
+  }
+
+  .aurora__blobs { position: absolute; inset: 0; will-change: transform; }
+  .aurora__blob {
+    position: absolute;
+    width: 56vw;
+    height: 56vw;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.5;
+    will-change: transform;
+  }
+  .aurora__blob--1 {
+    top: -18vw;
+    left: -12vw;
+    background: radial-gradient(circle, rgba(102, 126, 234, 0.55), transparent 65%);
+    animation: drift-1 26s var(--ease-out) infinite alternate;
+  }
+  .aurora__blob--2 {
+    top: 12vh;
+    right: -18vw;
+    background: radial-gradient(circle, rgba(240, 147, 251, 0.4), transparent 65%);
+    animation: drift-2 34s var(--ease-out) infinite alternate;
+  }
+  .aurora__blob--3 {
+    bottom: -24vw;
+    left: 22vw;
+    background: radial-gradient(circle, rgba(118, 75, 162, 0.45), transparent 65%);
+    animation: drift-3 42s var(--ease-out) infinite alternate;
+  }
+
+  @keyframes drift-1 {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(9vw, 7vh, 0) scale(1.16); }
+  }
+  @keyframes drift-2 {
+    from { transform: translate3d(0, 0, 0) scale(1.1); }
+    to { transform: translate3d(-11vw, 9vh, 0) scale(0.94); }
+  }
+  @keyframes drift-3 {
+    from { transform: translate3d(0, 0, 0) scale(0.96); }
+    to { transform: translate3d(7vw, -7vh, 0) scale(1.14); }
+  }
+
+  /* 稀疏星点：多层径向渐变 + 缓慢闪烁 */
+  .aurora__stars {
+    position: absolute;
+    inset: 0;
+    opacity: 0.7;
+    background-image:
+        radial-gradient(1.5px 1.5px at 12% 22%, rgba(255,255,255,0.8), transparent 60%),
+        radial-gradient(1px 1px at 34% 64%, rgba(255,255,255,0.55), transparent 60%),
+        radial-gradient(1.5px 1.5px at 55% 15%, rgba(255,255,255,0.65), transparent 60%),
+        radial-gradient(1px 1px at 71% 42%, rgba(255,255,255,0.5), transparent 60%),
+        radial-gradient(1.5px 1.5px at 84% 74%, rgba(255,255,255,0.7), transparent 60%),
+        radial-gradient(1px 1px at 22% 82%, rgba(255,255,255,0.45), transparent 60%),
+        radial-gradient(1px 1px at 93% 18%, rgba(255,255,255,0.6), transparent 60%),
+        radial-gradient(1px 1px at 45% 90%, rgba(255,255,255,0.4), transparent 60%);
+    animation: twinkle 7s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    from { opacity: 0.4; }
+    to { opacity: 0.85; }
+  }
+
+  /* 指针跟随光晕（仅精确指针设备启用，脚本控制位移） */
+  .aurora__pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(134, 59, 255, 0.1), transparent 62%);
+    will-change: transform;
+  }
+
+  @media (max-width: 760px) {
+    .aurora__blob { width: 90vw; height: 90vw; filter: blur(70px); }
+    .aurora__pointer { display: none; }
+  }
+</style>
