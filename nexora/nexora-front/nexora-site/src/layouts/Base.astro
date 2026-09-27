@@ -4,6 +4,7 @@ import '../styles/global.css';
 import { SITE, NAV_ITEMS } from '../config/site';
 import Logo from '../components/Logo.astro';
 import AuroraBackground from '../components/AuroraBackground.astro';
+import ContextMenu from '../components/ContextMenu.astro';
 
 interface Props {
   /** 页面标题（浏览器标签页 / 分享卡片） */
@@ -94,6 +95,8 @@ const isActive = (href: string) =>
         </a>
       </div>
     </header>
+
+    <ContextMenu />
 
     <main id="main">
       <slot />

@@ -1,0 +1,264 @@
+---
+import Icon from './Icon.astro';
+
+/**
+ * 全站自定义右键菜单 — 极光暗色玻璃面板。
+ * 在页面空白处右键弹出（链接/按钮上保留浏览器原生菜单）；
+ * 支持 Esc 关闭、点击任意处关闭、视口边缘自动翻转、 toast 反馈。
+ * 仅精确指针设备启用（触屏长按行为不做劫持）。
+ */
+---
+
+<div class="cx" id="cx-menu" role="menu" aria-label="页面菜单" hidden>
+  <button type="button" class="cx__item" role="menuitem" data-cx="top">
+    <Icon name="arrow-up" size={16} class="cx__icon" />
+    <span>回到顶部</span>
+  </button>
+  <button type="button" class="cx__item" role="menuitem" data-cx="bottom">
+    <Icon name="arrow-down" size={16} class="cx__icon" />
+    <span>回到底部</span>
+  </button>
+
+  <div class="cx__sep" role="separator"></div>
+
+  <button type="button" class="cx__item" role="menuitem" data-cx="back">
+    <Icon name="corner-up-left" size={16} class="cx__icon" />
+    <span>返回上一页</span>
+  </button>
+
+  <div class="cx__sep" role="separator"></div>
+
+  <button type="button" class="cx__item" role="menuitem" data-cx="copy">
+    <Icon name="link" size={16} class="cx__icon" />
+    <span>复制当前页面链接</span>
+  </button>
+  <button type="button" class="cx__item" role="menuitem" data-cx="copySel">
+    <Icon name="copy" size={16} class="cx__icon" />
+    <span>复制所选文字</span>
+    <kbd class="cx__kbd">Ctrl+C</kbd>
+  </button>
+  <button type="button" class="cx__item" role="menuitem" data-cx="paste">
+    <Icon name="clipboard" size={16} class="cx__icon" />
+    <span>粘贴剪贴板内容</span>
+    <kbd class="cx__kbd">Ctrl+V</kbd>
+  </button>
+</div>
+
+<div class="cx-toast" id="cx-toast" hidden></div>
+
+<script>
+  const menu = document.getElementById('cx-menu');
+  const toast = document.getElementById('cx-toast');
+  const finePointer = matchMedia('(pointer: fine)').matches;
+
+  function showToast(msg: string) {
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.removeAttribute('hidden');
+    toast.animate(
+        [
+          { opacity: 0, transform: 'translate(-50%, 6px)' },
+          { opacity: 1, transform: 'translate(-50%, 0)' },
+        ],
+        { duration: 200, easing: 'ease-out' },
+    );
+    setTimeout(() => {
+      const fade = toast.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 250, easing: 'ease-out' },
+      );
+      fade.onfinish = () => toast.setAttribute('hidden', '');
+    }, 1700);
+  }
+
+  function closeMenu() {
+    if (!menu || menu.hasAttribute('hidden')) return;
+    menu.setAttribute('hidden', '');
+  }
+
+  if (menu && toast && finePointer) {
+    // ---- 弹出 ----
+    document.addEventListener('contextmenu', (e) => {
+      const target = e.target as HTMLElement;
+      // 链接/按钮上保留浏览器原生菜单（新标签打开等行为用户更熟悉）
+      if (target.closest('a, button, input, textarea, [role="button"]')) {
+        closeMenu();
+        return;
+      }
+      // 自己的菜单上再右键：直接忽略
+      if (target.closest('.cx')) return;
+      e.preventDefault();
+      menu.removeAttribute('hidden');
+      const pad = 8;
+      const w = menu.offsetWidth;
+      const h = menu.offsetHeight;
+      const x = Math.min(e.clientX, window.innerWidth - w - pad);
+      const y = Math.min(e.clientY, window.innerHeight - h - pad);
+      menu.style.left = `${Math.max(pad, x)}px`;
+      menu.style.top = `${Math.max(pad, y)}px`;
+      menu.animate(
+          [
+            { opacity: 0, transform: 'scale(0.94) translateY(4px)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 150, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' },
+      );
+    });
+
+    // ---- 关闭时机 ----
+    document.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMenu();
+    });
+    addEventListener('scroll', closeMenu, { passive: true });
+    addEventListener('blur', closeMenu);
+
+  // ---- 电梯式平滑滚动（自研 rAF 缓动，不依赖浏览器 smooth——系统关动画时依旧丝滑） ----
+  function smoothScrollTo(targetY: number, duration = 800) {
+    const startY = window.scrollY;
+    const delta = targetY - startY;
+    if (Math.abs(delta) < 2) return;
+    const start = performance.now();
+    const ease = (t: number) =>
+        t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // easeInOutCubic
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      window.scrollTo(0, startY + delta * ease(t));
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // ---- 动作 ----
+  const actions: Record<string, () => void> = {
+    top: () => smoothScrollTo(0, 700),
+    bottom: () => smoothScrollTo(document.documentElement.scrollHeight, 900),
+      back: () => {
+        if (history.length > 1) {
+          history.back();
+        } else {
+          showToast('没有可返回的页面');
+        }
+      },
+      copy: () => {
+        const url = location.href;
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(url).then(
+              () => showToast('链接已复制到剪贴板'),
+              () => showToast('复制失败，请手动复制地址栏链接'),
+          );
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = url;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          showToast('链接已复制到剪贴板');
+        }
+      },
+      copySel: () => {
+        const sel = String(getSelection?.() ?? '').trim();
+        if (!sel) {
+          showToast('请先选中要复制的文字');
+          return;
+        }
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(sel).then(
+              () => showToast(`已复制 ${sel.length} 个字`),
+              () => showToast('复制失败，请重试'),
+          );
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = sel;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          showToast(`已复制 ${sel.length} 个字`);
+        }
+      },
+      paste: () => {
+        if (!navigator.clipboard?.readText) {
+          showToast('当前浏览器不支持读取剪贴板');
+          return;
+        }
+        navigator.clipboard.readText().then(
+            (text) => {
+              const t = text.trim();
+              showToast(t ? `剪贴板内容：${t.slice(0, 24)}${t.length > 24 ? '…' : ''}` : '剪贴板是空的');
+            },
+            () => showToast('无法读取剪贴板（浏览器权限限制）'),
+        );
+      },
+    };
+
+    menu.addEventListener('click', (e) => {
+      const item = (e.target as HTMLElement).closest<HTMLElement>('[data-cx]');
+      if (!item) return;
+      const fn = actions[item.dataset.cx ?? ''];
+      closeMenu();
+      fn?.();
+    });
+  }
+</script>
+
+<style>
+  .cx {
+    position: fixed;
+    z-index: 99998;
+    min-width: 208px;
+    padding: 0.4rem;
+    border-radius: var(--r-md);
+    background: rgba(18, 20, 42, 0.92);
+    border: 1px solid var(--stroke-strong);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(14px);
+  }
+  .cx__item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.52rem 0.7rem;
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    text-align: left;
+    transition: background-color var(--dur-fast) var(--ease-out),
+        color var(--dur-fast) var(--ease-out);
+  }
+  .cx__item:hover {
+    background: rgba(157, 107, 255, 0.14);
+    color: var(--text-primary);
+  }
+  .cx__icon { color: var(--icon-color); }
+  .cx__item:hover .cx__icon { color: var(--brand-400); }
+  .cx__kbd {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+  .cx__sep {
+    height: 1px;
+    margin: 0.3rem 0.55rem;
+    background: var(--divider);
+  }
+
+  .cx-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 2.6rem;
+    z-index: 99998;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--r-full);
+    font-size: var(--fs-sm);
+    color: var(--text-primary);
+    background: rgba(18, 20, 42, 0.94);
+    border: 1px solid var(--stroke-brand);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(10px);
+    white-space: nowrap;
+  }
+</style>
