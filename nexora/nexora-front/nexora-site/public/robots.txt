@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-# 占位域名：上线前与 astro.config.mjs 的 site 一并替换
-Sitemap: https://nexora-site.example.com/sitemap-index.xml
+# 公网入口：阿里云 ECS 80 端口（frp 映射）；绑定官网域名后与 astro.config.mjs 的 site 一并替换
+Sitemap: http://121.40.149.155/sitemap-index.xml
