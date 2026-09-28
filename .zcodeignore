@@ -1,0 +1,109 @@
+# ===== 后端（Java / Maven）=====
+target/
+*.class
+*.jar
+*.war
+*.ear
+!.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# ===== 前端（Node / Vite）=====
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.astro/
+*.local
+
+# ===== 环境变量（.env.development / .env.production 含代理与端口、无密钥，提交；本地覆盖文件不提交）=====
+.env.local
+.env.*.local
+skills
+
+# ===== 日志 =====
+logs/
+*.log
+
+# ===== IDE =====
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 运行时产物（资源上传临时目录 / 分片文件 / 转码产物）=====
+resource/temp/
+resource/files/
+nexora/resource/
+
+# ===== 本地开发辅助文件（不提交）=====
+nexora/.maven-settings.xml
+
+# ===== 本地压测 / 调试工具（不提交）=====
+# 依据：本地工具与压测产物（音频、CSV、临时脚本）无需入库，仅在本机使用。
+# 注意：nexora/docs/ 下的接口说明文档仍需正常提交。
+nexora/tools/
+
+# ===== 参考资料（本地只读，不入库）=====
+参考项目/
+
+# ===== 注意：以下内容需要提交，勿加入忽略 =====
+# AGENTS.md、.codex/skills/（项目约束体系）、nexora/docs/（设计文档）、
+# nexora-java/nexora.sql（版本化 DDL）、knowledge/（知识库源文件）
+
+# ===== 例外：含明文凭据的运维文档（仅本地保留，不入库）=====
+# 依据：根 AGENTS.md「禁止行为」——禁止把含明文密码/密钥的文档或配置提交入库。
+# 上面「nexora/docs/ 设计文档需提交」的约定不适用于本文件：该文档含
+# 服务器 SSH / MySQL / 管理端 / frp 的明文口令，只应私下传递（发给同事），不得入库。
+# 若哪天把凭据迁走（例如只保留在服务器 /etc/nexora/nexora.env）并确认可公开，
+# 删掉下面这一行即可正常提交。
+nexora/docs/服务器部署与访问.md
+
+# ===== AI 工具本地状态（不入库）=====
+# .zcode/ 是 ZCode 的会话计划与工作数据，属于工具状态而非项目代码。
+.zcode/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

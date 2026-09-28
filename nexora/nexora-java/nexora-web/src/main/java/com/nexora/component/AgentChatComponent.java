@@ -162,7 +162,8 @@ public class AgentChatComponent {
 
         updateSession(session, userMessage);
         List<String> finalImages = imageDataUrls;
-        ASYNC_EXECUTOR.execute(() -> assistantAnswer(user, session, message, finalImages));
+        List<String> persistedImageIds = imageResourceIds == null ? List.of() : imageResourceIds;
+        ASYNC_EXECUTOR.execute(() -> assistantAnswer(user, session, message, finalImages, persistedImageIds));
         return message;
     }
 
@@ -229,14 +230,15 @@ public class AgentChatComponent {
         agentMessageService.deleteByParam(messageQuery);
     }
 
-    private void assistantAnswer(TokenUserInfoDTO user, AgentSession session, AgentMessage message, List<String> imageDataUrls) {
+    private void assistantAnswer(TokenUserInfoDTO user, AgentSession session, AgentMessage message, List<String> imageDataUrls, List<String> imageResourceIds) {
+        boolean hasImages = imageResourceIds != null && !imageResourceIds.isEmpty();
         AgentMessagePushDTO push = new AgentMessagePushDTO();
         push.setMessageId(message.getMessageId());
         push.setSessionId(session.getSessionId());
         StringBuilder answer = new StringBuilder();
         try {
             if (redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId())) {
-                finishMessage(user, message, "", false, null, List.of(), 0, 0);
+                finishMessage(user, message, "", false, null, List.of(), 0, 0, false);
                 return;
             }
 
@@ -248,8 +250,12 @@ public class AgentChatComponent {
 
             AgentMessage intentUpdate = new AgentMessage();
             intentUpdate.setIntent(intent);
-            intentUpdate.setBizType(bizType);
-            intentUpdate.setBizData(bizData);
+            // 带图消息：保留 USER_IMAGE 的 bizType/bizData（图片资源ID 数组），供历史重放渲染缩略图；
+            // 意图识别出的知识点信息仅在无图消息上落库
+            if (!hasImages) {
+                intentUpdate.setBizType(bizType);
+                intentUpdate.setBizData(bizData);
+            }
             intentUpdate.setPromptTokens(intentResult.promptTokens());
             intentUpdate.setCompletionTokens(intentResult.completionTokens());
             intentUpdate.setUpdateTime(new Date());
@@ -257,7 +263,7 @@ public class AgentChatComponent {
 
             if (redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId())) {
                 finishMessage(user, message, "", false, null, List.of(),
-                        intentResult.promptTokens(), intentResult.completionTokens());
+                        intentResult.promptTokens(), intentResult.completionTokens(), hasImages);
                 return;
             }
 
@@ -366,18 +372,18 @@ public class AgentChatComponent {
                     .doOnComplete(() -> {
                         KnowledgeAgentToolComponent.clearFallbackContext();
                         finishMessage(user, message, answer.toString(), true, null, recommends,
-                                promptTokens.get(), completionTokens.get(), wikiOps.get());
+                                promptTokens.get(), completionTokens.get(), wikiOps.get(), hasImages);
                     })
                     .doOnError(error -> {
                         KnowledgeAgentToolComponent.clearFallbackContext();
                         finishMessage(user, message, answer.toString(), false, error, List.of(),
-                                promptTokens.get(), completionTokens.get(), wikiOps.get());
+                                promptTokens.get(), completionTokens.get(), wikiOps.get(), hasImages);
                     })
                     .subscribe();
         } catch (Exception e) {
             log.error("AI 对话流式调用失败", e);
             KnowledgeAgentToolComponent.clearFallbackContext();
-            finishMessage(user, message, answer.toString(), false, e, List.of(), 0, 0);
+            finishMessage(user, message, answer.toString(), false, e, List.of(), 0, 0, hasImages);
         }
     }
 
@@ -580,15 +586,16 @@ public class AgentChatComponent {
     }
 
     private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
-                               List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens) {
-        finishMessage(user, message, answer, completed, error, recommends, promptTokens, completionTokens, 0);
+                               List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens, boolean hasImages) {
+        finishMessage(user, message, answer, completed, error, recommends, promptTokens, completionTokens, 0, hasImages);
     }
 
     /**
      * @param wikiOps 本轮知识页工具被调用次数，&gt;0 时给消息打 WIKI 标记（前端据此刷新知识页抽屉）
+     * @param hasImages 消息携带用户上传图片：持久化时保留 USER_IMAGE 的 bizType/bizData，避免被推荐/知识页标记覆写
      */
     private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
-                               List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens, int wikiOps) {
+                               List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens, int wikiOps, boolean hasImages) {
         boolean cancelled = redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId());
         // 本轮动过知识页：完成/取消/失败都要标记，前端收到 WIKI 标记即刷新抽屉（数据已变化）
         boolean wikiChanged = wikiOps > 0;
@@ -606,7 +613,7 @@ public class AgentChatComponent {
         updateBean.setPromptTokens(promptTokens);
         updateBean.setCompletionTokens(completionTokens);
         updateBean.setUpdateTime(new Date());
-        if (wikiChanged) {
+        if (wikiChanged && !hasImages) {
             updateBean.setBizType("WIKI");
             updateBean.setBizData(wikiBizData);
         }
@@ -629,7 +636,8 @@ public class AgentChatComponent {
             }
             channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
             updateBean.setStatus(1);
-            if (!wikiChanged && recommends != null && !recommends.isEmpty()) {
+            // 带图消息：落库保留 USER_IMAGE 标记（推荐卡片仅实时推送，不入库覆写图片引用）
+            if (!wikiChanged && !hasImages && recommends != null && !recommends.isEmpty()) {
                 updateBean.setBizType("RESOURCE_RECOMMEND");
                 updateBean.setBizData(JSON.toJSONString(recommends));
             }
