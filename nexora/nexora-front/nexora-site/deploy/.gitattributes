@@ -1,0 +1,2 @@
+# deploy_site.sh 会上传到 Linux 服务器以 bash 执行，任何平台 checkout 都必须保持 LF
+*.sh text eol=lf
