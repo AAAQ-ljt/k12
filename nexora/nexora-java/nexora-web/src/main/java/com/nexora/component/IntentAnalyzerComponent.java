@@ -23,9 +23,22 @@ public class IntentAnalyzerComponent {
 
     private static final String INTENT_SYSTEM_PROMPT = """
             你是意图分类器。只输出 JSON，不要输出任何解释。
-            从以下意图中选择一个：EXPLAIN、RECOMMEND、QUIZ、PICTURE_BOOK、DRAW、ANIMATION、CODING、SCIENCE_SOLVE、PLAN、PROGRESS、CHAT。
-            返回格式：{"intent":"EXPLAIN","data":{"knowledgePoint":"冒泡排序"}}。
-            无法确定用户意图时使用 CHAT。""";
+            从以下意图中选择一个：
+            - EXPLAIN：讲解知识点或概念（"什么是X"、"讲讲X"）
+            - RECOMMEND：推荐学习资料或课程
+            - QUIZ：要求出题、练习、测验
+            - PICTURE_BOOK：明确要求"创作/生成一本绘本或故事书"（产出物是一本新绘本）
+            - DRAW：明确要求"画一幅画/生成一张图片"（产出物是一张新图片）
+            - ANIMATION：明确要求把概念做成"分步动画"讲解
+            - CODING：编程、代码、写程序相关
+            - SCIENCE_SOLVE：数理化生题目求解
+            - PLAN：制定学习计划
+            - PROGRESS：查询学习进度
+            - CHAT：普通聊天与提问。
+            判定要点：用户提到"图片/这张图/图中"并询问其内容（是什么/讲了什么），这是看图提问，图片由视觉模型处理，选 CHAT；
+            只有明确要求"创作绘本"才选 PICTURE_BOOK，只有明确要求"画一张新图"才选 DRAW。
+            无法确定用户意图时使用 CHAT。
+            返回格式：{"intent":"EXPLAIN","data":{"knowledgePoint":"冒泡排序"}}。""";
 
     /** 概念类问句前缀：命中则不以关键词规则判为理科求解，交给 LLM/RAG 链路 */
     private static final List<String> CONCEPT_PREFIXES = List.of(

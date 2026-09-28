@@ -245,6 +245,13 @@ public class AgentChatComponent {
             IntentAnalyzerComponent.IntentResult intentResult = intentAnalyzerComponent.analyze(
                     message.getUserMessage(), user.getStage());
             String intent = intentResult.intent();
+            // 带图消息守卫：意图分类只看文本，"图片里是什么"这类看图提问会被误判成创作型意图，
+            // 在到达下方视觉问答链路前就被绘本/动画任务拦截。带图时创作型意图一律降级 CHAT 走视觉回答；
+            // 真要创作可去「绘本生成」页，或发不带图的明确指令
+            if (hasImages && ("PICTURE_BOOK".equals(intent) || "ANIMATION".equals(intent))) {
+                log.info("带图消息命中创作型意图 {}，降级 CHAT 走视觉问答: {}", intent, message.getUserMessage());
+                intent = "CHAT";
+            }
             String bizType = mapIntentToBizType(intent);
             String bizData = intentResult.data() == null ? null : JSON.toJSONString(intentResult.data());
 
