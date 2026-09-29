@@ -20,9 +20,6 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
 import {
   cancelAgentMessage,
   createAgentSession,
@@ -37,6 +34,7 @@ import {
 } from '@/api/agent';
 import { parseAnimationScript, type AnimationScript } from '@/api/animation';
 import { parseQuizScript, type QuizScript } from '@/api/quiz';
+import MathMarkdown from '@/components/multimodal/MathMarkdown';
 import QuizCard from '@/components/multimodal/QuizCard';
 import SvgStepPlayer from '@/components/multimodal/SvgStepPlayer';
 import PictureBookChatCard from '@/components/multimodal/PictureBookChatCard';
@@ -751,9 +749,7 @@ export default function AiTutor() {
                     ) : item.pending ? (
                       <span className={styles.typingHint}>正在思考...</span>
                     ) : (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                        {item.content}
-                      </ReactMarkdown>
+                      <MathMarkdown highlightCode>{item.content}</MathMarkdown>
                     )}
                   </div>
                   {item.role === 'assistant' && item.recommends && item.recommends.length > 0 ? (
