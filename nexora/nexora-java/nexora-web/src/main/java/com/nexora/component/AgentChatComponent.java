@@ -51,7 +51,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * AI 对话核心组件：落库、组装上下文、DeepSeek 流式回复、WebSocket 推送、取消与错误处理
+ * AI 对话核心组件：落库、组装上下文、大模型流式回复（供应商可切换）、WebSocket 推送、取消与错误处理
  */
 @Component
 @Slf4j
@@ -62,7 +62,7 @@ public class AgentChatComponent {
     private static final int HISTORY_LIMIT = 10;
 
     @Resource
-    private ChatClient chatClient;
+    private ChatProvider chatProvider;
 
     @Resource
     private AgentMessageService agentMessageService;
@@ -106,17 +106,9 @@ public class AgentChatComponent {
     @Resource
     private KnowledgeAgentToolComponent knowledgeAgentToolComponent;
 
-    @Value("${spring.ai.openai.chat.options.model:deepseek-v4-flash}")
-    private String chatModel;
-
-    @Value("${project.ai.vision-model:deepseek-v4-flash-vision-exp}")
-    private String visionModel;
-
+    // 对话模型 / 视觉模型 / reasoning-effort 已收敛到 ChatProvider（见 DeepSeekChatProvider、OpenCodeGoChatProvider）
     @Value("${project.folder}")
     private String projectFolder;
-
-    @Value("${spring.ai.openai.chat.options.reasoning-effort:high}")
-    private String reasoningEffort;
 
     public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage, List<String> imageResourceIds) {
         AgentSession session = resolveSession(user, sessionId);
@@ -316,11 +308,14 @@ public class AgentChatComponent {
                 historyMessages.add(new UserMessage(message.getUserMessage()));
             }
 
+            // 本轮供应商快照：客户端与模型名必须取自同一供应商，避免切换瞬间出现客户端与模型名错配
+            ChatProvider provider = chatProvider.current();
             OpenAiChatOptions.Builder optionsBuilder = OpenAiChatOptions.builder()
-                    .model(withImage ? visionModel : chatModel);
-            // 视觉模型不传 reasoning-effort（避免不支持的参数导致 400）
-            if (!withImage) {
-                optionsBuilder.reasoningEffort(reasoningEffort);
+                    .model(withImage ? provider.visionModel() : provider.textModel());
+            // 是否传 reasoning-effort 由供应商决定（DeepSeek 视觉模型不接受该参数，GLM 带图也必须传 low）
+            String effort = provider.reasoningEffort(withImage);
+            if (!StringTools.isEmpty(effort)) {
+                optionsBuilder.reasoningEffort(effort);
             }
             OpenAiChatOptions options = optionsBuilder.build();
 
@@ -336,7 +331,7 @@ public class AgentChatComponent {
             // 知识页工具：MCP 未启用时返回空数组，对话照常降级（挂工具后模型可列表/读取/新建/覆盖/入库学生个人知识页）
             ToolCallback[] knowledgeTools = knowledgeAgentToolComponent.buildCallbacks();
             AtomicInteger wikiOps = new AtomicInteger();
-            ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt()
+            ChatClient.ChatClientRequestSpec requestSpec = provider.chatClient().prompt()
                     .system(systemPrompt)
                     .messages(historyMessages)
                     .options(options);

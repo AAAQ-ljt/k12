@@ -1,5 +1,6 @@
 package com.nexora.admin.biz;
 
+import com.nexora.admin.vo.ChatProviderOptionsVO;
 import com.nexora.admin.vo.ImageProviderOptionsVO;
 import com.nexora.admin.vo.PromptEffectiveVO;
 import com.nexora.admin.vo.RagConfigItemVO;
@@ -100,6 +101,18 @@ public class SystemSettingBiz {
 
     @Value("${project.ai.vision-model:}")
     private String visionModel;
+
+    @Value("${project.ai.chat.provider:deepseek}")
+    private String defaultChatProvider;
+
+    @Value("${project.ai.chat.opencode-go.base-url:}")
+    private String openCodeGoBaseUrl;
+
+    @Value("${project.ai.chat.opencode-go.api-key:}")
+    private String openCodeGoApiKey;
+
+    @Value("${project.ai.chat.opencode-go.model:}")
+    private String openCodeGoChatModel;
 
     @Value("${spring.ai.openai.embedding.options.model:}")
     private String embeddingModel;
@@ -246,10 +259,25 @@ public class SystemSettingBiz {
         vo.setInfrastructure(infrastructure);
 
         List<RuntimeItemVO> models = new ArrayList<>();
-        models.add(new RuntimeItemVO("对话模型", chatModel, "DeepSeek；env NEXORA_DEEPSEEK_API_KEY"));
-        models.add(new RuntimeItemVO("对话 base-url", chatBaseUrl, "改动需重启服务"));
-        models.add(new RuntimeItemVO("对话 Key", maskKey(chatApiKey), "只读展示（已掩码）"));
-        models.add(new RuntimeItemVO("视觉模型", visionModel, "带图对话使用；env NEXORA_VISION_MODEL"));
+        // 对话模型展开当前生效的供应商：切到 opencode-go 后学生端模型 / 地址 / Key 全部随之变化，
+        // 管理端自身的 AI 能力（出题 / 解析 / 模型验证）仍固定走 spring.ai.openai.chat.* 与 DeepSeek
+        String effectiveChatProvider = SystemConfigComponent.normalizeChatProvider(
+                systemConfigComponent.getChatProviderValue(defaultChatProvider));
+        boolean chatOnOpenCodeGo = SystemConfigComponent.PROVIDER_OPENCODE_GO.equals(effectiveChatProvider);
+        String chatProviderLabel = chatOnOpenCodeGo ? "OpenCode Go（opencode.ai/zen/go）" : "DeepSeek 官方直连";
+        String effectiveChatModel = chatOnOpenCodeGo ? openCodeGoChatModel : chatModel;
+        String effectiveChatBaseUrl = chatOnOpenCodeGo ? openCodeGoBaseUrl : chatBaseUrl;
+        String effectiveChatKey = chatOnOpenCodeGo ? openCodeGoApiKey : chatApiKey;
+        String effectiveChatKeyEnv = chatOnOpenCodeGo ? "NEXORA_OPENCODE_GO_API_KEY" : "NEXORA_DEEPSEEK_API_KEY";
+        models.add(new RuntimeItemVO("对话供应商", chatProviderLabel,
+                "学生端 AI 对话生效；「对话模型供应商」卡片可切换且保存即生效。管理端出题/解析/模型验证仍走 DeepSeek"));
+        models.add(new RuntimeItemVO("对话模型", effectiveChatModel, "学生端 AI 对话使用；env " + effectiveChatKeyEnv));
+        models.add(new RuntimeItemVO("对话 base-url", effectiveChatBaseUrl, "地址随供应商变化"));
+        models.add(new RuntimeItemVO("对话 Key", maskKey(effectiveChatKey),
+                "只读展示（已掩码）；env " + effectiveChatKeyEnv));
+        models.add(new RuntimeItemVO("视觉模型", chatOnOpenCodeGo ? openCodeGoChatModel : visionModel,
+                chatOnOpenCodeGo ? "GLM-5.3-Flash 文本与视觉同模型（学生端带图对话）"
+                        : "带图对话使用；env NEXORA_VISION_MODEL"));
         models.add(new RuntimeItemVO("向量模型", embeddingModel + "（" + embeddingDimensions + " 维）",
                 "阿里百炼；env NEXORA_DASHSCOPE_API_KEY / NEXORA_EMBEDDING_API_KEY"));
         models.add(new RuntimeItemVO("向量 base-url", embeddingBaseUrl, "改动需重启服务"));
@@ -341,6 +369,62 @@ public class SystemSettingBiz {
             systemConfigService.updateSystemConfigByConfigId(update, existing.getConfigId());
         }
         log.info("文生图供应商已切换 provider={}", value);
+    }
+
+    // ==================== 对话模型供应商切换 ====================
+
+    /**
+     * 对话模型供应商选项：当前生效值 + 可选项列表（管理端「环境配置」切换控件）。
+     *
+     * 生效范围是学生端（nexora-web）的 AI 对话链路：由 web 端的 ChatProviderRouter 按同一份
+     * system_config 运行时读取；管理端自身不装配该路由，自身 AI 能力仍固定走 DeepSeek。
+     */
+    public ChatProviderOptionsVO chatProviderOptions() {
+        ChatProviderOptionsVO vo = new ChatProviderOptionsVO();
+        vo.setCurrent(SystemConfigComponent.normalizeChatProvider(
+                systemConfigComponent.getChatProviderValue(defaultChatProvider)));
+        List<ChatProviderOptionsVO.Option> options = new ArrayList<>();
+        options.add(new ChatProviderOptionsVO.Option(
+                SystemConfigComponent.PROVIDER_DEEPSEEK, "DeepSeek 官方直连",
+                "deepseek 系列；env NEXORA_DEEPSEEK_API_KEY（默认）"));
+        options.add(new ChatProviderOptionsVO.Option(
+                SystemConfigComponent.PROVIDER_OPENCODE_GO, "OpenCode Go（GLM-5.3-Flash）",
+                "opencode.ai/zen/go 网关；env NEXORA_OPENCODE_GO_API_KEY；文本与带图问答同一模型；"
+                        + "推理档位默认 low（响应更快，env NEXORA_OPENCODE_GO_REASONING_EFFORT 可调）"));
+        vo.setOptions(options);
+        return vo;
+    }
+
+    /**
+     * 切换对话模型供应商（白名单校验，写 system_config 保存即生效：
+     * 学生端下一次对话即走新供应商，无需重启）
+     */
+    public void switchChatProvider(String provider) {
+        if (!SystemConfigComponent.isSupportedChatProvider(provider)) {
+            throw new BusinessException("不支持的对话模型供应商：" + provider);
+        }
+        String value = provider.trim();
+        SystemConfig existing = systemConfigService.getSystemConfigByConfigGroupAndConfigKey(
+                SystemConfigComponent.GROUP_AI_MODEL, SystemConfigComponent.KEY_CHAT_PROVIDER);
+        Date now = new Date();
+        if (existing == null) {
+            SystemConfig config = new SystemConfig();
+            config.setConfigGroup(SystemConfigComponent.GROUP_AI_MODEL);
+            config.setConfigKey(SystemConfigComponent.KEY_CHAT_PROVIDER);
+            config.setConfigValue(value);
+            config.setConfigType(SystemConfigComponent.TYPE_STRING);
+            config.setDescription("对话模型供应商：deepseek / opencode-go（保存即生效，控制学生端 AI 对话）");
+            config.setStatus(1);
+            config.setCreateTime(now);
+            config.setUpdateTime(now);
+            systemConfigService.add(config);
+        } else {
+            SystemConfig update = new SystemConfig();
+            update.setConfigValue(value);
+            update.setUpdateTime(now);
+            systemConfigService.updateSystemConfigByConfigId(update, existing.getConfigId());
+        }
+        log.info("对话模型供应商已切换 provider={}", value);
     }
 
     // ==================== 提示词三层生效 ====================

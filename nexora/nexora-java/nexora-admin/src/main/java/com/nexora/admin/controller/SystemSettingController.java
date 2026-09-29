@@ -1,9 +1,11 @@
 package com.nexora.admin.controller;
 
 import com.nexora.admin.biz.SystemSettingBiz;
+import com.nexora.admin.dto.ChatProviderSwitchDTO;
 import com.nexora.admin.dto.ImageProviderSwitchDTO;
 import com.nexora.admin.dto.PromptSaveDTO;
 import com.nexora.admin.dto.RagConfigSaveDTO;
+import com.nexora.admin.vo.ChatProviderOptionsVO;
 import com.nexora.admin.vo.ImageProviderOptionsVO;
 import com.nexora.admin.vo.PromptEffectiveVO;
 import com.nexora.admin.vo.RagConfigItemVO;
@@ -136,6 +138,22 @@ public class SystemSettingController extends ABaseController {
             throw new BusinessException("参数不能为空");
         }
         systemSettingBiz.switchImageProvider(dto.getProvider());
+        return getSuccessResponseVO(null);
+    }
+
+    /** 对话模型供应商选项（当前生效值 + 可选项，管理端「环境配置」切换；生效端为学生端 AI 对话） */
+    @GetMapping("/chatProvider")
+    public ResponseVO<ChatProviderOptionsVO> chatProviderOptions() {
+        return getSuccessResponseVO(systemSettingBiz.chatProviderOptions());
+    }
+
+    /** 切换对话模型供应商（白名单校验，写库即生效） */
+    @PostMapping("/chatProvider")
+    public ResponseVO<Void> switchChatProvider(@RequestBody ChatProviderSwitchDTO dto) {
+        if (dto == null) {
+            throw new BusinessException("参数不能为空");
+        }
+        systemSettingBiz.switchChatProvider(dto.getProvider());
         return getSuccessResponseVO(null);
     }
 

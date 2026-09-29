@@ -52,6 +52,8 @@ public class AiChatConfig {
         checkKey("NEXORA_DEEPSEEK_API_KEY", System.getenv("NEXORA_DEEPSEEK_API_KEY"));
         checkKey("NEXORA_EMBEDDING_API_KEY", System.getenv("NEXORA_EMBEDDING_API_KEY"));
         checkKey("NEXORA_IMAGE_API_KEY", System.getenv("NEXORA_IMAGE_API_KEY"));
+        // 仅当对话供应商切到 opencode-go 时才必需，缺失只在启动日志预警，不影响启动
+        checkKey("NEXORA_OPENCODE_GO_API_KEY", System.getenv("NEXORA_OPENCODE_GO_API_KEY"));
     }
 
     private void checkKey(String name, String value) {

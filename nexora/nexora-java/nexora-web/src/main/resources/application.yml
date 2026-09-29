@@ -89,6 +89,23 @@ mybatis:
 project:
   ai:
     vision-model: ${NEXORA_VISION_MODEL:deepseek-flash}
+    chat:
+      # 对话模型供应商：deepseek（默认，直连 DeepSeek 官方）/ opencode-go（OpenCode Go 网关的 GLM-5.3-Flash）
+      # 也可由 system_config 的 AI_MODEL.chat_provider 运行时覆盖：改库即生效、无需重启
+      provider: ${NEXORA_CHAT_PROVIDER:deepseek}
+      opencode-go:
+        base-url: ${NEXORA_OPENCODE_GO_BASE_URL:https://opencode.ai/zen/go/v1}
+        completions-path: ${NEXORA_OPENCODE_GO_COMPLETIONS_PATH:/chat/completions}
+        api-key: ${NEXORA_OPENCODE_GO_API_KEY:}
+        # 该模型同时支持图片输入（实测），视觉与文本共用
+        model: ${NEXORA_OPENCODE_GO_MODEL:glm-5.3-flash}
+        # 网关强制要求 x-opencode-session 请求头，缺失直接 400；留空则用进程启动时生成的稳定值
+        session-id: ${NEXORA_OPENCODE_GO_SESSION_ID:}
+        # 推理档位：必须显式指定，**不要留空**。GLM-5.3-Flash 是强制思考模型（传 none/minimal 会被网关
+        # 拒绝：This model always engages in thinking），留空则走网关默认（相当于 max）——实测对每个问题
+        # 先写 2000 字左右 reasoning_content 才出正文，12~16 秒且容易把输出 token 耗尽导致正文为空。
+        # 固定 low：实测首正文 1.0~1.6 秒、总耗时 2~4.6 秒，带图识图同样正确；需要更强推理再改 high/max
+        reasoning-effort: ${NEXORA_OPENCODE_GO_REASONING_EFFORT:low}
     embedding:
       fallback-models: ${NEXORA_EMBEDDING_FALLBACK_MODELS:qwen3.7-text-embedding-flash}
     image:
