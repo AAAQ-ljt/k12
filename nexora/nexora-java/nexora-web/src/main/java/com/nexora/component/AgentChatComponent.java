@@ -61,6 +61,27 @@ public class AgentChatComponent {
 
     private static final int HISTORY_LIMIT = 10;
 
+    /**
+     * 知识库引用规则：官方课程知识库（管理端维护）与学生个人知识库的口径必须分开，
+     * 否则模型会把平台教材资料说成"你提供的知识库"。
+     * 来源分组由 RagSearchComponent 组装参考内容时打在数据上，本段只负责约束说法。
+     */
+    private static final String RAG_CITATION_RULE = """
+            ## 知识库引用规则（必须遵守）
+            1. 上方参考内容已按来源分组标注，引用时必须如实区分，不得混为一谈：
+               - 「平台课程知识库」：学校/平台在管理端后台统一维护的教材与课程资料，面向全体学生，不是学生本人上传的；
+               - 「学生个人知识库」：学生本人上传或整理的知识页。
+            2. 引用平台课程知识库的内容时，说成"根据平台课程知识库资料《标题》"这类表述；
+               严禁说成"你提供的""你的知识库""你上传的""你自己的资料"。
+            3. 只有内容确实来自学生个人知识库时，才可以用"你的个人知识库/你上传的资料"这类说法。
+            4. 无法判断某条内容属于哪一类时，只说"根据知识库资料"，不要臆断归属。
+            5. 优先基于上方参考内容回答，来源标题照抄不要改写；知识库没有相关内容时如实说明，不要编造。""";
+
+    /** 无检索命中时的归属护栏：模型只靠自身知识回答，也不能声称内容来自学生提供的知识库 */
+    private static final String RAG_ATTRIBUTION_GUARD = """
+            补充约束：本轮没有提供知识库参考内容，不要声称内容来自学生的个人知识库或其上传的资料，
+            也不要编造资料名称。""";
+
     @Resource
     private ChatProvider chatProvider;
 
@@ -726,14 +747,17 @@ public class AgentChatComponent {
 
     private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String ragData) {
         String prompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
-        if (!shouldSearch(intent) || ragData == null || ragData.isBlank()) {
+        if (!shouldSearch(intent)) {
             return prompt;
         }
-        if (prompt.contains("{{ragData}}")) {
-            return prompt.replace("{{ragData}}", ragData);
+        if (ragData == null || ragData.isBlank()) {
+            return prompt + "\n\n" + RAG_ATTRIBUTION_GUARD;
         }
-        return prompt + "\n\n## 知识库参考内容\n" + ragData
-                + "\n\n回答时优先基于以上内容，并标注来源；如果知识库没有相关内容，明确告知用户，不要编造。";
+        // 模板自带 {{ragData}} 占位符时只替换数据、规则照旧追加，避免启用占位符的模板绕过来源口径约束
+        String promptWithRag = prompt.contains("{{ragData}}")
+                ? prompt.replace("{{ragData}}", ragData)
+                : prompt + "\n\n## 知识库参考内容（按来源分组，引用时请如实区分）\n" + ragData;
+        return promptWithRag + "\n\n" + RAG_CITATION_RULE;
     }
 
     private void sendRecommendPush(TokenUserInfoDTO user, AgentMessage message,
