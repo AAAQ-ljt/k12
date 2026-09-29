@@ -183,7 +183,29 @@ public class KnowledgeBaseBiz {
         if (query.getPageSize() == null) {
             query.setPageSize(10);
         }
-        return knowledgeDocService.findListByPage(query);
+        PaginationResultVO<KnowledgeDoc> page = knowledgeDocService.findListByPage(query);
+        // 列表只回元数据：正文单篇可达数万字，而表格列并不展示它。原先每页 10 条都带全文，
+        // 叠加「入库进度每 2 秒轮询一次」等于每 2 秒重传 10 篇全文，正文改由 docInfo 按需拉取。
+        // 字段保留、仅置空，响应结构与既有前端契约不变（两个消费方都不读列表里的 content）。
+        for (KnowledgeDoc doc : page.getList()) {
+            doc.setContent(null);
+        }
+        return page;
+    }
+
+    /**
+     * 文档详情（含正文）：列表接口不再回传正文，查看 / 编辑文档时按需拉取单篇。
+     * 复用既有的 getKnowledgeDocByDocId（对应 selectByDocId，列清单本就含正文），无需新增 SQL。
+     */
+    public KnowledgeDoc docInfo(String docId) {
+        if (StringTools.isEmpty(docId)) {
+            throw new BusinessException("文档ID不能为空");
+        }
+        KnowledgeDoc doc = knowledgeDocService.getKnowledgeDocByDocId(docId);
+        if (doc == null) {
+            throw new BusinessException("文档不存在");
+        }
+        return doc;
     }
 
     public void docAdd(KnowledgeDoc bean) {

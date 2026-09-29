@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   App,
   Button,
@@ -18,7 +18,7 @@ import { ExternalLink, FileText, FileUp, FolderOpen, Pencil, Plus, Trash2 } from
 import BaseTable, { type PaginationConfig } from '@/components/BaseTable';
 import BaseFormModal from '@/components/BaseFormModal';
 import SearchForm from '@/components/SearchForm';
-import MathMarkdown from '@/components/MathMarkdown';
+import ProgressiveMarkdown from '@/components/ProgressiveMarkdown';
 import DocumentPreviewModal from '@/views/resource/DocumentPreviewModal';
 import StageTag from '@/components/StageTag';
 import styles from '@/assets/styles/utilities.module.scss';
@@ -34,6 +34,7 @@ import {
   addPoint,
   delDoc,
   delPoint,
+  loadDocDetail,
   loadDocList,
   loadTree,
   updateDoc,
@@ -59,6 +60,21 @@ const SOURCE_TYPE_MAP: Record<number, string> = {
   2: '资源说明',
 };
 
+/**
+ * 文档正文预览容器的样式（查看 / 编辑共用）。
+ * 提为模块级常量：既是滚动容器（ProgressiveMarkdown 以它为 IntersectionObserver 的 root），
+ * 也避免每次渲染新建对象。
+ */
+const DOC_PREVIEW_BOX_STYLE: CSSProperties = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  padding: '4px 16px',
+  minHeight: 420,
+  maxHeight: 560,
+  overflow: 'auto',
+  background: 'var(--color-bg-hover)',
+};
+
 interface ModalState<T> {
   open: boolean;
   mode: 'create' | 'edit' | 'view';
@@ -76,6 +92,8 @@ export default function KnowledgeCatalog() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [docModal, setDocModal] = useState<ModalState<KnowledgeDoc>>({ open: false, mode: 'create' });
+  /** 正在拉取正文的文档ID：列表只回元数据，查看 / 编辑需按需拉单篇正文 */
+  const [detailLoadingId, setDetailLoadingId] = useState<string>();
   const [pointModal, setPointModal] = useState<ModalState<KnowledgePoint>>({ open: false, mode: 'create' });
   const [resourceImportOpen, setResourceImportOpen] = useState(false);
 
@@ -99,6 +117,25 @@ export default function KnowledgeCatalog() {
       setLoading(false);
     }
   }, [query]);
+
+  /**
+   * 打开查看 / 编辑抽屉：列表接口只回元数据（正文单篇可达数万字，且入库进度每 2 秒轮询列表），
+   * 因此正文要按需拉单篇详情。
+   *
+   * 刻意「先取详情、再打开抽屉」：antd Form 的 initialValues 只在首次挂载时写入，
+   * 若先开抽屉再回填，编辑态的正文会填不进表单。
+   */
+  const openDocModal = useCallback(async (mode: 'view' | 'edit', record: KnowledgeDoc) => {
+    setDetailLoadingId(record.docId);
+    try {
+      const detail = await loadDocDetail(record.docId);
+      setDocModal({ open: true, mode, initialValues: { ...record, ...detail } });
+    } catch {
+      // 错误已由请求拦截器统一提示
+    } finally {
+      setDetailLoadingId(undefined);
+    }
+  }, []);
 
   useEffect(() => {
     fetchTree();
@@ -350,10 +387,20 @@ export default function KnowledgeCatalog() {
       fixed: 'right' as const,
       render: (_: unknown, record: KnowledgeDoc) => (
         <Space size="small" wrap>
-          <Button type="link" size="small" onClick={() => setDocModal({ open: true, mode: 'view', initialValues: record })}>
+          <Button
+            type="link"
+            size="small"
+            loading={detailLoadingId === record.docId}
+            onClick={() => void openDocModal('view', record)}
+          >
             查看
           </Button>
-          <Button type="link" size="small" onClick={() => setDocModal({ open: true, mode: 'edit', initialValues: record })}>
+          <Button
+            type="link"
+            size="small"
+            loading={detailLoadingId === record.docId}
+            onClick={() => void openDocModal('edit', record)}
+          >
             编辑
           </Button>
           <Button
@@ -587,6 +634,8 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
       open={state.open}
       title={isCreate ? '文档录入' : isView ? '查看文档' : '编辑文档'}
       width={920}
+      // 关闭即销毁：正文可达数万字，DOM 常驻会长期占用内存（配合 ProgressiveMarkdown 的分段渲染）
+      destroyOnHidden
       onClose={onCancel}
       footer={
         !isView ? (
@@ -647,26 +696,22 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
         </div>
 
         {!isView ? (
-          <Form.Item name="content" label="正文（编辑左侧输入，右侧实时渲染）" className="doc-content-item">
+          <Form.Item name="content" label="正文（上方编辑，下方实时分段渲染）">
             <Input.TextArea rows={22} style={{ fontFamily: 'monospace' }} placeholder="支持 Markdown、GFM 表格与 $...$ 公式" />
           </Form.Item>
         ) : null}
       </Form>
-      <div
-        style={{
-          border: '1px solid rgba(0,0,0,0.08)',
-          borderRadius: 8,
-          padding: '4px 16px',
-          minHeight: 420,
-          maxHeight: 560,
-          overflow: 'auto',
-          background: '#fafafa',
-        }}
-      >
-        {hasContent ? (
-          <MathMarkdown>{content}</MathMarkdown>
-        ) : (
-          <div style={{ color: '#666', padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {hasContent ? (
+        // 长文分段渐进渲染：首屏只解析前几段，滚动到底部自动追加；
+        // 容器样式与下方空态保持同一份，滚动容器由组件自己持有（IntersectionObserver 的 root）
+        <ProgressiveMarkdown
+          content={content}
+          resetKey={state.initialValues?.docId}
+          style={DOC_PREVIEW_BOX_STYLE}
+        />
+      ) : (
+        <div style={DOC_PREVIEW_BOX_STYLE}>
+          <div style={{ color: 'var(--color-text-secondary)', padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontWeight: 600 }}>该文档暂无正文内容</div>
             {hasSourceUrl ? (
               <div>
@@ -690,8 +735,8 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
                 : '保存后可按「入库」解析提取文本，或在此手动填写正文。'}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <DocumentPreviewModal
         open={!!previewResource}
