@@ -116,6 +116,7 @@ export const SUBJECT_OPTIONS = [
   { label: '历史', value: '历史' },
   { label: '地理', value: '地理' },
   { label: '道德与法治', value: '道德与法治' },
+  { label: '体育', value: '体育' },
   { label: '信息技术', value: '信息技术' },
 ];
 
