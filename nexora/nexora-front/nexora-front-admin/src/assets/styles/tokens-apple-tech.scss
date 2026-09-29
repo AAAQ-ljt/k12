@@ -82,6 +82,14 @@
   --color-border: var(--hairline);
   --color-divider: var(--divider-soft);
 
+  /* 状态提示块（学生作答 / 参考答案 / 解析等淡色面板）的底色与描边。
+     浅色下是淡染；暗色下必须换成半透明淡染（见文末 dark 覆盖层），
+     否则面板是亮底、里面却是暗色主题的白字（白底白字），完全读不了。 */
+  --color-warning-bg: #fffbe6;
+  --color-warning-border: #ffe58f;
+  --color-success-bg: #f6ffed;
+  --color-success-border: #b7eb8f;
+
   /* Feedback Colors */
   --color-success: var(--success-500);
   --color-warning: var(--warning-500);
@@ -269,6 +277,13 @@
   --color-bg-hover: #262626;
   --color-border: var(--hairline);
   --color-divider: var(--divider-soft);
+
+  /* 状态提示块：浅色下是淡黄/淡绿底，暗色下必须换成半透明淡染，
+     否则面板是亮底、里面却是暗色主题的白字（白底白字），完全读不了 */
+  --color-warning-bg: rgba(250, 173, 20, 0.15);
+  --color-warning-border: rgba(250, 173, 20, 0.40);
+  --color-success-bg: rgba(82, 196, 26, 0.15);
+  --color-success-border: rgba(82, 196, 26, 0.40);
 
   --color-action: var(--action-dark);
   --color-action-hover: #4da3ff;

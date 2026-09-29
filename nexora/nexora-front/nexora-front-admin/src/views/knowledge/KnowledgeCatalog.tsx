@@ -491,10 +491,10 @@ export default function KnowledgeCatalog() {
             flexShrink: 0,
             maxHeight: 640,
             overflow: 'auto',
-            border: '1px solid rgba(0,0,0,0.08)',
+            border: '1px solid var(--color-border)',
             borderRadius: 12,
             padding: 12,
-            background: '#fff',
+            background: 'var(--color-bg-surface)',
           }}
         >
           <Space style={{ marginBottom: 8 }}>
@@ -513,10 +513,10 @@ export default function KnowledgeCatalog() {
           style={{
             flex: 1,
             minWidth: 0,
-            border: '1px solid rgba(0,0,0,0.08)',
+            border: '1px solid var(--color-border)',
             borderRadius: 12,
             padding: 12,
-            background: '#fff',
+            background: 'var(--color-bg-surface)',
           }}
         >
           <BaseTable<KnowledgeDoc>
@@ -729,7 +729,7 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
                 </span>
               </div>
             ) : null}
-            <div style={{ fontSize: 12, color: '#999' }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
               {isView
                 ? '如需展示正文：资料解析来源可「重新入库」提取文本（扫描版 PDF 可能提取不到文字，建议改用「AI 文档整理」补充或手动编辑正文）；纯链接文档只提供资料链接。'
                 : '保存后可按「入库」解析提取文本，或在此手动填写正文。'}

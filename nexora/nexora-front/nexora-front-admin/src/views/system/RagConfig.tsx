@@ -193,7 +193,7 @@ export default function RagConfig() {
               ]}
             />
           ) : (
-            <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+            <div style={{ color: 'var(--color-text-tertiary)' }}>
               试跑会以当前已保存的 topK / 相似度阈值调用官方知识库检索，用于确认参数调整后的召回效果。
             </div>
           )}

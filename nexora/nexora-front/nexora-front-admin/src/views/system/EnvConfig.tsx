@@ -85,7 +85,7 @@ function ProviderSwitchCard({
   return (
     <Card title={title}>
       <Space direction="vertical" style={{ width: '100%' }} size={10}>
-        <div style={{ color: 'rgba(0,0,0,0.65)' }}>{hint}</div>
+        <div style={{ color: 'var(--color-text-secondary)' }}>{hint}</div>
         <Radio.Group value={selected} onChange={(event) => onSelect(event.target.value)}>
           {list.map((option) => (
             <Radio.Button key={option.code} value={option.code}>
@@ -95,7 +95,7 @@ function ProviderSwitchCard({
         </Radio.Group>
         {list.map((option) =>
           option.code === selected && option.description ? (
-            <div key={option.code} style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+            <div key={option.code} style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
               {option.description}
             </div>
           ) : null,
@@ -241,7 +241,7 @@ export default function EnvConfig() {
       <Descriptions.Item key={item.label} label={item.label}>
         <Space direction="vertical" size={0}>
           <span style={{ wordBreak: 'break-all' }}>{item.value || '-'}</span>
-          {item.remark ? <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{item.remark}</span> : null}
+          {item.remark ? <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.remark}</span> : null}
         </Space>
       </Descriptions.Item>
     ));
@@ -311,15 +311,15 @@ export default function EnvConfig() {
           />
           <div>
             1. 对话模型 {statusTag(chat)}{' '}
-            <span style={{ color: 'rgba(0,0,0,0.65)' }}>{chat.text}</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>{chat.text}</span>
           </div>
           <div>
             2. 向量模型 {statusTag(embed)}{' '}
-            <span style={{ color: 'rgba(0,0,0,0.65)' }}>{embed.text}</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>{embed.text}</span>
           </div>
           <div>
             3. 文生图 {statusTag(image)}{' '}
-            <span style={{ color: 'rgba(0,0,0,0.65)', wordBreak: 'break-all' }}>{image.text}</span>
+            <span style={{ color: 'var(--color-text-secondary)', wordBreak: 'break-all' }}>{image.text}</span>
           </div>
         </Space>
       </Card>

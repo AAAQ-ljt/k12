@@ -225,7 +225,7 @@ export default function AnswerReview() {
             render: (_, item) => (
               <div>
                 <div>{item.nickName || item.username}</div>
-                <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{item.username}</div>
+                <div style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.username}</div>
               </div>
             ),
           },
@@ -248,7 +248,7 @@ export default function AnswerReview() {
               <div>
                 <div>{SOURCE_MAP[item.source ?? 0] || '练习'}</div>
                 {item.lessonName ? (
-                  <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{item.lessonName}</div>
+                  <div style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.lessonName}</div>
                 ) : null}
               </div>
             ),
@@ -301,7 +301,7 @@ export default function AnswerReview() {
                 </Tag>
                 {current.subject ? <Tag>{current.subject}</Tag> : null}
                 {current.knowledgePointName ? <Tag>{current.knowledgePointName}</Tag> : null}
-                <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
                   学生：{current.nickName || current.username}（{current.grade || '-'}） · 满分 {current.questionMaxScore ?? '-'} 分
                 </span>
               </Space>
@@ -312,7 +312,7 @@ export default function AnswerReview() {
 
             <div>
               <div style={{ fontWeight: 600, marginBottom: 6 }}>学生作答</div>
-              <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: 8, padding: '10px 12px' }}>
                 <MathBlock text={current.userAnswer || '（未作答）'} />
               </div>
             </div>
@@ -320,7 +320,7 @@ export default function AnswerReview() {
             {current.correctAnswer ? (
               <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>参考答案</div>
-                <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ background: 'var(--color-success-bg)', border: '1px solid var(--color-success-border)', borderRadius: 8, padding: '10px 12px' }}>
                   <MathBlock text={current.correctAnswer} />
                 </div>
               </div>
@@ -329,7 +329,7 @@ export default function AnswerReview() {
             {current.analysis ? (
               <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>解析</div>
-                <div style={{ background: '#fafafa', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px' }}>
                   <MathBlock text={current.analysis} />
                 </div>
               </div>

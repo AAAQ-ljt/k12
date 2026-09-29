@@ -132,7 +132,7 @@ export default function KnowledgeTest() {
                       </Button>
                     )}
                   </Space>
-                  <div style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: '#666' }}>
+                  <div style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: 'var(--color-text-secondary)' }}>
                     {item.content}
                   </div>
                 </div>

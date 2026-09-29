@@ -439,7 +439,7 @@ export default function LessonQuizConfigModal({
           </Space>
 
           {!enabled ? (
-            <div style={{ color: 'rgba(0,0,0,0.45)' }}>开启后，学生学完该课时需通过题目测验（设置了严格门禁时还用于解锁下一课时）。</div>
+            <div style={{ color: 'var(--color-text-tertiary)' }}>开启后，学生学完该课时需通过题目测验（设置了严格门禁时还用于解锁下一课时）。</div>
           ) : (
             <>
               <div>
@@ -456,12 +456,12 @@ export default function LessonQuizConfigModal({
                     <Button icon={<Search size={14} />} onClick={openPicker}>
                       选择题目（已选 {questionIds.length} 道）
                     </Button>
-                    <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                    <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
                       可配单选/多选/判断/填空/简答等题型；主观题学生作答后不自动判分，参考答案见解析
                     </span>
                   </div>
                   {linkedQuestions.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid var(--color-border)', borderRadius: 8, padding: 8 }}>
                       {linkedQuestions.map((item) => {
                         const meta = QUESTION_TYPE_MAP[item.questionType ?? 0] || { text: '题目', color: 'default' };
                         return (
@@ -499,7 +499,7 @@ export default function LessonQuizConfigModal({
                       <div style={{ textAlign: 'right', fontWeight: 600 }}>
                         合计总分：{totalScore} 分
                         {totalScore !== passScore && totalScore > 0 ? (
-                          <span style={{ color: 'rgba(0,0,0,0.45)', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
+                          <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
                             建议与及格线保持同一分制（如需满 100 分，请把各题分值配到合计 100）
                           </span>
                         ) : null}
@@ -519,18 +519,18 @@ export default function LessonQuizConfigModal({
                     percent={task.total ? Math.round(((task.generated || 0) / task.total) * 100) : 0}
                     status="active"
                   />
-                  <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                  <div style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
                     任务在服务端执行，切换页面不会中断；完成后将自动刷新本弹窗的题目列表。
                   </div>
                 </div>
               ) : task && task.status === 'FAILED' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ color: '#cf1322' }}>AI 出题失败：{task.message || '请稍后重试'}</div>
+                  <div style={{ color: 'var(--color-error)' }}>AI 出题失败：{task.message || '请稍后重试'}</div>
                   <Button onClick={() => setTask(null)}>重新配置并生成</Button>
                 </div>
               ) : task && task.status === 'SUCCESS' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ color: '#389e0d' }}>AI 出题完成，已自动切换到「从题库选题」，可直接调整分值或保存。</div>
+                  <div style={{ color: 'var(--color-success)' }}>AI 出题完成，已自动切换到「从题库选题」，可直接调整分值或保存。</div>
                   <Button onClick={() => setTask(null)}>继续调整配置</Button>
                 </div>
               ) : (
@@ -544,7 +544,7 @@ export default function LessonQuizConfigModal({
                   <div>
                     <div style={{ marginBottom: 6 }}>
                       挂载知识点
-                      <span style={{ color: 'rgba(0,0,0,0.45)', marginLeft: 6, fontSize: 12 }}>
+                      <span style={{ color: 'var(--color-text-tertiary)', marginLeft: 6, fontSize: 12 }}>
                         生成的题目将关联到该知识点
                       </span>
                     </div>
@@ -570,7 +570,7 @@ export default function LessonQuizConfigModal({
                       {difficultyLabel ? `（${difficultyLabel}）` : ''}
                     </span>
                   </Space>
-                  <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                  <div style={{ color: 'var(--color-text-tertiary)' }}>
                     <Sparkles size={12} style={{ marginRight: 4 }} />
                     保存时由 AI 逐题生成单选客观题（可看到实时进度），题目自动按满分均分并进入题库。
                   </div>
@@ -589,10 +589,10 @@ export default function LessonQuizConfigModal({
                   <span>多选漏选按比例给分</span>
                   <Switch checked={partialCredit} onChange={setPartialCredit} />
                 </Space>
-                {quizMode === 2 && questionCount ? <span style={{ color: 'rgba(0,0,0,0.45)' }}>预计满分：{Math.round(100 / questionCount) * questionCount} 分</span> : null}
+                {quizMode === 2 && questionCount ? <span style={{ color: 'var(--color-text-tertiary)' }}>预计满分：{Math.round(100 / questionCount) * questionCount} 分</span> : null}
               </Space>
               {partialCredit ? (
-                <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                <div style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
                   开启后多选题漏选（未错选）按「选中正确数/正确总数 × 题分」向下取整给分，有错选得 0 分；部分得分不算答对，结果中标记「部分正确」。
                 </div>
               ) : null}
