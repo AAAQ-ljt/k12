@@ -96,8 +96,6 @@ project:
         base-url: ${NEXORA_OPENCODE_GO_BASE_URL:https://opencode.ai/zen/go/v1}
         api-key: ${NEXORA_OPENCODE_GO_API_KEY:}
         model: ${NEXORA_OPENCODE_GO_MODEL:glm-5.3-flash}
-    embedding:
-      fallback-models: ${NEXORA_EMBEDDING_FALLBACK_MODELS:qwen3.7-text-embedding-flash}
     image:
       provider: ${NEXORA_IMAGE_PROVIDER:ark}
       model: ${NEXORA_IMAGE_MODEL:qwen-image-3.0}
