@@ -49,6 +49,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * AI 对话核心组件：落库、组装上下文、大模型流式回复（供应商可切换）、WebSocket 推送、取消与错误处理
@@ -81,6 +83,31 @@ public class AgentChatComponent {
     private static final String RAG_ATTRIBUTION_GUARD = """
             补充约束：本轮没有提供知识库参考内容，不要声称内容来自学生的个人知识库或其上传的资料，
             也不要编造资料名称。""";
+
+    /** 动画概念解析取的最近完成问答轮数 */
+    private static final int CONCEPT_HISTORY_LIMIT = 6;
+
+    /** 指代型动画指令的特征词：命中才做"最近对话 -> 具体概念"解析，明确点名概念的指令走原路径 */
+    private static final List<String> CONCEPT_REFERENCE_WORDS = List.of(
+            "刚才", "刚刚", "上面", "前面", "之前", "上次", "以上", "接着", "继续", "对话中");
+
+    /**
+     * emoji 占位符还原映射：模型偶发把 emoji 输出成 [right]/[star] 这类文本占位符
+     * （2026-10-02 实测 DeepSeek 把"👉"输出成 "[right]" 落进回复），推送与落库前统一还原；
+     * 不在映射内的方括号文本一律不动，避免误伤 Markdown 链接等语法。
+     */
+    private static final Map<String, String> EMOJI_PLACEHOLDERS = Map.ofEntries(
+            Map.entry("right", "👉"), Map.entry("point_right", "👉"),
+            Map.entry("left", "👈"), Map.entry("up", "👆"), Map.entry("down", "👇"),
+            Map.entry("star", "⭐"), Map.entry("heart", "❤️"), Map.entry("fire", "🔥"),
+            Map.entry("clap", "👏"), Map.entry("check", "✅"), Map.entry("checkmark", "✅"),
+            Map.entry("cross", "❌"), Map.entry("wrong", "❌"), Map.entry("warn", "⚠️"),
+            Map.entry("warning", "⚠️"), Map.entry("bulb", "💡"), Map.entry("idea", "💡"),
+            Map.entry("think", "🤔"), Map.entry("thinking", "🤔"), Map.entry("ok", "👌"),
+            Map.entry("sparkles", "✨"), Map.entry("tada", "🎉"), Map.entry("book", "📖"));
+
+    /** emoji 占位符匹配：[xx] 后面紧跟 "(" 或 ":" 时可能是 Markdown 链接语法，不做替换 */
+    private static final Pattern EMOJI_PLACEHOLDER_PATTERN = Pattern.compile("\\[([a-zA-Z_]{2,20})\\](?![(:])");
 
     @Resource
     private ChatProvider chatProvider;
@@ -289,7 +316,7 @@ public class AgentChatComponent {
 
             // 动画讲解：生成分步 SVG 脚本产物并推送卡片；生成失败降级为文字讲解
             if ("ANIMATION".equals(intent)) {
-                if (handleAnimationAnswer(user, message, intentResult, push)) {
+                if (handleAnimationAnswer(user, session, message, intentResult, push)) {
                     return;
                 }
                 log.warn("动画生成失败，降级为文字讲解");
@@ -412,13 +439,16 @@ public class AgentChatComponent {
 
     /**
      * 动画讲解产物链路：生成分步 SVG 脚本 → 落 ai_generation_record → 推送 ANIMATION 卡片完成消息。
+     * "把刚才讲的做成动画"这类指代型指令本身没有主题，先生成前结合最近对话把概念解析出来，
+     * 否则动画主题就会变成这句指令本身（2026-10-02 实测生成过"把讲解内容变成动画"的元动画）。
      * 返回 true 表示产物已推送；false 表示生成失败（调用方降级为文字讲解）
      */
-    private boolean handleAnimationAnswer(TokenUserInfoDTO user, AgentMessage message,
+    private boolean handleAnimationAnswer(TokenUserInfoDTO user, AgentSession session, AgentMessage message,
                                           IntentAnalyzerComponent.IntentResult intent, AgentMessagePushDTO push) {
         try {
+            String concept = resolveAnimationConcept(user, session, message);
             AnimationScriptComponent.AnimationScript script =
-                    animationScriptComponent.generate(user.getStage(), message.getUserMessage());
+                    animationScriptComponent.generate(user.getStage(), concept);
             String scriptJson = script.toJson();
             Date now = new Date();
 
@@ -463,6 +493,79 @@ public class AgentChatComponent {
             log.error("动画生成失败 messageId={}", message.getMessageId(), e);
             return false;
         }
+    }
+
+    /**
+     * 动画概念解析入口：指令点名了具体概念（如"生成冒泡排序的动画讲解"）时原样返回、零额外开销；
+     * 命中指代词（把刚才/刚刚/上面讲的内容做成动画）时结合最近对话解析成具体概念，解析失败兜底原始指令
+     */
+    private String resolveAnimationConcept(TokenUserInfoDTO user, AgentSession session, AgentMessage message) {
+        String userMessage = message.getUserMessage();
+        boolean referential = userMessage != null && CONCEPT_REFERENCE_WORDS.stream().anyMatch(userMessage::contains);
+        if (!referential) {
+            return userMessage;
+        }
+        String transcript = buildRecentTranscript(user.getUserId(), session.getSessionId(), message.getMessageId());
+        if (StringTools.isEmpty(transcript)) {
+            log.warn("动画概念解析缺少历史对话，回退原始指令: {}", userMessage);
+            return userMessage;
+        }
+        return animationScriptComponent.resolveConcept(user.getStage(), userMessage, transcript);
+    }
+
+    /**
+     * 最近完成问答的文本稿（正序、每侧截断），供指代型动画指令解析真实概念；取材口径与 buildHistory 一致
+     */
+    private String buildRecentTranscript(String userId, String sessionId, String currentMessageId) {
+        AgentMessageQuery query = new AgentMessageQuery();
+        query.setUserId(userId);
+        query.setSessionId(sessionId);
+        query.setOrderBy("create_time asc");
+        List<AgentMessage> messageList = agentMessageService.findListByParam(query);
+        List<AgentMessage> doneList = new ArrayList<>();
+        for (AgentMessage item : messageList) {
+            if (item.getMessageId().equals(currentMessageId)) {
+                continue;
+            }
+            if (item.getStatus() != null && item.getStatus() == 1 && !StringTools.isEmpty(item.getAssistantMessage())) {
+                doneList.add(item);
+            }
+        }
+        StringBuilder transcript = new StringBuilder();
+        int from = Math.max(0, doneList.size() - CONCEPT_HISTORY_LIMIT);
+        for (int i = from; i < doneList.size(); i++) {
+            AgentMessage item = doneList.get(i);
+            transcript.append("学生：").append(truncateForTranscript(item.getUserMessage(), 200)).append('\n');
+            transcript.append("AI：").append(truncateForTranscript(item.getAssistantMessage(), 600)).append('\n');
+        }
+        return transcript.toString();
+    }
+
+    /** 文本稿截断：压平空白防表格/公式撑爆提示词 */
+    private String truncateForTranscript(String text, int max) {
+        if (StringTools.isEmpty(text)) {
+            return "";
+        }
+        String flat = text.replaceAll("\\s+", " ").trim();
+        return flat.length() > max ? flat.substring(0, max) + "…" : flat;
+    }
+
+    /**
+     * 把模型偶发输出的 [right]/[star] 等 emoji 文本占位符还原为真实 emoji；
+     * 不在映射内的方括号文本保持原样（可能是 Markdown 链接或普通标注）
+     */
+    private static String restoreEmojiPlaceholders(String text) {
+        if (StringTools.isEmpty(text) || text.indexOf('[') < 0) {
+            return text;
+        }
+        Matcher matcher = EMOJI_PLACEHOLDER_PATTERN.matcher(text);
+        StringBuilder result = new StringBuilder();
+        while (matcher.find()) {
+            String emoji = EMOJI_PLACEHOLDERS.get(matcher.group(1).toLowerCase());
+            matcher.appendReplacement(result, Matcher.quoteReplacement(emoji == null ? matcher.group() : emoji));
+        }
+        matcher.appendTail(result);
+        return result.toString();
     }
 
     /**
@@ -619,6 +722,8 @@ public class AgentChatComponent {
      */
     private void finishMessage(TokenUserInfoDTO user, AgentMessage message, String answer, boolean completed, Throwable error,
                                List<ResourceRecommendVO> recommends, int promptTokens, int completionTokens, int wikiOps, boolean hasImages) {
+        // 模型偶发输出 [right] 等 emoji 占位符，最终推送与落库前统一还原为真实 emoji
+        answer = restoreEmojiPlaceholders(answer);
         boolean cancelled = redisComponent.hasCancelMessage(user.getUserId(), message.getMessageId());
         // 本轮动过知识页：完成/取消/失败都要标记，前端收到 WIKI 标记即刷新抽屉（数据已变化）
         boolean wikiChanged = wikiOps > 0;
