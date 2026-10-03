@@ -65,6 +65,10 @@
 			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
 				 and  k.knowledge_point_id = #{query.knowledgePointId}
 			</if>
+			<!-- 学科过滤（管理端知识目录按学科节点筛选）：文档表无学科列，经知识点表子查询 -->
+			<if test="query.subject != null and query.subject!=''">
+				 and  k.knowledge_point_id in (select knowledge_point_id from knowledge_point where subject = #{query.subject})
+			</if>
 			<if test="query.ownerId != null and query.ownerId!=''">
 				 and  k.owner_id = #{query.ownerId}
 			</if>

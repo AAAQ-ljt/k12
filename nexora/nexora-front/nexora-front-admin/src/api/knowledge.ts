@@ -42,6 +42,8 @@ export interface KnowledgeDocQuery extends PageParam {
   docId?: string;
   titleFuzzy?: string;
   stage?: string;
+  /** 学科过滤（经 knowledge_point.subject 子查询；文档表本身无学科列） */
+  subject?: string;
   knowledgePointId?: string;
   difficulty?: number;
   vectorStatus?: number;

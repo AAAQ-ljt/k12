@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   App,
   Button,
@@ -69,6 +69,8 @@ export default function CourseDetailDrawer({
   const { message } = App.useApp();
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  /** 竞态守卫：快速切换课程时只接受最后一次请求的详情，避免旧课程数据后到填错抽屉 */
+  const latestCourseIdRef = useRef('');
   const [selectedChapterId, setSelectedChapterId] = useState<string>();
   const [selectedLessonId, setSelectedLessonId] = useState<string>();
   const [chapterModal, setChapterModal] = useState<FormModalState<CourseChapter>>({
@@ -107,9 +109,15 @@ export default function CourseDetailDrawer({
   }, [lessonModal.open, lessonModal.record, lessonForm]);
 
   const loadDetail = async (courseId: string, keepSelection = false) => {
+    // 竞态守卫：快速切换课程时两次请求都在飞，只接受最后一次请求的详情，
+    // 避免旧课程数据后到填进新课程抽屉（标题与内容错乱）
+    latestCourseIdRef.current = courseId;
     setLoading(true);
     try {
       const data = await getDetail(courseId);
+      if (latestCourseIdRef.current !== courseId) {
+        return;
+      }
       setDetail(data);
       // 操作后刷新（keepSelection=true）保持当前章节/课时选择，不跳回第一个
       if (!keepSelection) {

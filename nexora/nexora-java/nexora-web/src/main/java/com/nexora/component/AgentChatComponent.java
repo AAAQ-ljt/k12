@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.nexora.dto.AgentMessagePushDTO;
 import com.nexora.dto.PictureBookTaskVO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
+import com.nexora.entity.enums.StageEnum;
 import com.nexora.entity.po.AgentMessage;
 import com.nexora.entity.po.AgentSession;
 import com.nexora.entity.po.AiGenerationRecord;
@@ -911,8 +912,59 @@ public class AgentChatComponent {
                     : prompt + "\n\n## 知识库参考内容（按来源分组，引用时请如实区分）\n" + ragData)
                     + "\n\n" + RAG_CITATION_RULE;
         }
+        // 产品功能自述块：不依赖 MCP 始终注入（按学段生成，防止介绍能力时漏掉绘本/编程等内建功能）
+        String withProduct = appendProductCapabilities(promptWithRag, user.getStage());
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力
-        return appendMcpCapabilities(promptWithRag, tools);
+        return appendMcpCapabilities(withProduct, tools);
+    }
+
+    /** 小学低 / 高年级编码（产品功能块的学段分支） */
+    private static final String STAGE_PRIMARY_LOW = "PRIMARY_LOW";
+    private static final String STAGE_PRIMARY_HIGH = "PRIMARY_HIGH";
+
+    /**
+     * 产品功能自述块（不依赖 MCP 开关，始终注入）：
+     * 按学生学段列出真实可用的产品功能（绘本生成仅小学、动画讲解/学习路径仅初高中），
+     * 避免模型介绍能力时漏掉绘本生成、编程环境等内建功能，或把页面功能说成"不是我的功能"。
+     * 用户问"你能做什么"时以本节 + MCP 工具块（若挂载）为准如实回答。
+     */
+    private String appendProductCapabilities(String prompt, String stage) {
+        String code = stage == null ? "" : stage.trim().toUpperCase();
+        StringBuilder block = new StringBuilder("\n\n## 你的产品功能（学生当前学段：")
+                .append(stageDescOf(stage)).append("；介绍能力时以本节为准，不遗漏、不夸大）\n")
+                .append("- AI 讲课答疑与解题：各科知识讲解、公式推导、作文指导等，随时提问；\n")
+                .append("- 出题练习：在对话里直接出选择题，即时判分并逐题解析；\n")
+                .append("- 课程教材：按学段浏览课程与课时、观看教学视频；\n")
+                .append("- 资源中心：动画、绘本、编程作品、知识页等学习产物都汇总在这里；\n")
+                .append("- 个人知识页：AI 讲解可一键同步为知识页，在「知识页」里查看、编辑、确认入库；\n");
+        if (STAGE_PRIMARY_LOW.equals(code)) {
+            block.append("- 绘本生成：在「绘本生成」页输入主题，AI 编故事、配图并朗读（小学专属）；\n");
+        } else if (STAGE_PRIMARY_HIGH.equals(code)) {
+            block.append("- 绘本生成：在「绘本生成」页输入主题，AI 编故事、配图并朗读（小学专属）；\n")
+                    .append("- 编程环境：在浏览器里直接运行 Python 代码，按学段预置示例；\n");
+        } else {
+            block.append("- 动画讲解：把抽象概念做成 SVG 分步动画（初高中专属）；\n")
+                    .append("- 学习路径：按你的学习档案生成个性化学习路线，掌握度驱动解锁；\n")
+                    .append("- 编程环境：在浏览器里直接运行 Python 代码，按学段预置示例；\n");
+        }
+        block.append("介绍要求：\n")
+                .append("1. 用户问「你能做什么/有哪些功能」时，按本节如实介绍，不遗漏、不夸大；\n")
+                .append("2. 本节未列出的能力不要声称具备；涉及页面操作的功能要说明入口页面名称；\n")
+                .append("3. 与当前学段不匹配的能力如实说明适用范围（动画讲解面向初高中、绘本面向小学等）。");
+        return prompt + block;
+    }
+
+    /** 学段编码 → 中文描述（产品功能块用） */
+    private String stageDescOf(String stage) {
+        if (stage == null) {
+            return "未知学段";
+        }
+        for (StageEnum item : StageEnum.values()) {
+            if (item.getCode().equalsIgnoreCase(stage.trim())) {
+                return item.getDesc();
+            }
+        }
+        return "未知学段";
     }
 
     /** MCP 工具名 → 能力说明（能力块按真实挂载的工具名取交集生成，杜绝"说了没有"） */
@@ -977,7 +1029,7 @@ public class AgentChatComponent {
             return prompt;
         }
         block.append("使用要求：\n")
-                .append("1. 用户问「你能做什么/有哪些工具」时，只依据本节如实回答，严禁声称本节之外的能力；\n")
+                .append("1. 用户问「你能做什么」时，MCP 工具能力部分只依据本节如实回答，不得声称本节未列出的工具能力；\n")
                 .append("2. 用户指名教材/章节而上方参考内容未覆盖时，先 searchTextbooks 找书、getTextbookToc 看目录、")
                 .append("readTextbookSection 读该节，引用时注明《书名》章节；\n")
                 .append("3. 涉及学生个人知识页的改动一律先落草稿，用户明确要求才入库（ingestKnowledgePage）。");

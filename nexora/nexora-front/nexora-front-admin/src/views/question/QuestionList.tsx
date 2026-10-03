@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Button, Form, Input, Popconfirm, Select, Space } from 'antd';
 import type { TableProps } from 'antd';
 import { FileUp, Plus } from 'lucide-react';
@@ -42,6 +42,8 @@ export default function QuestionList() {
     detail?: QuestionDetail;
   }>({ open: false, mode: 'create' });
   const [importOpen, setImportOpen] = useState(false);
+  /** 竞态守卫：只接受最后一次打开请求的详情（连点两题时，先返回的旧响应直接丢弃） */
+  const latestRequestRef = useRef('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -82,7 +84,12 @@ export default function QuestionList() {
   };
 
   const openDetailModal = async (record: QuestionInfo, mode: 'edit' | 'view') => {
+    const requestKey = `${mode}:${record.questionId}`;
+    latestRequestRef.current = requestKey;
     const detail = await getInfo(record.questionId);
+    if (latestRequestRef.current !== requestKey) {
+      return; // 已有更新的打开请求，丢弃本次过期响应
+    }
     setModalState({ open: true, mode, detail });
   };
 
@@ -293,6 +300,7 @@ export default function QuestionList() {
       />
 
       <QuestionFormModal
+        key={modalState.detail?.question.questionId ?? 'none'}
         open={modalState.open}
         mode={modalState.mode}
         initialValues={modalState.detail}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   App,
   Button,
@@ -94,6 +94,8 @@ export default function KnowledgeCatalog() {
   const [docModal, setDocModal] = useState<ModalState<KnowledgeDoc>>({ open: false, mode: 'create' });
   /** 正在拉取正文的文档ID：列表只回元数据，查看 / 编辑需按需拉单篇正文 */
   const [detailLoadingId, setDetailLoadingId] = useState<string>();
+  /** 竞态守卫：只接受最后一次打开请求的详情（连点两篇文档时，先返回的旧响应直接丢弃） */
+  const latestDocRequestRef = useRef<string>('');
   const [pointModal, setPointModal] = useState<ModalState<KnowledgePoint>>({ open: false, mode: 'create' });
   const [resourceImportOpen, setResourceImportOpen] = useState(false);
 
@@ -124,16 +126,27 @@ export default function KnowledgeCatalog() {
    *
    * 刻意「先取详情、再打开抽屉」：antd Form 的 initialValues 只在首次挂载时写入，
    * 若先开抽屉再回填，编辑态的正文会填不进表单。
+   *
+   * 竞态守卫：连点两篇文档时两次请求都在飞，若旧响应后到会直接 setDocModal 顶掉新文档——
+   * 抽屉保持打开时 Form 不会重挂载（initialValues 只在挂载时生效），就会出现
+   * 「表单还是上一篇的标题/学段、正文预览却是另一篇」的错乱。因此只接受最后一次请求。
    */
   const openDocModal = useCallback(async (mode: 'view' | 'edit', record: KnowledgeDoc) => {
+    const requestKey = `${mode}:${record.docId}`;
+    latestDocRequestRef.current = requestKey;
     setDetailLoadingId(record.docId);
     try {
       const detail = await loadDocDetail(record.docId);
+      if (latestDocRequestRef.current !== requestKey) {
+        return; // 已有更新的打开请求，丢弃本次过期响应
+      }
       setDocModal({ open: true, mode, initialValues: { ...record, ...detail } });
     } catch {
       // 错误已由请求拦截器统一提示
     } finally {
-      setDetailLoadingId(undefined);
+      if (latestDocRequestRef.current === requestKey) {
+        setDetailLoadingId(undefined);
+      }
     }
   }, []);
 
@@ -204,6 +217,10 @@ export default function KnowledgeCatalog() {
     return convert(tree);
   }, [tree]);
 
+  /**
+   * 树节点选择 → 列表过滤：学段节点按学段；学科节点按「学段+学科」；
+   * 知识点节点按具体知识点。学科过滤经 knowledge_point 子查询（文档表无学科列）。
+   */
   const handleTreeSelect: TreeProps['onSelect'] = (keys) => {
     const key = keys[0] as string | undefined;
     setSelectedKey(key);
@@ -212,6 +229,7 @@ export default function KnowledgeCatalog() {
       ...prev,
       pageNo: 1,
       stage: node?.stage,
+      subject: node?.type === 'subject' ? node.subject : undefined,
       knowledgePointId: node?.type === 'point' ? node.knowledgePointId : undefined,
     }));
   };
@@ -220,9 +238,16 @@ export default function KnowledgeCatalog() {
     setQuery((prev) => ({ ...prev, titleFuzzy: titleInput || undefined, pageNo: 1 }));
   };
 
+  /** 重置只清搜索条件（标题/难度/状态），保留当前树节点的过滤（学段/学科/知识点） */
   const handleReset = () => {
     setTitleInput('');
-    setQuery({ pageNo: 1, pageSize: 10, stage: selectedNode?.stage });
+    setQuery({
+      pageNo: 1,
+      pageSize: 10,
+      stage: selectedNode?.stage,
+      subject: selectedNode?.type === 'subject' ? selectedNode.subject : undefined,
+      knowledgePointId: selectedNode?.type === 'point' ? selectedNode.knowledgePointId : undefined,
+    });
   };
 
   const handleTableChange = (pag: PaginationConfig) => {
@@ -255,7 +280,7 @@ export default function KnowledgeCatalog() {
       message.success('删除成功');
       fetchTree();
       setSelectedKey(undefined);
-      setQuery((prev) => ({ ...prev, pageNo: 1, stage: undefined, knowledgePointId: undefined }));
+      setQuery((prev) => ({ ...prev, pageNo: 1, stage: undefined, subject: undefined, knowledgePointId: undefined }));
     } catch {
       // 错误已由请求拦截器统一提示
     }
@@ -532,6 +557,7 @@ export default function KnowledgeCatalog() {
       </div>
 
       <DocFormModal
+        key={`${docModal.mode}:${docModal.initialValues?.docId ?? 'create'}`}
         state={docModal}
         pointOptions={pointOptions}
         onCancel={() => setDocModal((prev) => ({ ...prev, open: false }))}
@@ -593,6 +619,21 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
   const [previewResource, setPreviewResource] = useState<ResourceInfo | null>(null);
 
   const record = state.initialValues ?? {};
+  /**
+   * 表单值同步（修复「换文档后标题/学段/知识点仍是第一次打开的文档」）：
+   * antd Form 的 initialValues 只在首次挂载写入，且 form 实例跨重挂载保留旧 store——
+   * 抽屉不关直接点另一篇文档时，字段值不会更新。因此打开 / 换文档时显式重置并回填当前文档。
+   */
+  useEffect(() => {
+    if (!state.open) {
+      return;
+    }
+    form.resetFields();
+    if (state.initialValues) {
+      form.setFieldsValue(state.initialValues);
+    }
+  }, [state.open, state.initialValues, form]);
+
   // 正文/链接展示值：编辑态取表单实时值（左输入右实时渲染）；查看态 content 字段未渲染、useWatch 读不到，
   // 必须回退到记录原始值。注意：Form.useWatch 是 Hook，必须无条件调用，否则模式切换时触发
   // 「Rendered fewer hooks than expected」崩溃，因此先取 watch 值再按模式选择数据源。

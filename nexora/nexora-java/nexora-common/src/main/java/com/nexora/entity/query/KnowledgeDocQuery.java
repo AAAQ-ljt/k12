@@ -44,6 +44,11 @@ public class KnowledgeDocQuery extends BaseParam {
 	private String knowledgePointIdFuzzy;
 
 	/**
+	 * 学科过滤（仅管理端知识目录按学科节点筛选用；文档表无学科列，经 knowledge_point.subject 子查询）
+	 */
+	private String subject;
+
+	/**
 	 * 归属用户ID；NULL=官方知识库，非空=学生个人知识库
 	 */
 	private String ownerId;
@@ -207,6 +212,14 @@ public class KnowledgeDocQuery extends BaseParam {
 
 	public String getKnowledgePointIdFuzzy(){
 		return this.knowledgePointIdFuzzy;
+	}
+
+	public void setSubject(String subject){
+		this.subject = subject;
+	}
+
+	public String getSubject(){
+		return this.subject;
 	}
 
 	public void setOwnerId(String ownerId){
