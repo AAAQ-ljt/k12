@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.nexora.entity.enums.StageEnum;
+import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -52,7 +53,10 @@ public class QuizGenerateComponent {
                ① 包含 viewBox 属性（如 viewBox="0 0 400 200"），不写 width/height；
                ② 用图形本身表达信息（柱子高度、折线走势），禁止用文字代替图形，SVG 内文字不超过 20 个字符；
                ③ 颜色干净（≤3 种），背景淡，适合白底展示；
-               ④ 其余纯概念题可不带 svg，普通知识点不要强行配图。""";
+               ④ 其余纯概念题可不带 svg，普通知识点不要强行配图。
+            6. 若学生需求中出现"刚才/上面/这次讲解"等指代且下方提供了「会话摘录」，必须围绕摘录中最近讲解的主题出题，
+               覆盖摘录里的核心概念与要点，禁止跑题到与摘录无关的通用常识；摘录为空或没有可出题的主题时，
+               才按学生需求原句的主题出题。""";
 
     /** 图表题 SVG 最大长度，超限丢弃（防止坏图/超长文本拖垮判分与渲染） */
     private static final int SVG_MAX_LENGTH = 8000;
@@ -67,10 +71,21 @@ public class QuizGenerateComponent {
      * 生成校验后的测验脚本；LLM 输出不合法时抛出异常（调用方降级为文字出题）
      */
     public QuizScript generate(String stage, String topic) {
+        return generate(stage, topic, null);
+    }
+
+    /**
+     * 生成校验后的测验脚本；contextDigest 非空时为指代型需求（"针对刚才讲解的内容出题"）提供会话摘录，
+     * 出题围绕摘录中最近讲解的主题；LLM 输出不合法时抛出异常（调用方降级为文字出题）
+     */
+    public QuizScript generate(String stage, String topic, String contextDigest) {
         String stageDesc = stageDesc(stage);
         String systemPrompt = String.format(SYSTEM_PROMPT, stageDesc, stageDesc);
         String userPrompt = "请围绕主题「" + (topic == null ? "" : topic)
                 + "」出一份小测验（学生学段：" + stageDesc + "）。只输出 JSON。";
+        if (!StringTools.isEmpty(contextDigest)) {
+            userPrompt += "\n\n【会话摘录（用于确定「刚才讲解的内容」）】\n" + contextDigest.stripTrailing();
+        }
         String raw;
         try {
             raw = chatClient.prompt()

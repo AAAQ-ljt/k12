@@ -121,6 +121,56 @@ public class PictureBookGenerateComponent {
     }
 
     /**
+     * 绘本主题解析：把"把刚才讲的内容做成绘本"这类指代型指令结合最近对话解析成具体主题；
+     * 解析失败兜底返回原始指令，保证旧链路始终可用
+     */
+    public String resolveTopic(String stage, String userMessage, String recentTranscript) {
+        try {
+            String userPrompt = "【最近对话】\n" + (recentTranscript == null || recentTranscript.isBlank()
+                    ? "（无）" : recentTranscript.stripTrailing())
+                    + "\n\n【学生最新指令】" + userMessage
+                    + "\n\n请输出本次绘本的创作主题（学生学段：" + stageDesc(stage) + "）。只输出主题文本。";
+            String content = chatClient.prompt()
+                    .system("你是儿童绘本编辑助手。根据最近对话与学生最新指令，输出本次绘本要创作的具体主题。"
+                            + "主题要求：8-16 字、具体可画面化、面向小学生，优先取自最近对话中讲解过的内容；"
+                            + "只输出主题文本，不要解释、引号或代码块标记。")
+                    .user(userPrompt)
+                    .call()
+                    .content();
+            String topic = normalizeTopic(content);
+            if (topic == null) {
+                log.warn("绘本主题解析结果为空，回退原始指令: {}", userMessage);
+                return userMessage;
+            }
+            log.info("绘本主题解析完成: {} -> {}", userMessage, topic);
+            return topic;
+        } catch (Exception e) {
+            log.warn("绘本主题解析失败，回退原始指令: {}", userMessage, e);
+            return userMessage;
+        }
+    }
+
+    /** 主题清洗：去代码块标记与首尾引号，取首行，限长；清洗后为空视为解析失败 */
+    private String normalizeTopic(String content) {
+        if (content == null || content.isBlank()) {
+            return null;
+        }
+        String text = content.trim();
+        if (text.startsWith("```")) {
+            text = text.replaceFirst("^```(?:json|text)?\\s*", "").replaceFirst("\\s*```$", "");
+        }
+        text = text.replaceAll("^[「『\"']+|[」』\"']+$", "").trim();
+        int lineEnd = text.indexOf('\n');
+        if (lineEnd >= 0) {
+            text = text.substring(0, lineEnd).trim();
+        }
+        if (text.length() > 30) {
+            text = text.substring(0, 30).trim();
+        }
+        return text.isEmpty() ? null : text;
+    }
+
+    /**
      * 生成一页插图并下载到本地，返回相对文件路径；失败返回 null（调用方降级为纯文字页）
      * 落盘目录：student/{邮箱目录}/picture-book/{月份}/
      */

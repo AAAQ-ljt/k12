@@ -143,6 +143,9 @@ public class AgentChatComponent {
     private PictureBookTaskService pictureBookTaskService;
 
     @Resource
+    private PictureBookGenerateComponent pictureBookGenerateComponent;
+
+    @Resource
     private AiGenerationRecordService aiGenerationRecordService;
 
     @Resource
@@ -326,7 +329,7 @@ public class AgentChatComponent {
 
             // 对话内出题：生成选择测验卡片；生成失败降级为文字出题
             if ("QUIZ".equals(intent)) {
-                if (handleQuizAnswer(user, message, intentResult, push)) {
+                if (handleQuizAnswer(user, session, message, intentResult, push)) {
                     return;
                 }
                 log.warn("出题生成失败，降级为文字出题");
@@ -336,7 +339,7 @@ public class AgentChatComponent {
 
             // 对话内绘本：提交异步生成任务并推送进度卡片（与「绘本生成」页共用状态机，前端按 taskId 轮询）；提交失败降级为文字讲解
             if ("PICTURE_BOOK".equals(intent)) {
-                if (handlePictureBookAnswer(user, message, intentResult, push)) {
+                if (handlePictureBookAnswer(user, session, message, intentResult, push)) {
                     return;
                 }
                 log.warn("绘本任务提交失败，降级为文字讲解");
@@ -517,6 +520,16 @@ public class AgentChatComponent {
      * 最近完成问答的文本稿（正序、每侧截断），供指代型动画指令解析真实概念；取材口径与 buildHistory 一致
      */
     private String buildRecentTranscript(String userId, String sessionId, String currentMessageId) {
+        return buildRecentTranscript(userId, sessionId, currentMessageId, 600);
+    }
+
+    /**
+     * 最近完成问答的文本稿（正序、每侧截断），供指代型产物指令（动画/出题/绘本）还原「刚才讲的内容」。
+     * 取材口径与 buildHistory 一致，但排除产物型消息（出题/绘本/动画的助手侧是卡片提示短句，不是讲解，
+     * 混入会让概念/主题解析跑偏）。lastAssistantCap 控制最近一条 AI 讲解的截断额度
+     * （出题需覆盖完整讲解，给更大额度；概念/主题解析取大意，600 足够）。
+     */
+    private String buildRecentTranscript(String userId, String sessionId, String currentMessageId, int lastAssistantCap) {
         AgentMessageQuery query = new AgentMessageQuery();
         query.setUserId(userId);
         query.setSessionId(sessionId);
@@ -527,18 +540,33 @@ public class AgentChatComponent {
             if (item.getMessageId().equals(currentMessageId)) {
                 continue;
             }
+            if (isProductStub(item)) {
+                continue;
+            }
             if (item.getStatus() != null && item.getStatus() == 1 && !StringTools.isEmpty(item.getAssistantMessage())) {
                 doneList.add(item);
             }
+        }
+        if (doneList.isEmpty()) {
+            return "";
         }
         StringBuilder transcript = new StringBuilder();
         int from = Math.max(0, doneList.size() - CONCEPT_HISTORY_LIMIT);
         for (int i = from; i < doneList.size(); i++) {
             AgentMessage item = doneList.get(i);
+            boolean last = i == doneList.size() - 1;
             transcript.append("学生：").append(truncateForTranscript(item.getUserMessage(), 200)).append('\n');
-            transcript.append("AI：").append(truncateForTranscript(item.getAssistantMessage(), 600)).append('\n');
+            transcript.append("AI：").append(truncateForTranscript(item.getAssistantMessage(), last ? lastAssistantCap : 600)).append('\n');
         }
         return transcript.toString();
+    }
+
+    /**
+     * 产物型消息：助手侧只有卡片提示短句（出题/绘本/动画），不是讲解内容，不进指代解析文本稿
+     */
+    private boolean isProductStub(AgentMessage item) {
+        String bizType = item.getBizType();
+        return "QUIZ".equals(bizType) || "PICTURE_BOOK".equals(bizType) || "ANIMATION".equals(bizType);
     }
 
     /** 文本稿截断：压平空白防表格/公式撑爆提示词 */
@@ -570,13 +598,20 @@ public class AgentChatComponent {
 
     /**
      * 对话内出题产物链路：生成选择测验 JSON → 推送 QUIZ 卡片完成消息（答题与判分在前端即时完成）。
+     * 指代型需求（"针对刚才讲解的内容出题"）结合最近对话文本稿出题，排除产物型消息污染；
      * 返回 true 表示产物已推送；false 表示生成失败（调用方降级为文字出题）
      */
-    private boolean handleQuizAnswer(TokenUserInfoDTO user, AgentMessage message,
+    private boolean handleQuizAnswer(TokenUserInfoDTO user, AgentSession session, AgentMessage message,
                                      IntentAnalyzerComponent.IntentResult intent, AgentMessagePushDTO push) {
         try {
+            String userMessage = message.getUserMessage();
+            String contextDigest = null;
+            if (userMessage != null && CONCEPT_REFERENCE_WORDS.stream().anyMatch(userMessage::contains)) {
+                // 出题要覆盖完整讲解，最近一条 AI 消息给 3000 字符额度；无历史时摘录为空，出题组件按需求原句兜底
+                contextDigest = buildRecentTranscript(user.getUserId(), session.getSessionId(), message.getMessageId(), 3000);
+            }
             QuizGenerateComponent.QuizScript quiz =
-                    quizGenerateComponent.generate(user.getStage(), message.getUserMessage());
+                    quizGenerateComponent.generate(user.getStage(), userMessage, contextDigest);
             String quizJson = quiz.toJson();
             String text = "我出好了《" + quiz.title() + "》，共 " + quiz.questions().size()
                     + " 道题，点击下方卡片开始作答吧 ✍️";
@@ -609,10 +644,18 @@ public class AgentChatComponent {
      * 推送 PICTURE_BOOK 卡片消息（前端按 taskId 轮询进度、完成展示「查看绘本」）。
      * 返回 true 表示任务已提交并推送；false 表示提交失败（调用方降级为文字讲解）
      */
-    private boolean handlePictureBookAnswer(TokenUserInfoDTO user, AgentMessage message,
+    private boolean handlePictureBookAnswer(TokenUserInfoDTO user, AgentSession session, AgentMessage message,
                                             IntentAnalyzerComponent.IntentResult intent, AgentMessagePushDTO push) {
         try {
             String topic = message.getUserMessage() == null ? "" : message.getUserMessage().trim();
+            // 指代型主题（"把刚才讲的内容做成绘本"）结合最近对话解析成具体主题，解析失败兜底原句；
+            // 版权净化在任务消费端照常执行，不受影响
+            if (!topic.isEmpty() && CONCEPT_REFERENCE_WORDS.stream().anyMatch(topic::contains)) {
+                String transcript = buildRecentTranscript(user.getUserId(), session.getSessionId(), message.getMessageId());
+                if (!StringTools.isEmpty(transcript)) {
+                    topic = pictureBookGenerateComponent.resolveTopic(user.getStage(), message.getUserMessage(), transcript);
+                }
+            }
             if (topic.isEmpty()) {
                 topic = "我的AI小故事";
             }
