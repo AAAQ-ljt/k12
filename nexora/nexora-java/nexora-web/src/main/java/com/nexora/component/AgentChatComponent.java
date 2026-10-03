@@ -43,8 +43,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -374,13 +377,14 @@ public class AgentChatComponent {
                     shouldSearch(intent) ? ragSearchComponent.buildRagResult(user.getUserId(), user.getStage(), message.getUserMessage())
                             : new RagSearchComponent.RagSearchResult("", List.of());
             List<ResourceRecommendVO> recommends = ragResult.recommendations();
-            String systemPrompt = resolvePromptWithRag(user, intent, ragResult.ragData());
+            // MCP 工具：未启用时返回空数组；构建提前到 prompt 组装之前，
+            // 能力说明块按真实挂载的工具动态追加（MCP 关闭时模型不会声称具备这些能力）
+            ToolCallback[] knowledgeTools = knowledgeAgentToolComponent.buildCallbacks();
+            String systemPrompt = resolvePromptWithRag(user, intent, ragResult.ragData(), knowledgeTools);
             sendRecommendPush(user, message, recommends);
             AtomicInteger promptTokens = new AtomicInteger(intentResult.promptTokens());
             AtomicInteger completionTokens = new AtomicInteger(intentResult.completionTokens());
 
-            // 知识页工具：MCP 未启用时返回空数组，对话照常降级（挂工具后模型可列表/读取/新建/覆盖/入库学生个人知识页）
-            ToolCallback[] knowledgeTools = knowledgeAgentToolComponent.buildCallbacks();
             AtomicInteger wikiOps = new AtomicInteger();
             ChatClient.ChatClientRequestSpec requestSpec = provider.chatClient().prompt()
                     .system(systemPrompt)
@@ -893,19 +897,91 @@ public class AgentChatComponent {
         };
     }
 
-    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String ragData) {
+    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String ragData, ToolCallback[] tools) {
         String prompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
+        String promptWithRag;
         if (!shouldSearch(intent)) {
+            promptWithRag = prompt;
+        } else if (ragData == null || ragData.isBlank()) {
+            promptWithRag = prompt + "\n\n" + RAG_ATTRIBUTION_GUARD;
+        } else {
+            // 模板自带 {{ragData}} 占位符时只替换数据、规则照旧追加，避免启用占位符的模板绕过来源口径约束
+            promptWithRag = (prompt.contains("{{ragData}}")
+                    ? prompt.replace("{{ragData}}", ragData)
+                    : prompt + "\n\n## 知识库参考内容（按来源分组，引用时请如实区分）\n" + ragData)
+                    + "\n\n" + RAG_CITATION_RULE;
+        }
+        // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力
+        return appendMcpCapabilities(promptWithRag, tools);
+    }
+
+    /** MCP 工具名 → 能力说明（能力块按真实挂载的工具名取交集生成，杜绝"说了没有"） */
+    private static final Map<String, String> MCP_TOOL_CAPABILITIES = Map.ofEntries(
+            Map.entry("listKnowledgePages", "查个人知识页清单"),
+            Map.entry("readKnowledgePage", "读某页知识页全文"),
+            Map.entry("createKnowledgePage", "把整理内容新建为知识页草稿"),
+            Map.entry("updateKnowledgePage", "覆盖修改知识页草稿"),
+            Map.entry("ingestKnowledgePage", "把知识页入库向量化"),
+            Map.entry("aiSummarizeKnowledgePage", "AI 总结生成摘要页"),
+            Map.entry("aiRewriteKnowledgePage", "AI 按要求改写知识页"),
+            Map.entry("aiOrganizeKnowledgePages", "AI 归档整合多篇知识页"),
+            Map.entry("searchTextbooks", "查官方教材书目"),
+            Map.entry("getTextbookToc", "读教材章节目录"),
+            Map.entry("readTextbookSection", "读教材指定章节正文"),
+            Map.entry("queryCourse", "查本学段上架课程"),
+            Map.entry("queryLesson", "查课程课时列表与详情"),
+            Map.entry("recommendResource", "推荐官方学习资源"),
+            Map.entry("queryMastery", "查知识点掌握度概览"),
+            Map.entry("saveLearningRecord", "记录学生学习行为（仅用户明确要求时调用）"));
+
+    /** 能力块分组展示顺序：组名 → 该组工具名 */
+    private static final Map<String, List<String>> MCP_TOOL_GROUPS = new LinkedHashMap<>();
+
+    static {
+        MCP_TOOL_GROUPS.put("知识页工具", List.of(
+                "listKnowledgePages", "readKnowledgePage", "createKnowledgePage",
+                "updateKnowledgePage", "ingestKnowledgePage",
+                "aiSummarizeKnowledgePage", "aiRewriteKnowledgePage", "aiOrganizeKnowledgePages"));
+        MCP_TOOL_GROUPS.put("教材检索工具（按学生学段自动过滤）", List.of(
+                "searchTextbooks", "getTextbookToc", "readTextbookSection"));
+        MCP_TOOL_GROUPS.put("教学查询工具", List.of(
+                "queryCourse", "queryLesson", "recommendResource", "queryMastery", "saveLearningRecord"));
+    }
+
+    /**
+     * MCP 能力块：仅在工具真实挂载时追加到 system prompt，内容按挂载工具名与说明映射取交集生成；
+     * 用户问"你能做什么"时模型依据本节如实回答，未挂载的能力不会被提及
+     */
+    private String appendMcpCapabilities(String prompt, ToolCallback[] tools) {
+        if (tools == null || tools.length == 0) {
             return prompt;
         }
-        if (ragData == null || ragData.isBlank()) {
-            return prompt + "\n\n" + RAG_ATTRIBUTION_GUARD;
+        Set<String> attached = new HashSet<>();
+        for (ToolCallback tool : tools) {
+            attached.add(tool.getToolDefinition().name());
         }
-        // 模板自带 {{ragData}} 占位符时只替换数据、规则照旧追加，避免启用占位符的模板绕过来源口径约束
-        String promptWithRag = prompt.contains("{{ragData}}")
-                ? prompt.replace("{{ragData}}", ragData)
-                : prompt + "\n\n## 知识库参考内容（按来源分组，引用时请如实区分）\n" + ragData;
-        return promptWithRag + "\n\n" + RAG_CITATION_RULE;
+        StringBuilder block = new StringBuilder("\n\n## 当前可用的 MCP 工具（本轮对话已真实挂载）\n");
+        for (Map.Entry<String, List<String>> group : MCP_TOOL_GROUPS.entrySet()) {
+            List<String> lines = new ArrayList<>();
+            for (String name : group.getValue()) {
+                if (attached.contains(name) && MCP_TOOL_CAPABILITIES.containsKey(name)) {
+                    lines.add(name + " " + MCP_TOOL_CAPABILITIES.get(name));
+                }
+            }
+            if (!lines.isEmpty()) {
+                block.append("- ").append(group.getKey()).append("：").append(String.join(" / ", lines)).append("\n");
+            }
+        }
+        if (block.indexOf("- ") < 0) {
+            // 挂载的工具均不在说明映射内（异常情况），不追加空块
+            return prompt;
+        }
+        block.append("使用要求：\n")
+                .append("1. 用户问「你能做什么/有哪些工具」时，只依据本节如实回答，严禁声称本节之外的能力；\n")
+                .append("2. 用户指名教材/章节而上方参考内容未覆盖时，先 searchTextbooks 找书、getTextbookToc 看目录、")
+                .append("readTextbookSection 读该节，引用时注明《书名》章节；\n")
+                .append("3. 涉及学生个人知识页的改动一律先落草稿，用户明确要求才入库（ingestKnowledgePage）。");
+        return prompt + block;
     }
 
     private void sendRecommendPush(TokenUserInfoDTO user, AgentMessage message,

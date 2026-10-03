@@ -269,4 +269,25 @@
         ORDER BY k.mastery_score DESC, k.update_time DESC
     </select>
 
+    <!-- MCP queryMastery 工具按学段过滤版：stage 为学生登录档案冗余列，空串/NULL 时不过滤 -->
+    <select id="selectMasteryListByStage" resultType="com.nexora.entity.vo.KnowledgeMasteryVO">
+        SELECT
+            k.knowledge_point_id,
+            kp.name AS knowledge_point_name,
+            k.mastery_score,
+            k.status,
+            k.practice_count,
+            k.correct_count,
+            COALESCE(ROUND(k.correct_count * 100.0 / NULLIF(k.practice_count, 0), 1), 0) AS accuracy,
+            k.last_practice_time,
+            k.next_review_time
+        FROM knowledge_mastery k
+        LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = k.knowledge_point_id
+        WHERE k.user_id = #{userId}
+        <if test="stage != null and stage != ''">
+            AND k.stage = #{stage}
+        </if>
+        ORDER BY k.mastery_score DESC, k.update_time DESC
+    </select>
+
 </mapper>
