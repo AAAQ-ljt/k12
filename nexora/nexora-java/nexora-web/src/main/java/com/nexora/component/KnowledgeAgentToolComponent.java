@@ -79,12 +79,14 @@ public class KnowledgeAgentToolComponent {
     /** 包装的 MCP 工具规格（入参 schema 全部去掉 userId/stage，需要时由 web 端注入） */
     private static final List<McpToolSpec> MCP_TOOL_SPECS = List.of(
             new McpToolSpec("listKnowledgePages",
-                    "查询学生个人知识库里的知识页清单（标题、状态、来源、更新时间）。"
+                    "查询学生个人知识库里的知识页清单（标题、状态、来源、所属目录、更新时间），"
+                            + "返回同时附「知识页目录清单」（含 folderId，供移动/新建子目录定位）。"
                             + "当用户问「我有哪些知识页 / 我整理过哪些资料 / 上次那篇在哪」时先调用本工具。",
                     """
                             {"type":"object","properties":{
                               "keyword":{"type":"string","description":"标题关键词，可空"},
-                              "vectorStatus":{"type":"integer","description":"状态过滤：0草稿 1向量化中 2已入库 3失败，可空表示不限"}
+                              "vectorStatus":{"type":"integer","description":"状态过滤：0草稿 1向量化中 2已入库 3失败，可空表示不限"},
+                              "folderId":{"type":"string","description":"目录过滤：传目录ID只看该目录；传 root 只看根目录；不传看全部"}
                             }}""",
                     false, true, true),
             new McpToolSpec("readKnowledgePage",
@@ -119,6 +121,24 @@ public class KnowledgeAgentToolComponent {
                     """
                             {"type":"object","properties":{
                               "docId":{"type":"string","description":"知识页ID"}
+                            },"required":["docId"]}""",
+                    false, true, true),
+            new McpToolSpec("createWikiFolder",
+                    "在学生的知识页里新建一个子文件夹（用于归类整理知识页）。"
+                            + "用户说「建一个《XX》文件夹」时调用；parentFolderId 不传则建在知识页根目录下",
+                    """
+                            {"type":"object","properties":{
+                              "name":{"type":"string","description":"文件夹名称"},
+                              "parentFolderId":{"type":"string","description":"父文件夹ID，可空表示建在知识页根目录下"}
+                            },"required":["name"]}""",
+                    false, true, true),
+            new McpToolSpec("moveKnowledgePage",
+                    "把指定知识页移动到某个子文件夹（或移回知识页根目录），知识页内容不变。"
+                            + "用户说「把《XX》移到《YY》文件夹」时调用；folderId 不传表示移回根目录",
+                    """
+                            {"type":"object","properties":{
+                              "docId":{"type":"string","description":"知识页ID"},
+                              "folderId":{"type":"string","description":"目标文件夹ID，可空表示移回知识页根目录"}
                             },"required":["docId"]}""",
                     false, true, true),
             new McpToolSpec("searchTextbooks",

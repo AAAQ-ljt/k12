@@ -66,8 +66,28 @@ public class StudentWikiController extends ABaseController {
     }
 
     @GetMapping("/list")
-    public ResponseVO<List<KnowledgeDoc>> list(@RequestParam(required = false) String resourceId) {
-        return getSuccessResponseVO(studentWikiService.listDrafts(currentUserId(), resourceId));
+    public ResponseVO<List<KnowledgeDoc>> list(@RequestParam(required = false) String resourceId,
+                                               @RequestParam(required = false) String folderId) {
+        return getSuccessResponseVO(studentWikiService.listDrafts(currentUserId(), resourceId, folderId));
+    }
+
+    @PostMapping("/folder/create")
+    public ResponseVO<String> createFolder(@RequestParam String name,
+                                           @RequestParam(required = false) String parentFolderId) {
+        return getSuccessResponseVO(studentWikiService.createFolder(currentUserId(), name, parentFolderId));
+    }
+
+    @PostMapping("/move")
+    public ResponseVO<Void> move(@RequestParam String docId,
+                                 @RequestParam(required = false) String folderId) {
+        studentWikiService.moveDoc(currentUserId(), docId, folderId);
+        return getSuccessResponseVO(null);
+    }
+
+    @DeleteMapping("/folder")
+    public ResponseVO<Void> deleteFolder(@RequestParam String folderId) {
+        studentWikiService.deleteFolder(currentUserId(), folderId);
+        return getSuccessResponseVO(null);
     }
 
     @DeleteMapping("/del")

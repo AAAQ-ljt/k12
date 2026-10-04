@@ -2,9 +2,12 @@ package com.nexora.component;
 
 import com.nexora.constants.Constants;
 import com.nexora.entity.po.KnowledgeDoc;
+import com.nexora.entity.po.ResourceDirectory;
 import com.nexora.entity.query.KnowledgeDocQuery;
+import com.nexora.entity.query.ResourceDirectoryQuery;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.KnowledgeDocService;
+import com.nexora.service.ResourceDirectoryService;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
@@ -13,8 +16,11 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -35,6 +41,9 @@ public class WikiKnowledgeComponent {
     /** 列表返回上限（MCP 工具与抽屉共用，防止超量数据注入模型上下文） */
     private static final int LIST_LIMIT = 100;
 
+    /** 知识页系统目录类型（resource_directory.dir_type），子文件夹挂在其下 */
+    private static final String WIKI_DIR_TYPE = "wiki";
+
     @Resource
     private KnowledgeDocService knowledgeDocService;
 
@@ -46,6 +55,9 @@ public class WikiKnowledgeComponent {
 
     @Resource
     private ObjectProvider<VectorStore> vectorStoreProvider;
+
+    @Resource
+    private ResourceDirectoryService resourceDirectoryService;
 
     /**
      * 取本人知识页，不存在或非本人一律按"无权操作"拒绝
@@ -65,6 +77,14 @@ public class WikiKnowledgeComponent {
      * 列表查询：按 owner 隔离；keyword 匹配标题；vectorStatus 为空表示不限状态
      */
     public List<KnowledgeDoc> listPages(String userId, String keyword, Integer vectorStatus) {
+        return listPages(userId, keyword, vectorStatus, null);
+    }
+
+    /**
+     * 列表查询（2026-10-04 增加子文件夹过滤）：
+     * folderId 为空=全部；"root"=仅根目录；其它=该子文件夹内
+     */
+    public List<KnowledgeDoc> listPages(String userId, String keyword, Integer vectorStatus, String folderId) {
         if (StringTools.isEmpty(userId)) {
             throw new BusinessException("缺少用户标识");
         }
@@ -75,6 +95,13 @@ public class WikiKnowledgeComponent {
         }
         if (vectorStatus != null) {
             query.setVectorStatus(vectorStatus);
+        }
+        if (!StringTools.isEmpty(folderId)) {
+            if ("root".equals(folderId)) {
+                query.setFolderIdNull(Boolean.TRUE);
+            } else {
+                query.setFolderId(folderId);
+            }
         }
         query.setOrderBy("update_time desc");
         List<KnowledgeDoc> list = knowledgeDocService.findListByParam(query);
@@ -289,5 +316,167 @@ public class WikiKnowledgeComponent {
             return "链接来源";
         }
         return "手动创建";
+    }
+
+    // ==================== 知识页子文件夹（2026-10-04） ====================
+
+    /**
+     * 取学生的「知识页」系统目录（dirType=wiki），不存在返回 null
+     */
+    public ResourceDirectory getWikiRootDirectory(String ownerId) {
+        if (StringTools.isEmpty(ownerId)) {
+            return null;
+        }
+        ResourceDirectoryQuery query = new ResourceDirectoryQuery();
+        query.setOwnerId(ownerId);
+        List<ResourceDirectory> dirs = resourceDirectoryService.findListByParam(query);
+        return (dirs == null ? List.<ResourceDirectory>of() : dirs).stream()
+                .filter(dir -> WIKI_DIR_TYPE.equals(dir.getDirType()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * 知识页子文件夹清单：wiki 根目录 + 其全部子文件夹（自建），按名称排序；
+     * folderId 为 null 表示根目录。无 wiki 系统目录（未初始化知识库）返回空列表
+     */
+    public List<ResourceDirectory> listWikiFolders(String ownerId) {
+        ResourceDirectory root = getWikiRootDirectory(ownerId);
+        if (root == null) {
+            return List.of();
+        }
+        ResourceDirectoryQuery query = new ResourceDirectoryQuery();
+        query.setOwnerId(ownerId);
+        List<ResourceDirectory> dirs = resourceDirectoryService.findListByParam(query);
+        List<ResourceDirectory> folders = new ArrayList<>();
+        folders.add(root);
+        Set<String> wikiIds = new HashSet<>();
+        wikiIds.add(root.getDirId());
+        // 多轮收拢：先把根的直接子目录收进来，再迭代收录其子目录（深度有限，防环）
+        boolean changed = true;
+        List<ResourceDirectory> rest = new ArrayList<>(dirs == null ? List.<ResourceDirectory>of() : dirs);
+        while (changed) {
+            changed = false;
+            for (ResourceDirectory dir : new ArrayList<>(rest)) {
+                String parent = dir.getParentId() == null ? "0" : dir.getParentId();
+                if (wikiIds.contains(parent)) {
+                    wikiIds.add(dir.getDirId());
+                    folders.add(dir);
+                    rest.remove(dir);
+                    changed = true;
+                }
+            }
+        }
+        folders.sort((a, b) -> String.valueOf(a.getDirName()).compareTo(String.valueOf(b.getDirName())));
+        return folders;
+    }
+
+    /**
+     * 校验 folderId 是该学生知识页子树内的目录（含根目录本身）；通过返回目录，否则 null
+     */
+    public ResourceDirectory requireWikiFolder(String ownerId, String folderId) {
+        if (StringTools.isEmpty(folderId)) {
+            return null;
+        }
+        for (ResourceDirectory folder : listWikiFolders(ownerId)) {
+            if (folderId.equals(folder.getDirId())) {
+                return folder;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 新建知识页子文件夹：parentFolderId 为空挂在 wiki 根目录下，
+     * 否则必须是该学生 wiki 子树内的目录；同名不校验（与资源中心自建目录行为一致）
+     *
+     * @return 新文件夹 dirId
+     */
+    public String createWikiFolder(String ownerId, String name, String parentFolderId) {
+        ResourceDirectory root = getWikiRootDirectory(ownerId);
+        if (root == null) {
+            throw new BusinessException("请先在资源中心初始化个人知识库");
+        }
+        if (StringTools.isEmpty(name)) {
+            throw new BusinessException("文件夹名称不能为空");
+        }
+        String parentId = root.getDirId();
+        if (!StringTools.isEmpty(parentFolderId)) {
+            ResourceDirectory parent = requireWikiFolder(ownerId, parentFolderId.trim());
+            if (parent == null) {
+                throw new BusinessException("父文件夹不存在或不属于知识页目录");
+            }
+            parentId = parent.getDirId();
+        }
+        Date now = new Date();
+        ResourceDirectory folder = new ResourceDirectory();
+        folder.setDirId(UUID.randomUUID().toString().replace("-", ""));
+        folder.setDirName(name.trim());
+        folder.setParentId(parentId);
+        // dirType 留空：自建目录可重命名/删除；通过 parentId 链挂在知识页系统目录下
+        folder.setOwnerId(ownerId);
+        folder.setSort(0);
+        folder.setCreateTime(now);
+        folder.setUpdateTime(now);
+        resourceDirectoryService.add(folder);
+        return folder.getDirId();
+    }
+
+    /**
+     * 移动知识页到子文件夹：folderId 为空 = 移回知识页根目录；
+     * 校验知识页归属与目标文件夹归属，防止越权与跨目录类型移动。
+     * 置空必须走专用更新（通用 update 的 &lt;if&gt; 会把 null 字段跳过，移回根目录会失效）
+     */
+    public void moveDocToFolder(String userId, String docId, String folderId) {
+        KnowledgeDoc doc = requireOwnedDoc(userId, docId);
+        String targetFolderId = null;
+        if (!StringTools.isEmpty(folderId)) {
+            ResourceDirectory folder = requireWikiFolder(userId, folderId.trim());
+            if (folder == null) {
+                throw new BusinessException("目标文件夹不存在或不属于知识页目录");
+            }
+            targetFolderId = folder.getDirId();
+        }
+        knowledgeDocService.updateKnowledgeDocFolder(targetFolderId, new Date(), doc.getDocId());
+    }
+
+    /**
+     * 删除知识页子文件夹：其整棵子树（子文件夹及其中的知识页）一并处理，数据不丢失——
+     * 子树内所有知识页回到根目录，子树内全部自建文件夹删除；
+     * 仅允许删除该学生 wiki 子树内的自建文件夹（系统目录不可删）
+     */
+    public void deleteWikiFolder(String ownerId, String folderId) {
+        ResourceDirectory folder = requireWikiFolder(ownerId, folderId);
+        if (folder == null || WIKI_DIR_TYPE.equals(folder.getDirType())) {
+            throw new BusinessException("文件夹不存在或不可删除");
+        }
+        // 待删子树：folderId 及其全部后代（一次取回目录清单在内存里收拢，不逐层查库）
+        Set<String> subtree = new HashSet<>();
+        subtree.add(folderId);
+        List<ResourceDirectory> allFolders = listWikiFolders(ownerId);
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (ResourceDirectory dir : allFolders) {
+                String parent = dir.getParentId() == null ? "0" : dir.getParentId();
+                if (subtree.contains(parent) && subtree.add(dir.getDirId())) {
+                    changed = true;
+                }
+            }
+        }
+        // 子树内知识页一次性回到根目录（folder_id 置 NULL，需专用批量更新）
+        KnowledgeDocQuery docQuery = new KnowledgeDocQuery();
+        docQuery.setOwnerId(ownerId);
+        docQuery.setFolderIds(new ArrayList<>(subtree));
+        List<KnowledgeDoc> docs = knowledgeDocService.findListByParam(docQuery);
+        if (docs != null && !docs.isEmpty()) {
+            List<String> docIds = docs.stream().map(KnowledgeDoc::getDocId).toList();
+            knowledgeDocService.updateKnowledgeDocFolderToNullBatch(docIds, new Date());
+        }
+        // 子树内目录整体删除（含自身；一条批量删除）
+        ResourceDirectoryQuery deleteQuery = new ResourceDirectoryQuery();
+        deleteQuery.setOwnerId(ownerId);
+        deleteQuery.setDirIds(new ArrayList<>(subtree));
+        resourceDirectoryService.deleteByParam(deleteQuery);
     }
 }

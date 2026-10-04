@@ -1011,6 +1011,8 @@ public class AgentChatComponent {
             Map.entry("aiSummarizeKnowledgePage", "AI 总结生成摘要页"),
             Map.entry("aiRewriteKnowledgePage", "AI 按要求改写知识页"),
             Map.entry("aiOrganizeKnowledgePages", "AI 归档整合多篇知识页"),
+            Map.entry("createWikiFolder", "新建知识页子文件夹"),
+            Map.entry("moveKnowledgePage", "移动知识页到子文件夹"),
             Map.entry("searchTextbooks", "查官方教材书目"),
             Map.entry("getTextbookToc", "读教材章节目录"),
             Map.entry("readTextbookSection", "读教材指定章节正文"),
@@ -1027,7 +1029,8 @@ public class AgentChatComponent {
         MCP_TOOL_GROUPS.put("知识页工具", List.of(
                 "listKnowledgePages", "readKnowledgePage", "createKnowledgePage",
                 "updateKnowledgePage", "ingestKnowledgePage",
-                "aiSummarizeKnowledgePage", "aiRewriteKnowledgePage", "aiOrganizeKnowledgePages"));
+                "aiSummarizeKnowledgePage", "aiRewriteKnowledgePage", "aiOrganizeKnowledgePages",
+                "createWikiFolder", "moveKnowledgePage"));
         MCP_TOOL_GROUPS.put("教材检索工具（按学生学段自动过滤）", List.of(
                 "searchTextbooks", "getTextbookToc", "readTextbookSection"));
         MCP_TOOL_GROUPS.put("教学查询工具", List.of(

@@ -3,6 +3,7 @@ package com.nexora.service;
 import com.nexora.component.WikiKnowledgeComponent;
 import com.nexora.entity.enums.DateTimePatternEnum;
 import com.nexora.entity.po.KnowledgeDoc;
+import com.nexora.entity.po.ResourceDirectory;
 import com.nexora.entity.po.UserInfo;
 import com.nexora.utils.DateUtil;
 import com.nexora.utils.StringTools;
@@ -37,19 +38,24 @@ public class KnowledgeToolService {
     @Resource
     private UserInfoService userInfoService;
 
-    @Tool(name = "listKnowledgePages", description = "查询某个学生个人知识库的知识页清单（ID/标题/状态/来源/分块数/更新时间），可按关键词过滤标题、按状态过滤")
+    @Tool(name = "listKnowledgePages", description = "查询某个学生个人知识库的知识页清单（ID/标题/状态/来源/所属目录/分块数/更新时间），"
+            + "可按关键词过滤标题、按状态过滤、按目录过滤；返回值同时附「知识页目录清单」（含 folderId），"
+            + "移动知识页（moveKnowledgePage）或指定父目录（createWikiFolder）前先查本工具拿目录ID")
     public String listKnowledgePages(
             @ToolParam(description = "学生用户ID") String userId,
             @ToolParam(description = "标题关键词，可空") String keyword,
-            @ToolParam(description = "向量状态过滤：0草稿 1向量化中 2已入库 3失败，可空表示不限") Integer vectorStatus) {
+            @ToolParam(description = "向量状态过滤：0草稿 1向量化中 2已入库 3失败，可空表示不限") Integer vectorStatus,
+            @ToolParam(description = "目录过滤：传目录ID只看该目录内的知识页；传 root 只看根目录；不传看全部") String folderId) {
         try {
             String checked = requireStudent(userId);
             if (checked == null) {
                 return "参数错误：缺少学生用户ID";
             }
-            List<KnowledgeDoc> list = wikiKnowledgeComponent.listPages(checked, keyword, vectorStatus);
+            List<KnowledgeDoc> list = wikiKnowledgeComponent.listPages(checked, keyword, vectorStatus,
+                    StringTools.isEmpty(folderId) ? null : folderId.trim());
+            List<ResourceDirectory> folders = wikiKnowledgeComponent.listWikiFolders(checked);
             if (list == null || list.isEmpty()) {
-                return "该学生暂无匹配的知识页";
+                return "该学生暂无匹配的知识页。\n" + folderCatalog(folders);
             }
             int draft = 0;
             int ingested = 0;
@@ -63,19 +69,101 @@ public class KnowledgeToolService {
                 if (status != null && status == 2) {
                     ingested++;
                 }
+                String folderLabel = "根目录";
+                if (!StringTools.isEmpty(doc.getFolderId())) {
+                    for (ResourceDirectory folder : folders) {
+                        if (doc.getFolderId().equals(folder.getDirId())) {
+                            folderLabel = folder.getDirName();
+                            break;
+                        }
+                    }
+                }
                 sb.append(index++).append(". 《").append(doc.getTitle()).append("》")
                         .append("（ID:").append(doc.getDocId())
                         .append("，状态:").append(wikiKnowledgeComponent.statusText(status))
                         .append("，来源:").append(wikiKnowledgeComponent.sourceText(doc))
+                        .append("，目录:").append(folderLabel)
                         .append("，分块:").append(doc.getChunkCount() == null ? 0 : doc.getChunkCount())
                         .append("，更新:").append(formatTime(doc))
                         .append("）\n");
             }
-            sb.append("汇总：草稿 ").append(draft).append(" 页，已入库 ").append(ingested).append(" 页。");
+            sb.append("汇总：草稿 ").append(draft).append(" 页，已入库 ").append(ingested).append(" 页。\n");
+            sb.append(folderCatalog(folders));
             return sb.toString();
         } catch (Exception e) {
             log.warn("listKnowledgePages 失败", e);
             return "查询知识页失败：" + e.getMessage();
+        }
+    }
+
+    /**
+     * 知识页目录清单（含 folderId）：供模型在移动知识页 / 指定父目录时携带目标ID；
+     * folders 含 wiki 系统根目录本身（dirType 非空），根目录不列为子目录
+     */
+    private String folderCatalog(List<ResourceDirectory> folders) {
+        StringBuilder sb = new StringBuilder("知识页目录（folderId 供 moveKnowledgePage / createWikiFolder 使用）：\n");
+        sb.append("  1. 根目录（folderId 留空或传 root）\n");
+        int index = 2;
+        if (folders != null) {
+            for (ResourceDirectory folder : folders) {
+                if (!StringTools.isEmpty(folder.getDirType())) {
+                    continue;
+                }
+                sb.append("  ").append(index++).append(". 《").append(folder.getDirName())
+                        .append("》 folderId:").append(folder.getDirId()).append("\n");
+            }
+        }
+        if (index == 2) {
+            sb.append("  （暂无子目录，可用 createWikiFolder 新建）\n");
+        }
+        return sb.toString();
+    }
+
+    @Tool(name = "createWikiFolder", description = "在学生的知识页里新建一个子文件夹（用于归类整理知识页）。"
+            + "用户说「建一个《XX》文件夹」时调用；parentFolderId 不传则建在知识页根目录下")
+    public String createWikiFolder(
+            @ToolParam(description = "学生用户ID") String userId,
+            @ToolParam(description = "文件夹名称") String name,
+            @ToolParam(description = "父文件夹ID，可空表示建在知识页根目录下；可先通过 listKnowledgePages 了解现有文件夹") String parentFolderId) {
+        try {
+            String checked = requireStudent(userId);
+            if (checked == null) {
+                return "参数错误：缺少学生用户ID";
+            }
+            if (StringTools.isEmpty(name)) {
+                return "参数错误：缺少文件夹名称";
+            }
+            String folderId = wikiKnowledgeComponent.createWikiFolder(
+                    checked, name.trim(), StringTools.isEmpty(parentFolderId) ? null : parentFolderId.trim());
+            log.info("MCP 新建知识页文件夹 userId={} name={} folderId={}", checked, name.trim(), folderId);
+            return "已创建文件夹「" + name.trim() + "」（folderId:" + folderId + "），"
+                    + "可以用 moveKnowledgePage 把知识页移动进去";
+        } catch (Exception e) {
+            log.warn("createWikiFolder 失败", e);
+            return "新建文件夹失败：" + e.getMessage();
+        }
+    }
+
+    @Tool(name = "moveKnowledgePage", description = "把指定知识页移动到某个子文件夹（或移回知识页根目录），知识页内容不变。"
+            + "用户说「把《XX》移到《YY》文件夹」时调用；folderId 不传表示移回根目录")
+    public String moveKnowledgePage(
+            @ToolParam(description = "学生用户ID") String userId,
+            @ToolParam(description = "知识页ID") String docId,
+            @ToolParam(description = "目标文件夹ID，可空表示移回知识页根目录") String folderId) {
+        try {
+            String checked = requireStudent(userId);
+            if (checked == null) {
+                return "参数错误：缺少学生用户ID";
+            }
+            KnowledgeDoc doc = wikiKnowledgeComponent.requireOwnedDoc(checked, docId);
+            wikiKnowledgeComponent.moveDocToFolder(checked, docId,
+                    StringTools.isEmpty(folderId) ? null : folderId.trim());
+            String target = StringTools.isEmpty(folderId) ? "知识页根目录" : "文件夹 " + folderId;
+            log.info("MCP 移动知识页 userId={} docId={} target={}", checked, docId, target);
+            return "已把《" + doc.getTitle() + "》移动到" + target;
+        } catch (Exception e) {
+            log.warn("moveKnowledgePage 失败", e);
+            return "移动知识页失败：" + e.getMessage();
         }
     }
 

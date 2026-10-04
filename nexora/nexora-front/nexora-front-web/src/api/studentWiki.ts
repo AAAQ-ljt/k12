@@ -19,6 +19,8 @@ export interface StudentWikiDoc {
   vectorError?: string;
   chunkCount: number;
   status: number;
+  /** 所属知识页子文件夹；空=根目录 */
+  folderId?: string;
   createTime?: string;
   updateTime?: string;
 }
@@ -49,8 +51,33 @@ export function getStudentWiki(docId: string): Promise<StudentWikiDoc> {
   return get('/studentWiki/getInfo', { docId });
 }
 
-export function loadStudentWikiList(resourceId?: string): Promise<StudentWikiDoc[]> {
-  return get('/studentWiki/list', resourceId ? { resourceId } : undefined);
+export function loadStudentWikiList(
+  resourceId?: string,
+  folderId?: string,
+): Promise<StudentWikiDoc[]> {
+  const params: Record<string, string> = {};
+  if (resourceId) {
+    params.resourceId = resourceId;
+  }
+  if (folderId) {
+    params.folderId = folderId;
+  }
+  return get('/studentWiki/list', Object.keys(params).length ? params : undefined);
+}
+
+/** 新建知识页子文件夹（parentFolderId 不传=建在知识页根目录下），返回文件夹ID */
+export function createWikiFolder(name: string, parentFolderId?: string): Promise<string> {
+  return post('/studentWiki/folder/create', null, { params: { name, parentFolderId } });
+}
+
+/** 移动知识页到子文件夹（folderId 不传=移回知识页根目录） */
+export function moveWikiDoc(docId: string, folderId?: string): Promise<void> {
+  return post('/studentWiki/move', null, { params: { docId, folderId } });
+}
+
+/** 删除知识页子文件夹（其中知识页自动回到根目录） */
+export function deleteWikiFolder(folderId: string): Promise<void> {
+  return del('/studentWiki/folder', { folderId });
 }
 
 export function deleteStudentWiki(docId: string): Promise<void> {

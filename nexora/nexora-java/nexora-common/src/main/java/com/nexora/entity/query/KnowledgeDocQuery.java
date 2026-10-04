@@ -44,6 +44,21 @@ public class KnowledgeDocQuery extends BaseParam {
 	private String knowledgePointIdFuzzy;
 
 	/**
+	 * 知识页子文件夹（仅学生个人知识页列表过滤用；NULL=不过滤）
+	 */
+	private String folderId;
+
+	/**
+	 * 仅查根目录知识页（folder_id IS NULL）
+	 */
+	private Boolean folderIdNull;
+
+	/**
+	 * 知识页子文件夹集合（批量：删除文件夹时把子树内知识页一并归位；NULL=不过滤）
+	 */
+	private List<String> folderIds;
+
+	/**
 	 * 学科过滤（仅管理端知识目录按学科节点筛选用；文档表无学科列，经 knowledge_point.subject 子查询）
 	 */
 	private String subject;
@@ -212,6 +227,30 @@ public class KnowledgeDocQuery extends BaseParam {
 
 	public String getKnowledgePointIdFuzzy(){
 		return this.knowledgePointIdFuzzy;
+	}
+
+	public void setFolderId(String folderId){
+		this.folderId = folderId;
+	}
+
+	public String getFolderId(){
+		return this.folderId;
+	}
+
+	public void setFolderIdNull(Boolean folderIdNull){
+		this.folderIdNull = folderIdNull;
+	}
+
+	public void setFolderIds(List<String> folderIds){
+		this.folderIds = folderIds;
+	}
+
+	public List<String> getFolderIds(){
+		return this.folderIds;
+	}
+
+	public Boolean getFolderIdNull(){
+		return this.folderIdNull;
 	}
 
 	public void setSubject(String subject){

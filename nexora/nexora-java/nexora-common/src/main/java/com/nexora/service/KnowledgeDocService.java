@@ -69,4 +69,14 @@ public interface KnowledgeDocService {
 	 */
 	Integer deleteKnowledgeDocByDocId(String docId);
 
+	/**
+	 * 改写所属知识页子文件夹（folderId 为 null 表示移回知识页根目录）
+	 */
+	Integer updateKnowledgeDocFolder(String folderId, java.util.Date updateTime, String docId);
+
+	/**
+	 * 批量移回知识页根目录（删除子文件夹时，其子树内知识页一并归位）
+	 */
+	Integer updateKnowledgeDocFolderToNullBatch(List<String> docIds, java.util.Date updateTime);
+
 }

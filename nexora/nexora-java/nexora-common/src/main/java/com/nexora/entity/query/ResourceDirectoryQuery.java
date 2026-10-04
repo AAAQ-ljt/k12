@@ -1,5 +1,7 @@
 package com.nexora.entity.query;
 
+import java.util.List;
+
 /**
  * 资源目录表查询参数
  */
@@ -29,6 +31,11 @@ public class ResourceDirectoryQuery extends BaseParam {
      * 仅查询管理端公共目录（owner_id IS NULL）
      */
     private Boolean ownerIdNull;
+
+    /**
+     * 目录ID集合（批量删除知识页子文件夹子树用；NULL=不过滤）
+     */
+    private List<String> dirIds;
 
     public String getDirId() {
         return dirId;
@@ -92,5 +99,13 @@ public class ResourceDirectoryQuery extends BaseParam {
 
     public void setOwnerIdNull(Boolean ownerIdNull) {
         this.ownerIdNull = ownerIdNull;
+    }
+
+    public List<String> getDirIds() {
+        return dirIds;
+    }
+
+    public void setDirIds(List<String> dirIds) {
+        this.dirIds = dirIds;
     }
 }
