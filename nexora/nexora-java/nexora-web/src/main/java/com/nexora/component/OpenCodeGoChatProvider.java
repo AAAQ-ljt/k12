@@ -46,6 +46,15 @@ public class OpenCodeGoChatProvider implements ChatProvider {
     private static final String DEFAULT_SESSION_ID =
             "nexora-web-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
 
+    /**
+     * 专属 User-Agent（2026-10-04）：网关前置 Cloudflare 会对"通用 HTTP 库 UA"做客户端指纹风控——
+     * 实测同一请求用 Python-urllib 默认 UA 直接 403（error code: 1010），换成专属 UA 后 200；
+     * 官方文档（2026-10-03 更新）同样要求"发送自身专属 user agent（如 my-coding-agent/1.0），
+     * 而不是通用的 SDK 或 HTTP 库名称"。此前未设置，实际发出的是 JDK HttpClient 默认的
+     * "Java-http-client/21..."，属被风控特征，这也是线上间歇 400/403 的根因。
+     */
+    private static final String CLIENT_USER_AGENT = "nexora-web/1.0";
+
     /** 构造时用于拷贝工具调用管理器等内部组件的自动装配模型 */
     @Resource
     private OpenAiChatModel openAiChatModel;
@@ -126,6 +135,17 @@ public class OpenCodeGoChatProvider implements ChatProvider {
         return reasoningEffort;
     }
 
+    /**
+     * 禁用并行工具调用：Spring AI 1.1.2 的流式聚合只支持单 tool_call，
+     * 而 glm-5.3-flash 经网关默认会并行返回多个工具调用（实测同一问句 2 个），
+     * 触发 IllegalStateException("Currently only one tool call is supported per message") 导致整轮失败。
+     * 显式传 false 后实测模型改为逐个调用，功能不变、仅多一轮往返。
+     */
+    @Override
+    public Boolean parallelToolCalls() {
+        return Boolean.FALSE;
+    }
+
     private ChatClient build() {
         if (StringTools.isEmpty(apiKey)) {
             throw new BusinessException("OpenCode Go 未配置 API Key：请设置环境变量 NEXORA_OPENCODE_GO_API_KEY 后重启服务");
@@ -134,6 +154,8 @@ public class OpenCodeGoChatProvider implements ChatProvider {
 
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("x-opencode-session", session);
+        // 专属 UA：规避 Cloudflare 对通用 HTTP 库客户端的指纹风控（见 CLIENT_USER_AGENT 注释）
+        headers.add("User-Agent", CLIENT_USER_AGENT);
 
         OpenAiApi openAiApi = OpenAiApi.builder()
                 .baseUrl(baseUrl)

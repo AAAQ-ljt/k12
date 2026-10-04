@@ -50,6 +50,47 @@ function restoreEmojiPlaceholders(text: string): string {
   });
 }
 
+/** 代码围栏标记（``` / ~~~）：围栏内的行不做 Markdown 规范化，避免改写代码注释等 */
+const MD_FENCE_RE = /^\s*(`{3,}|~{3,})/;
+
+/**
+ * Markdown 规范化（渲染层兜底）：模型偶发用"中文习惯"输出无空格 Markdown
+ * （2026-10-04 实测模型复述教材时输出 `##一、`/`###1.原始社会`/`-基本单位`），
+ * CommonMark 要求标题 # 后、列表符后必须留空格，否则整行按普通文本原样显示。
+ * 逐行处理，跳过代码围栏内的行；只补空格、不动其他字符：
+ * - 行首 #{1,6} 后紧跟非空格/非 # 字符 → 补一个空格（`##一、` → `## 一、`）；
+ * - 行首 `-` 后紧跟中文字符 → 补一个空格（`-基本单位` → `- 基本单位`；不碰 `---` 分隔线与算式）；
+ * - 行首 `数字.`/`数字)` 后紧跟中文字符 → 补一个空格（`1.原始社会` → `1. 原始社会`）。
+ */
+function normalizeMarkdown(text: string): string {
+  if (!/[#\-\d]/.test(text)) {
+    return text;
+  }
+  let fence: string | null = null;
+  return text
+    .split('\n')
+    .map((line) => {
+      const fenceMatch = MD_FENCE_RE.exec(line);
+      if (fenceMatch) {
+        const marker = fenceMatch[1][0];
+        if (fence === null) {
+          fence = marker;
+        } else if (fence === marker) {
+          fence = null;
+        }
+        return line;
+      }
+      if (fence !== null) {
+        return line;
+      }
+      return line
+        .replace(/^(#{1,6})(?=[^\s#])/, '$1 ')
+        .replace(/^(\s*)-(?=[\u4e00-\u9fff])/, '$1- ')
+        .replace(/^(\s*)(\d{1,3}[.)])(?=[\u4e00-\u9fff])/, '$1$2 ');
+    })
+    .join('\n');
+}
+
 /**
  * Markdown + LaTeX 数学公式渲染：支持 **加粗** / `行内代码` / 表格(GFM) / $...$ 与 $$...$$ 公式。
  * 用于题目题干、选项、解析，适配题库中以 Markdown 录入的数学内容。
@@ -74,7 +115,7 @@ export default function MathMarkdown({
         ),
       }}
     >
-      {children ? restoreEmojiPlaceholders(String(children)) : ''}
+      {children ? restoreEmojiPlaceholders(normalizeMarkdown(String(children))) : ''}
     </ReactMarkdown>
   );
 }

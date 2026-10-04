@@ -44,4 +44,17 @@ public interface ChatProvider {
      * @param withImage 本次请求是否携带图片
      */
     String reasoningEffort(boolean withImage);
+
+    /**
+     * 本次请求要传给模型的 parallel_tool_calls 取值；返回 null 表示**不带该参数**。
+     *
+     * 供应商级差异，原因：Spring AI 1.1.2 的流式工具调用聚合（OpenAiStreamFunctionCallingHelper.merge）
+     * 只支持「一条消息一个工具调用」，模型返回多个并行 tool_calls 时直接抛
+     * IllegalStateException("Currently only one tool call is supported per message")。
+     * OpenCode Go 的 glm-5.3-flash 经网关默认并行调用（2026-10-04 实测同一问句返回 2 个 tool_calls），
+     * 必须显式传 false 让它逐个串行调用；DeepSeek 直连未触发该问题，保持不带参数（null）。
+     */
+    default Boolean parallelToolCalls() {
+        return null;
+    }
 }

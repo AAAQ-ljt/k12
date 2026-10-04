@@ -94,3 +94,5 @@ ResponseVO<T> 统一返回结构:
 - 每次编译 / 启动前：确认相关端口未被占用；若被占用且是旧服务进程，先停掉再继续（用户也会提前停）。
 - 启动服务验证功能后：主动关闭自己启动的服务与端口，把环境交还给用户（用户再自行启动验收）。
 - 编译 / 启动期间遇到问题可以反复修复重试；不修改 maven / npm 公共配置（settings.xml、registry 等），如需变更先说明。
+- **服务启动 / 重启顺序（2026-10-04 新增，本地与服务器一致）**：**先启动 `nexora-mcp`（8084），等就绪（5-8 秒）后再启动 `nexora-web` / `nexora-admin`**。AI 助教的 MCP 工具能力（教材检索 / 知识页 / 课程 / 掌握度）由 MCP 服务提供，先起 MCP 才能保证服务恢复后第一轮对话的工具能力即刻可用；MCP 未起时 web 仍可启动、对话照常，但本轮不挂任何 MCP 工具。
+- Maven 命令必须按 `nexora/docs/开发流程.md` §工具链约定执行：`-s nexora/.maven-settings.xml` 指定本地仓库 `E:\develop_software\java\maven\nexora_repo`，并设 `MAVEN_OPTS=-Dfile.encoding=UTF-8`。

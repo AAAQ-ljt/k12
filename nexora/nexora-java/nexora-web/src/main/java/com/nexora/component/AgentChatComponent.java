@@ -35,6 +35,7 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MimeType;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.net.URI;
 import java.nio.file.Files;
@@ -371,6 +372,11 @@ public class AgentChatComponent {
             String effort = provider.reasoningEffort(withImage);
             if (!StringTools.isEmpty(effort)) {
                 optionsBuilder.reasoningEffort(effort);
+            }
+            // 是否传 parallel_tool_calls 也由供应商决定（GLM 必须禁用以规避 Spring AI 流式的单工具调用限制）
+            Boolean parallelToolCalls = provider.parallelToolCalls();
+            if (parallelToolCalls != null) {
+                optionsBuilder.parallelToolCalls(parallelToolCalls);
             }
             OpenAiChatOptions options = optionsBuilder.build();
 
@@ -831,6 +837,21 @@ public class AgentChatComponent {
         if (error == null) {
             return "AI 调用失败";
         }
+        // 网关类错误优先带上响应体（Cloudflare/opencode 的 4xx 会在 body 里写明原因，如 error code:1010、
+        // InvalidRequestError 等；此前只记 "400 Bad Request" 拿不到依据，排障全靠猜）
+        Throwable cursor = error;
+        for (int guard = 0; cursor != null && guard < 10; guard++) {
+            if (cursor instanceof WebClientResponseException responseException) {
+                String body = responseException.getResponseBodyAsString();
+                if (!StringTools.isEmpty(body)) {
+                    String detail = responseException.getMessage() + " | body: " + body.trim();
+                    // error_info 列宽 500，留余量截断
+                    return detail.length() > 460 ? detail.substring(0, 460) : detail;
+                }
+                break;
+            }
+            cursor = cursor.getCause();
+        }
         String detail = error.getMessage();
         if (StringTools.isEmpty(detail)) {
             return "AI 调用失败";
@@ -914,9 +935,22 @@ public class AgentChatComponent {
         }
         // 产品功能自述块：不依赖 MCP 始终注入（按学段生成，防止介绍能力时漏掉绘本/编程等内建功能）
         String withProduct = appendProductCapabilities(promptWithRag, user.getStage());
+        // 输出格式规范：与前端渲染层规范化双保险（模型偶发输出无空格标题/列表导致前端原样显示源码）
+        String withFormat = withProduct + "\n\n" + MARKDOWN_FORMAT_RULE;
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力
-        return appendMcpCapabilities(withProduct, tools);
+        return appendMcpCapabilities(withFormat, tools);
     }
+
+    /**
+     * 输出格式规范（2026-10-04 新增，与前端 MathMarkdown 的 normalizeMarkdown 双保险）：
+     * 实测模型复述教材时用"中文习惯"输出无空格 Markdown（##一、/###1.原始社会/-基本单位），
+     * CommonMark 不识别导致前端整行原样显示源码；提示词侧先约束，前端渲染层再兜底。
+     */
+    private static final String MARKDOWN_FORMAT_RULE = """
+            ## 输出格式规范（必须遵守）
+            1. Markdown 标题的 # 后必须留一个空格：写 `## 一、小节名`，不要写 `##一、小节名`；
+            2. 列表项符号后必须留一个空格：写 `- 内容`，不要写 `-内容`；有序列表同理：写 `1. 内容`；
+            3. 加粗、公式保持 `**加粗**`、`$公式$` 的规范写法；标题与列表独占一行，不要和其它文字挤在同一行。""";
 
     /** 小学低 / 高年级编码（产品功能块的学段分支） */
     private static final String STAGE_PRIMARY_LOW = "PRIMARY_LOW";

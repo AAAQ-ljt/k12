@@ -77,4 +77,9 @@ public class ChatProviderRouter implements ChatProvider {
     public String reasoningEffort(boolean withImage) {
         return current().reasoningEffort(withImage);
     }
+
+    @Override
+    public Boolean parallelToolCalls() {
+        return current().parallelToolCalls();
+    }
 }
