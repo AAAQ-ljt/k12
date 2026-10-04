@@ -268,6 +268,36 @@
   font-size: var(--font-size-base);
   line-height: 1.7;
   word-break: break-word;
+  overflow-wrap: anywhere;
+
+  /* Markdown 产物溢出兜底（2026-10-04）：模型偶发输出长代码行 / 未正确换行的 ``` 围栏文本，
+     <pre> 默认 white-space: pre 不换行，会把气泡顶宽、聊天区被撑出横向滚动条、文字右侧被裁掉。
+     这里统一让 pre/表格在自身内部横向滚动、行内长 token 强制换行、图片视频不超宽。 */
+  :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.05);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  :global(code) {
+    overflow-wrap: anywhere;
+  }
+
+  :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  :global(img),
+  :global(video) {
+    max-width: 100%;
+  }
 }
 
 .bubbleUser {

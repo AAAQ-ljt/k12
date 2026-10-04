@@ -54,6 +54,23 @@ function restoreEmojiPlaceholders(text: string): string {
 const MD_FENCE_RE = /^\s*(`{3,}|~{3,})/;
 
 /**
+ * 行内粘连围栏（2026-10-04 实测）：模型偶发把围栏贴在标题/正文行里
+ * （如 `## 🗂️目录结构```text知识页根目录...`，下一行再补一个孤立 ```）。
+ * CommonMark 会把粘连行按"行内代码"处理显示字面量 ```，而孤立行会开启代码块把后续内容全吞掉。
+ */
+const MD_GLUED_FENCE_RE = /^([^`~]*?)(`{3,}|~{3,})([A-Za-z0-9_+.#-]*)(.*)$/;
+
+/** 单独成行的围栏标记（粘连修复时的配对闭合来源） */
+const MD_LONE_FENCE_RE = /^\s*(`{3,}|~{3,})\s*$/;
+
+/** 粘连围栏允许的语言标识白名单：只修常见代码语言，避免误伤正文里的行内代码片段 */
+const MD_FENCE_LANGS = new Set([
+  '', 'text', 'plaintext', 'markdown', 'md', 'python', 'py', 'java', 'js', 'javascript',
+  'ts', 'typescript', 'json', 'bash', 'sh', 'shell', 'sql', 'html', 'css', 'xml', 'yaml',
+  'yml', 'ini', 'diff', 'mermaid', 'c', 'cpp', 'go', 'rust',
+]);
+
+/**
  * Markdown 规范化（渲染层兜底）：模型偶发用"中文习惯"输出无空格 Markdown
  * （2026-10-04 实测模型复述教材时输出 `##一、`/`###1.原始社会`/`-基本单位`），
  * CommonMark 要求标题 # 后、列表符后必须留空格，否则整行按普通文本原样显示。
@@ -61,34 +78,65 @@ const MD_FENCE_RE = /^\s*(`{3,}|~{3,})/;
  * - 行首 #{1,6} 后紧跟非空格/非 # 字符 → 补一个空格（`##一、` → `## 一、`）；
  * - 行首 `-` 后紧跟中文字符 → 补一个空格（`-基本单位` → `- 基本单位`；不碰 `---` 分隔线与算式）；
  * - 行首 `数字.`/`数字)` 后紧跟中文字符 → 补一个空格（`1.原始社会` → `1. 原始社会`）。
+ * 同时修复"粘连围栏"：`前缀```lang内容` → 前缀 / ```lang / 内容 / 闭合
+ * （下一行是孤立围栏则借用其闭合，否则单行自闭；围栏整体未闭合时在文末兜底闭合）。
  */
 function normalizeMarkdown(text: string): string {
-  if (!/[#\-\d]/.test(text)) {
+  if (!/[#\-\d`~]/.test(text)) {
     return text;
   }
+  const normalizeLine = (line: string) => line
+    .replace(/^(#{1,6})(?=[^\s#])/, '$1 ')
+    .replace(/^(\s*)-(?=[\u4e00-\u9fff])/, '$1- ')
+    .replace(/^(\s*)(\d{1,3}[.)])(?=[\u4e00-\u9fff])/, '$1$2 ');
+  const lines = text.split('\n');
+  const out: string[] = [];
   let fence: string | null = null;
-  return text
-    .split('\n')
-    .map((line) => {
-      const fenceMatch = MD_FENCE_RE.exec(line);
-      if (fenceMatch) {
-        const marker = fenceMatch[1][0];
-        if (fence === null) {
-          fence = marker;
-        } else if (fence === marker) {
-          fence = null;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const fenceMatch = MD_FENCE_RE.exec(line);
+    if (fenceMatch) {
+      const marker = fenceMatch[1][0];
+      if (fence === null) {
+        fence = marker;
+      } else if (fence === marker) {
+        fence = null;
+      }
+      out.push(line);
+      continue;
+    }
+    if (fence !== null) {
+      out.push(line);
+      continue;
+    }
+    const glued = MD_GLUED_FENCE_RE.exec(line);
+    if (glued && glued[1].trim() !== '' && MD_FENCE_LANGS.has(glued[3].toLowerCase())) {
+      const prefix = normalizeLine(glued[1].replace(/\s+$/, ''));
+      const marker = glued[2];
+      const rest = glued[4].replace(/^\s+/, '');
+      const next = i + 1 < lines.length ? lines[i + 1] : '';
+      const nextIsCloser = MD_LONE_FENCE_RE.test(next) && next.trim().length === marker.length;
+      if (rest !== '') {
+        out.push(prefix, marker + glued[3], rest);
+        if (nextIsCloser) {
+          out.push(next.trim());
+          i += 1;
+        } else {
+          out.push(marker);
         }
-        return line;
+        continue;
       }
-      if (fence !== null) {
-        return line;
-      }
-      return line
-        .replace(/^(#{1,6})(?=[^\s#])/, '$1 ')
-        .replace(/^(\s*)-(?=[\u4e00-\u9fff])/, '$1- ')
-        .replace(/^(\s*)(\d{1,3}[.)])(?=[\u4e00-\u9fff])/, '$1$2 ');
-    })
-    .join('\n');
+      // 只有围栏、内容在后续行：拆成正常围栏起始行，交给围栏状态机
+      out.push(prefix, marker + glued[3]);
+      fence = marker[0];
+      continue;
+    }
+    out.push(normalizeLine(line));
+  }
+  if (fence !== null) {
+    out.push('```');
+  }
+  return out.join('\n');
 }
 
 /**
