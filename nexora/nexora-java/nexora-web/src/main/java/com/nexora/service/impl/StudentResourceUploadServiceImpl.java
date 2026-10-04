@@ -149,6 +149,9 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
         session.setTempDir(tempRelativeDir);
         redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION + uploadId,
                 JSON.toJSONString(session), sessionTtlMinutes, TimeUnit.MINUTES);
+        // 反查键（与上传会话同 TTL）：僵尸记录探活用，进程重启/中断后据此判定该资源已无进行中的上传
+        redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE + resourceId,
+                uploadId, sessionTtlMinutes, TimeUnit.MINUTES);
 
         StudentUploadSessionVO vo = new StudentUploadSessionVO();
         vo.setUploadId(uploadId);
@@ -251,12 +254,9 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             update.setStatus(1);
             update.setUpdateTime(new Date());
             resourceInfoService.updateResourceInfoByResourceId(update, session.getResourceId());
-            // 两段式：文档上传仅保存原始资源，由用户「生成 Wiki」后确认才向量化；
-            // 图片/视频上传自动建「标题+简介」知识页草稿（dataType=IMAGE/VIDEO），用户确认后入库（7.15）
-            if ("IMAGE".equalsIgnoreCase(session.getResourceType())
-                    || "VIDEO".equalsIgnoreCase(session.getResourceType())) {
-                createLightweightKnowledgeDoc(session);
-            }
+            // 两段式：文档上传仅保存原始资源，由用户「生成 Wiki」后确认才向量化。
+            // 图片/视频不再自动建知识页草稿（2026-10-04 用户反馈：知识页应是文档，图片只作为附件
+            // 留在资源中心即可，此前自动建的空壳草稿让知识页列表混入图片条目造成困惑）。
             log.info("学生资源处理完成 resourceId={} filePath={}", session.getResourceId(), filePath);
         } catch (Exception e) {
             log.error("学生资源处理失败 uploadId={} resourceId={}", uploadId, session.getResourceId(), e);
@@ -266,61 +266,18 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             resourceInfoService.updateResourceInfoByResourceId(update, session.getResourceId());
         } finally {
             deleteDirectory(tempAbsDir);
+            // 反查键随会话一并清理：状态已收敛（成功/失败），不再需要探活
+            if (!StringTools.isEmpty(session.getResourceId())) {
+                redisComponent.removeKey(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE
+                        + session.getResourceId());
+            }
             removeRedisSession(uploadId);
         }
     }
 
     /**
-     * 图片/视频轻量知识页草稿：content = 标题 + 简介，随资源简介更新；用户在知识页确认后向量化
-     */
-    private void createLightweightKnowledgeDoc(StudentResourceUploadSession session) {
-        String dataType = "IMAGE".equalsIgnoreCase(session.getResourceType()) ? "IMAGE" : "VIDEO";
-        try {
-            KnowledgeDocQuery query = new KnowledgeDocQuery();
-            query.setOwnerId(session.getOwnerId());
-            query.setSourceResourceId(session.getResourceId());
-            List<KnowledgeDoc> existing = knowledgeDocService.findListByParam(query);
-            if (existing != null && !existing.isEmpty()) {
-                return;
-            }
-            String content = buildLightweightContent(session.getResourceName(), null);
-            Date now = new Date();
-            KnowledgeDoc doc = new KnowledgeDoc();
-            doc.setDocId(UUID.randomUUID().toString().replace("-", ""));
-            doc.setTitle(session.getResourceName());
-            doc.setStage(session.getStage());
-            doc.setOwnerId(session.getOwnerId());
-            doc.setKnowledgePointId("0");
-            doc.setDifficulty(1);
-            doc.setDataType(dataType);
-            doc.setContent(content);
-            doc.setSourceType(1);
-            doc.setSourceResourceId(session.getResourceId());
-            doc.setVectorStatus(0);
-            doc.setVectorError(null);
-            doc.setChunkCount(0);
-            doc.setStatus(1);
-            doc.setCreateTime(now);
-            doc.setUpdateTime(now);
-            knowledgeDocService.add(doc);
-        } catch (Exception e) {
-            log.error("图片/视频轻量知识页草稿创建失败 resourceId={}", session.getResourceId(), e);
-        }
-    }
-
-    /**
-     * 轻量内容模板：自动生成的 content 以「标题：」开头，便于确认时识别并可刷新
-     */
-    private String buildLightweightContent(String title, String description) {
-        String content = "标题：" + (title == null ? "" : title);
-        if (description != null && !description.isBlank()) {
-            content += "\n简介：" + description.trim();
-        }
-        return content;
-    }
-
-    /**
-     * 确认图片/视频知识页时刷新为最新标题+简介（用户手动编辑过的内容不覆盖）
+     * 确认图片/视频知识页时刷新为最新标题+简介（用户手动编辑过的内容不覆盖）；
+     * 仅服务存量图片/视频知识页（新上传已不再自动建知识页草稿）
      */
     public static String refreshLightweightContent(String currentContent, String title, String description) {
         if (currentContent == null || !currentContent.startsWith("标题：")) {

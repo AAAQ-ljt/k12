@@ -121,6 +121,9 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
         session.setTempDir(tempRelativeDir);
         redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION + uploadId,
                 JSON.toJSONString(session), sessionTtlMinutes, TimeUnit.MINUTES);
+        // 反查键（与上传会话同 TTL）：僵尸记录探活用，进程重启/中断后据此判定该资源已无进行中的上传
+        redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE + resourceId,
+                uploadId, sessionTtlMinutes, TimeUnit.MINUTES);
 
         ResourceUploadSessionVO vo = new ResourceUploadSessionVO();
         vo.setUploadId(uploadId);
@@ -231,6 +234,11 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
             resourceInfoService.updateResourceInfoByResourceId(update, session.getResourceId());
         } finally {
             deleteDirectory(tempAbsDir);
+            // 反查键随会话一并清理：状态已收敛（成功/失败），不再需要探活
+            if (!StringTools.isEmpty(session.getResourceId())) {
+                redisComponent.removeKey(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE
+                        + session.getResourceId());
+            }
             removeRedisSession(uploadId);
         }
     }

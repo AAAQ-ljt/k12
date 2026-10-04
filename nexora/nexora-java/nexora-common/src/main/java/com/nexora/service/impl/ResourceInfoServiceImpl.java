@@ -1,5 +1,6 @@
 package com.nexora.service.impl;
 
+import java.util.Date;
 import java.util.List;
 
 import jakarta.annotation.Resource;
@@ -145,5 +146,16 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
 	@Override
 	public Long getUsedSizeByOwner(String ownerId) {
 		return this.resourceInfoMapper.selectUsedSizeByOwner(ownerId);
+	}
+
+	/**
+	 * 批量改状态（僵尸记录清理：把确认无进行中上传的「处理中」资源置为失败）
+	 */
+	@Override
+	public Integer updateStatusBatch(List<String> resourceIds, Integer status) {
+		if (resourceIds == null || resourceIds.isEmpty()) {
+			return 0;
+		}
+		return this.resourceInfoMapper.updateStatusByIds(resourceIds, status, new Date());
 	}
 }

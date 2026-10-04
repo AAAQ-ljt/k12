@@ -148,6 +148,11 @@ public class ResourceInfoQuery extends BaseParam {
 
 	private String updateTimeEnd;
 
+	/**
+	 * 更新时间早于该时刻（精确到秒，僵尸记录探活用；NULL=不过滤）
+	 */
+	private java.util.Date updateTimeBefore;
+
 
 	public void setResourceId(String resourceId){
 		this.resourceId = resourceId;
@@ -433,6 +438,14 @@ public class ResourceInfoQuery extends BaseParam {
 
 	public String getUpdateTimeEnd(){
 		return this.updateTimeEnd;
+	}
+
+	public void setUpdateTimeBefore(java.util.Date updateTimeBefore){
+		this.updateTimeBefore = updateTimeBefore;
+	}
+
+	public java.util.Date getUpdateTimeBefore(){
+		return this.updateTimeBefore;
 	}
 
 }

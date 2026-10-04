@@ -53,6 +53,11 @@ public class Constants {
     public static final String REDIS_KEY_RESOURCE_UPLOAD_SESSION = "resource:upload:session:";
 
     /**
+     * Redis key 前缀：资源ID → 上传会话ID 反查（僵尸记录探活用：无会话即上传/处理已终结）
+     */
+    public static final String REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE = "resource:upload:session:byResource:";
+
+    /**
      * Redis key 前缀：资源分片上传已收分片集合
      */
     public static final String REDIS_KEY_RESOURCE_UPLOAD_SHARDS = "resource:upload:shards:";

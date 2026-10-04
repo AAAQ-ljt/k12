@@ -408,11 +408,12 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
-     * 删除资源
+     * 删除资源（2026-10-04 起放宽：失败/处理中的资源也允许删除——
+     * 上传中断产生的僵尸记录必须能清掉；仅校验"管理端资源"归属，不再要求「可用」状态）
      */
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String resourceId) {
-        assertPublicResource(resourceId);
+        assertDeletablePublicResource(resourceId);
         resourceInfoService.deleteResourceInfoByResourceId(resourceId);
         return getSuccessResponseVO(null);
     }
@@ -437,7 +438,7 @@ public class ResourceInfoController extends ABaseController {
         if (resourceIds != null) {
             for (String resourceId : resourceIds) {
                 if (!StringTools.isEmpty(resourceId)) {
-                    assertPublicResource(resourceId);
+                    assertDeletablePublicResource(resourceId);
                     resourceInfoService.deleteResourceInfoByResourceId(resourceId);
                 }
             }
@@ -522,6 +523,18 @@ public class ResourceInfoController extends ABaseController {
 
     private void assertPublicResource(String resourceId) {
         if (getReadyResource(resourceId) == null) {
+            throw new BusinessException("资源不存在或不可操作");
+        }
+    }
+
+    /**
+     * 删除用校验（2026-10-04）：仅要求资源存在且为管理端资源（owner 为空），
+     * 不要求「可用」状态——上传中断产生的失败/处理中僵尸记录必须允许删除
+     */
+    private void assertDeletablePublicResource(String resourceId) {
+        ResourceInfo resource = StringTools.isEmpty(resourceId)
+                ? null : resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null || !StringTools.isEmpty(resource.getOwnerId())) {
             throw new BusinessException("资源不存在或不可操作");
         }
     }
