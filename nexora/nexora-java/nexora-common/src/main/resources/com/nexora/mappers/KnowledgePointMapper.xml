@@ -43,6 +43,10 @@
 			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
 				 and  k.knowledge_point_id = #{query.knowledgePointId}
 			</if>
+			<if test="query.knowledgePointIds != null and query.knowledgePointIds.size() > 0">
+				 and  k.knowledge_point_id in
+				 <foreach collection="query.knowledgePointIds" item="kpId" open="(" separator="," close=")">#{kpId}</foreach>
+			</if>
 			<if test="query.name != null and query.name!=''">
 				 and  k.name = #{query.name}
 			</if>
