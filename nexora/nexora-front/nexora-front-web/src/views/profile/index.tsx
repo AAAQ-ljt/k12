@@ -52,6 +52,8 @@ export default function Profile() {
   const [dueExpanded, setDueExpanded] = useState(false);
 
   const stage = userInfo?.stage;
+  /** 小学段无学习路径入口（导航同规则）：隐藏「最近学习路线」卡片，待办提示也不提路线 */
+  const isPrimary = stage === 'PRIMARY_LOW' || stage === 'PRIMARY_HIGH';
   const stageLabel = stage ? getStageOption(stage)?.label : '';
   const gradeText = getGradeText(userInfo);
 
@@ -322,13 +324,18 @@ export default function Profile() {
                     {dueExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   </Button>
                 ) : null}
-                <div className={styles.dueTip}>点击会在学习路线中定位该知识点做节点快测；不在路线内则转 AI 助教对话复习</div>
+                <div className={styles.dueTip}>
+                  {isPrimary
+                    ? '点击将转 AI 助教对话，帮你出题复习巩固'
+                    : '点击会在学习路线中定位该知识点做节点快测；不在路线内则转 AI 助教对话复习'}
+                </div>
               </div>
             ) : (
               <div className={styles.emptyTip}>今天没有待复习的知识点，继续保持！</div>
             )}
           </Card>
 
+          {!isPrimary ? (
           <Card>
             <div className={styles.cardTitle}>
               <Route size={16} />
@@ -363,6 +370,7 @@ export default function Profile() {
               </div>
             )}
           </Card>
+          ) : null}
 
           <Card>
             <div className={styles.cardTitle}>

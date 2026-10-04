@@ -38,6 +38,29 @@
   padding: 2px 2px 20px;
 }
 
+/* 「我的课程」筛选栏：搜索 + 学段/学科下拉 + 结果计数 */
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.searchInput {
+  max-width: 260px;
+}
+
+.filterSelect {
+  width: 150px;
+}
+
+.filterCount {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
 .loadingBox,
 .emptyBox {
   grid-column: 1 / -1;

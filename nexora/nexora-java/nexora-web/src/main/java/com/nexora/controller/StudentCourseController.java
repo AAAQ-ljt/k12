@@ -95,7 +95,8 @@ public class StudentCourseController extends ABaseController {
             query.setPageSize(20);
         }
         query.setStatus(1);
-        applyGradeFilter(query, current);
+        // 「我的课程」展示该学生加入过的全部课程（不再按当前年段过滤）：
+        // 学生升级/换年级后仍能看到此前加入的课程；学段/学科筛选与搜索由前端完成（2026-10-04 用户需求）
         List<String> joinedIds = joinedCourseIds(current == null ? null : current.getUserId());
         if (joinedIds.isEmpty()) {
             return getSuccessResponseVO(new PaginationResultVO<>(0, query.getPageSize(), 1, List.of()));
@@ -174,11 +175,15 @@ public class StudentCourseController extends ABaseController {
     public ResponseVO<CourseDetailVO> getDetail(@RequestParam String courseId) {
         TokenUserInfoDTO current = LoginUserContext.get();
         CourseInfo course = courseInfoService.getCourseInfoByCourseId(courseId);
-        if (course == null || course.getStatus() == null || course.getStatus() != 1
-                || !courseVisibleTo(course, current)) {
+        if (course == null || course.getStatus() == null || course.getStatus() != 1) {
             throw new BusinessException("课程不存在或暂不可用");
         }
+        // 已加入的课程不受当前年级可见性限制：学生升级/换年级后仍可继续学习此前的课程
+        // （「我的课程」2026-10-04 起展示全部已加入课程，详情页口径必须一致）
         boolean enrolled = isEnrolled(current.getUserId(), courseId);
+        if (!enrolled && !courseVisibleTo(course, current)) {
+            throw new BusinessException("课程不存在或暂不可用");
+        }
 
         CourseDetailVO detail = new CourseDetailVO();
         detail.setCourse(course);
@@ -213,11 +218,14 @@ public class StudentCourseController extends ABaseController {
     public ResponseVO<KnowledgeDoc> syncWiki(@RequestParam String courseId) {
         TokenUserInfoDTO current = LoginUserContext.get();
         CourseInfo course = courseInfoService.getCourseInfoByCourseId(courseId);
-        if (course == null || course.getStatus() == null || course.getStatus() != 1
-                || !courseVisibleTo(course, current)) {
+        if (course == null || course.getStatus() == null || course.getStatus() != 1) {
             throw new BusinessException("课程不存在或暂不可用");
         }
         if (!isEnrolled(current.getUserId(), courseId)) {
+            // 未加入时维持年级可见性校验（未加入的老课程不允许新建立足点）
+            if (!courseVisibleTo(course, current)) {
+                throw new BusinessException("课程不存在或暂不可用");
+            }
             throw new BusinessException("请先加入该课程后再同步知识页");
         }
         String stage = StringTools.isEmpty(current.getStage()) ? course.getStage() : current.getStage();
