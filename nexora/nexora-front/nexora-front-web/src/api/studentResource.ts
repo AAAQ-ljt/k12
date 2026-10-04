@@ -88,6 +88,11 @@ export function deleteStudentResource(resourceId: string): Promise<void> {
   return del('/studentResource/del', { resourceId });
 }
 
+/** 移动资源到目标目录（仅「可用」状态；raw 及其子目录仅收 md/txt，知识页目录不收资源文件） */
+export function moveStudentResource(resourceId: string, directoryId: string): Promise<void> {
+  return put('/studentResource/move', null, { params: { resourceId, directoryId } });
+}
+
 export function prepareStudentUpload(data: {
   resourceName: string;
   resourceType: string;

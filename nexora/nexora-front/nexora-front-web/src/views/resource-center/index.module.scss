@@ -75,6 +75,26 @@
   background: rgba(255, 255, 255, 0.72);
 }
 
+/** 内容区头部：面包屑 + 右侧统计（知识页视图） */
+.filePanelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  :global(.ant-breadcrumb) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/** 统计小字（与知识页工具条解耦，避免按钮排布不一致） */
+.countHint {
+  color: var(--text-secondary, rgba(0, 0, 0, 0.45));
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .resourceName {
   overflow: hidden;
   text-overflow: ellipsis;
