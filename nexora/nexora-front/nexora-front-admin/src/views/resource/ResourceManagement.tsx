@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
 import {
+  Alert,
   App,
   Breadcrumb,
   Button,
@@ -12,6 +13,7 @@ import {
   Select,
   Space,
   Table,
+  Tag,
   Tooltip,
   Tree,
   Upload,
@@ -57,6 +59,7 @@ import {
   type ResourceDirectory,
 } from '@/api/resourceDirectory';
 import {
+  abandonUpload,
   batchDeleteResources,
   del as delResource,
   getDownloadUrl,
@@ -92,8 +95,14 @@ interface UploadJob {
   progress: number;
   uploadedShards: number;
   totalShards: number;
+  /** 会话创建后回填：列表状态列据此显示「上传中 / 上传已中断」，中断上报也依赖它 */
+  resourceId?: string;
+  uploadId?: string;
   error?: string;
 }
+
+/** 超过该大小视为大文件：上传耗时长，需要提醒管理员不要刷新 / 关闭页面 */
+const LARGE_FILE_THRESHOLD_BYTES = 20 * 1024 * 1024;
 
 type ResourceTableRow =
   | (ResourceInfo & { key: string; kind: 'file' })
@@ -189,6 +198,17 @@ export default function ResourceManagement() {
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(true);
   const activeUploadsRef = useRef(0);
+  /** 进行中的上传（resourceId → uploadId）：页面卸载时据此上报放弃，此时已读不到最新 state */
+  const inflightUploadsRef = useRef<Map<string, string>>(new Map());
+
+  /**
+   * 上报「放弃上传」（best-effort，失败不打断主流程）：
+   * 让后端立即把资源收敛为「失败」，不再无限停在「处理中」
+   */
+  const reportAbandon = (resourceId?: string, uploadId?: string, keepalive = false) => {
+    if (!resourceId) return;
+    void abandonUpload({ resourceId, uploadId }, keepalive).catch(() => undefined);
+  };
 
   const treeData = useMemo<DirNode[]>(() => {
     const roots = buildTree(dirList);
@@ -260,6 +280,55 @@ export default function ResourceManagement() {
   useEffect(() => {
     loadFiles();
   }, [loadFiles]);
+
+  const hasActiveUpload = useMemo(
+    () => uploadJobs.some((job) => job.status === 'uploading' || job.status === 'waiting'),
+    [uploadJobs],
+  );
+
+  /** resourceId → 上传任务：列表状态列据此显示「上传中 / 上传已中断」，与后端「处理中」区分开 */
+  const uploadJobByResourceId = useMemo(() => {
+    const map = new Map<string, UploadJob>();
+    uploadJobs.forEach((job) => {
+      if (job.resourceId) {
+        map.set(job.resourceId, job);
+      }
+    });
+    return map;
+  }, [uploadJobs]);
+
+  /** 上传弹窗里选中的大文件：用于提示管理员不要刷新 / 关闭页面 */
+  const largeUploadFiles = useMemo(
+    () => uploadFileList.filter((item) => (item.size ?? item.originFileObj?.size ?? 0) > LARGE_FILE_THRESHOLD_BYTES),
+    [uploadFileList],
+  );
+
+  // 有上传在进行时拦截刷新 / 关闭页面：浏览器会弹出原生二次确认
+  useEffect(() => {
+    if (!hasActiveUpload) {
+      return undefined;
+    }
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasActiveUpload]);
+
+  // 真正离开页面（刷新 / 关闭 / 跳外链）时用 keepalive 上报放弃上传：
+  // 请求会在页面销毁后继续送达，后端立即把资源收敛为「失败」
+  useEffect(() => {
+    const handlePageHide = () => {
+      inflightUploadsRef.current.forEach((uploadId, resourceId) => {
+        reportAbandon(resourceId, uploadId, true);
+      });
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+    // reportAbandon 只依赖 ref 与 api 方法，挂载时注册一次即可
+  }, []);
 
   const handleSearch = () => {
     setAppliedName(nameInput.trim());
@@ -412,6 +481,8 @@ export default function ResourceManagement() {
   };
 
   const uploadOneJob = async (job: UploadJob) => {
+    let resourceId: string | undefined;
+    let uploadId: string | undefined;
     try {
       updateUploadJob(job.id, { status: 'uploading', progress: 0 });
       const session = await prepareUpload({
@@ -422,6 +493,10 @@ export default function ResourceManagement() {
         directoryId: job.directoryId,
         stage: job.stage,
       });
+      resourceId = session.resourceId;
+      uploadId = session.uploadId;
+      inflightUploadsRef.current.set(resourceId, uploadId);
+      updateUploadJob(job.id, { resourceId, uploadId });
       await loadFiles();
       const uploaded = new Set(session.uploadedShardIndexes ?? []);
       let done = uploaded.size;
@@ -453,6 +528,12 @@ export default function ResourceManagement() {
         status: 'error',
         error: error instanceof Error ? error.message : '上传失败',
       });
+      // 分片重试耗尽 / 会话失效：主动告知后端收敛，避免记录一直挂「处理中」
+      reportAbandon(resourceId, uploadId);
+    } finally {
+      if (resourceId) {
+        inflightUploadsRef.current.delete(resourceId);
+      }
     }
   };
 
@@ -672,12 +753,29 @@ export default function ResourceManagement() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (_, record) =>
-        record.kind === 'dir' ? (
-          '-'
-        ) : (
-          <StatusTag status={String(record.status)} statusMap={RESOURCE_STATUS_MAP} />
-        ),
+      render: (_, record) => {
+        if (record.kind === 'dir') {
+          return '-';
+        }
+        // 本页有对应上传任务时以后者为准：后端此时只会写「处理中」，无法区分
+        // 「正在上传」「客户端已中断」，这里如实呈现，避免管理员误以为卡死
+        const job = uploadJobByResourceId.get(record.resourceId);
+        if (job && (job.status === 'uploading' || job.status === 'waiting')) {
+          return (
+            <Tooltip title={`正在上传 ${job.uploadedShards}/${job.totalShards} 分片，请勿刷新或关闭页面`}>
+              <Tag color="processing">{job.status === 'waiting' ? '待上传' : `上传中 ${job.progress}%`}</Tag>
+            </Tooltip>
+          );
+        }
+        if (job && job.status === 'error') {
+          return (
+            <Tooltip title={job.error ?? '上传已中断'}>
+              <Tag color="error">上传已中断</Tag>
+            </Tooltip>
+          );
+        }
+        return <StatusTag status={String(record.status)} statusMap={RESOURCE_STATUS_MAP} />;
+      },
     },
     {
       title: '更新时间',
@@ -954,6 +1052,15 @@ export default function ResourceManagement() {
               <p className={styles.uploadText}>点击或拖拽文件到此处</p>
             </Upload.Dragger>
           </Form.Item>
+          {largeUploadFiles.length > 0 && (
+            <Alert
+              className={styles.uploadLargeAlert}
+              type="warning"
+              showIcon
+              message={`已选中 ${largeUploadFiles.length} 个大文件（单个超过 ${formatBytes(LARGE_FILE_THRESHOLD_BYTES)}）`}
+              description="大文件要分片逐片上传，视网速可能需要数分钟。上传期间请不要刷新页面（F5）、关闭标签页或关闭浏览器，也不要退出登录——这些操作会中断上传，记录会停在「处理中」；切换到管理端其它页面不受影响。"
+            />
+          )}
           <Form.Item label="文件类型" name="fileType" rules={[{ required: true, message: '请选择文件类型' }]}>
             <Select options={RESOURCE_TYPE_OPTIONS} />
           </Form.Item>
@@ -997,6 +1104,12 @@ export default function ResourceManagement() {
           </div>
           {uploadPanelOpen && (
             <div className={styles.uploadPanelBody}>
+              {hasActiveUpload && (
+                <div className={styles.uploadPanelTip}>
+                  <CircleAlert size={13} />
+                  <span>上传中请勿刷新或关闭页面，否则上传会中断</span>
+                </div>
+              )}
               {uploadJobs.map((job) => (
                 <div key={job.id} className={styles.uploadJob}>
                   <div className={styles.uploadJobTitleRow}>

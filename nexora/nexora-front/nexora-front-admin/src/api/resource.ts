@@ -1,5 +1,31 @@
+import axios from 'axios';
 import { request } from './request';
+import { getToken } from '@/utils/token';
 import type { PageParam, PageResult } from '@/types/common';
+
+/** 单个分片请求的超时（毫秒）：5MB 分片在慢速上行下会远超全局 15 秒，这里单独放宽 */
+const SHARD_UPLOAD_TIMEOUT_MS = 120000;
+
+/** 分片上传最大尝试次数（含首次）：网络抖动 / 超时自动重试，业务错误不重试 */
+const SHARD_UPLOAD_MAX_ATTEMPTS = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+/** 是否值得重试：仅网络异常、超时、5xx / 408 / 429；业务码错误（会话过期、分片序号非法）重试无意义 */
+function isRetryableShardError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+  const status = error.response?.status;
+  if (status === undefined) {
+    return true;
+  }
+  return status >= 500 || status === 408 || status === 429;
+}
 
 /** 资源实体（对应后端 ResourceInfo PO） */
 export interface ResourceInfo {
@@ -92,15 +118,58 @@ export function prepareUpload(params: ResourcePrepareUploadParams): Promise<Reso
   return request.post('/resourceInfo/prepareUpload', null, { params });
 }
 
-/** 上传单个分片 */
-export function uploadShard(uploadId: string, shardIndex: number, file: Blob, fileName: string): Promise<void> {
+/** 上传单个分片（自动重试：5MB 分片在弱网下容易超时，单次失败不再直接废掉整个文件） */
+export async function uploadShard(uploadId: string, shardIndex: number, file: Blob, fileName: string): Promise<void> {
   const formData = new FormData();
   formData.append('uploadId', uploadId);
   formData.append('shardIndex', String(shardIndex));
   formData.append('file', file, fileName);
-  return request.post('/resourceInfo/uploadShard', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= SHARD_UPLOAD_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await request.post('/resourceInfo/uploadShard', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: SHARD_UPLOAD_TIMEOUT_MS,
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= SHARD_UPLOAD_MAX_ATTEMPTS || !isRetryableShardError(error)) {
+        break;
+      }
+      await sleep(attempt * 1000);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('分片上传失败');
+}
+
+/** 放弃上传上报参数 */
+export interface ResourceUploadAbandonParams {
+  uploadId?: string;
+  resourceId: string;
+}
+
+/**
+ * 上报「放弃上传」（页面关闭 / 刷新、分片重试耗尽）：让后端立即把资源收敛为「失败」，
+ * 不必再等僵尸清扫窗口。
+ *
+ * keepalive=true 时走 fetch + keepalive：页面卸载后请求仍能送达，且可携带 adminToken 头
+ * （sendBeacon 无法设置请求头，会被登录拦截器判 401，故不用）
+ */
+export function abandonUpload(params: ResourceUploadAbandonParams, keepalive = false): Promise<void> {
+  if (!keepalive) {
+    return request.post('/resourceInfo/abandonUpload', params);
+  }
+  const token = getToken();
+  return fetch('/api/resourceInfo/abandonUpload', {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { adminToken: token } : {}),
+    },
+    body: JSON.stringify(params),
+  }).then(() => undefined);
 }
 
 /** 修改资源元信息 */

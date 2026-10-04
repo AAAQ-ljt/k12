@@ -7,6 +7,7 @@ import com.nexora.admin.vo.ResourceUploadSessionVO;
 import com.nexora.component.RedisComponent;
 import com.nexora.constants.Constants;
 import com.nexora.entity.po.ResourceInfo;
+import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.StringTools;
@@ -66,6 +67,13 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
     @Value("${resource.upload-session-ttl-minutes:120}")
     private long sessionTtlMinutes;
 
+    /**
+     * 「有进行中的上传」探活窗口：反查键每次分片写入都会刷新 TTL，
+     * 超过该时长没有任何分片进展即视为已中断（僵尸清扫据此收敛）
+     */
+    @Value("${resource.upload-progress-ttl-minutes:15}")
+    private long progressTtlMinutes;
+
     @Resource
     private ResourceInfoService resourceInfoService;
 
@@ -121,9 +129,9 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
         session.setTempDir(tempRelativeDir);
         redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION + uploadId,
                 JSON.toJSONString(session), sessionTtlMinutes, TimeUnit.MINUTES);
-        // 反查键（与上传会话同 TTL）：僵尸记录探活用，进程重启/中断后据此判定该资源已无进行中的上传
+        // 反查键（进度心跳）：每次分片写入刷新 TTL；进程重启 / 客户端中断后据此判定该资源已无进行中的上传
         redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE + resourceId,
-                uploadId, sessionTtlMinutes, TimeUnit.MINUTES);
+                uploadId, progressTtlMinutes, TimeUnit.MINUTES);
 
         ResourceUploadSessionVO vo = new ResourceUploadSessionVO();
         vo.setUploadId(uploadId);
@@ -157,6 +165,9 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
 
         String shardKey = Constants.REDIS_KEY_RESOURCE_UPLOAD_SHARDS + uploadId;
         redisComponent.addToSet(shardKey, String.valueOf(shardIndex));
+        // 分片集合本身不带 TTL，这里续期：中断的上传不会在 Redis 留下永不回收的 key
+        redisComponent.expire(shardKey, progressTtlMinutes, TimeUnit.MINUTES);
+        touchProgressKey(session);
         Set<Object> uploaded = redisComponent.getSetMembers(shardKey);
         if (uploaded != null && uploaded.size() >= session.getTotalShards()) {
             String mergedKey = Constants.REDIS_KEY_RESOURCE_UPLOAD_MERGED + uploadId;
@@ -164,6 +175,41 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
                 redisComponent.leftPush(Constants.REDIS_KEY_RESOURCE_UPLOAD_QUEUE, uploadId);
             }
         }
+    }
+
+    @Override
+    public void abandon(String uploadId, String resourceId) {
+        if (StringTools.isEmpty(resourceId)) {
+            throw new BusinessException("资源ID不能为空");
+        }
+        ResourceUploadSession session = StringTools.isEmpty(uploadId) ? null : getSession(uploadId);
+        if (session != null && !resourceId.equals(session.getResourceId())) {
+            // 参数不匹配（会话已被复用或前端传错），忽略本次上报
+            log.warn("放弃上传上报与会话不匹配，已忽略 resourceId={} uploadId={}", resourceId, uploadId);
+            return;
+        }
+        // 分片已全部到齐（合并标记已写入）的任务不回收：交回队列正常收敛，避免删掉正在合并的分片
+        if (!StringTools.isEmpty(uploadId) && redisComponent.getObject(
+                Constants.REDIS_KEY_RESOURCE_UPLOAD_MERGED + uploadId) != null) {
+            log.info("放弃上传上报晚于分片合并，交由队列收敛 resourceId={} uploadId={}", resourceId, uploadId);
+            return;
+        }
+        // 仅把仍是「处理中」的记录置为失败：幂等，且不会覆盖已收敛的状态
+        ResourceInfo update = new ResourceInfo();
+        update.setStatus(2);
+        update.setUpdateTime(new Date());
+        ResourceInfoQuery query = new ResourceInfoQuery();
+        query.setResourceId(resourceId);
+        query.setStatus(0);
+        int changed = resourceInfoService.updateByParam(update, query);
+        if (session != null) {
+            deleteDirectory(Paths.get(projectFolder, session.getTempDir()));
+        }
+        if (!StringTools.isEmpty(uploadId)) {
+            removeRedisSession(uploadId);
+        }
+        redisComponent.removeKey(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE + resourceId);
+        log.info("客户端放弃上传：已置失败 {} 条 resourceId={} uploadId={}", changed, resourceId, uploadId);
     }
 
     @Override
@@ -241,6 +287,17 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
             }
             removeRedisSession(uploadId);
         }
+    }
+
+    /**
+     * 刷新「有进行中的上传」探活键：每次分片写入都续期，中断后自然过期
+     */
+    private void touchProgressKey(ResourceUploadSession session) {
+        if (session == null || StringTools.isEmpty(session.getResourceId())) {
+            return;
+        }
+        redisComponent.setObject(Constants.REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE + session.getResourceId(),
+                session.getUploadId(), progressTtlMinutes, TimeUnit.MINUTES);
     }
 
     private void mergeShards(Path tempDir, int totalShards, Path target) throws IOException {

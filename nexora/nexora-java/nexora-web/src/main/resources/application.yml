@@ -137,6 +137,8 @@ resource:
   temp-dir: resource/temp
   file-dir: resource/files
   upload-session-ttl-minutes: 120
+  # 上传进度探活窗口（分钟）：僵尸清扫的判定窗口（学生端探活键随上传会话 TTL 续期，只会更保守）
+  upload-progress-ttl-minutes: 15
   student-quota-mb: 300
   ffmpeg-path: ffmpeg
   ffprobe-path: ffprobe

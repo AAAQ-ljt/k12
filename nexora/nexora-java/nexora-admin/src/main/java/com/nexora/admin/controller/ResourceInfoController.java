@@ -2,6 +2,7 @@ package com.nexora.admin.controller;
 
 import com.nexora.admin.dto.ResourceMoveDTO;
 import com.nexora.admin.dto.ResourceBatchDeleteDTO;
+import com.nexora.admin.dto.ResourceUploadAbandonDTO;
 import com.nexora.admin.service.ResourceUploadService;
 import com.nexora.admin.vo.ResourceUploadSessionVO;
 import com.nexora.constants.Constants;
@@ -367,6 +368,19 @@ public class ResourceInfoController extends ABaseController {
                                         @RequestParam Integer shardIndex,
                                         @RequestParam("file") MultipartFile file) {
         resourceUploadService.uploadShard(uploadId, shardIndex, file);
+        return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 放弃上传（2026-10-04）：页面关闭 / 刷新或分片重试耗尽时由前端上报，
+     * 立即把「处理中」的资源收敛为「失败」，不必再等僵尸清扫窗口
+     */
+    @PostMapping("/abandonUpload")
+    public ResponseVO<Void> abandonUpload(@RequestBody ResourceUploadAbandonDTO dto) {
+        if (dto == null || StringTools.isEmpty(dto.getResourceId())) {
+            throw new BusinessException("资源ID不能为空");
+        }
+        resourceUploadService.abandon(dto.getUploadId(), dto.getResourceId());
         return getSuccessResponseVO(null);
     }
 

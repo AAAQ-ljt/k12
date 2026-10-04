@@ -68,6 +68,12 @@ public class GlobalExceptionHandler {
 
     /**
      * 兜底异常
+     *
+     * 注意：本处理器在 nexora-common，被 admin / web（Servlet）与 mcp（WebFlux，无 servlet 依赖）共用，
+     * 因此禁止在方法签名或方法体里直接引用 jakarta.servlet.* 类型——那会让 nexora-mcp 启动即
+     * NoClassDefFoundError（2026-10-05 已踩坑回退）。文件预览/下载等流式响应中途被客户端中断时，
+     * 这里返回的 ResponseVO 会因响应头已定型为 octet-stream 而二次抛错，仅产生一条 WARN 日志，
+     * 属于可接受的日志噪音；如需根治要在 Servlet 专属 advice 里做，不要在这里加 servlet 参数。
      */
     @ExceptionHandler(Exception.class)
     public ResponseVO<Void> handleException(Exception e) {

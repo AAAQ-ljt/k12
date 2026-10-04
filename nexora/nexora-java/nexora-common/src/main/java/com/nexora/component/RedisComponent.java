@@ -171,6 +171,13 @@ public class RedisComponent {
     }
 
     /**
+     * 设置过期时间（用于给本身不带 TTL 的结构如分片集合续期，避免中断上传的残留 key 永不回收）
+     */
+    public void expire(String key, long timeout, TimeUnit unit) {
+        redisTemplate.expire(key, timeout, unit);
+    }
+
+    /**
      * 集合新增
      */
     public void addToSet(String key, Object value) {
