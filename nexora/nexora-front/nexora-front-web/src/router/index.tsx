@@ -106,7 +106,7 @@ const routes: RouteObject[] = [
       {
         path: 'resource-center',
         element: (
-          <ProtectedRoute title="资源中心" description="登录后管理你的个人知识库">
+          <ProtectedRoute title="知识中心" description="登录后管理你的个人知识库">
             <ResourceCenter />
           </ProtectedRoute>
         ),

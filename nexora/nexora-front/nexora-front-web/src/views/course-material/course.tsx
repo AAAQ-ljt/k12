@@ -155,7 +155,7 @@ export default function CourseDetail() {
     setSyncing(true);
     try {
       const doc = await syncStudentWikiFromCourse(courseId);
-      message.success(`已生成知识页草稿《${doc.title || ''}》，可在「资源中心 → 知识页」查看并确认入库`);
+      message.success(`已生成知识页草稿《${doc.title || ''}》，可在「知识中心 → 知识页」查看并确认入库`);
     } catch {
       // 错误已统一提示
     } finally {

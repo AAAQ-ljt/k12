@@ -256,7 +256,7 @@ export default function Coding() {
       });
       const blob = file.slice(0, file.size);
       await uploadStudentShard(session.uploadId, 0, blob);
-      message.success('代码已保存到「原始资料」，可在资源中心对它生成知识页');
+      message.success('代码已保存到「原始资料」，可在知识中心对它生成知识页');
     } catch {
       // 错误已统一提示
     } finally {

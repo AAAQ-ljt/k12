@@ -18,7 +18,7 @@ const TABS: TabItem[] = [
   { path: '/learning-path', label: '学习路径', icon: Route },
   { path: '/course-material', label: '课程教材', icon: BookOpen },
   { path: '/coding', label: '编程环境', icon: Code },
-  { path: '/resource-center', label: '资源中心', icon: FolderOpen },
+  { path: '/resource-center', label: '知识中心', icon: FolderOpen },
   { path: '/profile', label: '我的', icon: User },
 ];
 
