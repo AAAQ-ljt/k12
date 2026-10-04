@@ -20,9 +20,9 @@
 
 .userHeader {
   padding: 16px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--color-bg-hover);
 }
 
 .userTitle {
@@ -44,15 +44,15 @@
 .metricCard {
   min-width: 0;
   padding: 12px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-bg-surface);
 }
 
 .metricLabel {
   margin-bottom: 6px;
   font-size: 12px;
-  color: #8c8c8c;
+  color: var(--color-text-tertiary);
 }
 
 .metricValue {
@@ -67,7 +67,7 @@
 .metricExtra {
   margin-top: 6px;
   font-size: 12px;
-  color: #8c8c8c;
+  color: var(--color-text-tertiary);
 }
 
 .sectionTitle {
@@ -79,9 +79,11 @@
   font-weight: 600;
 }
 
+/* 抽屉/页面的分节容器与文本块：一律走主题变量，
+   勿改回硬编码浅色（#fafafa/#fff/#f0f0f0 + 深灰字在暗色主题下会形成"白色蒙版"，卡内浅色文字不可读） */
 .sectionBlock {
   padding: 12px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -108,17 +110,17 @@
   margin: 12px 0 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #595959;
+  color: var(--color-text-secondary);
 }
 
 .docContent {
   padding: 12px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #fafafa;
+  background: var(--color-bg-hover);
   font-size: 13px;
   line-height: 1.7;
-  color: #333;
+  color: var(--color-text);
   white-space: pre-wrap;
   word-break: break-word;
 }
