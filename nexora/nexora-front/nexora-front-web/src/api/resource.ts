@@ -15,6 +15,8 @@ export interface StudentResourceInfo {
   knowledgePointId?: string;
   source?: number;
   status: number;
+  /** 原文件扩展名（小写、不含点）：资源名可能不含扩展名，预览组件据此判型 */
+  fileExt?: string;
   createTime?: string;
   updateTime?: string;
 }
@@ -48,6 +50,31 @@ export function getResourceImageUrl(resourceId: string): string {
 /** 文档预览地址（原始文件流） */
 export function getResourceFileUrl(resourceId: string): string {
   return `/api/resourceInfo/file/${resourceId}`;
+}
+
+/** 在线预览产物元信息（Office 文档经服务端转 PDF/逐页图；未生成过为 null） */
+export interface ResourcePreviewMeta {
+  status?: 'GENERATING' | 'READY' | 'FAILED';
+  pages?: number;
+  attempts?: number;
+  sourceSize?: number;
+  generatedAt?: string;
+  message?: string;
+}
+
+/** 读取在线预览产物元信息 */
+export function getPreviewMeta(resourceId: string): Promise<ResourcePreviewMeta | null> {
+  return get(`/resourceInfo/preview/${resourceId}/meta`);
+}
+
+/** 在线预览单页图片地址（按页懒加载，首屏只拉第 1 页，避免大课件整包下载） */
+export function getPreviewPageUrl(resourceId: string, page: number): string {
+  return `/api/resourceInfo/preview/${resourceId}/page/${page}`;
+}
+
+/** 在线预览 PDF 地址（服务端转换产物） */
+export function getPreviewPdfUrl(resourceId: string): string {
+  return `/api/resourceInfo/preview/${resourceId}/pdf`;
 }
 
 /** 文件下载地址 */

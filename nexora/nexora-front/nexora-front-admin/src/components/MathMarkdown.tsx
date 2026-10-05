@@ -54,20 +54,57 @@ function restoreEmojiPlaceholders(text: string): string {
 const MD_FENCE_RE = /^\s*(`{3,}|~{3,})/;
 
 /**
+ * 行尾的块级公式结束符提到独立行：`\end{aligned}$$` → `\end{aligned}` + 换行 + `$$`。
+ *
+ * 为什么必须做：remark-math 的 mathFlow 只认**行首**的 `$$` 作为围栏（开与闭同理），
+ * `\end{aligned}$$` 这种写法闭合不成立 → 该块与后面所有 `$$` 的配对整体错位一位，
+ * 最后一个未闭合块会把文档尾部整段吞成一个巨大的 display 公式，KaTeX 解析失败后按红字
+ * 原样吐出（用户看到的「结尾乱码」；2026-10-05 实测「初一数学上」尾部 25770 字被吞）。
+ *
+ * 只处理「非行首 + 该行恰好出现一次 $$ + 位于行尾」的行，避免误伤
+ * 单行自闭合公式 `$$x^2$$`（行首，跳过）与句中成对的 `… $$y$$`（出现两次，跳过）。
+ */
+function splitTrailingMathFence(line: string): string[] {
+  if (/^\s*\$\$/.test(line)) {
+    return [line];
+  }
+  const occurrences = line.match(/\$\$/g);
+  if (!occurrences || occurrences.length !== 1) {
+    return [line];
+  }
+  const match = /^(.*\S)\s*\$\$\s*$/.exec(line);
+  if (!match) {
+    return [line];
+  }
+  return [match[1], '$$'];
+}
+
+/** 统计一行里的 $$ 个数（跳过行内代码，避免把示例文本算进去） */
+function countMathFences(line: string): number {
+  const withoutInlineCode = line.replace(/`[^`]*`/g, '');
+  return (withoutInlineCode.match(/\$\$/g) ?? []).length;
+}
+
+/**
  * Markdown 规范化（渲染层兜底）：模型偶发用"中文习惯"输出无空格 Markdown
  * （2026-10-04 实测模型复述教材时输出 `##一、`/`###1.原始社会`/`-基本单位`），
  * CommonMark 要求标题 # 后、列表符后必须留空格，否则整行按普通文本原样显示。
  * 逐行处理，跳过代码围栏内的行；只补空格、不动其他字符：
  * - 行首 #{1,6} 后紧跟非空格/非 # 字符 → 补一个空格（`##一、` → `## 一、`）；
  * - 行首 `-` 后紧跟中文字符 → 补一个空格（`-基本单位` → `- 基本单位`；不碰 `---` 分隔线与算式）；
- * - 行首 `数字.`/`数字)` 后紧跟中文字符 → 补一个空格（`1.原始社会` → `1. 原始社会`）。
+ * - 行首 `数字.`/`数字)` 后紧跟中文字符 → 补一个空格（`1.原始社会` → `1. 原始社会`）；
+ * - 行尾 `$$` 提到独立行 + `$$` 未闭合时文末兜底闭合（见 splitTrailingMathFence）。
+ *
+ * 导出给 ProgressiveMarkdown 复用：长文必须先规范化再分段，否则分段器会把错位的
+ * 公式围栏连同正文切成一大段，放大「结尾乱码」的观感。
  */
-function normalizeMarkdown(text: string): string {
-  if (!/[#\-\d]/.test(text)) {
+export function normalizeMarkdown(text: string): string {
+  if (!/[#\-\d$]/.test(text)) {
     return text;
   }
   let fence: string | null = null;
-  return text
+  let mathFenceCount = 0;
+  const normalized = text
     .split('\n')
     .map((line) => {
       const fenceMatch = MD_FENCE_RE.exec(line);
@@ -83,12 +120,19 @@ function normalizeMarkdown(text: string): string {
       if (fence !== null) {
         return line;
       }
-      return line
+      const fixed = line
         .replace(/^(#{1,6})(?=[^\s#])/, '$1 ')
         .replace(/^(\s*)-(?=[\u4e00-\u9fff])/, '$1- ')
         .replace(/^(\s*)(\d{1,3}[.)])(?=[\u4e00-\u9fff])/, '$1$2 ');
+      const parts = splitTrailingMathFence(fixed);
+      parts.forEach((part) => {
+        mathFenceCount += countMathFences(part);
+      });
+      return parts.join('\n');
     })
     .join('\n');
+  // 奇数个 $$ = 存在未闭合的块级公式：文末补一个闭合符，把影响限制在该公式块内
+  return mathFenceCount % 2 === 1 ? `${normalized}\n$$` : normalized;
 }
 
 /**

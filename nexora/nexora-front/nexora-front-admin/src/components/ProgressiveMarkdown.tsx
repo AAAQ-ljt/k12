@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Space, Switch } from 'antd';
 import type { CSSProperties } from 'react';
-import MathMarkdown from './MathMarkdown';
+import MathMarkdown, { normalizeMarkdown } from './MathMarkdown';
 import { splitMarkdown } from '@/utils/markdownSegments';
 
 /** 低于该长度直接整篇渲染：分段只对长文有意义，小文档保持与改动前完全一致的行为 */
@@ -46,14 +46,17 @@ export default function ProgressiveMarkdown({
 }: ProgressiveMarkdownProps) {
   const text = content == null ? '' : String(content);
   const deferredText = useDeferredValue(text);
-  const isLong = deferredText.length > WHOLE_RENDER_LIMIT;
+  // 先规范化再分段：公式围栏（行尾 $$）必须归位，否则分段器会把错位围栏连同正文切成一大段，
+  // 那一整段再交给 KaTeX 就会渲染失败并原样吐出（「结尾乱码」，见 MathMarkdown 注释）
+  const normalizedText = useMemo(() => normalizeMarkdown(deferredText), [deferredText]);
+  const isLong = normalizedText.length > WHOLE_RENDER_LIMIT;
 
   const segments = useMemo(
     () =>
       isLong
-        ? splitMarkdown(deferredText, { minChars: SEGMENT_MIN_CHARS, sizeLimit: SEGMENT_SIZE_LIMIT })
+        ? splitMarkdown(normalizedText, { minChars: SEGMENT_MIN_CHARS, sizeLimit: SEGMENT_SIZE_LIMIT })
         : [],
-    [deferredText, isLong],
+    [normalizedText, isLong],
   );
 
   const [shown, setShown] = useState(INITIAL_SEGMENTS);
@@ -99,7 +102,7 @@ export default function ProgressiveMarkdown({
     <div>
       <div ref={scrollRef} className={className} style={style}>
         {renderWhole ? (
-          <MathMarkdown>{deferredText}</MathMarkdown>
+          <MathMarkdown>{normalizedText}</MathMarkdown>
         ) : (
           <>
             {segments.slice(0, renderedCount).map((segment, index) => (

@@ -1,6 +1,7 @@
 package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
+import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseEnrollment;
@@ -8,6 +9,7 @@ import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.CourseChapterLessonResourceQuery;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.vo.PaginationResultVO;
+import com.nexora.entity.vo.ResourcePreviewMetaVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.CourseChapterLessonResourceService;
@@ -37,6 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -51,6 +54,9 @@ public class StudentResourceController extends ABaseController {
 
     @Resource
     private ResourceInfoService resourceInfoService;
+
+    @Resource
+    private ResourcePreviewRenderer resourcePreviewRenderer;
 
     @Resource
     private CourseChapterLessonResourceService courseChapterLessonResourceService;
@@ -216,6 +222,58 @@ public class StudentResourceController extends ABaseController {
                 .body(new FileSystemResource(file));
     }
 
+    /**
+     * 资源在线预览产物元信息（Office 文档转 PDF/逐页图的状态与页数）；未生成过返回 null
+     */
+    @GetMapping("/preview/{resourceId}/meta")
+    public ResponseVO<ResourcePreviewMetaVO> previewMeta(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return getSuccessResponseVO(null);
+        }
+        return getSuccessResponseVO(resourcePreviewRenderer.readMeta(resource.getFilePath()));
+    }
+
+    /**
+     * 资源在线预览单页图片（大课件不再整包下载：按页懒加载，首屏只拉第 1 页）
+     */
+    @GetMapping("/preview/{resourceId}/page/{page}")
+    public ResponseEntity<FileSystemResource> previewPage(@PathVariable String resourceId,
+                                                          @PathVariable Integer page) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imagePath = resourcePreviewRenderer.resolvePageImage(resource.getFilePath(),
+                page == null ? 0 : page);
+        if (imagePath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(imagePath));
+    }
+
+    /**
+     * 资源在线预览 PDF（LibreOffice 转换产物，供下载/打印/降级预览）
+     */
+    @GetMapping("/preview/{resourceId}/pdf")
+    public ResponseEntity<FileSystemResource> previewPdf(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path pdfPath = resourcePreviewRenderer.resolvePreviewPdf(resource.getFilePath());
+        if (pdfPath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(pdfPath));
+    }
+
     private ResourceInfo getReadyResource(String resourceId) {
         if (StringTools.isEmpty(resourceId)) {
             return null;
@@ -249,9 +307,21 @@ public class StudentResourceController extends ABaseController {
         vo.setDirectoryId(resource.getDirectoryId());
         vo.setSource(resource.getSource());
         vo.setStatus(resource.getStatus());
+        vo.setFileExt(fileExtOf(resource.getFilePath()));
         vo.setCreateTime(resource.getCreateTime());
         vo.setUpdateTime(resource.getUpdateTime());
         return vo;
+    }
+
+    /**
+     * 原文件扩展名（小写、不含点）：资源名可能不含扩展名，前端预览组件据此判型
+     */
+    private String fileExtOf(String filePath) {
+        if (StringTools.isEmpty(filePath)) {
+            return "";
+        }
+        int dot = filePath.lastIndexOf('.');
+        return dot < 0 ? "" : filePath.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
     private Path resolveResourcePath(String relativePath) throws IOException {

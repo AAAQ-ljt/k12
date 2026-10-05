@@ -5,6 +5,8 @@ import com.nexora.admin.dto.ResourceUploadSession;
 import com.nexora.admin.service.ResourceUploadService;
 import com.nexora.admin.vo.ResourceUploadSessionVO;
 import com.nexora.component.RedisComponent;
+import com.nexora.component.ResourceHeavyJobLock;
+import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.constants.Constants;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.ResourceInfoQuery;
@@ -79,6 +81,12 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
 
     @Resource
     private RedisComponent redisComponent;
+
+    @Resource
+    private ResourcePreviewRenderer resourcePreviewRenderer;
+
+    @Resource
+    private ResourceHeavyJobLock resourceHeavyJobLock;
 
     @Override
     public ResourceUploadSessionVO prepare(String resourceName, String resourceType, String originalFileName,
@@ -241,17 +249,28 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
                 String coverRelative = targetRelativeDir + "/cover.jpg";
                 String originalRelative = targetRelativeDir + "/original" + extension;
                 String segmentPattern = Paths.get(projectFolder, targetRelativeDir, "segment_%03d.ts").toString();
-                executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
-                        "-map", "0:v:0", "-map", "0:a?",
-                        "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac",
-                        "-hls_time", "10", "-hls_list_size", "0",
-                        "-hls_segment_filename", segmentPattern,
-                        Paths.get(projectFolder, hlsRelative).toString()));
-                executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
-                        "-ss", "1", "-vframes", "1", "-q:v", "2",
-                        Paths.get(projectFolder, coverRelative).toString()));
-                duration = probeDuration(mergedPath);
-                Files.copy(mergedPath, Paths.get(projectFolder, originalRelative), StandardCopyOption.REPLACE_EXISTING);
+                // 转码是重活：与文档预览转换共用互斥锁，避免两者叠加峰值内存（等待上限 3 分钟，超时告警继续）
+                boolean heavyLocked = resourceHeavyJobLock.awaitLock("transcode:" + session.getResourceId(), 180);
+                if (!heavyLocked) {
+                    log.warn("等待重活锁超时（预览转换占用中），视频转码继续 resourceId={}", session.getResourceId());
+                }
+                try {
+                    executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
+                            "-map", "0:v:0", "-map", "0:a?",
+                            "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac",
+                            "-hls_time", "10", "-hls_list_size", "0",
+                            "-hls_segment_filename", segmentPattern,
+                            Paths.get(projectFolder, hlsRelative).toString()));
+                    executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
+                            "-ss", "1", "-vframes", "1", "-q:v", "2",
+                            Paths.get(projectFolder, coverRelative).toString()));
+                    duration = probeDuration(mergedPath);
+                    Files.copy(mergedPath, Paths.get(projectFolder, originalRelative), StandardCopyOption.REPLACE_EXISTING);
+                } finally {
+                    if (heavyLocked) {
+                        resourceHeavyJobLock.unlock();
+                    }
+                }
                 filePath = originalRelative;
                 hlsPath = hlsRelative;
                 cover = coverRelative;
@@ -272,6 +291,11 @@ public class ResourceUploadServiceImpl implements ResourceUploadService {
             update.setUpdateTime(new Date());
             resourceInfoService.updateResourceInfoByResourceId(update, session.getResourceId());
             log.info("资源处理完成 resourceId={} filePath={}", session.getResourceId(), filePath);
+            // Office 文档（ppt/doc/xls）入队生成在线预览产物：浏览器无法内联渲染这类文件，
+            // 直接给原始流会变下载；大课件在浏览器解压渲染也会长时间转圈
+            if (resourcePreviewRenderer.isOfficeDocument(filePath)) {
+                redisComponent.leftPush(Constants.REDIS_KEY_RESOURCE_PREVIEW_QUEUE, session.getResourceId());
+            }
         } catch (Exception e) {
             log.error("资源处理失败 uploadId={} resourceId={}", uploadId, session.getResourceId(), e);
             ResourceInfo update = new ResourceInfo();

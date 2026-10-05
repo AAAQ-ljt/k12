@@ -2,6 +2,8 @@ package com.nexora.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.nexora.component.RedisComponent;
+import com.nexora.component.ResourceHeavyJobLock;
+import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.constants.Constants;
 import com.nexora.dto.StudentResourceUploadSession;
 import com.nexora.entity.po.KnowledgeDoc;
@@ -86,6 +88,12 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
 
     @Resource
     private RedisComponent redisComponent;
+
+    @Resource
+    private ResourcePreviewRenderer resourcePreviewRenderer;
+
+    @Resource
+    private ResourceHeavyJobLock resourceHeavyJobLock;
 
     @Override
     public StudentUploadSessionVO prepare(String resourceName, String resourceType, String originalFileName,
@@ -224,17 +232,28 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
                 String coverRelative = targetRelativeDir + "/cover.jpg";
                 String originalRelative = targetRelativeDir + "/original" + extension;
                 String segmentPattern = Paths.get(projectFolder, targetRelativeDir, "segment_%03d.ts").toString();
-                executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
-                        "-map", "0:v:0", "-map", "0:a?",
-                        "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac",
-                        "-hls_time", "10", "-hls_list_size", "0",
-                        "-hls_segment_filename", segmentPattern,
-                        Paths.get(projectFolder, hlsRelative).toString()));
-                executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
-                        "-ss", "1", "-vframes", "1", "-q:v", "2",
-                        Paths.get(projectFolder, coverRelative).toString()));
-                duration = probeDuration(mergedPath);
-                Files.copy(mergedPath, Paths.get(projectFolder, originalRelative), StandardCopyOption.REPLACE_EXISTING);
+                // 转码是重活：与文档预览转换共用互斥锁，避免两者叠加峰值内存（等待上限 3 分钟，超时告警继续）
+                boolean heavyLocked = resourceHeavyJobLock.awaitLock("studentTranscode:" + session.getResourceId(), 180);
+                if (!heavyLocked) {
+                    log.warn("等待重活锁超时（预览转换占用中），学生视频转码继续 resourceId={}", session.getResourceId());
+                }
+                try {
+                    executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
+                            "-map", "0:v:0", "-map", "0:a?",
+                            "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac",
+                            "-hls_time", "10", "-hls_list_size", "0",
+                            "-hls_segment_filename", segmentPattern,
+                            Paths.get(projectFolder, hlsRelative).toString()));
+                    executeCommand(List.of(ffmpegPath, "-y", "-i", mergedPath.toString(),
+                            "-ss", "1", "-vframes", "1", "-q:v", "2",
+                            Paths.get(projectFolder, coverRelative).toString()));
+                    duration = probeDuration(mergedPath);
+                    Files.copy(mergedPath, Paths.get(projectFolder, originalRelative), StandardCopyOption.REPLACE_EXISTING);
+                } finally {
+                    if (heavyLocked) {
+                        resourceHeavyJobLock.unlock();
+                    }
+                }
                 filePath = originalRelative;
                 hlsPath = hlsRelative;
                 cover = coverRelative;
@@ -258,6 +277,11 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             // 图片/视频不再自动建知识页草稿（2026-10-04 用户反馈：知识页应是文档，图片只作为附件
             // 留在资源中心即可，此前自动建的空壳草稿让知识页列表混入图片条目造成困惑）。
             log.info("学生资源处理完成 resourceId={} filePath={}", session.getResourceId(), filePath);
+            // Office 文档（ppt/doc/xls）入队生成在线预览产物：由 nexora-admin 统一消费（转 PDF + 逐页图），
+            // 学生端只负责入队与读取产物
+            if (resourcePreviewRenderer.isOfficeDocument(filePath)) {
+                redisComponent.leftPush(Constants.REDIS_KEY_RESOURCE_PREVIEW_QUEUE, session.getResourceId());
+            }
         } catch (Exception e) {
             log.error("学生资源处理失败 uploadId={} resourceId={}", uploadId, session.getResourceId(), e);
             ResourceInfo update = new ResourceInfo();

@@ -5,6 +5,7 @@ import com.nexora.admin.dto.ResourceBatchDeleteDTO;
 import com.nexora.admin.dto.ResourceUploadAbandonDTO;
 import com.nexora.admin.service.ResourceUploadService;
 import com.nexora.admin.vo.ResourceUploadSessionVO;
+import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.po.ResourceDirectory;
@@ -12,6 +13,7 @@ import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.query.ResourceDirectoryQuery;
 import com.nexora.entity.vo.PaginationResultVO;
+import com.nexora.entity.vo.ResourcePreviewMetaVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.ResourceInfoService;
@@ -46,6 +48,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -65,6 +68,9 @@ public class ResourceInfoController extends ABaseController {
 
     @Resource
     private ResourceUploadService resourceUploadService;
+
+    @Resource
+    private ResourcePreviewRenderer resourcePreviewRenderer;
 
     @Value("${project.folder}")
     private String projectFolder;
@@ -369,6 +375,59 @@ public class ResourceInfoController extends ABaseController {
                                         @RequestParam("file") MultipartFile file) {
         resourceUploadService.uploadShard(uploadId, shardIndex, file);
         return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 资源在线预览产物元信息（Office 文档转 PDF/逐页图的状态与页数）；未生成过返回 null
+     */
+    @GetMapping("/preview/{resourceId}/meta")
+    public ResponseVO<ResourcePreviewMetaVO> previewMeta(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return getSuccessResponseVO(null);
+        }
+        return getSuccessResponseVO(resourcePreviewRenderer.readMeta(resource.getFilePath()));
+    }
+
+    /**
+     * 资源在线预览单页图片（弱网下按页懒加载，首屏只拉第 1 页）
+     */
+    @GetMapping("/preview/{resourceId}/page/{page}")
+    public ResponseEntity<FileSystemResource> previewPage(@PathVariable String resourceId,
+                                                          @PathVariable Integer page) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imagePath = resourcePreviewRenderer.resolvePageImage(resource.getFilePath(),
+                page == null ? 0 : page);
+        if (imagePath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                // 预览页是不可变产物（同名文件内容不会变），允许长缓存，弱网二次打开秒开
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(imagePath));
+    }
+
+    /**
+     * 资源在线预览 PDF（LibreOffice 转换产物，供下载/打印/降级预览）
+     */
+    @GetMapping("/preview/{resourceId}/pdf")
+    public ResponseEntity<FileSystemResource> previewPdf(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path pdfPath = resourcePreviewRenderer.resolvePreviewPdf(resource.getFilePath());
+        if (pdfPath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(pdfPath));
     }
 
     /**

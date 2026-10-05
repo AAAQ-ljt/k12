@@ -8,6 +8,8 @@ import {
   BookImage, BookOpen, Download, Eye, FileImage, FileText, FileVideo, FolderInput, FolderPlus, FolderOpen, Pencil, Trash2, UploadCloud,
 } from 'lucide-react';
 import VideoPlayer from '@/views/course-material/components/VideoPlayer';
+import DocumentViewer from '@/views/course-material/components/DocumentViewer';
+import SlidePreview from '@/views/course-material/components/SlidePreview';
 import {
   addStudentDirectory, deleteStudentDirectory, deleteStudentResource, getStudentResourceDownloadUrl,
   getStudentResourceFileUrl, getStudentResourceImageUrl, getStudentResourceVideoUrl, loadStudentDirectories,
@@ -27,6 +29,32 @@ interface UploadTask {
   fileSize: number;
   progress: number;
   status: 'uploading' | 'done' | 'error';
+}
+
+/** 走服务端预转换逐页图的类型（大课件在浏览器整包解压渲染会长时间转圈） */
+const SLIDE_EXTENSIONS = ['ppt', 'pptx'];
+
+/** 交给 jit-viewer 本地渲染的文本型文档（此前这里一律用 iframe，docx/pptx 会变成下载） */
+const VIEWER_EXTENSIONS = ['doc', 'docx', 'xls', 'xlsx', 'csv', 'md', 'markdown', 'txt'];
+
+/** 预览用的扩展名：优先取后端下发的 fileExt（个人资源名不含扩展名），退化为从文件名解析 */
+function previewExt(resource: StudentResource): string {
+  if (resource.fileExt) {
+    return resource.fileExt.toLowerCase();
+  }
+  const name = resource.resourceName ?? '';
+  const dot = name.lastIndexOf('.');
+  return dot < 0 ? '' : name.slice(dot + 1).toLowerCase();
+}
+
+/** jit-viewer 按文件名判型，资源名缺少扩展名时补上 */
+function previewViewerName(resource: StudentResource): string {
+  const ext = previewExt(resource);
+  const name = resource.resourceName ?? '';
+  if (!ext || name.toLowerCase().endsWith(`.${ext}`)) {
+    return name;
+  }
+  return `${name}.${ext}`;
 }
 
 interface DirModalState {
@@ -923,13 +951,34 @@ export default function ResourceCenter() {
             <img src={getStudentResourceImageUrl(previewResource.resourceId)} alt={previewResource.resourceName} />
           </div>
         )}
-        {previewResource && previewResource.resourceType !== 'VIDEO' && previewResource.resourceType !== 'IMAGE' && (
-          <iframe
-            className={styles.documentPreview}
-            src={getStudentResourceFileUrl(previewResource.resourceId)}
-            title={previewResource.resourceName}
+        {previewResource && SLIDE_EXTENSIONS.includes(previewExt(previewResource)) && (
+          <SlidePreview
+            key={previewResource.resourceId}
+            resourceId={previewResource.resourceId}
+            resourceName={previewResource.resourceName}
           />
         )}
+        {previewResource &&
+          previewResource.resourceType !== 'VIDEO' &&
+          previewResource.resourceType !== 'IMAGE' &&
+          VIEWER_EXTENSIONS.includes(previewExt(previewResource)) && (
+            <DocumentViewer
+              key={previewResource.resourceId}
+              url={getStudentResourceFileUrl(previewResource.resourceId)}
+              filename={previewViewerName(previewResource)}
+            />
+          )}
+        {previewResource &&
+          previewResource.resourceType !== 'VIDEO' &&
+          previewResource.resourceType !== 'IMAGE' &&
+          !SLIDE_EXTENSIONS.includes(previewExt(previewResource)) &&
+          !VIEWER_EXTENSIONS.includes(previewExt(previewResource)) && (
+            <iframe
+              className={styles.documentPreview}
+              src={getStudentResourceFileUrl(previewResource.resourceId)}
+              title={previewResource.resourceName}
+            />
+          )}
       </Modal>
 
       <WikiEditModal

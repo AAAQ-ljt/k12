@@ -202,6 +202,31 @@ export function getFilePreviewUrl(resourceId: string): string {
   return `/api/resourceInfo/file/${resourceId}`;
 }
 
+/** 在线预览产物元信息（Office 文档转 PDF/逐页图的状态与页数；未生成过为 null） */
+export interface ResourcePreviewMeta {
+  status?: 'GENERATING' | 'READY' | 'FAILED';
+  pages?: number;
+  attempts?: number;
+  sourceSize?: number;
+  generatedAt?: string;
+  message?: string;
+}
+
+/** 读取在线预览产物元信息 */
+export function getPreviewMeta(resourceId: string): Promise<ResourcePreviewMeta | null> {
+  return request.get(`/resourceInfo/preview/${resourceId}/meta`);
+}
+
+/** 在线预览单页图片地址（按页懒加载，首屏只拉第 1 页） */
+export function getPreviewPageUrl(resourceId: string, page: number): string {
+  return `/api/resourceInfo/preview/${resourceId}/page/${page}`;
+}
+
+/** 在线预览 PDF 地址（服务端转换产物，供新窗口打开/下载） */
+export function getPreviewPdfUrl(resourceId: string): string {
+  return `/api/resourceInfo/preview/${resourceId}/pdf`;
+}
+
 /** 文件下载地址（下载原始文件） */
 export function getDownloadUrl(resourceId: string): string {
   return `/api/resourceInfo/download/${resourceId}`;

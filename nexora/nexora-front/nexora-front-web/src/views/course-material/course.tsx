@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
+  FileSpreadsheet,
   FileText,
   Film,
   GraduationCap,
@@ -13,6 +14,7 @@ import {
   Link2,
   Lock,
   PlusCircle,
+  Presentation,
   Sparkles,
 } from 'lucide-react';
 import {
@@ -38,7 +40,34 @@ const RESOURCE_META: Record<string, { label: string; icon: typeof FileText; colo
   LINK: { label: '链接', icon: Link2, color: '#722ed1' },
 };
 
-function resourceMeta(type?: string) {
+/** 按扩展名细化文档类标签：课程里一眼能看出是 PPT / Word / Excel / PDF */
+const EXT_META: Record<string, { label: string; icon: typeof FileText; color: string }> = {
+  ppt: { label: 'PPT', icon: Presentation, color: '#d4380d' },
+  pptx: { label: 'PPT', icon: Presentation, color: '#d4380d' },
+  doc: { label: 'Word', icon: FileText, color: '#1677ff' },
+  docx: { label: 'Word', icon: FileText, color: '#1677ff' },
+  xls: { label: 'Excel', icon: FileSpreadsheet, color: '#389e0d' },
+  xlsx: { label: 'Excel', icon: FileSpreadsheet, color: '#389e0d' },
+  pdf: { label: 'PDF', icon: FileText, color: '#cf1322' },
+};
+
+function extOfName(name?: string): string {
+  if (!name) {
+    return '';
+  }
+  const dot = name.lastIndexOf('.');
+  if (dot < 0) {
+    return '';
+  }
+  const ext = name.slice(dot + 1).toLowerCase();
+  return EXT_META[ext] ? ext : '';
+}
+
+function resourceMeta(type?: string, name?: string) {
+  const ext = extOfName(name);
+  if (ext) {
+    return EXT_META[ext];
+  }
   return RESOURCE_META[type || ''] || RESOURCE_META.DOCUMENT;
 }
 
@@ -296,7 +325,7 @@ export default function CourseDetail() {
                           <span className={styles.noResource}>暂无学习资料</span>
                         ) : (
                           lesson.resources.map((resource) => {
-                            const meta = resourceMeta(resource.resourceType);
+                            const meta = resourceMeta(resource.resourceType, resource.resourceName);
                             const Icon = meta.icon;
                             return (
                               <button

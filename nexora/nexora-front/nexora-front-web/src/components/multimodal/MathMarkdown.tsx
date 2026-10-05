@@ -71,6 +71,37 @@ const MD_FENCE_LANGS = new Set([
 ]);
 
 /**
+ * 行尾的块级公式结束符提到独立行：`\end{aligned}$$` → `\end{aligned}` + 换行 + `$$`。
+ *
+ * remark-math 的 mathFlow 只认**行首** `$$` 作为围栏（开闭同理），`\end{aligned}$$` 这种写法
+ * 闭合不成立 → 该块与后面所有 `$$` 配对整体错位，最后一个未闭合块把文档尾部整段吞成巨大公式，
+ * KaTeX 解析失败后按红字原样吐出（用户看到的「结尾乱码」，2026-10-05 实测「初一数学上」被吞 25770 字）。
+ *
+ * 只处理「非行首 + 该行恰好出现一次 $$ + 位于行尾」的行，避免误伤单行自闭合 `$$x^2$$`（行首）
+ * 与句中成对的 `… $$y$$`（出现两次）。
+ */
+function splitTrailingMathFence(line: string): string[] {
+  if (/^\s*\$\$/.test(line)) {
+    return [line];
+  }
+  const occurrences = line.match(/\$\$/g);
+  if (!occurrences || occurrences.length !== 1) {
+    return [line];
+  }
+  const match = /^(.*\S)\s*\$\$\s*$/.exec(line);
+  if (!match) {
+    return [line];
+  }
+  return [match[1], '$$'];
+}
+
+/** 统计一行里的 $$ 个数（跳过行内代码，避免把示例文本算进去） */
+function countMathFences(line: string): number {
+  const withoutInlineCode = line.replace(/`[^`]*`/g, '');
+  return (withoutInlineCode.match(/\$\$/g) ?? []).length;
+}
+
+/**
  * Markdown 规范化（渲染层兜底）：模型偶发用"中文习惯"输出无空格 Markdown
  * （2026-10-04 实测模型复述教材时输出 `##一、`/`###1.原始社会`/`-基本单位`），
  * CommonMark 要求标题 # 后、列表符后必须留空格，否则整行按普通文本原样显示。
@@ -82,7 +113,7 @@ const MD_FENCE_LANGS = new Set([
  * （下一行是孤立围栏则借用其闭合，否则单行自闭；围栏整体未闭合时在文末兜底闭合）。
  */
 function normalizeMarkdown(text: string): string {
-  if (!/[#\-\d`~]/.test(text)) {
+  if (!/[#\-\d`~$]/.test(text)) {
     return text;
   }
   const normalizeLine = (line: string) => line
@@ -92,6 +123,7 @@ function normalizeMarkdown(text: string): string {
   const lines = text.split('\n');
   const out: string[] = [];
   let fence: string | null = null;
+  let mathFenceCount = 0;
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     const fenceMatch = MD_FENCE_RE.exec(line);
@@ -131,10 +163,17 @@ function normalizeMarkdown(text: string): string {
       fence = marker[0];
       continue;
     }
-    out.push(normalizeLine(line));
+    out.push(...splitTrailingMathFence(normalizeLine(line)));
   }
   if (fence !== null) {
     out.push('```');
+  }
+  // 统计（跳过代码围栏内的行）：奇数个 $$ 说明有未闭合的块级公式，文末补闭合符限定影响范围
+  for (const item of out) {
+    mathFenceCount += countMathFences(item);
+  }
+  if (mathFenceCount % 2 === 1) {
+    out.push('$$');
   }
   return out.join('\n');
 }

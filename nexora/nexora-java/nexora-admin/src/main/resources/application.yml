@@ -129,6 +129,10 @@ resource:
   upload-session-ttl-minutes: 120
   # 上传进度探活窗口（分钟）：每次分片写入刷新该键 TTL，超时无进展即判为已中断（僵尸清扫用）
   upload-progress-ttl-minutes: 15
+  # 在线预览产物生成（Office 文档 → PDF → 逐页图）：LibreOffice 路径与渲染参数
+  soffice-path: soffice
+  preview-image-width: 1600
+  preview-timeout-seconds: 300
   ffmpeg-path: ffmpeg
   ffprobe-path: ffprobe
 
