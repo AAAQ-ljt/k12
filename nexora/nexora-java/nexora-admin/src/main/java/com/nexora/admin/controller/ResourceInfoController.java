@@ -84,6 +84,12 @@ public class ResourceInfoController extends ABaseController {
     @GetMapping("/loadDataList")
     public ResponseVO<PaginationResultVO<ResourceInfo>> loadDataList(ResourceInfoQuery query) {
         query.setOwnerIdNull(Boolean.TRUE);
+        // 目录过滤按「子树」：点父目录也要能看到子目录里的文件（此前精确匹配导致父目录恒为空）
+        String directoryId = query.getDirectoryId();
+        query.setDirectoryId(null);
+        if (!StringTools.isEmpty(directoryId) && !"root".equals(directoryId)) {
+            query.setDirectoryIds(resourceDirectoryService.findSubTreeDirIds(directoryId, null));
+        }
         return getSuccessResponseVO(resourceInfoService.findListByPage(query));
     }
 

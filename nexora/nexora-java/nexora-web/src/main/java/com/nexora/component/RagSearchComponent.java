@@ -53,6 +53,9 @@ public class RagSearchComponent {
     @Resource
     private SystemConfigComponent systemConfigComponent;
 
+    @Resource
+    private CourseResourceAccessComponent courseResourceAccessComponent;
+
     /** 检索召回条数（管理端「RAG 配置」可调，缺省 10） */
     private int topK() {
         return systemConfigComponent.getIntValue(SystemConfigComponent.GROUP_RAG,
@@ -214,8 +217,14 @@ public class RagSearchComponent {
             }
             if (!StringTools.isEmpty(sourceResourceId)) {
                 ResourceInfo resource = finalResourceMap.get(sourceResourceId);
-                if (resource == null || resource.getStatus() == null || resource.getStatus() != 1
-                        || !stageMatches(resource.getStage(), stage)) {
+                boolean available = resource != null && resource.getStatus() != null && resource.getStatus() == 1;
+                if (!available) {
+                    sourceResourceId = null;
+                } else if (!stageMatches(resource.getStage(), stage)
+                        && courseResourceAccessComponent.resolve(sourceResourceId, userId)
+                        != CourseResourceAccessComponent.BoundCourseAccess.ENROLLED) {
+                    // 跨学段但属于「已加入课程」的资源要保留来源（2026-10-05 用户确认：加入的课程不区分年段），
+                    // 否则 AI 引用了课程教材，学生却点不进去
                     sourceResourceId = null;
                 }
             }

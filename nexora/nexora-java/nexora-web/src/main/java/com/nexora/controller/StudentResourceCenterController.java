@@ -180,8 +180,15 @@ public class StudentResourceCenterController extends ABaseController {
         if (query.getPageSize() == null) {
             query.setPageSize(20);
         }
-        query.setOwnerId(currentUserId());
+        String userId = currentUserId();
+        query.setOwnerId(userId);
         query.setOrderBy("create_time desc");
+        // 目录过滤按「子树」：点父目录也要能看到子目录里的文件（此前精确匹配导致父目录恒为空）
+        String directoryId = query.getDirectoryId();
+        query.setDirectoryId(null);
+        if (!StringTools.isEmpty(directoryId) && !"root".equals(directoryId)) {
+            query.setDirectoryIds(resourceDirectoryService.findSubTreeDirIds(directoryId, userId));
+        }
         PaginationResultVO<ResourceInfo> page = resourceInfoService.findListByPage(query);
         List<StudentResourceVO> list = page.getList().stream().map(this::toVO).toList();
         PaginationResultVO<StudentResourceVO> result = new PaginationResultVO<>(
