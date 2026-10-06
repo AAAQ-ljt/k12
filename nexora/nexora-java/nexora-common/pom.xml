@@ -105,6 +105,15 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-client-chat</artifactId>
         </dependency>
+        <!-- OpenAI 兼容模型实现（OpenAiApi / OpenAiChatModel / OpenAiChatOptions）：
+             对话供应商组件（ChatProvider / DeepSeekChatProvider / OpenCodeGoChatProvider / ChatProviderRouter）
+             2026-10-07 从 nexora-web 迁入 common，供学生端与管理端共用同一套供应商切换。
+             用非 starter 的普通模块（与上面的 spring-ai-client-chat 一致），避免把自动装配带进公共库；
+             版本由 spring-ai-bom 管理，两端 app 仍各自保留 spring-ai-starter-model-openai。 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-vector-store</artifactId>

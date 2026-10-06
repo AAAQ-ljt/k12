@@ -69,4 +69,16 @@ public interface CourseInfoService {
 	 */
 	Integer deleteCourseInfoByCourseId(String courseId);
 
+
+	/**
+	 * 学习人数 +1（加入课程时调用；原子自增）
+	 */
+	Integer increaseStudyCount(String courseId);
+
+
+	/**
+	 * 学习人数 -1（退出课程时调用；不小于 0）
+	 */
+	Integer decreaseStudyCount(String courseId);
+
 }

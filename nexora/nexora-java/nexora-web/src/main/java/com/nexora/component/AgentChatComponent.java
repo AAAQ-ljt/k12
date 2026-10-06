@@ -89,6 +89,24 @@ public class AgentChatComponent {
             补充约束：本轮没有提供知识库参考内容，不要声称内容来自学生的个人知识库或其上传的资料，
             也不要编造资料名称。""";
 
+    /**
+     * 平台事实约束（常驻注入）：课程 / 课时 / 学习人数 / 难度 / 掌握度 / 知识页清单这类**平台事实**
+     * 只能来自本轮工具返回；知识库参考内容只是学习资料，不等于平台的课程清单。
+     *
+     * 背景（2026-10-07）：学生问「我的三年级学段的课程有哪些」，模型把个人知识页里「介绍语文课程」的内容
+     * 当成了平台课程，编造出不存在的《三年级语文》并虚构「188 人在学 / 2 星难度 / 简介」——见开发流程 7.56。
+     */
+    private static final String PLATFORM_FACT_RULE = """
+            ## 平台事实规则（必须遵守，违反即视为答错）
+            1. 课程、课时、学习人数、难度、知识点掌握度、知识页清单这类**平台事实**，只能来自本轮工具（MCP）返回的结果：
+               - 工具没有返回的课程，一律不得提及，也不得"顺便补充"、不得凭印象或记忆列举；
+               - 严禁编造课程名、学习人数、难度星级、课程简介等字段（数字必须与工具返回完全一致）；
+               - 用户问「有没有某门课 / 某学段的课程有哪些 / 我加入了哪些课」时，一律以工具返回为准；
+                 工具没返回这门课，就如实说明"没有查到这门课"。
+            2. 知识库参考内容（含学生个人知识页、平台课程资料、教材原文）**只是学习资料，不是平台的课程清单**：
+               不得因为参考资料里出现「语文」「三年级」等字眼，就把它当成平台上存在的一门课程。
+            3. 不确定的事实宁可说"我先帮你查一下"，也不要给出看似具体、实则虚构的信息。""";
+
     /** 动画概念解析取的最近完成问答轮数 */
     private static final int CONCEPT_HISTORY_LIMIT = 6;
 
@@ -993,8 +1011,10 @@ public class AgentChatComponent {
                     : prompt + "\n\n## 知识库参考内容（按来源分组，引用时请如实区分）\n" + ragData)
                     + "\n\n" + RAG_CITATION_RULE;
         }
+        // 平台事实约束（常驻）：课程/人数/难度等只能来自工具返回，参考资料不等于课程清单
+        String withFactRule = promptWithRag + "\n\n" + PLATFORM_FACT_RULE;
         // 产品功能自述块：不依赖 MCP 始终注入（按学段生成，防止介绍能力时漏掉绘本/编程等内建功能）
-        String withProduct = appendProductCapabilities(promptWithRag, user.getStage());
+        String withProduct = appendProductCapabilities(withFactRule, user.getStage());
         // 输出格式规范：与前端渲染层规范化双保险（模型偶发输出无空格标题/列表导致前端原样显示源码）
         String withFormat = withProduct + "\n\n" + MARKDOWN_FORMAT_RULE;
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力
@@ -1076,7 +1096,7 @@ public class AgentChatComponent {
             Map.entry("searchTextbooks", "查官方教材书目"),
             Map.entry("getTextbookToc", "读教材章节目录"),
             Map.entry("readTextbookSection", "读教材指定章节正文"),
-            Map.entry("queryCourse", "查本学段上架课程"),
+            Map.entry("queryCourse", "查课程清单（传 mine=true 查「我加入的课程」，跨学段）"),
             Map.entry("queryLesson", "查课程课时列表与详情"),
             Map.entry("recommendResource", "推荐官方学习资源"),
             Map.entry("queryMastery", "查知识点掌握度概览"),

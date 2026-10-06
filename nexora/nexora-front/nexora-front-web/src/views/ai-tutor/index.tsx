@@ -44,6 +44,7 @@ import QuizCard from '@/components/multimodal/QuizCard';
 import SvgStepPlayer from '@/components/multimodal/SvgStepPlayer';
 import PictureBookChatCard from '@/components/multimodal/PictureBookChatCard';
 import { syncStudentWikiFromMessage } from '@/api/studentWiki';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import KnowledgeDrawer from './components/KnowledgeDrawer';
 import {
   getStudentResource,
@@ -918,6 +919,9 @@ export default function AiTutor() {
           ) : (
             messages.map((item) => (
               <div key={item.id} className={`${styles.messageRow} ${item.role === 'user' ? styles.messageUser : ''}`}>
+                {/* 单条消息级错误边界：某张卡片渲染失败（第三方组件改 DOM 后 React 卸载报 removeChild）
+                    只影响这一条，其余消息照常阅读（2026-10-07） */}
+                <ErrorBoundary title="这条消息里的卡片暂时显示不出来">
                 {item.role === 'assistant' ? (
                   <div className={styles.assistantAvatar}>
                     <Sparkles size={16} />
@@ -1015,6 +1019,7 @@ export default function AiTutor() {
                     <User size={15} />
                   </div>
                 ) : null}
+                </ErrorBoundary>
               </div>
             ))
           )}

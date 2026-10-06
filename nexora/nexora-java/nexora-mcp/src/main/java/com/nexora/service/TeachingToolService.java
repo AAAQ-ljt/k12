@@ -1,20 +1,26 @@
 package com.nexora.service;
 
 import com.nexora.entity.po.CourseChapterLesson;
+import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.CourseInfo;
+import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.entity.po.KnowledgePoint;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.po.StudentLearningRecord;
 import com.nexora.entity.po.UserInfo;
 import com.nexora.entity.query.CourseChapterLessonQuery;
+import com.nexora.entity.query.CourseEnrollmentQuery;
 import com.nexora.entity.query.CourseInfoQuery;
+import com.nexora.entity.query.CourseStudyLessonProgressQuery;
 import com.nexora.entity.query.KnowledgePointQuery;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.query.StudentLearningRecordQuery;
 import com.nexora.entity.vo.KnowledgeMasteryVO;
 import com.nexora.mappers.LearningAnalysisMapper;
 import com.nexora.service.CourseChapterLessonService;
+import com.nexora.service.CourseEnrollmentService;
 import com.nexora.service.CourseInfoService;
+import com.nexora.service.CourseStudyLessonProgressService;
 import com.nexora.service.KnowledgePointService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentLearningRecordService;
@@ -29,7 +35,9 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * MCP 教学工具服务（教学域白名单，见 docs/开发流程.md 7.19）：
@@ -83,14 +91,27 @@ public class TeachingToolService {
     @Resource
     private StudentLearningRecordService studentLearningRecordService;
 
-    @Tool(name = "queryCourse", description = "按学段与关键词查询上架课程（含学科/难度/课时数/学习人数）")
+    @Resource
+    private CourseEnrollmentService courseEnrollmentService;
+
+    @Resource
+    private CourseStudyLessonProgressService courseStudyLessonProgressService;
+
+    @Tool(name = "queryCourse", description = "查询课程清单（含年级/学科/难度/课时数/学习人数）。"
+            + "默认返回**全部学段**的上架课程；用户问「我加入的课程 / 我的课程 / 我学过哪些课」时传 mine=true，"
+            + "返回该学生已加入的全部课程（跨学段，含学习进度）；只有用户明确提到年级或学段（如「三年级的课」）才传 stage。")
     public String queryCourse(
-            @ToolParam(description = "学段编码，可空；支持高中/初中等中文，自动归一化") String stage,
-            @ToolParam(description = "课程名关键词，可空") String keyword) {
+            @ToolParam(description = "是否只查当前学生已加入的课程（跨学段）；用户问「我的课程」时传 true，可空") Boolean mine,
+            @ToolParam(description = "学段编码过滤，可空；仅在用户明确提到年级/学段时传，支持高中/初中等中文，自动归一化") String stage,
+            @ToolParam(description = "课程名关键词，可空") String keyword,
+            @ToolParam(description = "学生用户ID，由系统自动注入") String userId) {
         try {
             String stageCode = normalizeStageOrError(stage);
             if (stageCode != null && stageCode.startsWith("无法识别")) {
                 return stageCode;
+            }
+            if (Boolean.TRUE.equals(mine)) {
+                return queryMyCourses(userId, keyword, stageCode);
             }
             CourseInfoQuery query = new CourseInfoQuery();
             query.setStatus(1);
@@ -130,11 +151,96 @@ public class TeachingToolService {
         }
     }
 
-    @Tool(name = "queryLesson", description = "按课程ID查询课时列表（含摘要/视频时长），或按课时ID查课时详情")
+    /**
+     * 我加入的课程：按 course_enrollment 取该学生已加入的全部课程（**跨学段**）。
+     *
+     * 口径与「我的课程」页面一致（2026-10-04 起，见开发流程 7.49）：学生升级 / 换年级后仍能看到并学习
+     * 此前加入的课程，所以这里**不按当前学段过滤**；只有用户明确提到年级/学段时才用 stage 过滤。
+     * 进度取 course_study_progress（一次批量取回，不在循环里查库）。
+     */
+    private String queryMyCourses(String userId, String keyword, String stageCode) {
+        if (StringTools.isEmpty(userId)) {
+            return "未获取到学生身份，无法查询已加入的课程";
+        }
+        CourseEnrollmentQuery enrollQuery = new CourseEnrollmentQuery();
+        enrollQuery.setUserId(userId.trim());
+        enrollQuery.setStatus(1);
+        List<String> courseIds = courseEnrollmentService.findListByParam(enrollQuery).stream()
+                .map(CourseEnrollment::getCourseId)
+                .filter(id -> !StringTools.isEmpty(id))
+                .distinct()
+                .toList();
+        if (courseIds.isEmpty()) {
+            return "该学生还没有加入任何课程（可在「课程教材」页选择想学的课程加入）";
+        }
+        CourseInfoQuery query = new CourseInfoQuery();
+        query.setCourseIds(new java.util.ArrayList<>(courseIds));
+        query.setStatus(1);
+        if (stageCode != null) {
+            query.setStage(stageCode);
+        }
+        if (!StringTools.isEmpty(keyword)) {
+            query.setCourseNameFuzzy(keyword.trim());
+        }
+        query.setOrderBy("sort asc");
+        List<CourseInfo> list = courseInfoService.findListByParam(query);
+        if (list.isEmpty()) {
+            return stageCode == null
+                    ? "该学生已加入的课程里没有匹配的课程"
+                    : "该学生已加入的课程里没有「" + stageCode + "」学段的课程（其它学段的课程可在不指定学段时查看）";
+        }
+        Map<String, Integer> finishedCountMap = new HashMap<>();
+        CourseStudyLessonProgressQuery lessonProgressQuery = new CourseStudyLessonProgressQuery();
+        lessonProgressQuery.setUserId(userId.trim());
+        lessonProgressQuery.setFinished(1);
+        for (CourseStudyLessonProgress progress : courseStudyLessonProgressService.findListByParam(lessonProgressQuery)) {
+            finishedCountMap.merge(progress.getCourseId(), 1, Integer::sum);
+        }
+        int limit = Math.min(list.size(), LIST_LIMIT);
+        StringBuilder sb = new StringBuilder("该学生已加入的课程（共 ").append(list.size())
+                .append(" 门，跨学段全部展示，最多列出 ").append(limit).append(" 门）：\n");
+        for (int i = 0; i < limit; i++) {
+            CourseInfo course = list.get(i);
+            sb.append(i + 1).append(". ").append(course.getCourseName())
+                    .append("（年级:").append(course.getGrade() == null ? "-" : course.getGrade())
+                    .append("，学段:").append(course.getStage() == null ? "-" : course.getStage())
+                    .append("，学科:").append(course.getSubject() == null ? "-" : course.getSubject())
+                    .append("，难度:").append(course.getDifficulty() == null ? "-" : course.getDifficulty()).append("星")
+                    .append("，已学:")
+                    .append(finishedCountMap.getOrDefault(course.getCourseId(), 0)).append("/")
+                    .append(course.getLessonCount() == null ? 0 : course.getLessonCount())
+                    .append(" 课时，课程ID:").append(course.getCourseId());
+            if (!StringTools.isEmpty(course.getDescription())) {
+                String desc = course.getDescription();
+                sb.append("，简介:").append(desc.length() > 40 ? desc.substring(0, 40) + "…" : desc);
+            }
+            sb.append("）\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 学生是否已加入该课程（跨学段可见性判定用，口径与「我的课程」页面一致：2026-10-04 起
+     * 已加入的课程不再受当前学段限制）。
+     */
+    private boolean isEnrolled(String userId, String courseId) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(courseId)) {
+            return false;
+        }
+        CourseEnrollmentQuery query = new CourseEnrollmentQuery();
+        query.setUserId(userId.trim());
+        query.setCourseId(courseId.trim());
+        query.setStatus(1);
+        return !courseEnrollmentService.findListByParam(query).isEmpty();
+    }
+
+    @Tool(name = "queryLesson", description = "按课程ID查询课时列表（含摘要/视频时长），或按课时ID查课时详情。"
+            + "学生**已加入**的课程不受学段限制（跨学段也能看课时）。")
     public String queryLesson(
             @ToolParam(description = "课程ID，可空") String courseId,
             @ToolParam(description = "课时ID，可空") String lessonId,
-            @ToolParam(description = "学段编码，由系统自动注入") String stage) {
+            @ToolParam(description = "学段编码，由系统自动注入") String stage,
+            @ToolParam(description = "学生用户ID，由系统自动注入") String userId) {
         try {
             String stageCode = normalizeStageOrError(stage);
             if (stageCode != null && stageCode.startsWith("无法识别")) {
@@ -146,7 +252,8 @@ public class TeachingToolService {
                     return "课时不存在";
                 }
                 CourseInfo course = courseInfoService.getCourseInfoByCourseId(lesson.getCourseId());
-                if (stageCode != null && course != null && !stageCode.equals(course.getStage())) {
+                if (stageCode != null && course != null && !stageCode.equals(course.getStage())
+                        && !isEnrolled(userId, course.getCourseId())) {
                     return "该课时所属课程不属于当前学段";
                 }
                 StringBuilder sb = new StringBuilder("课时：").append(lesson.getLessonName())
@@ -169,7 +276,8 @@ public class TeachingToolService {
             if (course == null) {
                 return "课程不存在：" + courseId;
             }
-            if (stageCode != null && !stageCode.equals(course.getStage())) {
+            if (stageCode != null && !stageCode.equals(course.getStage())
+                    && !isEnrolled(userId, course.getCourseId())) {
                 return "该课程不属于当前学段";
             }
             CourseChapterLessonQuery query = new CourseChapterLessonQuery();

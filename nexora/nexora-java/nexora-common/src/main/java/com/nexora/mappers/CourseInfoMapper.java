@@ -25,4 +25,15 @@ public interface CourseInfoMapper<T,P> extends BaseMapper<T,P> {
 	 T selectByCourseId(@Param("courseId") String courseId);
 
 
+	/**
+	 * 学习人数 +1（加入课程时调用；原子自增，避免并发读改写丢更新）
+	 */
+	 Integer increaseStudyCount(@Param("courseId") String courseId);
+
+
+	/**
+	 * 学习人数 -1（退出课程时调用；不小于 0）
+	 */
+	 Integer decreaseStudyCount(@Param("courseId") String courseId);
+
 }

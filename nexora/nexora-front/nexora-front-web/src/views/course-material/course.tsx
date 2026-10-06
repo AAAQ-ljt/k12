@@ -164,6 +164,34 @@ export default function CourseDetail() {
     [detail],
   );
 
+  /** 已学课时数（course_study_lesson_progress.finished） */
+  const finishedLessons = useMemo(
+    () => detail?.chapters.reduce(
+      (sum, chapter) => sum + chapter.lessons.filter((item) => item.finished).length, 0) ?? 0,
+    [detail],
+  );
+
+  /**
+   * 最近学完的课时：按 finishTime 取最新（缺时间时退化为顺序上最后一个已学）。
+   * 用于把「学到哪一节了」标得更醒目——学生一眼能找到自己上次学到的地方。
+   */
+  const latestFinishedLessonId = useMemo(() => {
+    const lessons = detail?.chapters.flatMap((chapter) => chapter.lessons) ?? [];
+    let latestId: string | undefined;
+    let latestTime = -1;
+    for (const item of lessons) {
+      if (!item.finished) {
+        continue;
+      }
+      const time = item.finishTime ? new Date(item.finishTime).getTime() : 0;
+      if (time >= latestTime) {
+        latestTime = time;
+        latestId = item.lesson.lessonId;
+      }
+    }
+    return latestId;
+  }, [detail]);
+
   const openResource = (resource: StudentLessonResource) => {
     if (resource.resourceType === 'LINK') {
       const url = resource.description?.startsWith('http') ? resource.description : '';
@@ -235,7 +263,7 @@ export default function CourseDetail() {
               ) : null}
               <span>
                 <Layers size={13} />
-                {totalLessons} 课时
+                {finishedLessons > 0 ? `已学 ${finishedLessons}/${totalLessons} 课时` : `${totalLessons} 课时`}
               </span>
             </div>
           </div>
@@ -308,6 +336,15 @@ export default function CourseDetail() {
                           {chapterIndex + 1}.{lessonIndex + 1}
                         </span>
                         <h4>{lesson.lesson.lessonName}</h4>
+                        {lesson.finished ? (
+                          <span
+                            className={`${styles.finishedMark}${lesson.lesson.lessonId === latestFinishedLessonId ? ` ${styles.finishedMarkCurrent}` : ''}`}
+                            title={lesson.finishTime ? `完成于 ${lesson.finishTime}` : '已学完'}
+                          >
+                            <CheckCircle2 size={12} />
+                            已学
+                          </span>
+                        ) : null}
                         {status?.hasQuiz ? (
                           <Tag color={passed ? 'success' : 'gold'}>{passed ? '测验已通过' : '含通关测验'}</Tag>
                         ) : null}

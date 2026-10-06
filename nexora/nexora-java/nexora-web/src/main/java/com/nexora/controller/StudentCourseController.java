@@ -8,6 +8,7 @@ import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.CourseInfo;
+import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.entity.po.KnowledgeDoc;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.CourseChapterLessonQuery;
@@ -15,6 +16,7 @@ import com.nexora.entity.query.CourseChapterLessonResourceQuery;
 import com.nexora.entity.query.CourseChapterQuery;
 import com.nexora.entity.query.CourseEnrollmentQuery;
 import com.nexora.entity.query.CourseInfoQuery;
+import com.nexora.entity.query.CourseStudyLessonProgressQuery;
 import com.nexora.entity.vo.CourseChapterDetailVO;
 import com.nexora.entity.vo.CourseDetailVO;
 import com.nexora.entity.vo.CourseLessonDetailVO;
@@ -29,6 +31,7 @@ import com.nexora.service.CourseEnrollmentService;
 import com.nexora.service.CourseInfoService;
 import com.nexora.service.CourseQuizBiz;
 import com.nexora.service.CourseStudyBiz;
+import com.nexora.service.CourseStudyLessonProgressService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentWikiService;
 import com.nexora.utils.LoginUserContext;
@@ -47,7 +50,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 学生端课程教材 Controller：按登录学生年级返回课程列表与课程详情。
@@ -75,6 +80,9 @@ public class StudentCourseController extends ABaseController {
 
     @Resource
     private StudentWikiService studentWikiService;
+
+    @Resource
+    private CourseStudyLessonProgressService courseStudyLessonProgressService;
 
     @Resource
     private CourseQuizBiz courseQuizBiz;
@@ -162,11 +170,15 @@ public class StudentCourseController extends ABaseController {
             bean.setCreateTime(now);
             bean.setUpdateTime(now);
             courseEnrollmentService.add(bean);
+            // 学习人数（课程卡片展示口径）= 当前有效加入人数：首次加入 +1
+            courseInfoService.increaseStudyCount(courseId);
         } else if (enrollment.getStatus() == null || enrollment.getStatus() != 1) {
             CourseEnrollment update = new CourseEnrollment();
             update.setStatus(1);
             update.setUpdateTime(now);
             courseEnrollmentService.updateCourseEnrollmentByUserIdAndCourseId(update, current.getUserId(), courseId);
+            // 退出后重新加入：计数回补（退出流程若上线，需成对调用 decreaseStudyCount）
+            courseInfoService.increaseStudyCount(courseId);
         }
         return getSuccessResponseVO(null);
     }
@@ -200,11 +212,20 @@ public class StudentCourseController extends ABaseController {
         chapterQuery.setOrderBy("sort asc, create_time asc");
         List<CourseChapter> chapters = courseChapterService.findListByParam(chapterQuery);
 
+        // 课时完成状态（一次批量取回，避免在循环里逐节查库）：供学生端在课时标题旁标记「已学」
+        Map<String, CourseStudyLessonProgress> progressMap = new HashMap<>();
+        CourseStudyLessonProgressQuery progressQuery = new CourseStudyLessonProgressQuery();
+        progressQuery.setUserId(current.getUserId());
+        progressQuery.setCourseId(courseId);
+        for (CourseStudyLessonProgress progress : courseStudyLessonProgressService.findListByParam(progressQuery)) {
+            progressMap.put(progress.getLessonId(), progress);
+        }
+
         List<CourseChapterDetailVO> chapterVOs = new ArrayList<>();
         for (CourseChapter chapter : chapters) {
             CourseChapterDetailVO chapterVO = new CourseChapterDetailVO();
             chapterVO.setChapter(chapter);
-            chapterVO.setLessons(loadLessons(chapter.getChapterId(), courseId));
+            chapterVO.setLessons(loadLessons(chapter.getChapterId(), courseId, progressMap));
             chapterVOs.add(chapterVO);
         }
         detail.setChapters(chapterVOs);
@@ -279,7 +300,8 @@ public class StudentCourseController extends ABaseController {
         return getSuccessResponseVO(null);
     }
 
-    private List<CourseLessonDetailVO> loadLessons(String chapterId, String courseId) {
+    private List<CourseLessonDetailVO> loadLessons(String chapterId, String courseId,
+                                                   Map<String, CourseStudyLessonProgress> progressMap) {
         CourseChapterLessonQuery lessonQuery = new CourseChapterLessonQuery();
         lessonQuery.setChapterId(chapterId);
         lessonQuery.setCourseId(courseId);
@@ -292,6 +314,9 @@ public class StudentCourseController extends ABaseController {
             CourseLessonDetailVO lessonVO = new CourseLessonDetailVO();
             lessonVO.setLesson(lesson);
             lessonVO.setResources(loadLessonResources(lesson.getLessonId()));
+            CourseStudyLessonProgress progress = progressMap.get(lesson.getLessonId());
+            lessonVO.setFinished(progress != null && progress.getFinished() != null && progress.getFinished() == 1);
+            lessonVO.setFinishTime(progress == null ? null : progress.getFinishTime());
             lessonVOs.add(lessonVO);
         }
         return lessonVOs;

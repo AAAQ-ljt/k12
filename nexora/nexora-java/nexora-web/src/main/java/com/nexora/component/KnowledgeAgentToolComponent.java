@@ -166,20 +166,26 @@ public class KnowledgeAgentToolComponent {
                             },"required":["docId","section"]}""",
                     true, false, false),
             new McpToolSpec("queryCourse",
-                    "查询本学段上架课程清单（含学科/难度/课时数/学习人数）。用户问「有哪些课/推荐课程」时使用。",
+                    "查询课程清单（含年级/学科/难度/课时数/学习人数）。默认返回**全部学段**的上架课程；"
+                            + "用户问「我加入的课程 / 我的课程 / 我学过哪些课」时必须传 mine=true（返回该学生已加入的全部课程，"
+                            + "跨学段，含已学课时数）；**只有**用户明确提到年级或学段（如「三年级的课 / 初中有哪些课」）才传 stage——"
+                            + "不要因为知道学生的学段就默认传 stage。",
                     """
                             {"type":"object","properties":{
+                              "mine":{"type":"boolean","description":"是否只查当前学生已加入的课程（跨学段）；用户问「我的课程」时传 true"},
+                              "stage":{"type":"string","description":"学段过滤，仅在用户明确提到年级/学段时传；支持高中/初中/三年级等中文，自动归一化"},
                               "keyword":{"type":"string","description":"课程名关键词，可空"}
                             }}""",
-                    true, false, false),
+                    false, true, false),
             new McpToolSpec("queryLesson",
-                    "查询某门课程的课时列表（含摘要/视频时长），或按课时ID查详情。先用 queryCourse 拿到课程ID。",
+                    "查询某门课程的课时列表（含摘要/视频时长），或按课时ID查详情。先用 queryCourse 拿到课程ID。"
+                            + "学生已加入的课程不受学段限制（跨学段也能查）。",
                     """
                             {"type":"object","properties":{
                               "courseId":{"type":"string","description":"课程ID，可空"},
                               "lessonId":{"type":"string","description":"课时ID，可空"}
                             }}""",
-                    true, false, false),
+                    true, true, false),
             new McpToolSpec("recommendResource",
                     "推荐官方学习资源（按知识点/类型过滤）。类型：VIDEO/DOCUMENT/PPT/WORD/IMAGE/PICTURE_BOOK/ANIMATION。",
                     """
@@ -348,12 +354,36 @@ public class KnowledgeAgentToolComponent {
                 markWikiOp(toolContext);
             }
             try {
-                return delegate.call(args.toJSONString());
+                long startedAt = System.currentTimeMillis();
+                String result = delegate.call(args.toJSONString());
+                // 工具调用轨迹（2026-10-07 起）：回答出现「平台事实」争议时，这是唯一能查证
+                // 「模型到底调了哪个工具、入参是什么、拿到什么结果」的依据（此前完全无迹可查）。
+                log.info("MCP 工具调用 tool={} args={} 耗时={}ms 返回长度={} 摘要={}",
+                        spec.name(), summarizeArgs(args), System.currentTimeMillis() - startedAt,
+                        result == null ? 0 : result.length(), summarizeResult(result));
+                return result;
             } catch (Exception e) {
-                log.warn("知识页 MCP 工具调用失败 tool={}", spec.name(), e);
+                log.warn("知识页 MCP 工具调用失败 tool={} args={}", spec.name(), summarizeArgs(args), e);
                 return "知识页服务暂不可用（MCP 服务 " + spec.name() + " 调用失败）："
                         + e.getMessage() + "。请稍后重试，或告知用户稍后再试。";
             }
+        }
+
+        /** 入参摘要：去掉 userId（上下文已固定）并截断，便于日志检索 */
+        private String summarizeArgs(JSONObject args) {
+            JSONObject copy = new JSONObject(args);
+            copy.remove("userId");
+            String text = copy.toJSONString();
+            return text.length() > 200 ? text.substring(0, 200) + "…" : text;
+        }
+
+        /** 返回摘要：单行化 + 截断，避免把整篇知识页写进日志 */
+        private String summarizeResult(String result) {
+            if (result == null) {
+                return "";
+            }
+            String oneLine = result.replace('\n', ' ').replace('\r', ' ');
+            return oneLine.length() > 240 ? oneLine.substring(0, 240) + "…" : oneLine;
         }
     }
 

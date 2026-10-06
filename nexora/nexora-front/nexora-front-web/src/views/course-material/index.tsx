@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { App, Button, Empty, Input, Progress, Select, Spin, Tabs, Tag } from 'antd';
-import { BookOpen, Layers, GraduationCap, PlusCircle, Search } from 'lucide-react';
+import { BookOpen, Layers, GraduationCap, PlusCircle, Search, Users } from 'lucide-react';
 import {
   joinCourse,
   loadJoinCourses,
@@ -130,6 +130,12 @@ export default function CourseMaterial() {
           <span>
             <Layers size={13} />
             {course.lessonCount} 课时
+          </span>
+        ) : null}
+        {course.studyCount ? (
+          <span title="当前加入该课程的学生人数">
+            <Users size={13} />
+            {course.studyCount} 人在学
           </span>
         ) : null}
       </div>

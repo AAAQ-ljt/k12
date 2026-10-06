@@ -1,10 +1,9 @@
 package com.nexora.config;
 
-import com.nexora.component.AiUsageAdvisor;
+import com.nexora.component.ChatProvider;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,10 +11,24 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 public class AiChatConfig {
 
+    /**
+     * 全局 ChatClient 跟随「对话供应商」路由（system_config 的 AI_MODEL.chat_provider）。
+     *
+     * 固定注入本 bean 的调用方（意图识别 / 出题 / 动画脚本 / 绘本故事 / 学习路径生成 / 知识页整理，
+     * 以及 common 的 AiStructureComponent）此前固定走 spring.ai.openai.chat.*（DeepSeek 直连），
+     * 与管理端可切换的对话供应商**割裂**：2026-10-07 DeepSeek 账号欠费时，这些功能全部 402，
+     * 且意图识别失败会把「出题」兜底成 CHAT，表现为"AI 把题目写成一段文字、没有答题卡片"。
+     * 改为跟随路由后，管理端切换供应商即对全部调用方生效。
+     *
+     * provider 的客户端已自带用量上报 Advisor（AiUsageAdvisor）；OpenCode Go 还自带网关必需的
+     * x-opencode-session 请求头。
+     *
+     * 注意：bean 在**启动时定型**，运行时切换供应商后这些固定调用方仍需重启本服务（对话主链路是
+     * 每次调用实时取路由，不受影响）。
+     */
     @Bean
-    public ChatClient chatClient(OpenAiChatModel openAiChatModel, AiUsageAdvisor aiUsageAdvisor) {
-        // 统一挂用量上报 Advisor：本端所有大模型调用的 token 消耗自动落 ai_usage_record
-        return ChatClient.builder(openAiChatModel).defaultAdvisors(aiUsageAdvisor).build();
+    public ChatClient chatClient(ChatProvider chatProvider) {
+        return chatProvider.chatClient();
     }
 
     // 向量模型固定使用 spring.ai.openai.embedding.options.model（qwen3.7-text-embedding，1024 维），

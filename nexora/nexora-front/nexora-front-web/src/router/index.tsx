@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import AutoLogin from '@/components/layout/AutoLogin';
+import AppErrorPage from '@/components/layout/AppErrorPage';
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import StageGuard, { ANIMATION_STAGES, CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
@@ -28,6 +29,8 @@ const routes: RouteObject[] = [
         <MainLayout />
       </AutoLogin>
     ),
+    // 路由级错误兜底：任何子路由渲染/提交异常都落到友好页，不再显示 React Router 默认开发者报错页
+    errorElement: <AppErrorPage />,
     children: [
       { index: true, element: <Navigate to="/ai-tutor" replace /> },
       { path: 'ai-tutor', element: <AiTutor /> },

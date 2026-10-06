@@ -309,6 +309,7 @@ export default function CourseMaterialDetail() {
               key={resource.resourceId}
               url={getResourceFileUrl(resource.resourceId)}
               filename={viewerFileNameOf(resource, ext)}
+              height="100%"
             />
           </>
         ) : (
