@@ -1,5 +1,6 @@
 package com.nexora.service;
 
+import com.nexora.component.PointAwardComponent;
 import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseChapterLessonResource;
 import com.nexora.entity.po.CourseEnrollment;
@@ -56,6 +57,10 @@ public class CourseStudyBiz {
 
     @Resource
     private CourseStudyLessonProgressService courseStudyLessonProgressService;
+
+    /** 积分发放入口（每日签到）：积分是激励层，异常只记日志、不影响学习链路 */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
 
     @Resource
     private StudentLearningRecordService studentLearningRecordService;
@@ -135,7 +140,7 @@ public class CourseStudyBiz {
     /**
      * 上报课时资源学习：校验加入与资源归属，记课时完成（幂等）并落当日去重的 VIEW 流水。
      */
-    public void reportStudy(String userId, String lessonId, String resourceId) {
+    public void reportStudy(String userId, String stage, String lessonId, String resourceId) {
         if (StringTools.isEmpty(userId)) {
             throw new BusinessException("请先登录");
         }
@@ -162,6 +167,13 @@ public class CourseStudyBiz {
             markLessonCompleted(userId, lesson, now);
         }
         saveViewRecord(userId, lesson, resourceId, now);
+        // 每日签到（同一学生每天只发一次；连续学习阶梯由组件结算）—— 见二期规划 A-2 第 1/2 条。
+        // stage 由调用方从登录态传入；积分异常只记日志，绝不影响学习链路。
+        try {
+            pointAwardComponent.signIn(userId, stage);
+        } catch (Exception e) {
+            log.warn("每日签到积分发放失败（不影响学习链路）userId={}", userId, e);
+        }
     }
 
     /** 课时是否配置了启用中的通关测验（quizMode>0 且 status=1） */

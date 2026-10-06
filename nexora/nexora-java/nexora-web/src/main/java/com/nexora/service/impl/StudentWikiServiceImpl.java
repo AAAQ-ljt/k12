@@ -1,6 +1,7 @@
 package com.nexora.service.impl;
 
 import com.nexora.component.AiStructureComponent;
+import com.nexora.component.PointAwardComponent;
 import com.nexora.component.ResourceKnowledgeParser;
 import com.nexora.component.WikiKnowledgeComponent;
 import com.nexora.dto.StudentWikiProfileDTO;
@@ -43,6 +44,10 @@ public class StudentWikiServiceImpl implements StudentWikiService {
 
     @Resource
     private KnowledgeDocService knowledgeDocService;
+
+    /** 积分发放入口（知识页确认入库）：积分异常只记日志、不影响入库 */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
 
     @Resource
     private ResourceInfoService resourceInfoService;
@@ -108,7 +113,15 @@ public class StudentWikiServiceImpl implements StudentWikiService {
             refreshLightweightContent(doc);
         }
         // 状态校验（内容为空 / 向量化中 / 已入库）与入队由公共组件统一处理
-        return wikiKnowledgeComponent.markIngest(userId, docId);
+        KnowledgeDoc ingested = wikiKnowledgeComponent.markIngest(userId, docId);
+        // 确认入库 → 积分（bizId=知识页ID，同一页只奖一次；受每日上限约束）—— 二期规划 A-2 第 11 条。
+        // 积分异常只记日志：入库本身已成功，绝不因为积分把入库回滚。
+        try {
+            pointAwardComponent.awardWikiConfirm(userId, doc.getStage(), docId);
+        } catch (Exception e) {
+            log.warn("知识页入库积分发放失败（不影响入库）userId={} docId={}", userId, docId, e);
+        }
+        return ingested;
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.nexora.component.KnowledgeMasteryComponent;
 import com.nexora.component.LearningPathComponent;
 import com.nexora.component.LearningPathGenerateComponent;
+import com.nexora.component.PointAwardComponent;
 import com.nexora.dto.NodeQuizAnswerDTO;
 import com.nexora.dto.NodeQuizSubmitDTO;
 import com.nexora.entity.enums.DateTimePatternEnum;
@@ -86,6 +87,10 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
     @Resource
     private PracticeRecordService practiceRecordService;
+
+    /** 积分发放入口（节点快测通过）：积分异常只记日志、不影响判分 */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
 
     @Resource
     private KnowledgeMasteryComponent knowledgeMasteryComponent;
@@ -324,8 +329,18 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
         int total = results.size();
         int score = total == 0 ? 0 : (int) Math.round(correctCount * 100.0 / total);
+        boolean passed = total > 0 && score >= KnowledgeMasteryComponent.REVIEW_CORRECT_PERCENT;
         NodeQuizSubmitResultVO resultVO = new NodeQuizSubmitResultVO();
-        resultVO.setPassed(total > 0 && score >= KnowledgeMasteryComponent.REVIEW_CORRECT_PERCENT);
+        resultVO.setPassed(passed);
+        // 节点快测通过积分（bizId=路径节点ID，每节点只奖一次）—— 二期规划 A-2 第 4 条。
+        // 积分异常只记日志：绝不能因为积分问题让学生答不了题。
+        if (passed) {
+            try {
+                pointAwardComponent.awardPathTest(userId, path.getStage(), item.getItemId());
+            } catch (Exception e) {
+                log.warn("路径节点快测积分发放失败（不影响判分）userId={} itemId={}", userId, item.getItemId(), e);
+            }
+        }
         resultVO.setCorrectCount(correctCount);
         resultVO.setTotalCount(total);
         resultVO.setScore(score);

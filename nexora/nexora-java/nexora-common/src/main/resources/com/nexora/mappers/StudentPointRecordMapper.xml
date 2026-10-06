@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.StudentPointRecordMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.StudentPointRecord">
+		<id column="record_id" property="recordId" />
+		<result column="user_id" property="userId" />
+		<result column="stage" property="stage" />
+		<result column="biz_type" property="bizType" />
+		<result column="biz_id" property="bizId" />
+		<result column="points" property="points" />
+		<result column="balance_after" property="balanceAfter" />
+		<result column="reason" property="reason" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+	<sql id="base_column_list">
+		r.record_id,r.user_id,r.stage,r.biz_type,r.biz_id,r.points,r.balance_after,r.reason,r.create_time
+	</sql>
+
+	<!-- 幂等写入：命中 uk_user_biz 时不做任何修改并返回 0 行，调用方据此判定「重复发分」 -->
+	<insert id="insertIgnore" parameterType="com.nexora.entity.po.StudentPointRecord">
+		insert into student_point_record
+			(user_id, stage, biz_type, biz_id, points, balance_after, reason, create_time)
+		values
+			(#{userId}, #{stage}, #{bizType}, #{bizId}, #{points}, #{balanceAfter}, #{reason}, now())
+		on duplicate key update record_id = record_id
+	</insert>
+
+	<select id="countByUserAndBiz" resultType="java.lang.Integer">
+		select count(1) from student_point_record r
+		where r.user_id = #{userId} and r.biz_type = #{bizType} and r.biz_id = #{bizId}
+	</select>
+
+	<!-- 当日已获积分（每日上限判断）；bizTypeList 为空表示不限来源 -->
+	<select id="sumPointsByUserAndTimeRange" resultType="java.lang.Integer">
+		select coalesce(sum(r.points), 0) from student_point_record r
+		where r.user_id = #{userId} and r.create_time &gt;= #{start} and r.create_time &lt;= #{end}
+		<if test="bizTypeList != null and bizTypeList.size() > 0">
+			and r.biz_type in
+			<foreach collection="bizTypeList" item="item" open="(" separator="," close=")">#{item}</foreach>
+		</if>
+	</select>
+
+	<!-- 某学生某来源累计积分（徽章规则 TOTAL_POINTS / CODING_COUNT 等） -->
+	<select id="sumPointsByUserAndBizTypes" resultType="java.lang.Integer">
+		select coalesce(sum(r.points), 0) from student_point_record r
+		where r.user_id = #{userId} and r.points &gt; 0
+		<if test="bizTypeList != null and bizTypeList.size() > 0">
+			and r.biz_type in
+			<foreach collection="bizTypeList" item="item" open="(" separator="," close=")">#{item}</foreach>
+		</if>
+	</select>
+
+	<!-- 某学生某来源的流水条数（徽章规则计数用；bizTypeList 为空表示不限来源） -->
+	<select id="countByUserAndBizTypes" resultType="java.lang.Integer">
+		select count(1) from student_point_record r
+		where r.user_id = #{userId}
+		<if test="bizTypeList != null and bizTypeList.size() > 0">
+			and r.biz_type in
+			<foreach collection="bizTypeList" item="item" open="(" separator="," close=")">#{item}</foreach>
+		</if>
+	</select>
+
+	<select id="selectCountByParam" resultType="java.lang.Integer">
+		select count(1) from student_point_record r
+		<where>
+			<if test="userId != null and userId != ''">and r.user_id = #{userId}</if>
+			<if test="bizType != null and bizType != ''">and r.biz_type = #{bizType}</if>
+			<if test="createTimeStart != null and createTimeStart != ''">
+				and r.create_time &gt;= concat(#{createTimeStart}, ' 00:00:00')
+			</if>
+			<if test="createTimeEnd != null and createTimeEnd != ''">
+				and r.create_time &lt;= concat(#{createTimeEnd}, ' 23:59:59')
+			</if>
+		</where>
+	</select>
+
+	<!-- 我的积分明细：按时间倒序取最近 N 条（学生端明细量小，分页留到管理端流水页） -->
+	<select id="selectListByParam" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from student_point_record r
+		<where>
+			<if test="userId != null and userId != ''">and r.user_id = #{userId}</if>
+			<if test="bizType != null and bizType != ''">and r.biz_type = #{bizType}</if>
+			<if test="createTimeStart != null and createTimeStart != ''">
+				and r.create_time &gt;= concat(#{createTimeStart}, ' 00:00:00')
+			</if>
+			<if test="createTimeEnd != null and createTimeEnd != ''">
+				and r.create_time &lt;= concat(#{createTimeEnd}, ' 23:59:59')
+			</if>
+		</where>
+		order by r.create_time desc, r.record_id desc
+		limit #{pageSize}
+	</select>
+</mapper>

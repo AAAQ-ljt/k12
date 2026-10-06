@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.StudentPointAccountMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.StudentPointAccount">
+		<id column="user_id" property="userId" />
+		<result column="stage" property="stage" />
+		<result column="total_points" property="totalPoints" />
+		<result column="available_points" property="availablePoints" />
+		<result column="level" property="level" />
+		<result column="streak_days" property="streakDays" />
+		<result column="last_streak_date" property="lastStreakDate" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<sql id="base_column_list">
+		a.user_id,a.stage,a.total_points,a.available_points,a.level,a.streak_days,
+		a.last_streak_date,a.create_time,a.update_time
+	</sql>
+
+	<select id="selectByUserId" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from student_point_account a
+		where a.user_id = #{userId}
+	</select>
+
+	<!-- 原子加/减分：不存在则插入，存在则累加。
+	     total_points 只增不减（兑换等负分只扣 available_points）；等级由调用方按新余额另行更新。 -->
+	<insert id="upsertIncrease">
+		insert into student_point_account
+			(user_id, stage, total_points, available_points, level, streak_days, create_time, update_time)
+		values
+			(#{userId}, #{stage}, greatest(#{points}, 0), greatest(#{points}, 0), 1, 0, now(), now())
+		on duplicate key update
+			total_points = total_points + greatest(#{points}, 0),
+			available_points = available_points + #{points},
+			stage = values(stage),
+			update_time = now()
+	</insert>
+
+	<update id="updateLevel">
+		update student_point_account set level = #{level}, update_time = now()
+		where user_id = #{userId} and level &lt;&gt; #{level}
+	</update>
+
+	<update id="updateStreak">
+		update student_point_account
+		set streak_days = #{streakDays}, last_streak_date = #{lastStreakDate}, update_time = now()
+		where user_id = #{userId}
+	</update>
+
+	<select id="selectTopByStage" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from student_point_account a
+		where a.stage = #{stage}
+		order by a.total_points desc, a.update_time asc
+		limit #{limit}
+	</select>
+
+	<select id="selectTopAll" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from student_point_account a
+		order by a.total_points desc, a.update_time asc
+		limit #{limit}
+	</select>
+</mapper>

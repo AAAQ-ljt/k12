@@ -29,6 +29,13 @@ public class SystemConfigComponent {
     /** 配置分组：AI 模型参数（文生图供应商切换） */
     public static final String GROUP_AI_MODEL = "AI_MODEL";
 
+    /**
+     * 配置分组：积分游戏化规则（各规则分值 / 每日上限 / 等级阶梯 / 连击档位）。
+     * 键名见 docs/sql/20261007_point_gamification.sql 的 GAME 组预置；
+     * 读取统一走 {@code PointAwardComponent} / {@code PointLevelComponent}（缺失回落代码默认值）。
+     */
+    public static final String GROUP_GAME = "GAME";
+
     /** 文生图供应商配置键（值白名单：dashscope / ark / gpt-image-2） */
     public static final String KEY_IMAGE_PROVIDER = "image_provider";
 

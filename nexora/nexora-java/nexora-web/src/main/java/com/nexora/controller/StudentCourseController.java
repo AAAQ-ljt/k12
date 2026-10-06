@@ -296,7 +296,7 @@ public class StudentCourseController extends ABaseController {
     @PostMapping("/reportStudy")
     public ResponseVO<Void> reportStudy(@RequestParam String lessonId, @RequestParam String resourceId) {
         TokenUserInfoDTO current = LoginUserContext.get();
-        courseStudyBiz.reportStudy(current.getUserId(), lessonId, resourceId);
+        courseStudyBiz.reportStudy(current.getUserId(), current.getStage(), lessonId, resourceId);
         return getSuccessResponseVO(null);
     }
 

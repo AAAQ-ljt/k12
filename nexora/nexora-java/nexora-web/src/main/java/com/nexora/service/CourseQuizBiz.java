@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.nexora.component.KnowledgeMasteryComponent;
+import com.nexora.component.PointAwardComponent;
 import com.nexora.dto.LessonQuizAnswerDTO;
 import com.nexora.dto.LessonQuizSubmitDTO;
 import com.nexora.entity.po.CourseChapter;
@@ -60,6 +61,10 @@ public class CourseQuizBiz {
 
     @Resource
     private CourseChapterService courseChapterService;
+
+    /** 积分发放入口（课时通关测验通过）：积分异常只记日志、不影响判分与学习链路 */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
 
     @Resource
     private CourseChapterLessonService courseChapterLessonService;
@@ -260,6 +265,13 @@ public class CourseQuizBiz {
         boolean passed = totalScore > 0 && score >= passScore;
         if (passed) {
             markLessonCompleted(userId, lesson, now);
+            // 通关测验积分（bizId=课时ID，同一课时只奖一次；分值含得分率加成）—— 二期规划 A-2 第 3 条
+            try {
+                pointAwardComponent.awardLessonQuiz(userId, stage, lesson.getLessonId(),
+                        totalScore <= 0 ? 0 : (int) Math.round(score * 100.0 / totalScore));
+            } catch (Exception e) {
+                log.warn("课时测验积分发放失败（不影响判分）userId={} lessonId={}", userId, lesson.getLessonId(), e);
+            }
         }
 
         LessonQuizSubmitResultVO resultVO = new LessonQuizSubmitResultVO();

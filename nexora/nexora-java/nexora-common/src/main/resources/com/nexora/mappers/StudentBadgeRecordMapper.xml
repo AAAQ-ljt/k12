@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.StudentBadgeRecordMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.StudentBadgeRecord">
+		<id column="record_id" property="recordId" />
+		<result column="user_id" property="userId" />
+		<result column="badge_id" property="badgeId" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+	<!-- 幂等解锁：命中 uk_user_badge 时返回 0 行（表示此前已解锁） -->
+	<insert id="insertIgnore" parameterType="com.nexora.entity.po.StudentBadgeRecord">
+		insert into student_badge_record (user_id, badge_id, create_time)
+		values (#{userId}, #{badgeId}, now())
+		on duplicate key update record_id = record_id
+	</insert>
+
+	<select id="selectBadgeIdsByUser" resultType="java.lang.String">
+		select r.badge_id from student_badge_record r
+		where r.user_id = #{userId}
+		order by r.create_time asc
+	</select>
+
+	<select id="countByUserAndTimeRange" resultType="java.lang.Integer">
+		select count(1) from student_badge_record r
+		where r.user_id = #{userId}
+		<if test="start != null">and r.create_time &gt;= #{start}</if>
+		<if test="end != null">and r.create_time &lt;= #{end}</if>
+	</select>
+</mapper>

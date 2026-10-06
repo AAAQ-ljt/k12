@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.GameBadgeMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.GameBadge">
+		<id column="badge_id" property="badgeId" />
+		<result column="name" property="name" />
+		<result column="description" property="description" />
+		<result column="icon" property="icon" />
+		<result column="stage_scope" property="stageScope" />
+		<result column="rule_type" property="ruleType" />
+		<result column="rule_value" property="ruleValue" />
+		<result column="reward_points" property="rewardPoints" />
+		<result column="sort" property="sort" />
+		<result column="status" property="status" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<sql id="base_column_list">
+		b.badge_id,b.name,b.description,b.icon,b.stage_scope,b.rule_type,b.rule_value,
+		b.reward_points,b.sort,b.status,b.create_time,b.update_time
+	</sql>
+
+	<!-- 学段过滤：stage_scope 为空=全学段；否则按逗号分隔清单匹配（FIND_IN_SET） -->
+	<select id="selectListByParam" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from game_badge b
+		<where>
+			<if test="badgeId != null and badgeId != ''">and b.badge_id = #{badgeId}</if>
+			<if test="status != null">and b.status = #{status}</if>
+			<if test="stage != null and stage != ''">
+				and (b.stage_scope is null or b.stage_scope = '' or find_in_set(#{stage}, b.stage_scope))
+			</if>
+		</where>
+		order by b.sort asc, b.badge_id asc
+	</select>
+
+	<select id="selectByBadgeId" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from game_badge b
+		where b.badge_id = #{badgeId}
+	</select>
+</mapper>

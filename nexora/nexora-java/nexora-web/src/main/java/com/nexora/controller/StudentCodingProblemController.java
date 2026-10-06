@@ -1,6 +1,7 @@
 package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
+import com.nexora.component.PointAwardComponent;
 import com.nexora.dto.CodingJudgeDTO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.vo.CodingJudgeResultVO;
@@ -33,6 +34,10 @@ public class StudentCodingProblemController extends ABaseController {
     @Resource
     private CodingLabBiz codingLabBiz;
 
+    /** 记录「看过答案」事实供判分折算（30%）——事实记录，规则在 PointAwardComponent 内 */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
+
     @GetMapping("/list")
     public ResponseVO<List<CodingProblemVO>> list(@RequestParam(required = false) Integer difficulty,
                                                   @RequestParam(required = false) String keyword) {
@@ -60,7 +65,8 @@ public class StudentCodingProblemController extends ABaseController {
         }
         TokenUserInfoDTO current = LoginUserContext.get();
         String stage = current == null ? null : current.getStage();
-        Object[] result = codingLabBiz.judge(dto.getProblemId(), dto.getOutput(), stage, dto.getContestId());
+        String userId = current == null ? null : current.getUserId();
+        Object[] result = codingLabBiz.judge(dto.getProblemId(), dto.getOutput(), stage, dto.getContestId(), userId);
         return getSuccessResponseVO(new CodingJudgeResultVO((Boolean) result[0], String.valueOf(result[1])));
     }
 
@@ -74,6 +80,11 @@ public class StudentCodingProblemController extends ABaseController {
             return getSuccessResponseVO(new CodingProblemReferenceVO());
         }
         String stage = current.getStage();
-        return getSuccessResponseVO(codingLabBiz.getReference(problemId, contestId, userId, stage));
+        CodingProblemReferenceVO vo = codingLabBiz.getReference(problemId, contestId, userId, stage);
+        // 真的拿到了参考答案 → 记一次「看过答案」：判分时按 30% 计分（服务端标记，前端不可绕过）
+        if (vo != null && !StringTools.isEmpty(vo.getReferenceCode())) {
+            pointAwardComponent.markCodingAnswerUsed(userId, problemId);
+        }
+        return getSuccessResponseVO(vo);
     }
 }

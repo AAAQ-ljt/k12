@@ -58,6 +58,10 @@ public class KnowledgeMasteryComponent {
     @Resource
     private KnowledgeMasteryService knowledgeMasteryService;
 
+    /** 积分发放入口（跨入「已掌握」时发分；唯一写入方，见二期规划 A-2 第 5 条） */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
+
     /**
      * 一次作答的结果（客观题自动判分 / 主观题批阅后）
      *
@@ -103,6 +107,31 @@ public class KnowledgeMasteryComponent {
             knowledgeMasteryService.addOrUpdateBatch(upsertList);
         } catch (Exception e) {
             log.warn("掌握度批量回写失败 userId={} 知识点数={}", userId, upsertList.size(), e);
+            return;
+        }
+        // 跨入「已掌握」→ 发积分（二期积分体系 A-2 第 5 条）。
+        // 幂等由 PointAwardComponent 保证（bizId = 知识点 ID，同一知识点只奖一次）；
+        // 掌握度写失败时不发分（上面已 return），避免「分数发了但掌握度没落库」。
+        // 另外：积分属于激励层，任何发分异常都只记日志、不向上抛 —— 绝不能因为积分问题让学生答不了题
+        // （最典型场景：积分表尚未建好就部署了新 jar）。
+        for (KnowledgeMastery bean : upsertList) {
+            if (bean.getStatus() == null || bean.getStatus() != STATUS_MASTERED) {
+                continue;
+            }
+            KnowledgeMastery before = existing.get(bean.getKnowledgePointId());
+            if (before != null && before.getStatus() != null && before.getStatus() == STATUS_MASTERED) {
+                continue;
+            }
+            try {
+                int gained = pointAwardComponent.awardMastery(userId, stage, bean.getKnowledgePointId());
+                if (gained > 0) {
+                    log.info("知识点已掌握并发积分 userId={} knowledgePointId={} points={}",
+                            userId, bean.getKnowledgePointId(), gained);
+                }
+            } catch (Exception e) {
+                log.warn("知识点掌握积分发放失败（不影响学习链路）userId={} knowledgePointId={}",
+                        userId, bean.getKnowledgePointId(), e);
+            }
         }
     }
 

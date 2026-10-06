@@ -60,6 +60,10 @@ public class PictureBookTaskConsumer {
     @Resource
     private PictureBookService pictureBookService;
 
+    /** 积分发放入口（完成绘本创作）：积分异常只记日志、不影响出书 */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
+
     @Resource
     private UserInfoService userInfoService;
 
@@ -279,6 +283,13 @@ public class PictureBookTaskConsumer {
         pictureBookTaskService.update(task);
         log.info("绘本异步任务完成 taskId={} userId={} title={} pages={}",
                 task.getTaskId(), task.getUserId(), task.getTitle(), story.pages().size());
+        // 完成绘本创作 → 积分（bizId=绘本资源ID，同一本书只奖一次；受每日上限约束）—— 二期规划 A-2 第 9 条。
+        // 积分异常只记日志：绝不影响出书本身。
+        try {
+            pointAwardComponent.awardPictureBook(task.getUserId(), task.getStage(), book.getResourceId());
+        } catch (Exception e) {
+            log.warn("绘本创作积分发放失败（不影响出书）taskId={}", task.getTaskId(), e);
+        }
     }
 
     /**

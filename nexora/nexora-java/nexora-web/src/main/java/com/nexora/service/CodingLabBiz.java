@@ -1,5 +1,6 @@
 package com.nexora.service;
 
+import com.nexora.component.PointAwardComponent;
 import com.nexora.entity.po.CodingContest;
 import com.nexora.entity.po.CodingContestProblem;
 import com.nexora.entity.po.CodingContestRecord;
@@ -44,6 +45,13 @@ public class CodingLabBiz {
 
     @Resource
     private CodingProblemService codingProblemService;
+
+    /**
+     * 积分发放入口（编程题通关）：练习模式通关发分、比赛模式不发（比赛成绩只进比赛排行榜）。
+     * 积分异常只记日志，绝不影响判分。
+     */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
 
     @Resource
     private CodingContestService codingContestService;
@@ -137,9 +145,10 @@ public class CodingLabBiz {
      *
      * @param stage     当前登录学生的学段（与题目详情同口径，不允许跨学段判分）
      * @param contestId 非空表示比赛模式：题目必须属于这场比赛
+     * @param userId    当前登录学生（用于通关积分；为空则不发分）
      * @return [0]=是否通过，[1]=给学生的提示
      */
-    public Object[] judge(String problemId, String output, String stage, String contestId) {
+    public Object[] judge(String problemId, String output, String stage, String contestId, String userId) {
         CodingProblem problem = codingProblemService.getCodingProblemByProblemId(problemId);
         if (problem == null || problem.getStatus() == null || problem.getStatus() != 1) {
             throw new BusinessException("题目不存在或已下架");
@@ -153,13 +162,22 @@ public class CodingLabBiz {
         }
         String actual = normalizeOutput(output);
         Integer judgeType = problem.getJudgeType() == null ? 1 : problem.getJudgeType();
-        if (judgeType == 2) {
-            return judgeExact(problem, actual);
+        Object[] result = judgeType == 2 ? judgeExact(problem, actual)
+                : judgeType == 3 ? judgePattern(problem, actual)
+                : judgeKeywords(problem, actual);
+        // 通关积分（二期规划 A-2 第 6/7 条）：
+        // - **比赛模式不发全局积分**（比赛成绩只进比赛自己的排行榜，见 A-5 分离说明）；
+        // - 练习模式：bizId=题目 ID 保证「重复通关不再计分」，看过答案按 30%（服务端 Redis 标记）；
+        // - 积分异常只记日志：绝不能因为积分问题让学生判不了题。
+        if (Boolean.TRUE.equals(result[0]) && !StringTools.isEmpty(userId) && StringTools.isEmpty(contestId)) {
+            try {
+                pointAwardComponent.awardCodingProblem(userId, stage, problemId,
+                        problem.getScore() == null ? 0 : problem.getScore());
+            } catch (Exception e) {
+                log.warn("编程题通关积分发放失败（不影响判分）userId={} problemId={}", userId, problemId, e);
+            }
         }
-        if (judgeType == 3) {
-            return judgePattern(problem, actual);
-        }
-        return judgeKeywords(problem, actual);
+        return result;
     }
 
     /** 比赛模式：题目必须在这场比赛的赛题里（判分与「显示答案」都按此校验） */
