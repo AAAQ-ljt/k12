@@ -47,16 +47,24 @@ public class StudentCodingProblemController extends ABaseController {
         return getSuccessResponseVO(codingLabBiz.getProblem(problemId, current == null ? null : current.getStage()));
     }
 
-    /** 判分：上报运行输出，由服务端比对（预期值不下发前端） */
+    /**
+     * 判分：上报运行输出，由服务端比对（预期值不下发前端）。
+     *
+     * 学段取登录态（不信任客户端传参），与题目详情同口径：跨学段判分直接拒绝；
+     * 比赛模式下额外校验「该题属于这场比赛」。
+     */
     @PostMapping("/judge")
     public ResponseVO<CodingJudgeResultVO> judge(@RequestBody CodingJudgeDTO dto) {
         if (dto == null || StringTools.isEmpty(dto.getProblemId())) {
             throw new com.nexora.exception.BusinessException("题目ID不能为空");
         }
-        Object[] result = codingLabBiz.judge(dto.getProblemId(), dto.getOutput());
+        TokenUserInfoDTO current = LoginUserContext.get();
+        String stage = current == null ? null : current.getStage();
+        Object[] result = codingLabBiz.judge(dto.getProblemId(), dto.getOutput(), stage, dto.getContestId());
         return getSuccessResponseVO(new CodingJudgeResultVO((Boolean) result[0], String.valueOf(result[1])));
     }
 
+    /** 参考答案（「显示答案」）：已下架或非本学段的题目一律拒绝 */
     @GetMapping("/reference")
     public ResponseVO<CodingProblemReferenceVO> reference(@RequestParam String problemId,
                                                           @RequestParam(required = false) String contestId) {
@@ -65,6 +73,7 @@ public class StudentCodingProblemController extends ABaseController {
         if (StringTools.isEmpty(userId)) {
             return getSuccessResponseVO(new CodingProblemReferenceVO());
         }
-        return getSuccessResponseVO(codingLabBiz.getReference(problemId, contestId, userId));
+        String stage = current.getStage();
+        return getSuccessResponseVO(codingLabBiz.getReference(problemId, contestId, userId, stage));
     }
 }

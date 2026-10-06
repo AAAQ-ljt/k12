@@ -72,6 +72,20 @@ export default function ProblemPreviewModal({
           </div>
 
           <div className={styles.previewSection}>
+            <div className={styles.previewLabel}>输出要求（学生可见）</div>
+            <div className={styles.previewText}>{problem.outputSpec || '-'}</div>
+          </div>
+
+          <div className={styles.previewSection}>
+            <div className={styles.previewLabel}>输出示例（学生可见，只演示格式）</div>
+            {problem.outputExample ? (
+              <pre className={styles.previewExample}>{problem.outputExample}</pre>
+            ) : (
+              <div className={styles.previewText}>-</div>
+            )}
+          </div>
+
+          <div className={styles.previewSection}>
             <div className={styles.previewLabel}>预置代码</div>
             <CodeEditorField value={problem.starterCode ?? ''} height={180} readOnly />
           </div>

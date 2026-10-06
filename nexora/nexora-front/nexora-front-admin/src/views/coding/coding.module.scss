@@ -61,6 +61,21 @@
   color: inherit;
 }
 
+/* 输出示例：等宽展示，和程序真实输出观感一致 */
+.previewExample {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-fill-tertiary, rgba(0, 0, 0, 0.04));
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text);
+}
+
 /* ===== 赛题编排抽屉 ===== */
 .arrangeLayout {
   display: grid;

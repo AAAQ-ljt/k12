@@ -30,6 +30,14 @@ export interface CodingProblemVO {
   sort?: number;
   language?: string;
   knowledgePointId?: string;
+  /** 输出要求（题目要求打印成什么样：几行/小数位/标点用英文半角），随题目下发 */
+  outputSpec?: string;
+  /** 输出示例（用另一组数据演示格式，不含本题答案） */
+  outputExample?: string;
+  /** 判定方式：1关键词包含 2输出精确匹配 3正则（用于给学生讲清「怎么算通过」） */
+  judgeType?: number;
+  /** 数值容差：1 表示纯数值行按数值比较（78.5 与 78.50 视为相同） */
+  numericTolerant?: number;
   /** 是否已通关（二期由后端提供，本期恒为 null，前端以 localStorage 为准） */
   passed?: boolean | null;
 }
@@ -103,21 +111,25 @@ export function loadCodingProblemInfo(problemId: string): Promise<CodingProblemV
   return get('/codingProblem/getInfo', { problemId });
 }
 
-/** 判分结果（当前后端返回 boolean，预留服务端提示文案） */
+/** 判分结果（服务端回结论 + 给学生看的提示文案，不泄露期望输出） */
 export interface CodingJudgeResult {
   passed: boolean;
-  /** 服务端提示文案；后端仅返回 boolean 时为空，前端回退默认文案 */
+  /** 服务端提示文案：失败时是**具体诊断**（全角符号/空行/大小写/空格/数值写法），无文案时前端回退默认 */
   message?: string;
 }
 
 /**
  * 判分：只上报运行输出，由服务端比对，返回是否通过。
- * 兼容两种响应形态：boolean（当前实现）与 { passed, message }（后端后续下沉提示文案时直接生效）。
+ * 学段取登录态（服务端不信任客户端传参）；contestId 非空表示比赛模式（服务端校验该题属于这场比赛）。
  */
-export function judgeCodingProblem(problemId: string, output: string): Promise<CodingJudgeResult> {
+export function judgeCodingProblem(
+  problemId: string,
+  output: string,
+  contestId?: string,
+): Promise<CodingJudgeResult> {
   return post<boolean | { passed?: boolean; message?: string }>(
     '/codingProblem/judge',
-    { problemId, output },
+    { problemId, output, contestId },
   ).then((data) => {
     if (typeof data === 'boolean') {
       return { passed: data };

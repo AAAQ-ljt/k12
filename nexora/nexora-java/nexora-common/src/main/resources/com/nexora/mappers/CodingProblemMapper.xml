@@ -17,9 +17,12 @@
 		<result column="reference_code" property="referenceCode" />
 		<result column="solution_notes" property="solutionNotes" />
 		<result column="judge_type" property="judgeType" />
+		<result column="output_spec" property="outputSpec" />
+		<result column="output_example" property="outputExample" />
 		<result column="expected_output" property="expectedOutput" />
 		<result column="expected_keywords" property="expectedKeywords" />
 		<result column="expected_pattern" property="expectedPattern" />
+		<result column="numeric_tolerant" property="numericTolerant" />
 		<result column="score" property="score" />
 		<result column="estimate_minutes" property="estimateMinutes" />
 		<result column="sort" property="sort" />
@@ -32,9 +35,9 @@
 
 	<sql id="base_column_list">
 		p.problem_id,p.stage,p.grade,p.knowledge_point_id,p.difficulty,p.title,p.goal,p.description,
-		p.hint,p.starter_code,p.reference_code,p.solution_notes,p.judge_type,p.expected_output,
-		p.expected_keywords,p.expected_pattern,p.score,p.estimate_minutes,p.sort,p.language,p.status,
-		p.create_by,p.create_time,p.update_time
+		p.hint,p.starter_code,p.reference_code,p.solution_notes,p.judge_type,p.output_spec,p.output_example,
+		p.expected_output,p.expected_keywords,p.expected_pattern,p.numeric_tolerant,p.score,p.estimate_minutes,
+		p.sort,p.language,p.status,p.create_by,p.create_time,p.update_time
 	</sql>
 
 	<sql id="query_condition">
@@ -101,9 +104,12 @@
 			<if test="bean.referenceCode != null">reference_code,</if>
 			<if test="bean.solutionNotes != null">solution_notes,</if>
 			<if test="bean.judgeType != null">judge_type,</if>
+			<if test="bean.outputSpec != null">output_spec,</if>
+			<if test="bean.outputExample != null">output_example,</if>
 			<if test="bean.expectedOutput != null">expected_output,</if>
 			<if test="bean.expectedKeywords != null">expected_keywords,</if>
 			<if test="bean.expectedPattern != null">expected_pattern,</if>
+			<if test="bean.numericTolerant != null">numeric_tolerant,</if>
 			<if test="bean.score != null">score,</if>
 			<if test="bean.estimateMinutes != null">estimate_minutes,</if>
 			<if test="bean.sort != null">sort,</if>
@@ -127,9 +133,12 @@
 			<if test="bean.referenceCode != null">#{bean.referenceCode},</if>
 			<if test="bean.solutionNotes != null">#{bean.solutionNotes},</if>
 			<if test="bean.judgeType != null">#{bean.judgeType},</if>
+			<if test="bean.outputSpec != null">#{bean.outputSpec},</if>
+			<if test="bean.outputExample != null">#{bean.outputExample},</if>
 			<if test="bean.expectedOutput != null">#{bean.expectedOutput},</if>
 			<if test="bean.expectedKeywords != null">#{bean.expectedKeywords},</if>
 			<if test="bean.expectedPattern != null">#{bean.expectedPattern},</if>
+			<if test="bean.numericTolerant != null">#{bean.numericTolerant},</if>
 			<if test="bean.score != null">#{bean.score},</if>
 			<if test="bean.estimateMinutes != null">#{bean.estimateMinutes},</if>
 			<if test="bean.sort != null">#{bean.sort},</if>
@@ -156,9 +165,12 @@
 			<if test="bean.referenceCode != null">reference_code = #{bean.referenceCode},</if>
 			<if test="bean.solutionNotes != null">solution_notes = #{bean.solutionNotes},</if>
 			<if test="bean.judgeType != null">judge_type = #{bean.judgeType},</if>
+			<if test="bean.outputSpec != null">output_spec = #{bean.outputSpec},</if>
+			<if test="bean.outputExample != null">output_example = #{bean.outputExample},</if>
 			<if test="bean.expectedOutput != null">expected_output = #{bean.expectedOutput},</if>
 			<if test="bean.expectedKeywords != null">expected_keywords = #{bean.expectedKeywords},</if>
 			<if test="bean.expectedPattern != null">expected_pattern = #{bean.expectedPattern},</if>
+			<if test="bean.numericTolerant != null">numeric_tolerant = #{bean.numericTolerant},</if>
 			<if test="bean.score != null">score = #{bean.score},</if>
 			<if test="bean.estimateMinutes != null">estimate_minutes = #{bean.estimateMinutes},</if>
 			<if test="bean.sort != null">sort = #{bean.sort},</if>
@@ -184,9 +196,12 @@
 			<if test="bean.referenceCode != null">reference_code = #{bean.referenceCode},</if>
 			<if test="bean.solutionNotes != null">solution_notes = #{bean.solutionNotes},</if>
 			<if test="bean.judgeType != null">judge_type = #{bean.judgeType},</if>
+			<if test="bean.outputSpec != null">output_spec = #{bean.outputSpec},</if>
+			<if test="bean.outputExample != null">output_example = #{bean.outputExample},</if>
 			<if test="bean.expectedOutput != null">expected_output = #{bean.expectedOutput},</if>
 			<if test="bean.expectedKeywords != null">expected_keywords = #{bean.expectedKeywords},</if>
 			<if test="bean.expectedPattern != null">expected_pattern = #{bean.expectedPattern},</if>
+			<if test="bean.numericTolerant != null">numeric_tolerant = #{bean.numericTolerant},</if>
 			<if test="bean.score != null">score = #{bean.score},</if>
 			<if test="bean.estimateMinutes != null">estimate_minutes = #{bean.estimateMinutes},</if>
 			<if test="bean.sort != null">sort = #{bean.sort},</if>

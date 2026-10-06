@@ -77,8 +77,8 @@ function buildPrompt(
     blocks.push(COACH_PREFIX);
   }
   const scene = ctx.taskTitle
-    ? `我正在「编程环境」里做练习：${ctx.taskTitle}（${ctx.stageLabel}）`
-    : `我正在「编程环境」里写 Python（${ctx.stageLabel}）`;
+    ? `我正在「趣味编程」里做练习：${ctx.taskTitle}（${ctx.stageLabel}）`
+    : `我正在「趣味编程」里写 Python（${ctx.stageLabel}）`;
   blocks.push(scene);
   if (ctx.code.trim()) {
     blocks.push(`我的代码：\n\`\`\`python\n${clip(ctx.code, CODE_LIMIT)}\n\`\`\``);

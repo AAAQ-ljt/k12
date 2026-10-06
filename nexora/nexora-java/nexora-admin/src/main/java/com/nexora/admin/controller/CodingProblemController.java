@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * 管理端「编程题库」题目管理
@@ -135,9 +137,28 @@ public class CodingProblemController extends ABaseController {
                 && StringTools.isEmpty(bean.getExpectedKeywords())) {
             throw new BusinessException("按关键词判定时必须填写期望关键词");
         }
-        if (bean.getJudgeType() != null && bean.getJudgeType() == 2
-                && StringTools.isEmpty(bean.getExpectedOutput())) {
-            throw new BusinessException("按输出精确匹配判定时必须填写期望输出");
+        if (bean.getJudgeType() != null && bean.getJudgeType() == 2) {
+            if (StringTools.isEmpty(bean.getExpectedOutput())) {
+                throw new BusinessException("按输出精确匹配判定时必须填写期望输出");
+            }
+            // 输出契约：精确匹配类题目必须写清「输出要求 + 输出示例」，否则学生只能靠猜格式（见 docs/二期规划设计 §5.1.5-B）
+            if (StringTools.isEmpty(bean.getOutputSpec())) {
+                throw new BusinessException("按输出精确匹配判定时必须填写「输出要求」（打印什么/几行/小数位/标点用英文半角）");
+            }
+            if (StringTools.isEmpty(bean.getOutputExample())) {
+                throw new BusinessException("按输出精确匹配判定时必须填写「输出示例」（用另一组数据演示格式，不要用本题数据，避免泄题）");
+            }
+        }
+        if (bean.getJudgeType() != null && bean.getJudgeType() == 3) {
+            if (StringTools.isEmpty(bean.getExpectedPattern())) {
+                throw new BusinessException("按正则判定时必须填写期望正则");
+            }
+            // 预校验：非法正则会让学生端整道题判分失败（原实现只在判分时编译，异常直抛 500）
+            try {
+                Pattern.compile(bean.getExpectedPattern());
+            } catch (PatternSyntaxException e) {
+                throw new BusinessException("期望正则不是合法的正则表达式：" + e.getDescription());
+            }
         }
     }
 }

@@ -50,12 +50,21 @@ public class CodingProblem implements Serializable {
 	/** 判定：1关键词包含 2输出精确匹配 3正则 */
 	private Integer judgeType;
 
+	/** 输出要求（Markdown：必须打印什么/几行/小数位/单位/标点用英文半角），随题目下发 */
+	private String outputSpec;
+
+	/** 输出示例（等宽文本，用「另一组数据」演示格式，禁止使用本题数据以免泄题），随题目下发 */
+	private String outputExample;
+
 	private String expectedOutput;
 
 	/** 关键词，逗号分隔 */
 	private String expectedKeywords;
 
 	private String expectedPattern;
+
+	/** 数值容差：0否 1是（开启后两边都能解析为数字的行按数值比较，78.50 与 78.5 视为相同） */
+	private Integer numericTolerant;
 
 	/** 积分 */
 	private Integer score;

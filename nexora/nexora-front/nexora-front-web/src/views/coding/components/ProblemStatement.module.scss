@@ -1,0 +1,128 @@
+/* 题干卡：目标 / 题目描述 / 输出要求 / 输出示例 / 思路提示。
+   与 solutionBox 同风格（暖色卡片），卡片整体限高、正文内部滚动，避免挤压编辑器。 */
+.card {
+  flex: none;
+  max-height: 260px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--warm-orange-300);
+  background: var(--warm-orange-100);
+}
+
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--warm-brown-900);
+}
+
+.meta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--warm-brown-700);
+}
+
+.stars {
+  letter-spacing: 1px;
+}
+
+.minutes {
+  white-space: nowrap;
+}
+
+.toggle {
+  flex: none;
+}
+
+.body {
+  margin-top: 6px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.goal {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--warm-brown-800);
+}
+
+.desc {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+}
+
+.section {
+  margin-top: 6px;
+}
+
+.sectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warm-brown-700);
+}
+
+.spec {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+}
+
+/* 输出示例：等宽展示，和真实输出观感一致 */
+.example {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--warm-orange-400);
+  background: var(--card-white);
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+.hintToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warm-brown-700);
+}
+
+/* 判定口径：把「怎么算通过」直说 */
+.rule {
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--warm-orange-300);
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}

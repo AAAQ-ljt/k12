@@ -1019,7 +1019,7 @@ public class AgentChatComponent {
     /**
      * 产品功能自述块（不依赖 MCP 开关，始终注入）：
      * 按学生学段列出真实可用的产品功能（绘本生成仅小学、动画讲解/学习路径仅初高中），
-     * 避免模型介绍能力时漏掉绘本生成、编程环境等内建功能，或把页面功能说成"不是我的功能"。
+     * 避免模型介绍能力时漏掉绘本生成、趣味编程等内建功能，或把页面功能说成"不是我的功能"。
      * 用户问"你能做什么"时以本节 + MCP 工具块（若挂载）为准如实回答。
      */
     private String appendProductCapabilities(String prompt, String stage) {
@@ -1035,11 +1035,11 @@ public class AgentChatComponent {
             block.append("- 绘本生成：在「绘本生成」页输入主题，AI 编故事、配图并朗读（小学专属）；\n");
         } else if (STAGE_PRIMARY_HIGH.equals(code)) {
             block.append("- 绘本生成：在「绘本生成」页输入主题，AI 编故事、配图并朗读（小学专属）；\n")
-                    .append("- 编程环境：在浏览器里直接运行 Python 代码，按学段预置示例；\n");
+                    .append("- 趣味编程：在「趣味编程」页写 Python 并直接运行，有分学段的题库与编程比赛；\n");
         } else {
             block.append("- 动画讲解：把抽象概念做成 SVG 分步动画（初高中专属）；\n")
                     .append("- 学习路径：按你的学习档案生成个性化学习路线，掌握度驱动解锁；\n")
-                    .append("- 编程环境：在浏览器里直接运行 Python 代码，按学段预置示例；\n");
+                    .append("- 趣味编程：在「趣味编程」页写 Python 并直接运行，有分学段的题库与编程比赛；\n");
         }
         block.append("介绍要求：\n")
                 .append("1. 用户问「你能做什么/有哪些功能」时，按本节如实介绍，不遗漏、不夸大；\n")

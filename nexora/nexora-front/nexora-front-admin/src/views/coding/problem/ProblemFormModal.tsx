@@ -145,7 +145,7 @@ export default function ProblemFormModal({
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ judgeType: 1, status: 1, language: 'python', estimateMinutes: 15, sort: 0 }}
+        initialValues={{ judgeType: 1, status: 1, language: 'python', estimateMinutes: 15, sort: 0, numericTolerant: 0 }}
       >
         <Form.Item
           name="title"
@@ -251,6 +251,7 @@ export default function ProblemFormModal({
             name="judgeType"
             label="判定方式"
             rules={[{ required: true, message: '请选择判定方式' }]}
+            extra="有唯一确定输出的题用「输出精确匹配」（并写清输出要求+示例）；打印中间过程的题用「关键词包含」（需全部命中）"
             style={{ width: '50%' }}
           >
             <Select options={JUDGE_TYPE_OPTIONS} />
@@ -270,19 +271,72 @@ export default function ProblemFormModal({
           </Form.Item>
         )}
         {judgeType === 2 && (
-          <Form.Item
-            name="expectedOutput"
-            label="期望输出"
-            rules={[{ required: true, message: '请输入期望输出' }]}
-          >
-            <Input.TextArea rows={2} placeholder="程序标准输出，需与之一致" maxLength={2000} />
-          </Form.Item>
+          <>
+            <Form.Item
+              name="expectedOutput"
+              label="期望输出（判分基准，不对学生下发）"
+              rules={[{ required: true, whitespace: true, message: '请输入期望输出' }]}
+            >
+              <Input.TextArea rows={2} placeholder="程序标准输出，需与之一致（学生端看不到这一项）" maxLength={2000} />
+            </Form.Item>
+            <Form.Item
+              name="outputSpec"
+              label="输出要求（学生可见）"
+              rules={[{ required: true, whitespace: true, message: '精确匹配类题目必须写清输出要求' }]}
+              extra="写清要打印什么、几行、每行内容、几位小数、单位，并提醒标点用英文半角——学生按它就能对上格式，不用猜"
+            >
+              <Input.TextArea
+                rows={3}
+                maxLength={2000}
+                placeholder={'例如：\n输出 2 行：\n第 1 行 —— 求和结果（整数）\n第 2 行 —— 平均值，保留 2 位小数\n标点请用英文半角'}
+              />
+            </Form.Item>
+            <Form.Item
+              name="outputExample"
+              label="输出示例（学生可见，只演示格式）"
+              rules={[{ required: true, whitespace: true, message: '精确匹配类题目必须给出输出示例' }]}
+              extra="⚠️ 必须用「另一组数据」演示格式，禁止使用本题数据——否则等于直接把答案给了学生"
+            >
+              <Input.TextArea
+                rows={3}
+                maxLength={2000}
+                placeholder={'例如（题目是另一道题时的样子）：\n和：15\n平均值：3.75\n本题请按同样的格式输出你自己的结果'}
+              />
+            </Form.Item>
+            <Form.Item
+              name="numericTolerant"
+              label="数值容差"
+              extra="开启后纯数字行按数值比较（78.5 与 78.50 视为相同），避免学生因为小数写法被误判"
+            >
+              <Select
+                options={[
+                  { value: 0, label: '关闭（严格按文本比对）' },
+                  { value: 1, label: '开启（纯数值行按数值比较）' },
+                ]}
+              />
+            </Form.Item>
+          </>
         )}
         {judgeType === 3 && (
           <Form.Item
             name="expectedPattern"
             label="期望正则"
-            rules={[{ required: true, message: '请输入期望正则' }]}
+            rules={[
+              { required: true, message: '请输入期望正则' },
+              {
+                validator: (_rule, value: string) => {
+                  if (!value) {
+                    return Promise.resolve();
+                  }
+                  try {
+                    new RegExp(value);
+                    return Promise.resolve();
+                  } catch {
+                    return Promise.reject(new Error('正则表达式不合法，请检查括号与转义字符'));
+                  }
+                },
+              },
+            ]}
           >
             <Input placeholder="用于匹配程序输出的正则表达式" maxLength={1000} />
           </Form.Item>

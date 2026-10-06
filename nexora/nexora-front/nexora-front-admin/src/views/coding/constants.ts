@@ -47,10 +47,14 @@ export const CODING_PROBLEM_STATUS_MAP: Record<string, { text: string; color: st
   '0': { text: '下架', color: 'red' },
 };
 
-/** 判定方式：1关键词包含 2输出精确匹配 3正则 */
+/** 判定方式：1关键词包含 2输出精确匹配 3正则
+ *  选型建议（对齐判分公平性口径，见 docs/二期规划设计 §5.1.5-C）：
+ *  - 有唯一确定输出（计算结果、格式化输出）→ 输出精确匹配，且必须写「输出要求 + 输出示例」；
+ *  - 打印中间过程（排序过程、循环过程）→ 关键词包含，需填写全部要出现的内容；
+ *  - 要点必须出现但顺序自由 → 正则匹配。 */
 export const JUDGE_TYPE_OPTIONS = [
-  { label: '关键词包含', value: 1 },
-  { label: '输出精确匹配', value: 2 },
+  { label: '关键词包含（输出需出现全部关键词）', value: 1 },
+  { label: '输出精确匹配（需填输出要求+示例）', value: 2 },
   { label: '正则匹配', value: 3 },
 ];
 

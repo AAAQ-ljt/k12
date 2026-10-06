@@ -78,8 +78,8 @@ const routes: RouteObject[] = [
       {
         path: 'coding',
         element: (
-          <StageGuard allowStages={CODING_STAGES} description="编程环境面向小学高年级及以上，先去 AI 助教聊聊吧">
-            <ProtectedRoute title="编程环境" description="登录后使用在线编程环境">
+          <StageGuard allowStages={CODING_STAGES} description="趣味编程面向小学高年级及以上，先去 AI 助教聊聊吧">
+            <ProtectedRoute title="趣味编程" description="登录后使用趣味编程（在线题库 + 编程比赛）">
               <Coding />
             </ProtectedRoute>
           </StageGuard>

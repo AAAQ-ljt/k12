@@ -14,14 +14,19 @@ import com.nexora.entity.vo.CodingProblemVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +39,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class CodingLabBiz {
+
+    private static final Logger log = LoggerFactory.getLogger(CodingLabBiz.class);
 
     @Resource
     private CodingProblemService codingProblemService;
@@ -68,12 +75,20 @@ public class CodingLabBiz {
     /**
      * 参考答案（「显示答案」按钮）。
      *
+     * 可见性口径与题目详情对齐：已下架、或不属于当前学段的题目都不下发答案
+     * （原实现只判「题目存在」，跨学段/已下架也能取到参考答案，见 docs/二期规划设计 §5.1.5-A5）。
+     *
      * @param contestId 非空表示在比赛模式下查看，按比赛规则校验
+     * @param stage     当前登录学生的学段
      */
-    public CodingProblemReferenceVO getReference(String problemId, String contestId, String userId) {
+    public CodingProblemReferenceVO getReference(String problemId, String contestId, String userId, String stage) {
         CodingProblem problem = codingProblemService.getCodingProblemByProblemId(problemId);
-        if (problem == null) {
-            throw new BusinessException("题目不存在");
+        if (problem == null || problem.getStatus() == null || problem.getStatus() != 1) {
+            throw new BusinessException("题目不存在或已下架");
+        }
+        if (!StringTools.isEmpty(stage) && !StringTools.isEmpty(problem.getStage())
+                && !stage.equals(problem.getStage())) {
+            throw new BusinessException("该题目不属于当前学段");
         }
         CodingProblemReferenceVO vo = new CodingProblemReferenceVO();
         vo.setProblemId(problemId);
@@ -111,39 +126,236 @@ public class CodingLabBiz {
     /**
      * 判分：按题目配置的判定方式比对运行输出（预期值不下发前端，避免被翻查）。
      *
+     * 公平性口径（2026-10-06 用户确认，见 docs/二期规划设计 §5.1.5）：
+     * - 比对前统一**规范化**：换行统一、去掉每行行尾空白、去掉首尾空行（避免「行尾多一个空格 / \r\n /
+     *   末尾多一个空行」把做对的学生判成没做对）；
+     * - 关键词判定从「命中任一」收紧为「**全部命中** 且 输出非空」；
+     * - 失败时给**具体诊断**：只差中文全角符号 / 空行数量不同 / 大小写不一致 / 空格数量不同 /
+     *   数值写法不同（78.5 与 78.50）——格式类差异如实告知；内容类差异只指向题目的「输出要求」，
+     *   不点名缺少哪个关键词（避免退化成「照着提示凑关键词」）；
+     * - 题目开启 `numeric_tolerant` 时，两边都能解析为数字的行按数值比较。
+     *
+     * @param stage     当前登录学生的学段（与题目详情同口径，不允许跨学段判分）
+     * @param contestId 非空表示比赛模式：题目必须属于这场比赛
      * @return [0]=是否通过，[1]=给学生的提示
      */
-    public Object[] judge(String problemId, String output) {
+    public Object[] judge(String problemId, String output, String stage, String contestId) {
         CodingProblem problem = codingProblemService.getCodingProblemByProblemId(problemId);
-        if (problem == null) {
-            throw new BusinessException("题目不存在");
+        if (problem == null || problem.getStatus() == null || problem.getStatus() != 1) {
+            throw new BusinessException("题目不存在或已下架");
         }
-        String actual = output == null ? "" : output.trim();
+        if (!StringTools.isEmpty(stage) && !StringTools.isEmpty(problem.getStage())
+                && !stage.equals(problem.getStage())) {
+            throw new BusinessException("该题目不属于当前学段");
+        }
+        if (!StringTools.isEmpty(contestId)) {
+            requireContestProblem(contestId, problemId);
+        }
+        String actual = normalizeOutput(output);
         Integer judgeType = problem.getJudgeType() == null ? 1 : problem.getJudgeType();
         if (judgeType == 2) {
-            String expected = problem.getExpectedOutput() == null ? "" : problem.getExpectedOutput().trim();
-            boolean passed = !expected.isEmpty() && expected.equals(actual);
-            return new Object[]{passed, passed ? "输出与预期完全一致，通过！"
-                    : "输出和预期还不太一样：检查一下打印的内容、顺序与空格。"};
+            return judgeExact(problem, actual);
         }
         if (judgeType == 3) {
-            String pattern = problem.getExpectedPattern();
-            boolean passed = !StringTools.isEmpty(pattern)
-                    && java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL).matcher(actual).find();
-            return new Object[]{passed, passed ? "输出符合要求，通过！" : "输出还不符合要求的格式，再看看提示。"};
+            return judgePattern(problem, actual);
         }
-        String keywords = problem.getExpectedKeywords();
-        boolean passed = false;
-        if (!StringTools.isEmpty(keywords)) {
-            for (String keyword : keywords.split(",")) {
+        return judgeKeywords(problem, actual);
+    }
+
+    /** 比赛模式：题目必须在这场比赛的赛题里（判分与「显示答案」都按此校验） */
+    private void requireContestProblem(String contestId, String problemId) {
+        List<CodingContestProblem> relations = codingContestService.findProblemsByContestId(contestId);
+        boolean belongs = relations != null && relations.stream()
+                .anyMatch(relation -> problemId.equals(relation.getProblemId()));
+        if (!belongs) {
+            throw new BusinessException("该题目不属于这场比赛");
+        }
+    }
+
+    /** 关键词判定：**全部**关键词命中 且 输出非空 */
+    private Object[] judgeKeywords(CodingProblem problem, String actual) {
+        List<String> required = new ArrayList<>();
+        if (!StringTools.isEmpty(problem.getExpectedKeywords())) {
+            for (String keyword : problem.getExpectedKeywords().split(",")) {
                 String value = keyword.trim();
-                if (!value.isEmpty() && actual.contains(value)) {
-                    passed = true;
-                    break;
+                if (!value.isEmpty()) {
+                    required.add(value);
                 }
             }
         }
-        return new Object[]{passed, passed ? "命中本关要点，通过！" : "还没有出现本关要求的输出，再调整一下。"};
+        if (required.isEmpty()) {
+            return new Object[]{false, "本题判定还没配置好，先跳过这道题吧（可以告诉老师）。"};
+        }
+        if (StringTools.isEmpty(actual)) {
+            return new Object[]{false, "程序没有任何输出：题目要求输出里包含的要点，需要真的打印出来才行。"};
+        }
+        boolean missing = required.stream().anyMatch(keyword -> !actual.contains(keyword));
+        if (missing) {
+            return new Object[]{false, "输出里还缺少题目要求的内容：对照本题的「输出要求 / 输出示例」逐项检查一下。"};
+        }
+        return new Object[]{true, "输出包含本题要求的全部内容，通过！"};
+    }
+
+    /** 精确匹配判定：规范化后逐字比对（题目开启数值容差时，纯数字行按数值比较） */
+    private Object[] judgeExact(CodingProblem problem, String actual) {
+        String expected = normalizeOutput(problem.getExpectedOutput());
+        if (StringTools.isEmpty(expected)) {
+            return new Object[]{false, "本题判定还没配置好，先跳过这道题吧（可以告诉老师）。"};
+        }
+        if (StringTools.isEmpty(actual)) {
+            return new Object[]{false, "程序没有任何输出：对照本题的「输出要求」，让程序把结果打印出来。"};
+        }
+        if (expected.equals(actual)) {
+            return new Object[]{true, "输出与题目要求完全一致，通过！"};
+        }
+        boolean numericTolerant = problem.getNumericTolerant() != null && problem.getNumericTolerant() == 1;
+        if (numericTolerant && sameAsNumbers(expected, actual)) {
+            return new Object[]{true, "输出内容正确（数值写法不同，已按数值比较），通过！"};
+        }
+        return new Object[]{false, diagnoseExact(expected, actual)};
+    }
+
+    /** 正则判定：题目要求的输出格式匹配（正则非法时兜底提示，不把异常抛给学生） */
+    private Object[] judgePattern(CodingProblem problem, String actual) {
+        if (StringTools.isEmpty(problem.getExpectedPattern())) {
+            return new Object[]{false, "本题判定还没配置好，先跳过这道题吧（可以告诉老师）。"};
+        }
+        if (StringTools.isEmpty(actual)) {
+            return new Object[]{false, "程序没有任何输出：对照本题的「输出要求」再试一次。"};
+        }
+        boolean passed;
+        try {
+            passed = Pattern.compile(problem.getExpectedPattern(), Pattern.DOTALL).matcher(actual).find();
+        } catch (PatternSyntaxException e) {
+            log.warn("题目 {} 的期望正则非法，判分已跳过正则校验：{}", problem.getProblemId(), problem.getExpectedPattern());
+            return new Object[]{false, "本题判定还没配置好，先跳过这道题吧（可以告诉老师）。"};
+        }
+        return new Object[]{passed, passed ? "输出符合题目要求的格式，通过！"
+                : "输出的内容和格式还不符合要求：对照本题的「输出要求 / 输出示例」再检查一下。"};
+    }
+
+    /**
+     * 精确匹配失败时的诊断：先判断是不是「内容对了但格式不同」，是就如实说清差在哪。
+     * 只做诊断、不参与判定，所以怎么宽松都不会把错的判成对的。
+     */
+    private String diagnoseExact(String expected, String actual) {
+        String expectedBase = stripBlankLines(expected);
+        String actualBase = stripBlankLines(actual);
+        if (expectedBase.equals(actualBase)) {
+            return "输出内容是对的，只是空行数量不一样——按「输出要求」里的行数再核对一下换行。";
+        }
+        if (toHalfWidth(expectedBase).equals(toHalfWidth(actualBase))) {
+            return "输出内容是对的，只是标点用了中文全角符号（如 ，：（）＝）——把输入法切到英文、改成半角符号就能通过。";
+        }
+        if (expectedBase.equalsIgnoreCase(actualBase)) {
+            return "输出内容是对的，只是英文大小写不一致——按「输出要求」里的大小写再试一次。";
+        }
+        if (collapseSpaces(expected).equals(collapseSpaces(actual))) {
+            return "输出内容是对的，只是空格数量不一样——按「输出示例」逐行核对空格（尤其是每行中间的空格）。";
+        }
+        if (sameAsNumbers(expected, actual)) {
+            return "输出内容是对的，只是数值写法不同（例如 78.5 与 78.50）——按「输出要求」的小数位数输出即可。";
+        }
+        return "输出与题目要求还不一致：对照本题的「输出要求 / 输出示例」逐行检查（内容、顺序、标点与空格）。";
+    }
+
+    /**
+     * 输出规范化（判分统一口径）：统一换行符 → 去掉每行行尾空白 → 去掉首尾空行。
+     * 行内空格与行数保持不变（格式化输出类题目仍能考「空格与排版」）。
+     */
+    private String normalizeOutput(String text) {
+        if (text == null) {
+            return "";
+        }
+        String[] lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n", -1);
+        List<String> normalized = new ArrayList<>(lines.length);
+        for (String line : lines) {
+            normalized.add(stripTrailingBlank(line));
+        }
+        int start = 0;
+        int end = normalized.size();
+        while (start < end && normalized.get(start).isEmpty()) {
+            start++;
+        }
+        while (end > start && normalized.get(end - 1).isEmpty()) {
+            end--;
+        }
+        return String.join("\n", normalized.subList(start, end));
+    }
+
+    private String stripTrailingBlank(String line) {
+        int end = line.length();
+        while (end > 0 && Character.isWhitespace(line.charAt(end - 1))) {
+            end--;
+        }
+        return line.substring(0, end);
+    }
+
+    /** 去掉空行（保留行内内容），用于诊断「只差空行」 */
+    private String stripBlankLines(String text) {
+        return Arrays.stream(text.split("\n", -1))
+                .filter(line -> !line.trim().isEmpty())
+                .collect(Collectors.joining("\n"));
+    }
+
+    /** 去掉空行 + 行首尾空白 + 行内连续空白合并为一个空格，用于诊断「只差空格」 */
+    private String collapseSpaces(String text) {
+        return Arrays.stream(text.split("\n", -1))
+                .map(line -> line.trim().replaceAll("[ \t]+", " "))
+                .filter(line -> !line.isEmpty())
+                .collect(Collectors.joining("\n"));
+    }
+
+    /** 全角标点/字母数字/全角空格 → 半角（仅用于诊断，不参与判定） */
+    private String toHalfWidth(String text) {
+        StringBuilder builder = new StringBuilder(text.length());
+        for (char c : text.toCharArray()) {
+            if (c == '\u3000') {
+                builder.append(' ');
+            } else if (c >= '\uFF01' && c <= '\uFF5E') {
+                builder.append((char) (c - 0xFEE0));
+            } else {
+                builder.append(c);
+            }
+        }
+        return builder.toString();
+    }
+
+    /** 数值行容差比较：行数一致，且每行「原文相等」或「两边都能解析为数字且数值相等（1e-6）」 */
+    private boolean sameAsNumbers(String expected, String actual) {
+        String[] expectedLines = expected.split("\n", -1);
+        String[] actualLines = actual.split("\n", -1);
+        if (expectedLines.length != actualLines.length) {
+            return false;
+        }
+        for (int i = 0; i < expectedLines.length; i++) {
+            String left = expectedLines[i].trim();
+            String right = actualLines[i].trim();
+            if (left.equals(right)) {
+                continue;
+            }
+            Double leftValue = parseNumber(left);
+            Double rightValue = parseNumber(right);
+            if (leftValue == null || rightValue == null) {
+                return false;
+            }
+            if (Math.abs(leftValue - rightValue) > 1e-6) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** 整行就是一个数字才参与容差比较，其余（含文本行）一律不认 */
+    private Double parseNumber(String text) {
+        if (StringTools.isEmpty(text) || text.length() > 24) {
+            return null;
+        }
+        try {
+            return Double.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** 本学段可参加的比赛（已发布且未结束，含未开始可报名） */
@@ -372,6 +584,12 @@ public class CodingLabBiz {
         vo.setSort(problem.getSort());
         vo.setLanguage(problem.getLanguage());
         vo.setKnowledgePointId(problem.getKnowledgePointId());
+        // 输出契约：输出要求 + 输出示例随题目下发（示例用另一组数据演示格式，不含本题答案）；
+        // judgeType 只用于前端讲清「怎么算通过」，预期输出/关键词仍不下发
+        vo.setOutputSpec(problem.getOutputSpec());
+        vo.setOutputExample(problem.getOutputExample());
+        vo.setNumericTolerant(problem.getNumericTolerant());
+        vo.setJudgeType(problem.getJudgeType());
         return vo;
     }
 

@@ -4,6 +4,7 @@ import { App, Button, Space, Tag, Tooltip } from 'antd';
 import type { editor as MonacoEditorNs } from 'monaco-editor';
 import Editor from '@monaco-editor/react';
 import {
+  AlertTriangle,
   Download,
   Eye,
   EyeOff,
@@ -36,6 +37,7 @@ import { getStageOption } from '@/types/common';
 import { contestDeadlineOf, contestPhaseOf, formatCountdown, formatDuration, parseTime } from '@/utils/coding';
 import AiCoachPanel from './components/AiCoachPanel';
 import ProblemPanel, { type CodingTabKey, type ContestSessionView } from './components/ProblemPanel';
+import ProblemStatement from './components/ProblemStatement';
 import RunConsole from './components/RunConsole';
 import { usePyodide } from './hooks/usePyodide';
 import { MONACO_LIGHT, defineCodingThemes } from './monacoTheme';
@@ -147,6 +149,8 @@ export default function Coding() {
   const [showingAnswer, setShowingAnswer] = useState(false);
   const [answerSnapshot, setAnswerSnapshot] = useState<string | null>(null);
   const [referenceNotes, setReferenceNotes] = useState<string>();
+  /** 最近一次判分失败的服务端诊断提示（持久显示在运行结果上方，学生可对照修改） */
+  const [judgeNotice, setJudgeNotice] = useState<string>();
 
   // ==================== 比赛状态 ====================
   const [contests, setContests] = useState<CodingContestVO[]>([]);
@@ -614,6 +618,7 @@ export default function Coding() {
     }
     setRunning(true);
     setResult(null);
+    setJudgeNotice(undefined);
     try {
       const next = await run(code);
       setResult(next);
@@ -623,15 +628,22 @@ export default function Coding() {
       }
       setJudging(true);
       try {
-        // 判分只上报运行输出：优先 stdout（print 结果），没有输出时退化为最后一个表达式值
+        // 判分只上报运行输出：优先 stdout（print 结果），没有输出时退化为最后一个表达式值。
+        // 比赛模式带 contestId（服务端校验该题属于这场比赛）；学段由登录态决定，不传参。
         const output = next.stdout.length > 0 ? next.stdout.join('\n') : (next.value ?? '');
-        const verdict = await judgeCodingProblem(currentProblem.problemId, output);
+        const verdict = await judgeCodingProblem(
+          currentProblem.problemId,
+          output,
+          contestSession?.contest.contestId,
+        );
         if (verdict.passed) {
+          setJudgeNotice(undefined);
           handlePassed(currentProblem);
         } else {
           setCombo(0);
-          message.warning(verdict.message
-            || '还没有通过：请检查输出的内容、顺序与空格是否与题目要求一致，再试一次。');
+          // 服务端会给出具体诊断（全角符号 / 空行 / 大小写 / 空格 / 数值写法），持久显示供对照修改
+          setJudgeNotice(verdict.message
+            || '还没有通过：对照题目的「输出要求 / 输出示例」检查输出的内容、顺序与空格。');
         }
       } finally {
         setJudging(false);
@@ -641,7 +653,7 @@ export default function Coding() {
     } finally {
       setRunning(false);
     }
-  }, [code, currentProblem, handlePassed, judging, message, run, running]);
+  }, [code, contestSession, currentProblem, handlePassed, judging, message, run, running]);
 
   // ==================== 显示答案 / 恢复我的代码 ====================
   const fetchReference = useCallback(async (mode: ReferenceMode) => {
@@ -905,7 +917,7 @@ export default function Coding() {
             <Terminal size={20} />
           </span>
           <div>
-            <h1 className={styles.pageTitle}>AI 编程实验室</h1>
+            <h1 className={styles.pageTitle}>趣味编程</h1>
             <p className={styles.pageDesc}>
               在线题库 + 编程比赛：在浏览器里写 Python，运行时问 AI，边写边学
             </p>
@@ -1040,6 +1052,8 @@ export default function Coding() {
         />
 
         <section className={styles.workbench}>
+          <ProblemStatement problem={currentProblem ?? null} />
+
           <div className={styles.workbenchBar}>
             <Space size={8}>
               <Button
@@ -1131,6 +1145,13 @@ export default function Coding() {
                 />
               </div>
               <p className={styles.solutionBody}>{referenceNotes}</p>
+            </div>
+          ) : null}
+
+          {judgeNotice ? (
+            <div className={styles.judgeBar}>
+              <AlertTriangle size={13} />
+              <span className={styles.judgeText}>{judgeNotice}</span>
             </div>
           ) : null}
 

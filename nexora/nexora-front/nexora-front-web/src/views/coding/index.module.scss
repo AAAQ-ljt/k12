@@ -203,6 +203,25 @@
   color: var(--warm-brown-700);
 }
 
+/* 判分诊断条：未通过时显示服务端给出的具体原因（全角符号 / 空行 / 大小写 / 空格 / 数值写法） */
+.judgeBar {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-warning);
+  background: var(--warm-orange-100);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--warm-brown-800);
+}
+
+.judgeText {
+  min-width: 0;
+}
+
 /* 参考解析（看答案后展示的讲解区） */
 .solutionBox {
   flex: none;

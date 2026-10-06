@@ -17,7 +17,7 @@ const TABS: TabItem[] = [
   { path: '/ai-tutor', label: 'AI 助教', icon: MessageSquare },
   { path: '/learning-path', label: '学习路径', icon: Route },
   { path: '/course-material', label: '课程教材', icon: BookOpen },
-  { path: '/coding', label: '编程环境', icon: Code },
+  { path: '/coding', label: '趣味编程', icon: Code },
   { path: '/resource-center', label: '知识中心', icon: FolderOpen },
   { path: '/profile', label: '我的', icon: User },
 ];
@@ -25,7 +25,7 @@ const TABS: TabItem[] = [
 const ANIMATION_TAB: TabItem = { path: '/animation', label: '动画讲解', icon: PlaySquare };
 const PICTURE_BOOK_TAB: TabItem = { path: '/picture-book', label: '绘本生成', icon: BookImage };
 
-// 小学低年级：无动画讲解、无编程环境（见 AGENTS「小学低年级不展示编程环境入口」）
+// 小学低年级：无动画讲解、无趣味编程（见 AGENTS「小学低年级不展示趣味编程入口」）
 const PRIMARY_LOW_TABS: TabItem[] = [
   TABS[0],
   PICTURE_BOOK_TAB,
@@ -34,7 +34,7 @@ const PRIMARY_LOW_TABS: TabItem[] = [
   TABS[5],
 ];
 
-// 小学高年级：含编程环境（面向小高及以上），绘本仍可见
+// 小学高年级：含趣味编程（面向小高及以上），绘本仍可见
 const PRIMARY_HIGH_TABS: TabItem[] = [
   TABS[0],
   PICTURE_BOOK_TAB,

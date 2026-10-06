@@ -27,12 +27,18 @@ export interface CodingProblem {
   solutionNotes?: string;
   /** 判定方式：1关键词包含 2输出精确匹配 3正则 */
   judgeType: number;
-  /** 期望输出（judgeType=2） */
+  /** 输出要求（学生可见：打印什么/几行/小数位/标点用英文半角）；judgeType=2 必填 */
+  outputSpec?: string;
+  /** 输出示例（学生可见，用另一组数据演示格式，禁止使用本题数据以免泄题）；judgeType=2 必填 */
+  outputExample?: string;
+  /** 期望输出（judgeType=2，不对学生下发） */
   expectedOutput?: string;
-  /** 期望关键词，逗号分隔（judgeType=1） */
+  /** 期望关键词，逗号分隔（judgeType=1，需全部命中） */
   expectedKeywords?: string;
   /** 期望正则（judgeType=3） */
   expectedPattern?: string;
+  /** 数值容差：0否 1是（纯数值行按数值比较，78.50 与 78.5 视为相同） */
+  numericTolerant?: number;
   /** 积分 */
   score: number;
   /** 预估时长（分钟） */
