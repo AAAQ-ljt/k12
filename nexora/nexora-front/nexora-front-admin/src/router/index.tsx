@@ -17,6 +17,7 @@ import KnowledgeTest from '@/views/knowledge/KnowledgeTest';
 import AIDocArrange from '@/views/knowledge/AIDocArrange';
 import LearningAnalysis from '@/views/learning/LearningAnalysis';
 import LearningUser from '@/views/learning/LearningUser';
+import PointAdmin from '@/views/point/PointAdmin';
 import AdminAccount from '@/views/system/AdminAccount';
 import ModelPrompt from '@/views/system/ModelPrompt';
 import RagConfig from '@/views/system/RagConfig';
@@ -133,6 +134,10 @@ export const router = createBrowserRouter([
           {
             path: 'user',
             element: <LearningUser />,
+          },
+          {
+            path: 'point',
+            element: <PointAdmin />,
           },
         ],
       },
