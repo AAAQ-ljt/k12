@@ -1,0 +1,203 @@
+/* 编程题库共享样式：浅色 / 暗色均只使用主题令牌，勿硬编码浅色底 */
+
+.codeEditorBox {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-surface);
+}
+
+.editorLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.mdEditorBox :global(.wmd-editor) {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+/* ===== 题目预览弹窗 ===== */
+.previewTitle {
+  margin-bottom: 12px;
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.previewMeta {
+  margin-bottom: 16px;
+}
+
+.previewSection {
+  margin-bottom: 16px;
+}
+
+.previewLabel {
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.previewText {
+  color: var(--color-text);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.previewMarkdown {
+  color: var(--color-text);
+  line-height: 1.8;
+}
+
+.previewMarkdown :global(.wmde-markdown) {
+  background: transparent;
+  color: inherit;
+}
+
+/* ===== 赛题编排抽屉 ===== */
+.arrangeLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: calc(100vh - 220px);
+  min-height: 420px;
+}
+
+.arrangePane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-surface);
+}
+
+.arrangeHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.arrangeHeaderTitle {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.arrangeScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 10px;
+}
+
+.arrangeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.groupTitle {
+  margin: 8px 0 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.problemItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.problemItem:hover {
+  background: var(--color-bg-hover);
+}
+
+.problemTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.problemScore {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.selectedItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.selectedIndex {
+  width: 20px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.selectedTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyText {
+  padding: 24px 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.searchInput {
+  width: 170px;
+}
+
+.scoreInput {
+  width: 84px;
+}
+
+.autoCountInput {
+  width: 72px;
+}
+
+.drawerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}

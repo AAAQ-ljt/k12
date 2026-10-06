@@ -412,3 +412,172 @@
   justify-content: space-between;
   gap: 12px;
 }
+
+/* 我的编程比赛 */
+.titleLink {
+  margin-left: auto;
+  padding: 0;
+  font-size: 12px;
+}
+
+.inlineLink {
+  padding: 0;
+  font-size: 13px;
+}
+
+.contestGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contestGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contestGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+}
+
+.contestDotRunning,
+.contestDotEnrolled,
+.contestDotEnded {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.contestDotRunning {
+  background: #ff6b35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+}
+
+.contestDotEnrolled {
+  background: #1677ff;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+}
+
+.contestDotEnded {
+  background: var(--text-disabled, #ccc);
+}
+
+.contestRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--warm-bg-dark, #eee);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+}
+
+.contestRowMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contestRowTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contestRowTime {
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+}
+
+.contestRowMeta {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+}
+
+.contestRowRunning {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c05a1e;
+}
+
+.contestRowActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 排行榜弹窗 */
+.rankLoading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.rankList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.rankRow,
+.rankRowMe {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--warm-bg-dark, #eee);
+  font-size: 13px;
+}
+
+.rankRowMe {
+  border-color: var(--warm-orange-400, #ffc69b);
+  background: var(--warm-orange-100, #fff6eb);
+  font-weight: 600;
+}
+
+.rankIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2, #f6f7f9);
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+}
+
+.rankName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #333);
+}
+
+.rankScore {
+  color: var(--warm-orange-600, #ff8c4d);
+  font-weight: 600;
+}
+
+.rankMeta {
+  font-size: 11.5px;
+  color: var(--text-tertiary, #999);
+}

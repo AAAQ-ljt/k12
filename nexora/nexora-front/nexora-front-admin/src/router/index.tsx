@@ -8,6 +8,8 @@ import CourseManagement from '@/views/course/CourseManagement';
 import QuestionManagement from '@/views/question/QuestionManagement';
 import PaperManagement from '@/views/paper/PaperManagement';
 import AnswerReview from '@/views/review/AnswerReview';
+import CodingProblemManagement from '@/views/coding/problem/ProblemManagement';
+import CodingContestManagement from '@/views/coding/contest/ContestManagement';
 import ResourceManagement from '@/views/resource/ResourceManagement';
 import KnowledgeOverview from '@/views/knowledge/KnowledgeOverview';
 import KnowledgeCatalog from '@/views/knowledge/KnowledgeCatalog';
@@ -97,6 +99,23 @@ export const router = createBrowserRouter([
           {
             path: 'answer-review',
             element: <AnswerReview />,
+          },
+        ],
+      },
+      {
+        path: 'coding',
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/coding/problem" replace />,
+          },
+          {
+            path: 'problem',
+            element: <CodingProblemManagement />,
+          },
+          {
+            path: 'contest',
+            element: <CodingContestManagement />,
           },
         ],
       },

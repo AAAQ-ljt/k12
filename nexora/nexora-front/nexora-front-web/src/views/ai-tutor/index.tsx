@@ -308,6 +308,11 @@ export default function AiTutor() {
             pictureBook: data.bizType === 'PICTURE_BOOK' ? parsePictureBookCard(data.bizData) : item.pictureBook,
           };
         }
+        if (data.type !== 'error') {
+          // 非 outputting / done / error 的推送（如 type=recommend 的资源推荐卡）不进气泡，
+          // 否则流式开始前的推荐推送会被误判成「AI 生成失败」写进回复开头
+          return item;
+        }
         return {
           ...item,
           content: item.content || data.content || 'AI 生成失败，请稍后重试',

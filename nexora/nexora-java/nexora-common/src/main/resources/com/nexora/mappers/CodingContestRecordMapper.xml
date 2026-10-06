@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.CodingContestRecordMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.CodingContestRecord">
+		<id column="record_id" property="recordId" />
+		<result column="contest_id" property="contestId" />
+		<result column="user_id" property="userId" />
+		<result column="stage" property="stage" />
+		<result column="status" property="status" />
+		<result column="enroll_time" property="enrollTime" />
+		<result column="started_at" property="startedAt" />
+		<result column="submitted_at" property="submittedAt" />
+		<result column="score" property="score" />
+		<result column="solved_count" property="solvedCount" />
+		<result column="total_count" property="totalCount" />
+		<result column="duration" property="duration" />
+	</resultMap>
+
+	<sql id="base_column_list">
+		r.record_id,r.contest_id,r.user_id,r.stage,r.status,r.enroll_time,r.started_at,r.submitted_at,
+		r.score,r.solved_count,r.total_count,r.duration
+	</sql>
+
+	<sql id="query_condition">
+		<where>
+			<if test="query.recordId != null">
+				and r.record_id = #{query.recordId}
+			</if>
+			<if test="query.contestId != null and query.contestId != ''">
+				and r.contest_id = #{query.contestId}
+			</if>
+			<if test="query.contestIds != null and query.contestIds.size() > 0">
+				and r.contest_id in
+				<foreach collection="query.contestIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+			</if>
+			<if test="query.userId != null and query.userId != ''">
+				and r.user_id = #{query.userId}
+			</if>
+			<if test="query.status != null">
+				and r.status = #{query.status}
+			</if>
+			<if test="query.stage != null and query.stage != ''">
+				and r.stage = #{query.stage}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectList" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from coding_contest_record r
+		<include refid="query_condition" />
+		<choose>
+			<when test="query.orderByScoreDesc != null and query.orderByScoreDesc">
+				order by r.score desc, r.duration asc, r.submitted_at asc
+			</when>
+			<otherwise>
+				order by r.enroll_time desc
+			</otherwise>
+		</choose>
+		<if test="query.simplePage != null">
+			limit #{query.simplePage.start}, #{query.simplePage.end}
+		</if>
+	</select>
+
+	<select id="selectCount" resultType="java.lang.Integer">
+		select count(1) from coding_contest_record r
+		<include refid="query_condition" />
+	</select>
+
+	<insert id="insert" parameterType="com.nexora.entity.po.CodingContestRecord" useGeneratedKeys="true" keyProperty="recordId">
+		insert into coding_contest_record
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.contestId != null">contest_id,</if>
+			<if test="bean.userId != null">user_id,</if>
+			<if test="bean.stage != null">stage,</if>
+			<if test="bean.status != null">status,</if>
+			<if test="bean.enrollTime != null">enroll_time,</if>
+			<if test="bean.startedAt != null">started_at,</if>
+			<if test="bean.submittedAt != null">submitted_at,</if>
+			<if test="bean.score != null">score,</if>
+			<if test="bean.solvedCount != null">solved_count,</if>
+			<if test="bean.totalCount != null">total_count,</if>
+			<if test="bean.duration != null">duration,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.contestId != null">#{bean.contestId},</if>
+			<if test="bean.userId != null">#{bean.userId},</if>
+			<if test="bean.stage != null">#{bean.stage},</if>
+			<if test="bean.status != null">#{bean.status},</if>
+			<if test="bean.enrollTime != null">#{bean.enrollTime},</if>
+			<if test="bean.startedAt != null">#{bean.startedAt},</if>
+			<if test="bean.submittedAt != null">#{bean.submittedAt},</if>
+			<if test="bean.score != null">#{bean.score},</if>
+			<if test="bean.solvedCount != null">#{bean.solvedCount},</if>
+			<if test="bean.totalCount != null">#{bean.totalCount},</if>
+			<if test="bean.duration != null">#{bean.duration},</if>
+		</trim>
+	</insert>
+
+	<update id="updateByContestIdAndUserId" parameterType="com.nexora.entity.po.CodingContestRecord">
+		update coding_contest_record
+		<set>
+			<if test="bean.status != null">status = #{bean.status},</if>
+			<if test="bean.startedAt != null">started_at = #{bean.startedAt},</if>
+			<if test="bean.submittedAt != null">submitted_at = #{bean.submittedAt},</if>
+			<if test="bean.score != null">score = #{bean.score},</if>
+			<if test="bean.solvedCount != null">solved_count = #{bean.solvedCount},</if>
+			<if test="bean.totalCount != null">total_count = #{bean.totalCount},</if>
+			<if test="bean.duration != null">duration = #{bean.duration},</if>
+		</set>
+		where contest_id = #{contestId} and user_id = #{userId}
+	</update>
+
+	<update id="updateByParam" parameterType="com.nexora.entity.query.CodingContestRecordQuery">
+		update coding_contest_record r
+		<set>
+			<if test="bean.status != null">status = #{bean.status},</if>
+			<if test="bean.startedAt != null">started_at = #{bean.startedAt},</if>
+			<if test="bean.submittedAt != null">submitted_at = #{bean.submittedAt},</if>
+			<if test="bean.score != null">score = #{bean.score},</if>
+			<if test="bean.solvedCount != null">solved_count = #{bean.solvedCount},</if>
+			<if test="bean.totalCount != null">total_count = #{bean.totalCount},</if>
+			<if test="bean.duration != null">duration = #{bean.duration},</if>
+		</set>
+		<include refid="query_condition" />
+	</update>
+
+	<delete id="deleteByParam">
+		delete r from coding_contest_record r
+		<include refid="query_condition" />
+	</delete>
+
+	<select id="selectByContestIdAndUserId" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from coding_contest_record r
+		where r.contest_id = #{contestId} and r.user_id = #{userId}
+	</select>
+</mapper>
