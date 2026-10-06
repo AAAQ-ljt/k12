@@ -595,3 +595,18 @@
 .messageImage:hover {
   transform: scale(1.03);
 }
+
+/* WS 断线提示条：连接中断时置顶显示，重连成功后自动消失（配合自动补拉历史） */
+.wsBanner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 16px 0;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--warm-orange-400);
+  background: var(--warm-orange-100);
+  color: var(--warm-brown-800);
+  font-size: 12.5px;
+}

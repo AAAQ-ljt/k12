@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { App, Button, Input, Modal, Segmented, Tag, Tooltip } from 'antd';
 import {
+  AlertTriangle,
   BookOpen,
   Bot,
   ChevronRight,
@@ -265,6 +266,8 @@ export default function AiTutor() {
   const [openingResourceId, setOpeningResourceId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState('');
+  /** WS 连接是否中断（中断时顶部提示「正在自动重连」；重连成功自动补拉历史） */
+  const [wsDown, setWsDown] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
@@ -289,6 +292,9 @@ export default function AiTutor() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const messagesStateRef = useRef<ChatMessage[]>([]);
   const pendingRecommendsRef = useRef<Record<string, ResourceRecommendItem[]>>({});
+  /** 流式状态镜像（供 WS 回调在重连时判断，避免闭包拿到旧值） */
+  const streamingRef = useRef(false);
+  const streamingMessageIdRef = useRef('');
   /** 与 activeSessionId 同步的即时引用：列表刷新判断「当前会话是否还在新列表中」时用 */
   const activeSessionIdRef = useRef('');
 
@@ -343,7 +349,9 @@ export default function AiTutor() {
           return { ...item, content: item.content + (data.content ?? ''), pending: false };
         }
         if (data.type === 'done') {
-          const nextContent = data.content && !item.content ? data.content : item.content;
+          // 服务端 done 推送带**完整回答全文**：一律以它为准（原实现「气泡非空就不覆盖」会导致
+          // 断线重连后回答停在中途、必须刷新页面 —— 2026-10-07 修复）
+          const nextContent = data.content || item.content;
           const pending = pendingRecommendsRef.current[data.messageId] ?? [];
           delete pendingRecommendsRef.current[data.messageId];
           const nextRecommends =
@@ -427,6 +435,45 @@ export default function AiTutor() {
       pendingRecommendsRef.current = {};
       return;
     }
+    /**
+     * 断线重连成功后补拉当前会话历史：
+     * 断线期间完成（或部分完成）的回答服务端已落库，这里把最新内容合并回来，
+     * 避免「回答半截 / 一直转圈，必须刷新页面」——2026-10-07 修复。
+     */
+    const handleReconnected = () => {
+      setWsDown(false);
+      const sessionId = activeSessionIdRef.current;
+      if (!sessionId) {
+        return;
+      }
+      void loadAgentHistory(sessionId)
+        .then((history) => {
+          const fresh = mapHistory(history);
+          setMessages((prev) => {
+            const localById = new Map(prev.map((item) => [item.id, item]));
+            return fresh.map((item) => {
+              const local = localById.get(item.id);
+              // 服务端已落库的全文优先；仍在生成中（服务端还没内容）则保留本地已收到的增量，不清空
+              if (local && item.role === 'assistant' && !item.content && local.content) {
+                return { ...item, content: local.content, recommends: local.recommends ?? item.recommends };
+              }
+              return item;
+            });
+          });
+          // 重连前正在生成的那条已有落库结果 → 结束占位态
+          const streamingId = streamingMessageIdRef.current;
+          if (streamingId && fresh.some((item) => item.id === streamingId && item.content)) {
+            setStreaming(false);
+            setStreamingMessageId('');
+          }
+        })
+        .catch(() => {
+          // 请求层已统一提示；下次重连或进入会话时会再次同步
+        });
+    };
+    const handleWsClosed = () => setWsDown(true);
+    websocket.onClose(handleWsClosed);
+    websocket.onOpen(handleReconnected);
     websocket.connect(token);
     websocket.onMessage('*', handleAgentPush);
     // 进入页面默认加载「普通对话」（与 sessionFilter 初始值一致）
@@ -435,6 +482,8 @@ export default function AiTutor() {
       // 仅解绑回调，不断开连接：切换页面时让 AI 流式生成继续在后台运行，
       // 重新进入页面后重新注册回调，继续接收增量（或从历史同步最终结果）
       websocket.offMessage('*', handleAgentPush);
+      websocket.offClose(handleWsClosed);
+      websocket.offOpen(handleReconnected);
     };
   }, [token, handleAgentPush, loadSessionList]);
 
@@ -445,6 +494,12 @@ export default function AiTutor() {
       behavior: 'smooth',
     });
   }, [messages]);
+
+  // 流式状态镜像到 ref：WS 重连回调（在 effect 里注册一次）需要读到最新值，避免闭包取到旧 state
+  useEffect(() => {
+    streamingRef.current = streaming;
+    streamingMessageIdRef.current = streamingMessageId;
+  }, [streaming, streamingMessageId]);
 
   const handleSend = async (content?: string) => {
     const text = (content ?? input).trim();
@@ -884,6 +939,13 @@ export default function AiTutor() {
             <Tag color="success">DeepSeek V4 Flash</Tag>
           </div>
         </header>
+
+        {wsDown ? (
+          <div className={styles.wsBanner}>
+            <AlertTriangle size={14} />
+            与服务器的连接中断了，正在自动重连…（重连成功后会自动补齐这段期间的回答）
+          </div>
+        ) : null}
 
         <div className={styles.messagesArea} ref={messagesRef}>
           {messages.length === 0 ? (

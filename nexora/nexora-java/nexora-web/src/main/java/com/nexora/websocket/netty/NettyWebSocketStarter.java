@@ -82,8 +82,13 @@ public class NettyWebSocketStarter implements Runnable {
                              * readerIdleTime  一段时间内未收到客户端数据。
                              * writerIdleTime  一段时间内未向客户端发送数据。
                              * allIdleTime  -读和写均无活动
+                             *
+                             * readerIdleTime 2026-10-07 由 60s 放宽到 120s：客户端心跳为 20s，
+                             * 但标签页切到后台时浏览器会把定时器节流到分钟级，60s 很容易被误判为
+                             * 「没有发送心跳」而断连（当天实测 59 次），断连期间流式增量全部丢失，
+                             * 学生端表现为「必须刷新页面才出内容」。客户端已改为无限退避重连，这里再留出余量。
                              */
-                            pipeline.addLast(new IdleStateHandler(60, 0, 0, TimeUnit.SECONDS));
+                            pipeline.addLast(new IdleStateHandler(120, 0, 0, TimeUnit.SECONDS));
                             /**
                              * 处理空闲事件
                              */
