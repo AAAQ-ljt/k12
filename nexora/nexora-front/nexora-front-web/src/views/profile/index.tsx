@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { App, Avatar, Button, Card, Progress, Select, Space, Spin, Tag, Tooltip } from 'antd';
+import { App, Avatar, Button, Card, Modal, Progress, Select, Space, Spin, Tag, Tooltip } from 'antd';
 import {
   BookImage, Compass, FolderOpen, GraduationCap, PenLine, PlaySquare, Route, Sparkles, LogOut,
-  CalendarCheck, ChevronDown, ChevronRight, ChevronUp, Flame, Target,
+  CalendarCheck, ChevronDown, ChevronRight, ChevronUp, Flame, Medal, Target, Trophy,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -17,6 +17,14 @@ import { loadMyAnimationList } from '@/api/animation';
 import { loadMyPictureBooks } from '@/api/pictureBook';
 import { loadStudentWikiList } from '@/api/studentWiki';
 import { loadMyCourseProgress, type CourseProgress } from '@/api/course';
+import {
+  loadCodingContestRank,
+  loadMyCodingContests,
+  type CodingContestRecordVO,
+  type CodingContestVO,
+} from '@/api/codingLab';
+import { contestPhaseOf, formatDuration, formatTimeWindow } from '@/utils/coding';
+import { CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
 import styles from './index.module.scss';
 
@@ -30,6 +38,23 @@ import styles from './index.module.scss';
 
 /** 今日待办默认展示条数：超出折叠为「展开全部」，避免待办多时右栏溢出难看 */
 const DUE_PREVIEW_COUNT = 8;
+
+/** 「我的编程比赛」分组类型 */
+type ContestGroupKey = 'running' | 'enrolled' | 'ended';
+
+/** 比赛状态/成绩文案 */
+function contestResultTextOf(contest: CodingContestVO, group: ContestGroupKey): string {
+  if (group === 'ended') {
+    if (contest.myStatus === 3) {
+      return `得分 ${contest.myScore ?? 0}/${contest.totalScore ?? 0} · 解出 ${contest.mySolvedCount ?? 0}/${contest.problemCount ?? 0} · 用时 ${formatDuration(contest.myDuration)}`;
+    }
+    return contest.myStatus === 2 ? '未提交成绩' : '未参加';
+  }
+  if (group === 'running') {
+    return `比赛中 · 已解出 ${contest.mySolvedCount ?? 0}/${contest.problemCount ?? 0}`;
+  }
+  return '已报名 · 等待开始';
+}
 
 export default function Profile() {
   const { message } = App.useApp();
@@ -45,6 +70,13 @@ export default function Profile() {
   const [animationCount, setAnimationCount] = useState(0);
   const [bookCount, setBookCount] = useState(0);
   const [wikiCount, setWikiCount] = useState(0);
+  /** 我的编程比赛（报名/参加过的，含已结束） */
+  const [contests, setContests] = useState<CodingContestVO[]>([]);
+  /** 排行榜弹窗 */
+  const [rankOpen, setRankOpen] = useState(false);
+  const [rankLoading, setRankLoading] = useState(false);
+  const [rankRows, setRankRows] = useState<CodingContestRecordVO[]>([]);
+  const [rankContest, setRankContest] = useState<CodingContestVO | null>(null);
   const [loading, setLoading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [locatingId, setLocatingId] = useState<string | null>(null);
@@ -52,6 +84,10 @@ export default function Profile() {
   const [dueExpanded, setDueExpanded] = useState(false);
 
   const stage = userInfo?.stage;
+  /** 小学段无学习路径入口（导航同规则）：隐藏「最近学习路线」卡片，待办提示也不提路线 */
+  const isPrimary = stage === 'PRIMARY_LOW' || stage === 'PRIMARY_HIGH';
+  /** 编程比赛入口与 /coding 学段守卫同口径（小学低年级不开放） */
+  const canUseCoding = !!stage && CODING_STAGES.includes(stage);
   const stageLabel = stage ? getStageOption(stage)?.label : '';
   const gradeText = getGradeText(userInfo);
 
@@ -59,7 +95,7 @@ export default function Profile() {
     setLoading(true);
     try {
       // 并行拉取各模块数据：任一失败不影响整页（错误已统一提示）
-      const [ov, tr, pathList, courses, anims, books, wikis] = await Promise.all([
+      const [ov, tr, pathList, courses, anims, books, wikis, contestList] = await Promise.all([
         loadMyMasteryOverview(200),
         loadMyLearningTrend(),
         loadMyLearningPaths(),
@@ -67,6 +103,7 @@ export default function Profile() {
         loadMyAnimationList().catch(() => [] as never[]),
         loadMyPictureBooks().catch(() => [] as never[]),
         loadStudentWikiList().catch(() => [] as never[]),
+        loadMyCodingContests().catch(() => [] as CodingContestVO[]),
       ]);
       setOverview({
         masteredCount: ov.masteredCount,
@@ -86,6 +123,7 @@ export default function Profile() {
       setAnimationCount(anims?.length ?? 0);
       setBookCount(books?.length ?? 0);
       setWikiCount(wikis?.length ?? 0);
+      setContests(contestList ?? []);
     } catch {
       // 错误已统一提示
     } finally {
@@ -121,9 +159,22 @@ export default function Profile() {
     }
   };
 
+  /** 待复习未命中路线：转 AI 助教对话复习（预填问题） */
+  const goReviewWithAiTutor = (point: { knowledgePointId: string; knowledgePointName: string }) => {
+    navigate('/ai-tutor', {
+      state: { presetQuestion: `点开我的掌握度里有一个「${point.knowledgePointName}」需要复习，帮我出几道题复习巩固一下` },
+    });
+  };
+
   /** 待复习知识点：命中学习路径节点 → 跳路线做节点快测；未命中 → AI 助教对话复习 */
   const handleReviewPoint = async (point: { knowledgePointId: string; knowledgePointName: string }) => {
     if (locatingId) {
+      return;
+    }
+    // 学段不在学习路径开放范围内（小学两段）：与 /learning-path 守卫同口径，直接转 AI 助教对话，
+    // 不再调 locate 尝试定位路线（否则会跳进自己无入口的页面）
+    if (!stage || !PATH_STAGES.includes(stage)) {
+      goReviewWithAiTutor(point);
       return;
     }
     setLocatingId(point.knowledgePointId);
@@ -133,9 +184,7 @@ export default function Profile() {
         message.success(`已定位到你的学习路线「${locate.knowledgePointName || point.knowledgePointName}」`);
         navigate(`/learning-path/${locate.pathId}`, { state: { focusItemId: locate.itemId } });
       } else {
-        navigate('/ai-tutor', {
-          state: { presetQuestion: `点开我的掌握度里有一个「${point.knowledgePointName}」需要复习，帮我出几道题复习巩固一下` },
-        });
+        goReviewWithAiTutor(point);
       }
     } catch {
       // 错误已统一提示
@@ -154,6 +203,67 @@ export default function Profile() {
     ];
     return tiles.filter((tile) => tile.show);
   }, [stage, animationCount, bookCount, wikiCount]);
+
+  /** 我的编程比赛分组：进行中（比赛中） / 已报名 / 已结束（已提交或时间已过） */
+  const contestGroups = useMemo(() => {
+    const running: CodingContestVO[] = [];
+    const enrolled: CodingContestVO[] = [];
+    const ended: CodingContestVO[] = [];
+    for (const contest of contests) {
+      if (contest.myStatus === 3 || contestPhaseOf(contest) === 'ended') {
+        ended.push(contest);
+      } else if (contest.myStatus === 2) {
+        running.push(contest);
+      } else {
+        enrolled.push(contest);
+      }
+    }
+    return { running, enrolled, ended };
+  }, [contests]);
+
+  /** 打开排行榜弹窗（我的行 userId 为 "me"） */
+  const handleOpenRank = async (contest: CodingContestVO) => {
+    setRankContest(contest);
+    setRankOpen(true);
+    setRankLoading(true);
+    setRankRows([]);
+    try {
+      setRankRows(await loadCodingContestRank(contest.contestId, 50) ?? []);
+    } catch {
+      setRankRows([]);
+    } finally {
+      setRankLoading(false);
+    }
+  };
+
+  /** 比赛条目渲染（分组成员共用） */
+  const renderContestRow = (contest: CodingContestVO, group: ContestGroupKey) => (
+    <div key={contest.contestId} className={styles.contestRow}>
+      <div className={styles.contestRowMain}>
+        <div className={styles.contestRowTitle}>{contest.title}</div>
+        <div className={styles.contestRowTime}>
+          {formatTimeWindow(contest.startTime, contest.endTime)} · 赛题 {contest.problemCount ?? 0} 题
+        </div>
+        <div className={group === 'running' ? styles.contestRowRunning : styles.contestRowMeta}>
+          {contestResultTextOf(contest, group)}
+        </div>
+      </div>
+      <div className={styles.contestRowActions}>
+        {group === 'running' ? (
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => navigate(`/coding?tab=contest&contest=${contest.contestId}`)}
+          >
+            继续比赛
+          </Button>
+        ) : null}
+        <Button size="small" icon={<Medal size={13} />} onClick={() => void handleOpenRank(contest)}>
+          排行榜
+        </Button>
+      </div>
+    </div>
+  );
 
   if (loading && !overview) {
     return (
@@ -322,13 +432,18 @@ export default function Profile() {
                     {dueExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   </Button>
                 ) : null}
-                <div className={styles.dueTip}>点击会在学习路线中定位该知识点做节点快测；不在路线内则转 AI 助教对话复习</div>
+                <div className={styles.dueTip}>
+                  {isPrimary
+                    ? '点击将转 AI 助教对话，帮你出题复习巩固'
+                    : '点击会在学习路线中定位该知识点做节点快测；不在路线内则转 AI 助教对话复习'}
+                </div>
               </div>
             ) : (
               <div className={styles.emptyTip}>今天没有待复习的知识点，继续保持！</div>
             )}
           </Card>
 
+          {!isPrimary ? (
           <Card>
             <div className={styles.cardTitle}>
               <Route size={16} />
@@ -363,6 +478,7 @@ export default function Profile() {
               </div>
             )}
           </Card>
+          ) : null}
 
           <Card>
             <div className={styles.cardTitle}>
@@ -405,6 +521,66 @@ export default function Profile() {
             )}
           </Card>
 
+          {canUseCoding ? (
+          <Card>
+            <div className={styles.cardTitle}>
+              <Trophy size={16} />
+              <span>我的编程比赛</span>
+              <Button
+                type="link"
+                size="small"
+                className={styles.titleLink}
+                onClick={() => navigate('/coding?tab=contest')}
+              >
+                去比赛中心 →
+              </Button>
+            </div>
+            {contests.length > 0 ? (
+              <div className={styles.contestGroups}>
+                {contestGroups.running.length > 0 ? (
+                  <div className={styles.contestGroup}>
+                    <div className={styles.contestGroupTitle}>
+                      <span className={styles.contestDotRunning} />
+                      进行中
+                    </div>
+                    {contestGroups.running.map((contest) => renderContestRow(contest, 'running'))}
+                  </div>
+                ) : null}
+                {contestGroups.enrolled.length > 0 ? (
+                  <div className={styles.contestGroup}>
+                    <div className={styles.contestGroupTitle}>
+                      <span className={styles.contestDotEnrolled} />
+                      已报名
+                    </div>
+                    {contestGroups.enrolled.map((contest) => renderContestRow(contest, 'enrolled'))}
+                  </div>
+                ) : null}
+                {contestGroups.ended.length > 0 ? (
+                  <div className={styles.contestGroup}>
+                    <div className={styles.contestGroupTitle}>
+                      <span className={styles.contestDotEnded} />
+                      已结束
+                    </div>
+                    {contestGroups.ended.map((contest) => renderContestRow(contest, 'ended'))}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className={styles.emptyTip}>
+                还没有参加过编程比赛，
+                <Button
+                  type="link"
+                  size="small"
+                  className={styles.inlineLink}
+                  onClick={() => navigate('/coding?tab=contest')}
+                >
+                  去看看正在进行的比赛
+                </Button>
+              </div>
+            )}
+          </Card>
+          ) : null}
+
           <Card>
             <div className={styles.accountRow}>
               <div>
@@ -427,6 +603,36 @@ export default function Profile() {
           void load();
         }}
       />
+
+      <Modal
+        open={rankOpen}
+        title={rankContest ? `排行榜 · ${rankContest.title}` : '排行榜'}
+        footer={null}
+        width={520}
+        onCancel={() => setRankOpen(false)}
+      >
+        {rankLoading ? (
+          <div className={styles.rankLoading}><Spin size="small" /></div>
+        ) : rankRows.length === 0 ? (
+          <div className={styles.emptyTip}>还没有同学提交成绩，快去抢占榜首吧。</div>
+        ) : (
+          <div className={styles.rankList}>
+            {rankRows.map((row) => (
+              <div
+                key={row.recordId}
+                className={row.userId === 'me' ? styles.rankRowMe : styles.rankRow}
+              >
+                <span className={styles.rankIndex}>{row.rank}</span>
+                <span className={styles.rankName}>{row.userId === 'me' ? '我' : row.userId}</span>
+                <span className={styles.rankScore}>{row.score} 分</span>
+                <span className={styles.rankMeta}>
+                  解出 {row.solvedCount}/{row.totalCount} · {formatDuration(row.duration)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

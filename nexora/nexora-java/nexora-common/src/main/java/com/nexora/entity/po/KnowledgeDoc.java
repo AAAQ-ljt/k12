@@ -71,6 +71,11 @@ public class KnowledgeDoc implements Serializable {
 	private String sourceUrl;
 
 	/**
+	 * 所属知识页子文件夹（resource_directory.dir_id）；NULL=知识页根目录（仅学生个人知识页使用）
+	 */
+	private String folderId;
+
+	/**
 	 * 向量状态：0待处理 1处理中 2已完成 3失败 4过期
 	 */
 	private Integer vectorStatus;
@@ -196,6 +201,14 @@ public class KnowledgeDoc implements Serializable {
 
 	public String getSourceUrl(){
 		return this.sourceUrl;
+	}
+
+	public void setFolderId(String folderId){
+		this.folderId = folderId;
+	}
+
+	public String getFolderId(){
+		return this.folderId;
 	}
 
 	public void setVectorStatus(Integer vectorStatus){

@@ -353,7 +353,7 @@ export default function PaperEditorDrawer({
               <div
                 key={group.groupId}
                 style={{
-                  border: currentGroupId === group.groupId ? '1px solid #1677ff' : '1px solid #d9d9d9',
+                  border: currentGroupId === group.groupId ? '1px solid #1677ff' : '1px solid var(--color-border)',
                   borderRadius: 6,
                   padding: 8,
                   cursor: 'pointer',
@@ -379,7 +379,7 @@ export default function PaperEditorDrawer({
                     }}
                   />
                 </Space>
-                <div style={{ marginTop: 4, fontSize: 12, color: '#888' }}>
+                <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
                   共 {group.questions.length} 题
                 </div>
               </div>
@@ -430,7 +430,7 @@ export default function PaperEditorDrawer({
           </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', borderLeft: '1px solid #f0f0f0', paddingLeft: 16 }}>
+        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', borderLeft: '1px solid var(--color-border)', paddingLeft: 16 }}>
           <Typography.Title level={5}>
             {form.getFieldValue('paperName') || '未命名试卷'}
             <Typography.Text type="secondary" style={{ marginLeft: 12 }}>

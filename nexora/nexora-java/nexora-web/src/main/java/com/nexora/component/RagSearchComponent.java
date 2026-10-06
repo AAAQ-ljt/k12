@@ -25,10 +25,21 @@ import java.util.stream.Collectors;
 
 /**
  * 学生端官方知识库检索：ES 向量优先，MySQL 关键词回退，命中后生成资料推荐卡片。
+ *
+ * 两级检索口径：先学生个人知识库（ownerId 非空），无命中再回退官方课程知识库（ownerId 为空）。
+ * 命中下发模型前按 ownerId 标注来源分组（见 {@link #buildRagData}），
+ * 因为官方课本文档（管理端维护）与学生自己上传的资料在模型眼里都是"一段参考文本"，
+ * 不标注就会被说成"你提供的知识库"。
  */
 @Slf4j
 @Component
 public class RagSearchComponent {
+
+    /** 来源分组标题：管理端后台维护的官方教材 / 课程资料 */
+    private static final String SOURCE_SECTION_OFFICIAL = "平台课程知识库";
+
+    /** 来源分组标题：学生本人上传或整理的知识页 */
+    private static final String SOURCE_SECTION_PERSONAL = "学生个人知识库";
 
     @Resource
     private KnowledgeVectorComponent knowledgeVectorComponent;
@@ -41,6 +52,9 @@ public class RagSearchComponent {
 
     @Resource
     private SystemConfigComponent systemConfigComponent;
+
+    @Resource
+    private CourseResourceAccessComponent courseResourceAccessComponent;
 
     /** 检索召回条数（管理端「RAG 配置」可调，缺省 10） */
     private int topK() {
@@ -105,7 +119,8 @@ public class RagSearchComponent {
                         doc.getText(),
                         doc.getScore() == null ? 0 : doc.getScore(),
                         asString(doc.getMetadata().get("sourceResourceId")),
-                        asString(doc.getMetadata().get("sourceUrl"))))
+                        asString(doc.getMetadata().get("sourceUrl")),
+                        asString(doc.getMetadata().get("ownerId"))))
                 .toList();
     }
 
@@ -136,7 +151,7 @@ public class RagSearchComponent {
                 }
                 double score = Math.min(1.0, 0.5 + hitsCount * 0.1);
                 hits.add(new RagHit(doc.getDocId(), doc.getTitle(), chunk, score,
-                        doc.getSourceResourceId(), doc.getSourceUrl()));
+                        doc.getSourceResourceId(), doc.getSourceUrl(), doc.getOwnerId()));
             }
         }
         hits.sort(Comparator.comparing(RagHit::score).reversed());
@@ -189,6 +204,8 @@ public class RagSearchComponent {
             KnowledgeDoc doc = finalDocMap.get(hit.docId());
             String sourceResourceId = hit.sourceResourceId();
             String sourceUrl = hit.sourceUrl();
+            // 来源归属以库里的知识页记录为准（ES metadata 只作兜底）：ownerId 为空 = 官方库，非空 = 学生个人库
+            String ownerId = hit.ownerId();
             if (doc != null) {
                 if (StringTools.isEmpty(sourceResourceId)) {
                     sourceResourceId = doc.getSourceResourceId();
@@ -196,16 +213,23 @@ public class RagSearchComponent {
                 if (StringTools.isEmpty(sourceUrl)) {
                     sourceUrl = doc.getSourceUrl();
                 }
+                ownerId = doc.getOwnerId();
             }
             if (!StringTools.isEmpty(sourceResourceId)) {
                 ResourceInfo resource = finalResourceMap.get(sourceResourceId);
-                if (resource == null || resource.getStatus() == null || resource.getStatus() != 1
-                        || !stageMatches(resource.getStage(), stage)) {
+                boolean available = resource != null && resource.getStatus() != null && resource.getStatus() == 1;
+                if (!available) {
+                    sourceResourceId = null;
+                } else if (!stageMatches(resource.getStage(), stage)
+                        && courseResourceAccessComponent.resolve(sourceResourceId, userId)
+                        != CourseResourceAccessComponent.BoundCourseAccess.ENROLLED) {
+                    // 跨学段但属于「已加入课程」的资源要保留来源（2026-10-05 用户确认：加入的课程不区分年段），
+                    // 否则 AI 引用了课程教材，学生却点不进去
                     sourceResourceId = null;
                 }
             }
             return new RagHit(hit.docId(), hit.title(), hit.content(), hit.score(),
-                    sourceResourceId, sourceUrl);
+                    sourceResourceId, sourceUrl, ownerId);
         }).toList();
         return new RagEnrichResult(enriched, resourceMap);
     }
@@ -240,6 +264,7 @@ public class RagSearchComponent {
                 vo.setResourceId(resource.getResourceId());
                 vo.setResourceType(resource.getResourceType());
                 vo.setSourceUrl(hit.sourceUrl());
+                vo.setOwnerId(resource.getOwnerId());
                 result.add(vo);
             } else if (!StringTools.isEmpty(hit.sourceUrl()) && seen.add("url:" + hit.sourceUrl())) {
                 ResourceRecommendVO vo = new ResourceRecommendVO();
@@ -253,14 +278,31 @@ public class RagSearchComponent {
         return result;
     }
 
+    /**
+     * 组装下发模型的知识库参考内容：按来源分组，两组各带一句口径说明（外层标题由调用方补）。
+     * 单次检索通常只命中其中一组（个人库优先、无命中才回退官方库），
+     * 但两组都写清楚，模型才不会凭标题猜"这是学生自己传的"。
+     */
     private String buildRagData(List<RagHit> hits) {
+        List<RagHit> official = hits.stream().filter(hit -> !hit.personal()).toList();
+        List<RagHit> personal = hits.stream().filter(RagHit::personal).toList();
         StringBuilder builder = new StringBuilder();
-        builder.append("=== 知识库参考内容 ===\n");
+        appendSourceSection(builder, SOURCE_SECTION_OFFICIAL,
+                "（学校/平台在管理端后台统一维护的教材与课程资料，面向全体学生，不是学生本人上传的）", official);
+        appendSourceSection(builder, SOURCE_SECTION_PERSONAL,
+                "（该学生本人上传或整理的知识页，仅本人可见）", personal);
+        return builder.toString().trim();
+    }
+
+    private void appendSourceSection(StringBuilder builder, String sectionName, String sectionDesc, List<RagHit> hits) {
+        if (hits.isEmpty()) {
+            return;
+        }
+        builder.append("### 来源：").append(sectionName).append(sectionDesc).append("\n");
         for (RagHit hit : hits) {
             builder.append("【").append(hit.title()).append("】\n");
             builder.append(hit.content()).append("\n\n");
         }
-        return builder.toString().trim();
     }
 
     private int countHits(String text, String query) {
@@ -280,8 +322,15 @@ public class RagSearchComponent {
         return value == null ? "" : String.valueOf(value);
     }
 
+    /**
+     * 检索命中；ownerId 空 = 官方课程知识库（管理端维护），非空 = 该学生的个人知识库
+     */
     public record RagHit(String docId, String title, String content, double score,
-                         String sourceResourceId, String sourceUrl) {
+                         String sourceResourceId, String sourceUrl, String ownerId) {
+
+        public boolean personal() {
+            return !StringTools.isEmpty(ownerId);
+        }
     }
 
     public record RagSearchResult(String ragData, List<ResourceRecommendVO> recommendations) {

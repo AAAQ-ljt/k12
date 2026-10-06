@@ -11,7 +11,12 @@ import com.nexora.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 资源目录表 业务接口实现
@@ -71,6 +76,40 @@ public class ResourceDirectoryServiceImpl implements ResourceDirectoryService {
     @Override
     public Integer deleteResourceDirectoryByDirId(String dirId) {
         return resourceDirectoryMapper.deleteByDirId(dirId);
+    }
+
+    @Override
+    public List<String> findSubTreeDirIds(String rootDirId, String ownerId) {
+        if (StringTools.isEmpty(rootDirId)) {
+            return new ArrayList<>();
+        }
+        ResourceDirectoryQuery query = new ResourceDirectoryQuery();
+        if (StringTools.isEmpty(ownerId)) {
+            query.setOwnerIdNull(Boolean.TRUE);
+        } else {
+            query.setOwnerId(ownerId);
+        }
+        // 目录全量一次取回（管理端 30 余条、个人目录更少），内存建父子索引后展开子树
+        List<ResourceDirectory> all = resourceDirectoryMapper.selectList(query);
+        Map<String, List<String>> childrenMap = new HashMap<>();
+        for (ResourceDirectory directory : all) {
+            childrenMap.computeIfAbsent(directory.getParentId(), key -> new ArrayList<>())
+                    .add(directory.getDirId());
+        }
+        List<String> result = new ArrayList<>();
+        Deque<String> stack = new ArrayDeque<>();
+        stack.push(rootDirId);
+        while (!stack.isEmpty()) {
+            String current = stack.pop();
+            result.add(current);
+            List<String> children = childrenMap.get(current);
+            if (children != null) {
+                for (String child : children) {
+                    stack.push(child);
+                }
+            }
+        }
+        return result;
     }
 
     @Override

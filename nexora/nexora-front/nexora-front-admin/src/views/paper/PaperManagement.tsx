@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Button, Form, Input, Popconfirm, Select, Space } from 'antd';
 import type { TableProps } from 'antd';
 import { Download, Plus } from 'lucide-react';
@@ -8,6 +8,7 @@ import StatusTag from '@/components/StatusTag';
 import { GRADE_OPTIONS } from '@/types/common';
 import { delPaper, getInfo, loadDataList } from '@/api/paper';
 import type { PaperDetail, PaperInfo, PaperInfoQuery } from '@/api/paper';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import PaperEditorDrawer from './PaperEditorDrawer';
 import { downloadPaperMarkdown } from './paperExport';
 
@@ -36,6 +37,8 @@ export default function PaperManagement() {
     mode: 'create' | 'edit' | 'view';
     detail?: PaperDetail;
   }>({ open: false, mode: 'create' });
+  /** 竞态守卫：只接受最后一次打开请求的详情（连点两份试卷时，先返回的旧响应直接丢弃） */
+  const latestRequestRef = useRef('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -76,7 +79,12 @@ export default function PaperManagement() {
   };
 
   const openEditor = async (record: PaperInfo, mode: 'edit' | 'view') => {
+    const requestKey = `${mode}:${record.paperId}`;
+    latestRequestRef.current = requestKey;
     const detail = await getInfo(record.paperId);
+    if (latestRequestRef.current !== requestKey) {
+      return; // 已有更新的打开请求，丢弃本次过期响应
+    }
     setDrawerState({ open: true, mode, detail });
   };
 
@@ -93,7 +101,13 @@ export default function PaperManagement() {
     try {
       await delPaper(paperId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }
@@ -241,6 +255,7 @@ export default function PaperManagement() {
       />
 
       <PaperEditorDrawer
+        key={drawerState.detail?.paper.paperId ?? 'create'}
         open={drawerState.open}
         mode={drawerState.mode}
         initialDetail={drawerState.detail}

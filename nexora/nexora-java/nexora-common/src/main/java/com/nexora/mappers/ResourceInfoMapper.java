@@ -37,4 +37,11 @@ public interface ResourceInfoMapper<T,P> extends BaseMapper<T,P> {
 	 */
 	 Long selectUsedSizeByOwner(@Param("ownerId") String ownerId);
 
+	/**
+	 * 批量改状态（僵尸记录清理：把确认无进行中上传的「处理中」资源置为失败）
+	 */
+	 Integer updateStatusByIds(@Param("resourceIds") List<String> resourceIds,
+							   @Param("status") Integer status,
+							   @Param("updateTime") java.util.Date updateTime);
+
 }

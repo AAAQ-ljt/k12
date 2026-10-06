@@ -53,6 +53,17 @@ export const menus: MenuConfig[] = [
     ],
   },
   {
+    key: 'coding',
+    label: '编程题库',
+    icon: 'Code2',
+    path: '/coding',
+    menuCode: 'coding:problem',
+    children: [
+      { key: 'coding:problem', label: '题目管理', path: '/coding/problem', menuCode: 'coding:problem' },
+      { key: 'coding:contest', label: '比赛管理', path: '/coding/contest', menuCode: 'coding:contest' },
+    ],
+  },
+  {
     key: 'learning',
     label: '学习分析',
     icon: 'BarChart3',

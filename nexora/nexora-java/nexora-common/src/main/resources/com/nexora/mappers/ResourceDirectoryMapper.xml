@@ -41,6 +41,10 @@
         <if test="query.sort != null">
             and d.sort = #{query.sort}
         </if>
+        <if test="query.dirIds != null and query.dirIds.size() > 0">
+            and d.dir_id in
+            <foreach collection="query.dirIds" item="dirId" open="(" separator="," close=")">#{dirId}</foreach>
+        </if>
     </sql>
 
     <sql id="query_condition">

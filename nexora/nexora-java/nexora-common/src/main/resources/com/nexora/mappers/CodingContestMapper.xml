@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.CodingContestMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.CodingContest">
+		<id column="contest_id" property="contestId" />
+		<result column="title" property="title" />
+		<result column="stage" property="stage" />
+		<result column="description" property="description" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="duration_minutes" property="durationMinutes" />
+		<result column="allow_answer" property="allowAnswer" />
+		<result column="status" property="status" />
+		<result column="create_by" property="createBy" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<sql id="base_column_list">
+		c.contest_id,c.title,c.stage,c.description,c.start_time,c.end_time,c.duration_minutes,
+		c.allow_answer,c.status,c.create_by,c.create_time,c.update_time
+	</sql>
+
+	<sql id="query_condition">
+		<where>
+			<if test="query.contestId != null and query.contestId != ''">
+				and c.contest_id = #{query.contestId}
+			</if>
+			<if test="query.contestIds != null and query.contestIds.size() > 0">
+				and c.contest_id in
+				<foreach collection="query.contestIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+			</if>
+			<if test="query.stage != null and query.stage != ''">
+				and c.stage = #{query.stage}
+			</if>
+			<if test="query.status != null">
+				and c.status = #{query.status}
+			</if>
+			<if test="query.titleFuzzy != null and query.titleFuzzy != ''">
+				and c.title like concat('%', #{query.titleFuzzy}, '%')
+			</if>
+			<if test="query.openOnly != null and query.openOnly">
+				and c.status = 1 and c.end_time &gt; now()
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectList" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from coding_contest c
+		<include refid="query_condition" />
+		order by c.start_time desc, c.create_time desc
+		<if test="query.simplePage != null">
+			limit #{query.simplePage.start}, #{query.simplePage.end}
+		</if>
+	</select>
+
+	<select id="selectCount" resultType="java.lang.Integer">
+		select count(1) from coding_contest c
+		<include refid="query_condition" />
+	</select>
+
+	<insert id="insert" parameterType="com.nexora.entity.po.CodingContest">
+		insert into coding_contest
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.contestId != null">contest_id,</if>
+			<if test="bean.title != null">title,</if>
+			<if test="bean.stage != null">stage,</if>
+			<if test="bean.description != null">description,</if>
+			<if test="bean.startTime != null">start_time,</if>
+			<if test="bean.endTime != null">end_time,</if>
+			<if test="bean.durationMinutes != null">duration_minutes,</if>
+			<if test="bean.allowAnswer != null">allow_answer,</if>
+			<if test="bean.status != null">status,</if>
+			<if test="bean.createBy != null">create_by,</if>
+			<if test="bean.createTime != null">create_time,</if>
+			<if test="bean.updateTime != null">update_time,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.contestId != null">#{bean.contestId},</if>
+			<if test="bean.title != null">#{bean.title},</if>
+			<if test="bean.stage != null">#{bean.stage},</if>
+			<if test="bean.description != null">#{bean.description},</if>
+			<if test="bean.startTime != null">#{bean.startTime},</if>
+			<if test="bean.endTime != null">#{bean.endTime},</if>
+			<if test="bean.durationMinutes != null">#{bean.durationMinutes},</if>
+			<if test="bean.allowAnswer != null">#{bean.allowAnswer},</if>
+			<if test="bean.status != null">#{bean.status},</if>
+			<if test="bean.createBy != null">#{bean.createBy},</if>
+			<if test="bean.createTime != null">#{bean.createTime},</if>
+			<if test="bean.updateTime != null">#{bean.updateTime},</if>
+		</trim>
+	</insert>
+
+	<update id="updateByContestId" parameterType="com.nexora.entity.po.CodingContest">
+		update coding_contest
+		<set>
+			<if test="bean.title != null">title = #{bean.title},</if>
+			<if test="bean.stage != null">stage = #{bean.stage},</if>
+			<if test="bean.description != null">description = #{bean.description},</if>
+			<if test="bean.startTime != null">start_time = #{bean.startTime},</if>
+			<if test="bean.endTime != null">end_time = #{bean.endTime},</if>
+			<if test="bean.durationMinutes != null">duration_minutes = #{bean.durationMinutes},</if>
+			<if test="bean.allowAnswer != null">allow_answer = #{bean.allowAnswer},</if>
+			<if test="bean.status != null">status = #{bean.status},</if>
+			<if test="bean.updateTime != null">update_time = #{bean.updateTime},</if>
+		</set>
+		where contest_id = #{contestId}
+	</update>
+
+	<update id="updateByParam" parameterType="com.nexora.entity.query.CodingContestQuery">
+		update coding_contest c
+		<set>
+			<if test="bean.title != null">title = #{bean.title},</if>
+			<if test="bean.stage != null">stage = #{bean.stage},</if>
+			<if test="bean.description != null">description = #{bean.description},</if>
+			<if test="bean.startTime != null">start_time = #{bean.startTime},</if>
+			<if test="bean.endTime != null">end_time = #{bean.endTime},</if>
+			<if test="bean.durationMinutes != null">duration_minutes = #{bean.durationMinutes},</if>
+			<if test="bean.allowAnswer != null">allow_answer = #{bean.allowAnswer},</if>
+			<if test="bean.status != null">status = #{bean.status},</if>
+			<if test="bean.updateTime != null">update_time = #{bean.updateTime},</if>
+		</set>
+		<include refid="query_condition" />
+	</update>
+
+	<delete id="deleteByParam">
+		delete c from coding_contest c
+		<include refid="query_condition" />
+	</delete>
+
+	<delete id="deleteByContestId">
+		delete from coding_contest where contest_id = #{contestId}
+	</delete>
+
+	<select id="selectByContestId" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from coding_contest c
+		where c.contest_id = #{contestId}
+	</select>
+</mapper>

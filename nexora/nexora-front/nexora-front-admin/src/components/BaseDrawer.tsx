@@ -112,7 +112,7 @@ export default function BaseDrawer({
         },
         footer: {
           padding: '12px 24px',
-          borderTop: '1px solid #f0f0f0',
+          borderTop: '1px solid var(--color-border)',
         },
       }}
     >

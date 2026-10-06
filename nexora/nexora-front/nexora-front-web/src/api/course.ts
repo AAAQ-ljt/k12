@@ -45,6 +45,10 @@ export interface StudentLessonDetail {
     sort?: number;
   };
   resources: StudentLessonResource[];
+  /** 当前学生是否已学完该课时（打开课时资源即记完成），用于课时标题旁的「已学」标记 */
+  finished?: boolean;
+  /** 完成时间（未完成时为空） */
+  finishTime?: string;
 }
 
 /** 课时通关测验题目 */

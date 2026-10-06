@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Button, Form, Input, Popconfirm, Select, Space } from 'antd';
 import type { TableProps } from 'antd';
 import { FileUp, Plus } from 'lucide-react';
@@ -23,10 +23,16 @@ import {
   loadDataList,
 } from '@/api/question';
 import type { QuestionDetail, QuestionInfo, QuestionInfoQuery } from '@/api/question';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import QuestionFormModal from './QuestionFormModal';
 import QuestionImportModal from './QuestionImportModal';
 
-export default function QuestionList() {
+interface QuestionListProps {
+  /** 变更即重新请求（AI 出题 / 批量导入入库后由父级递增），本身不参与查询参数 */
+  refreshKey?: number;
+}
+
+export default function QuestionList({ refreshKey = 0 }: QuestionListProps) {
   const { message } = App.useApp();
   const [searchParams, setSearchParams] = useState<QuestionInfoQuery>({
     pageNo: 1,
@@ -42,6 +48,8 @@ export default function QuestionList() {
     detail?: QuestionDetail;
   }>({ open: false, mode: 'create' });
   const [importOpen, setImportOpen] = useState(false);
+  /** 竞态守卫：只接受最后一次打开请求的详情（连点两题时，先返回的旧响应直接丢弃） */
+  const latestRequestRef = useRef('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -58,7 +66,8 @@ export default function QuestionList() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    // refreshKey 只是父级（AI 出题 / 批量导入）触发刷新的信号，不作为查询参数拼进请求
+  }, [fetchData, refreshKey]);
 
   const handleSearch = () => {
     setSearchParams((prev) => ({
@@ -82,7 +91,12 @@ export default function QuestionList() {
   };
 
   const openDetailModal = async (record: QuestionInfo, mode: 'edit' | 'view') => {
+    const requestKey = `${mode}:${record.questionId}`;
+    latestRequestRef.current = requestKey;
     const detail = await getInfo(record.questionId);
+    if (latestRequestRef.current !== requestKey) {
+      return; // 已有更新的打开请求，丢弃本次过期响应
+    }
     setModalState({ open: true, mode, detail });
   };
 
@@ -90,7 +104,13 @@ export default function QuestionList() {
     try {
       await delQuestion(questionId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }
@@ -293,6 +313,7 @@ export default function QuestionList() {
       />
 
       <QuestionFormModal
+        key={modalState.detail?.question.questionId ?? 'none'}
         open={modalState.open}
         mode={modalState.mode}
         initialValues={modalState.detail}

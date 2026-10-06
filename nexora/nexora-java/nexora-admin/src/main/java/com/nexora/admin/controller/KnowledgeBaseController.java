@@ -83,6 +83,12 @@ public class KnowledgeBaseController extends ABaseController {
         return getSuccessResponseVO(knowledgeBaseBiz.docList(query));
     }
 
+    /** 文档详情（含正文）：列表只回元数据，查看 / 编辑文档时按需拉取单篇正文 */
+    @GetMapping("/docInfo")
+    public ResponseVO<KnowledgeDoc> docInfo(@RequestParam String docId) {
+        return getSuccessResponseVO(knowledgeBaseBiz.docInfo(docId));
+    }
+
     @PostMapping("/docAdd")
     public ResponseVO<Void> docAdd(@RequestBody KnowledgeDoc bean) {
         knowledgeBaseBiz.docAdd(bean);

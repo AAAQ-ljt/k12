@@ -57,6 +57,27 @@ public interface StudentWikiService {
     void cleanupByResource(String userId, String resourceId);
 
     /**
+     * 知识页列表（2026-10-04 增加子文件夹）：
+     * folderId 为空=全部（含根与子文件夹）；"root"=仅根目录；其它值=该子文件夹内
+     */
+    List<KnowledgeDoc> listDrafts(String userId, String resourceId, String folderId);
+
+    /**
+     * 新建知识页子文件夹（父级必须在该学生「知识页」系统目录子树内），返回文件夹ID
+     */
+    String createFolder(String userId, String name, String parentFolderId);
+
+    /**
+     * 移动知识页到子文件夹（folderId 为空=移回知识页根目录）
+     */
+    void moveDoc(String userId, String docId, String folderId);
+
+    /**
+     * 删除知识页子文件夹（其中知识页自动回到根目录）
+     */
+    void deleteFolder(String userId, String folderId);
+
+    /**
      * 获取学生学习档案（不存在返回 null）
      */
     UserWikiProfile getProfile(String userId);

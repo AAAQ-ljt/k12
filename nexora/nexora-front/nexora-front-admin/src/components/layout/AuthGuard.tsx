@@ -47,7 +47,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }, [token, userInfo, setLoginData, clear]);
 
   if (!token) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // 与 api/request.ts 的 401 处理保持同一约定：回跳目标走 ?redirect=，
+    // 登录页只认这个参数，state.from 会丢（深链登录后固定回 dashboard）
+    const redirect = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
 
   if (loading) {

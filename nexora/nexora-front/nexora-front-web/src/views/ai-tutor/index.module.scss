@@ -32,6 +32,10 @@
   color: var(--text-primary);
 }
 
+.sessionFilter {
+  margin-bottom: 10px;
+}
+
 .newChatButton {
   border-radius: 10px;
   margin-bottom: 12px;
@@ -65,11 +69,21 @@
   &:hover {
     background: var(--warm-bg-mid);
   }
+
+  /* 行内操作（置顶/重命名/删除）hover 或选中时显示，平时不占用视觉噪音 */
+  &:hover .sessionActions,
+  &:focus-within .sessionActions {
+    opacity: 1;
+  }
 }
 
 .sessionItemActive {
   background: var(--gradient-selected-nav);
   color: var(--warm-brown-700);
+
+  .sessionActions {
+    opacity: 1;
+  }
 }
 
 .sessionMeta {
@@ -78,8 +92,22 @@
 }
 
 .sessionTitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
+}
+
+.pinMark {
+  flex-shrink: 0;
+  color: var(--warm-brown-500);
+  fill: currentColor;
+}
+
+.sessionTitleText {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,6 +116,20 @@
 .sessionTime {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+}
+
+.sessionActions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+
+  :global(.ant-btn) {
+    padding: 0 4px;
+    height: 24px;
+  }
 }
 
 .sidebarFooter {
@@ -268,6 +310,36 @@
   font-size: var(--font-size-base);
   line-height: 1.7;
   word-break: break-word;
+  overflow-wrap: anywhere;
+
+  /* Markdown 产物溢出兜底（2026-10-04）：模型偶发输出长代码行 / 未正确换行的 ``` 围栏文本，
+     <pre> 默认 white-space: pre 不换行，会把气泡顶宽、聊天区被撑出横向滚动条、文字右侧被裁掉。
+     这里统一让 pre/表格在自身内部横向滚动、行内长 token 强制换行、图片视频不超宽。 */
+  :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.05);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  :global(code) {
+    overflow-wrap: anywhere;
+  }
+
+  :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  :global(img),
+  :global(video) {
+    max-width: 100%;
+  }
 }
 
 .bubbleUser {

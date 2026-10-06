@@ -24,6 +24,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/resourceInfo/image/**",
                         "/resourceInfo/file/**",
                         "/resourceInfo/download/**",
+                        "/resourceInfo/preview/**",
                         "/pictureBook/image/**",
                         "/pictureBook/audio/**"
                 );

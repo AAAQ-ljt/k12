@@ -135,13 +135,42 @@ public class StudentKnowledgeBaseServiceImpl implements StudentKnowledgeBaseServ
             return;
         }
         ResourceDirectory directory = getOwnedDirectory(ownerId, directoryId);
-        if (directory == null || StringTools.isEmpty(directory.getDirType())) {
+        if (directory == null) {
             return;
         }
-        if (DIR_TYPE_RAW.equals(directory.getDirType())
+        // 子树级约束：沿 parentId 链回溯到所属系统目录——raw 的子目录同样只收 md/txt；
+        // 「知识页」目录及其子树只放知识页、不放资源文件
+        String systemDirType = resolveSystemDirType(ownerId, directoryId);
+        if (DIR_TYPE_RAW.equals(systemDirType)
                 && !(RAW_DOCUMENT_EXTENSIONS.contains(normalizeExtension(extension)))) {
-            throw new BusinessException("「原始资料」目录仅支持 md/txt 文档，请上传到「附件」或自定义目录");
+            throw new BusinessException("「原始资料」目录（含子目录）仅支持 md/txt 文档，请上传到「附件」或自定义目录");
         }
+        if (DIR_TYPE_WIKI.equals(systemDirType)) {
+            throw new BusinessException("「知识页」目录用于存放知识页，资源文件请放到「附件」或自定义目录");
+        }
+    }
+
+    @Override
+    public String resolveSystemDirType(String ownerId, String directoryId) {
+        if (StringTools.isEmpty(ownerId) || StringTools.isEmpty(directoryId)) {
+            return null;
+        }
+        // 目录一次取回内存回溯，不逐层查库
+        Map<String, ResourceDirectory> byId = new LinkedHashMap<>();
+        for (ResourceDirectory dir : listDirectories(ownerId)) {
+            byId.put(dir.getDirId(), dir);
+        }
+        ResourceDirectory cursor = byId.get(directoryId);
+        int guard = 0;
+        while (cursor != null && guard < 20) {
+            if (!StringTools.isEmpty(cursor.getDirType())) {
+                return cursor.getDirType();
+            }
+            String parentId = cursor.getParentId();
+            cursor = (StringTools.isEmpty(parentId) || "0".equals(parentId)) ? null : byId.get(parentId);
+            guard += 1;
+        }
+        return null;
     }
 
     /**

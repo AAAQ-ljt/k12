@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.CodingContestProblemMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.CodingContestProblem">
+		<id column="id" property="id" />
+		<result column="contest_id" property="contestId" />
+		<result column="problem_id" property="problemId" />
+		<result column="sort" property="sort" />
+		<result column="score_override" property="scoreOverride" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+	<sql id="query_condition">
+		<where>
+			<if test="query.contestId != null and query.contestId != ''">
+				and cp.contest_id = #{query.contestId}
+			</if>
+			<if test="query.contestIds != null and query.contestIds.size() > 0">
+				and cp.contest_id in
+				<foreach collection="query.contestIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+			</if>
+			<if test="query.problemId != null and query.problemId != ''">
+				and cp.problem_id = #{query.problemId}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectList" resultMap="base_result_map">
+		select cp.id,cp.contest_id,cp.problem_id,cp.sort,cp.score_override,cp.create_time
+		from coding_contest_problem cp
+		<include refid="query_condition" />
+		order by cp.sort asc, cp.id asc
+		<if test="query.simplePage != null">
+			limit #{query.simplePage.start}, #{query.simplePage.end}
+		</if>
+	</select>
+
+	<select id="selectCount" resultType="java.lang.Integer">
+		select count(1) from coding_contest_problem cp
+		<include refid="query_condition" />
+	</select>
+
+	<insert id="insert" parameterType="com.nexora.entity.po.CodingContestProblem" useGeneratedKeys="true" keyProperty="id">
+		insert into coding_contest_problem(contest_id, problem_id, sort, score_override, create_time)
+		values(#{bean.contestId}, #{bean.problemId}, #{bean.sort}, #{bean.scoreOverride}, #{bean.createTime})
+	</insert>
+
+	<insert id="insertBatch" parameterType="com.nexora.entity.po.CodingContestProblem" useGeneratedKeys="true" keyProperty="id">
+		insert into coding_contest_problem(contest_id, problem_id, sort, score_override, create_time)
+		values
+		<foreach collection="list" item="item" separator=",">
+			(#{item.contestId}, #{item.problemId}, #{item.sort}, #{item.scoreOverride}, #{item.createTime})
+		</foreach>
+	</insert>
+
+	<delete id="deleteByParam">
+		delete cp from coding_contest_problem cp
+		<include refid="query_condition" />
+	</delete>
+
+	<delete id="deleteByContestId">
+		delete from coding_contest_problem where contest_id = #{contestId}
+	</delete>
+</mapper>

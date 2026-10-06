@@ -31,7 +31,7 @@ export default function KnowledgeDrawer({ open, onClose, reloadKey }: Props) {
         reloadKey={reloadKey}
         withToolbar
         emptyText={
-          <Empty description="还没有知识页：可在资源中心「原始资料」生成，或直接对 AI 助教说「帮我整理一篇知识页」" />
+          <Empty description="还没有知识页：可在知识中心「原始资料」生成，或直接对 AI 助教说「帮我整理一篇知识页」" />
         }
       />
     </Drawer>

@@ -26,6 +26,7 @@ import {
 import BaseDrawer from '@/components/BaseDrawer';
 import StageTag from '@/components/StageTag';
 import StatusTag from '@/components/StatusTag';
+import { useThemeStore } from '@/stores/theme';
 import {
   QUESTION_TYPE_MAP,
   USER_STATUS_MAP,
@@ -110,6 +111,8 @@ export default function LearningUserDetailDrawer({
   onClose,
 }: LearningUserDetailDrawerProps) {
   const [detail, setDetail] = useState<LearningUserDetail | null>(null);
+  /** Markdown 预览（AI 学习报告）跟随全局主题：MDEditor 按 data-color-mode 取明暗（2026-10-04） */
+  const isDark = useThemeStore((s) => s.mode) === 'dark';
   const [loading, setLoading] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [report, setReport] = useState('');
@@ -601,7 +604,9 @@ export default function LearningUserDetailDrawer({
           </div>
         ) : (
           <div className={styles.reportBody}>
-            <MDEditor.Markdown source={report} />
+            <div data-color-mode={isDark ? 'dark' : 'light'}>
+              <MDEditor.Markdown source={report} />
+            </div>
           </div>
         )}
       </Modal>

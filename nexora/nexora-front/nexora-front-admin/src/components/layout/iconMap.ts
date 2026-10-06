@@ -14,6 +14,7 @@ import {
   GraduationCap,
   ClipboardList,
   CalendarCheck,
+  Code2,
 } from 'lucide-react';
 
 export const iconMap: Record<string, ElementType> = {
@@ -31,6 +32,7 @@ export const iconMap: Record<string, ElementType> = {
   GraduationCap,
   ClipboardList,
   CalendarCheck,
+  Code2,
 };
 
 /** 根据图标名称获取 lucide-react 图标组件 */

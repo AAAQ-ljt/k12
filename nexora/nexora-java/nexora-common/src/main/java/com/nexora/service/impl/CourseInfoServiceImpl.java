@@ -127,4 +127,26 @@ public class CourseInfoServiceImpl implements CourseInfoService {
 	public Integer deleteCourseInfoByCourseId(String courseId) {
 		return this.courseInfoMapper.deleteByCourseId(courseId);
 	}
+
+	/**
+	 * 学习人数 +1（加入课程时调用；原子自增，避免并发读改写丢更新）
+	 */
+	@Override
+	public Integer increaseStudyCount(String courseId) {
+		if (StringTools.isEmpty(courseId)) {
+			return 0;
+		}
+		return this.courseInfoMapper.increaseStudyCount(courseId);
+	}
+
+	/**
+	 * 学习人数 -1（退出课程时调用；不小于 0）
+	 */
+	@Override
+	public Integer decreaseStudyCount(String courseId) {
+		if (StringTools.isEmpty(courseId)) {
+			return 0;
+		}
+		return this.courseInfoMapper.decreaseStudyCount(courseId);
+	}
 }

@@ -37,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 学生个人资源中心：目录、文件、分片上传，全部按 ownerId 隔离。
@@ -130,6 +131,13 @@ public class StudentResourceCenterController extends ABaseController {
         if ("0".equals(dirId) || "root".equals(dirId)) {
             throw new BusinessException("根目录不能删除");
         }
+        // 「知识页」子树内的目录：走知识页专用删除——其中知识页（含子树）自动回到知识页根目录，
+        // 避免裸删目录后知识页遗留悬空 folder_id（2026-10-04）
+        if (StudentKnowledgeBaseService.DIR_TYPE_WIKI.equals(
+                studentKnowledgeBaseService.resolveSystemDirType(currentUserId(), dirId))) {
+            studentWikiService.deleteFolder(currentUserId(), dirId);
+            return getSuccessResponseVO(null);
+        }
         ResourceDirectoryQuery childQuery = new ResourceDirectoryQuery();
         childQuery.setParentId(dirId);
         childQuery.setOwnerId(currentUserId());
@@ -172,8 +180,15 @@ public class StudentResourceCenterController extends ABaseController {
         if (query.getPageSize() == null) {
             query.setPageSize(20);
         }
-        query.setOwnerId(currentUserId());
+        String userId = currentUserId();
+        query.setOwnerId(userId);
         query.setOrderBy("create_time desc");
+        // 目录过滤按「子树」：点父目录也要能看到子目录里的文件（此前精确匹配导致父目录恒为空）
+        String directoryId = query.getDirectoryId();
+        query.setDirectoryId(null);
+        if (!StringTools.isEmpty(directoryId) && !"root".equals(directoryId)) {
+            query.setDirectoryIds(resourceDirectoryService.findSubTreeDirIds(directoryId, userId));
+        }
         PaginationResultVO<ResourceInfo> page = resourceInfoService.findListByPage(query);
         List<StudentResourceVO> list = page.getList().stream().map(this::toVO).toList();
         PaginationResultVO<StudentResourceVO> result = new PaginationResultVO<>(
@@ -229,6 +244,37 @@ public class StudentResourceCenterController extends ABaseController {
         return getSuccessResponseVO(null);
     }
 
+    @PutMapping("/move")
+    public ResponseVO<Void> move(@RequestParam String resourceId, @RequestParam String directoryId) {
+        if (StringTools.isEmpty(resourceId) || StringTools.isEmpty(directoryId)) {
+            throw new BusinessException("资源ID与目标目录不能为空");
+        }
+        ResourceInfo current = assertOwnedResource(resourceId);
+        if (current.getStatus() == null || current.getStatus() != 1) {
+            throw new BusinessException("仅「可用」状态的资源可以移动");
+        }
+        assertOwnedDirectory(directoryId);
+        // 目录约束（子树级）：raw 及其子目录仅 md/txt；「知识页」目录及其子树不能放资源文件
+        studentKnowledgeBaseService.validateDirectoryState(currentUserId(), directoryId,
+                current.getResourceType(), extractExtension(current.getFilePath()));
+        ResourceInfo update = new ResourceInfo();
+        update.setDirectoryId(directoryId);
+        update.setUpdateTime(new Date());
+        resourceInfoService.updateResourceInfoByResourceId(update, resourceId);
+        return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 取文件扩展名（含点，如 ".png"）；无扩展名返回空串
+     */
+    private String extractExtension(String filePath) {
+        if (StringTools.isEmpty(filePath)) {
+            return "";
+        }
+        int dot = filePath.lastIndexOf('.');
+        return dot >= 0 ? filePath.substring(dot) : "";
+    }
+
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String resourceId) {
         assertOwnedResource(resourceId);
@@ -277,8 +323,20 @@ public class StudentResourceCenterController extends ABaseController {
         vo.setDirectoryId(resource.getDirectoryId());
         vo.setSource(resource.getSource());
         vo.setStatus(resource.getStatus());
+        vo.setFileExt(fileExtOf(resource.getFilePath()));
         vo.setCreateTime(resource.getCreateTime());
         vo.setUpdateTime(resource.getUpdateTime());
         return vo;
+    }
+
+    /**
+     * 原文件扩展名（小写、不含点）：个人资源名上传时被去掉扩展名，前端预览组件据此判型
+     */
+    private String fileExtOf(String filePath) {
+        if (StringTools.isEmpty(filePath)) {
+            return "";
+        }
+        int dot = filePath.lastIndexOf('.');
+        return dot < 0 ? "" : filePath.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 }

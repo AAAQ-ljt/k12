@@ -23,16 +23,20 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * AI 助教「个人知识页」工具集（对话侧）：
+ * AI 助教 MCP 工具集（对话侧）：
  *
- * 1）数据工具：包装 nexora-mcp 的知识页 MCP 工具（列表/读取/新建/覆盖/入库），
+ * 1）知识页数据工具：包装 nexora-mcp 的知识页 MCP 工具（列表/读取/新建/覆盖/入库），
  *    模型看到的入参不含 userId——真实 userId 与学段由 web 端从登录上下文经 ToolContext 注入，
  *    模型既看不到也无法伪造，杜绝越权访问他人知识页；
  * 2）AI 处理工具：摘要 / 改写 / 归档整合，由服务端提示词体系（PromptTemplateComponent，Redis → 表 → 枚举默认值）
- *    驱动大模型完成文本处理，结果再经 MCP 工具落库为草稿。
+ *    驱动大模型完成文本处理，结果再经 MCP 工具落库为草稿；
+ * 3）教材检索工具：包装 TextbookToolService（查书目/读目录/读章节，学段注入、只读）；
+ * 4）教学查询工具：包装 TeachingToolService（课程/课时/资源/掌握度/学习记录，
+ *    queryMastery 与 saveLearningRecord 注入 userId 防越权，学段相关工具注入学段）。
  *
  * 统一口径：AI 改动一律落草稿（vectorStatus=0，旧向量清理），只有用户明确要求入库时才调用 ingest 工具。
- * MCP 未启用 / 未启动时 {@link #buildCallbacks()} 返回空数组，对话主链路不受影响。
+ * MCP 未启用 / 未启动时 {@link #buildCallbacks()} 返回空数组，对话主链路不受影响；
+ * AgentChatComponent 会按真实挂载的工具动态追加能力说明（MCP 关闭时模型不会声称具备这些能力）。
  */
 @Slf4j
 @Component
@@ -62,27 +66,36 @@ public class KnowledgeAgentToolComponent {
     /** 知识页工具上下文兜底（ToolContext 未透传时由 AgentChatComponent 设置） */
     private static final ThreadLocal<Map<String, Object>> FALLBACK_CONTEXT = new ThreadLocal<>();
 
-    private record McpToolSpec(String name, String description, String inputSchema, boolean injectStage) {
+    /**
+     * MCP 工具包装规格：
+     * injectStage——服务端工具声明了 stage 入参时为 true，web 端注入学生学段（模型不可见不可伪造）；
+     * injectUser——服务端工具声明了 userId 入参时为 true，web 端注入登录用户（防越权访问他人数据）；
+     * markWiki——调用后给消息打 WIKI 标记（知识页数据/AI 处理工具有，只读检索类工具没有）
+     */
+    private record McpToolSpec(String name, String description, String inputSchema,
+                               boolean injectStage, boolean injectUser, boolean markWiki) {
     }
 
-    /** 包装的 MCP 数据工具（入参 schema 全部去掉 userId，需要时由 web 端注入 userId / 学段） */
+    /** 包装的 MCP 工具规格（入参 schema 全部去掉 userId/stage，需要时由 web 端注入） */
     private static final List<McpToolSpec> MCP_TOOL_SPECS = List.of(
             new McpToolSpec("listKnowledgePages",
-                    "查询学生个人知识库里的知识页清单（标题、状态、来源、更新时间）。"
+                    "查询学生个人知识库里的知识页清单（标题、状态、来源、所属目录、更新时间），"
+                            + "返回同时附「知识页目录清单」（含 folderId，供移动/新建子目录定位）。"
                             + "当用户问「我有哪些知识页 / 我整理过哪些资料 / 上次那篇在哪」时先调用本工具。",
                     """
                             {"type":"object","properties":{
                               "keyword":{"type":"string","description":"标题关键词，可空"},
-                              "vectorStatus":{"type":"integer","description":"状态过滤：0草稿 1向量化中 2已入库 3失败，可空表示不限"}
+                              "vectorStatus":{"type":"integer","description":"状态过滤：0草稿 1向量化中 2已入库 3失败，可空表示不限"},
+                              "folderId":{"type":"string","description":"目录过滤：传目录ID只看该目录；传 root 只看根目录；不传看全部"}
                             }}""",
-                    false),
+                    false, true, true),
             new McpToolSpec("readKnowledgePage",
                     "读取指定知识页的完整正文（Markdown）。修改、总结、归档整合之前先用本工具读取原文。",
                     """
                             {"type":"object","properties":{
                               "docId":{"type":"string","description":"知识页ID"}
                             },"required":["docId"]}""",
-                    false),
+                    false, true, true),
             new McpToolSpec("createKnowledgePage",
                     "新建一篇知识页草稿（不会自动入库，用户确认或明确要求后才入库）。"
                             + "适合把整理好的内容写成新的知识页；传入 sourceUrl 时同来源会覆盖已有页。",
@@ -92,7 +105,7 @@ public class KnowledgeAgentToolComponent {
                               "content":{"type":"string","description":"Markdown 正文"},
                               "sourceUrl":{"type":"string","description":"来源标识，可空；同来源重复写入会覆盖已有页"}
                             },"required":["title","content"]}""",
-                    true),
+                    true, true, true),
             new McpToolSpec("updateKnowledgePage",
                     "覆盖指定知识页的标题与正文，保存后为草稿状态（已入库的页会清除旧向量，需重新入库才可检索）。",
                     """
@@ -101,7 +114,7 @@ public class KnowledgeAgentToolComponent {
                               "title":{"type":"string","description":"新标题，可空表示不改标题"},
                               "content":{"type":"string","description":"新的 Markdown 正文"}
                             },"required":["docId","content"]}""",
-                    false),
+                    false, true, true),
             new McpToolSpec("ingestKnowledgePage",
                     "把知识页入库（向量化），入库后 AI 助教才能检索到该内容。"
                             + "只在用户明确要求「入库 / 上架 / 让 AI 能搜到」时调用，不要擅自入库。",
@@ -109,7 +122,94 @@ public class KnowledgeAgentToolComponent {
                             {"type":"object","properties":{
                               "docId":{"type":"string","description":"知识页ID"}
                             },"required":["docId"]}""",
-                    false));
+                    false, true, true),
+            new McpToolSpec("createWikiFolder",
+                    "在学生的知识页里新建一个子文件夹（用于归类整理知识页）。"
+                            + "用户说「建一个《XX》文件夹」时调用；parentFolderId 不传则建在知识页根目录下",
+                    """
+                            {"type":"object","properties":{
+                              "name":{"type":"string","description":"文件夹名称"},
+                              "parentFolderId":{"type":"string","description":"父文件夹ID，可空表示建在知识页根目录下"}
+                            },"required":["name"]}""",
+                    false, true, true),
+            new McpToolSpec("moveKnowledgePage",
+                    "把指定知识页移动到某个子文件夹（或移回知识页根目录），知识页内容不变。"
+                            + "用户说「把《XX》移到《YY》文件夹」时调用；folderId 不传表示移回根目录",
+                    """
+                            {"type":"object","properties":{
+                              "docId":{"type":"string","description":"知识页ID"},
+                              "folderId":{"type":"string","description":"目标文件夹ID，可空表示移回知识页根目录"}
+                            },"required":["docId"]}""",
+                    false, true, true),
+            new McpToolSpec("searchTextbooks",
+                    "查询官方教材书目（按学生学段自动过滤，标题关键词匹配）。"
+                            + "用户指名教材或章节（如「必修一」「某本书」）时先调用本工具找书，再用 getTextbookToc 看目录。",
+                    """
+                            {"type":"object","properties":{
+                              "keyword":{"type":"string","description":"书名关键词，如：必修一 / 政治 / 信息技术，多个词用空格分隔，可空表示列全部"}
+                            }}""",
+                    true, false, false),
+            new McpToolSpec("getTextbookToc",
+                    "读取指定教材的章节目录（序号+标题+本节字数）。用户要读某本书的某节课/章前，先用本工具看目录定位序号。",
+                    """
+                            {"type":"object","properties":{
+                              "docId":{"type":"string","description":"教材docId（来自 searchTextbooks）"}
+                            },"required":["docId"]}""",
+                    true, false, false),
+            new McpToolSpec("readTextbookSection",
+                    "读取指定教材某章节的正文（Markdown，按目录序号或章节标题定位）。内容超长会截断并提示用 offset 续读。",
+                    """
+                            {"type":"object","properties":{
+                              "docId":{"type":"string","description":"教材docId"},
+                              "section":{"type":"string","description":"章节定位：目录序号（如 3）或章节标题（如 第一课）"},
+                              "offset":{"type":"integer","description":"续读偏移字符数，首次读取不传"}
+                            },"required":["docId","section"]}""",
+                    true, false, false),
+            new McpToolSpec("queryCourse",
+                    "查询课程清单（含年级/学科/难度/课时数/学习人数）。默认返回**全部学段**的上架课程；"
+                            + "用户问「我加入的课程 / 我的课程 / 我学过哪些课」时必须传 mine=true（返回该学生已加入的全部课程，"
+                            + "跨学段，含已学课时数）；**只有**用户明确提到年级或学段（如「三年级的课 / 初中有哪些课」）才传 stage——"
+                            + "不要因为知道学生的学段就默认传 stage。",
+                    """
+                            {"type":"object","properties":{
+                              "mine":{"type":"boolean","description":"是否只查当前学生已加入的课程（跨学段）；用户问「我的课程」时传 true"},
+                              "stage":{"type":"string","description":"学段过滤，仅在用户明确提到年级/学段时传；支持高中/初中/三年级等中文，自动归一化"},
+                              "keyword":{"type":"string","description":"课程名关键词，可空"}
+                            }}""",
+                    false, true, false),
+            new McpToolSpec("queryLesson",
+                    "查询某门课程的课时列表（含摘要/视频时长），或按课时ID查详情。先用 queryCourse 拿到课程ID。"
+                            + "学生已加入的课程不受学段限制（跨学段也能查）。",
+                    """
+                            {"type":"object","properties":{
+                              "courseId":{"type":"string","description":"课程ID，可空"},
+                              "lessonId":{"type":"string","description":"课时ID，可空"}
+                            }}""",
+                    true, true, false),
+            new McpToolSpec("recommendResource",
+                    "推荐官方学习资源（按知识点/类型过滤）。类型：VIDEO/DOCUMENT/PPT/WORD/IMAGE/PICTURE_BOOK/ANIMATION。",
+                    """
+                            {"type":"object","properties":{
+                              "knowledgePointId":{"type":"string","description":"知识点ID，可空"},
+                              "type":{"type":"string","description":"资源类型，可空"}
+                            }}""",
+                    true, false, false),
+            new McpToolSpec("queryMastery",
+                    "查询当前学生的知识点掌握度概览（已掌握/进行中/未解锁分布、得分与正确率）。"
+                            + "用户问「我学得怎么样/掌握度」时使用。",
+                    """
+                            {"type":"object","properties":{}}""",
+                    true, true, false),
+            new McpToolSpec("saveLearningRecord",
+                    "记录学生学习行为（VIEW/COMPLETE/PRACTICE/ANIMATION/PARSE/AI_CHAT）。"
+                            + "仅在用户明确要求记录学习行为时调用，不要擅自记录。",
+                    """
+                            {"type":"object","properties":{
+                              "targetId":{"type":"string","description":"行为对象ID（资源/课程/课时），可空"},
+                              "actionType":{"type":"string","description":"行为类型"},
+                              "duration":{"type":"integer","description":"学习时长（秒），可空"}
+                            },"required":["actionType"]}""",
+                    false, true, false));
 
     @Resource
     private ObjectProvider<SyncMcpToolCallbackProvider> mcpToolCallbackProvider;
@@ -241,21 +341,49 @@ public class KnowledgeAgentToolComponent {
                 return "知识页工具暂不可用：未获取到登录用户身份";
             }
             JSONObject args = parseArgs(toolInput);
-            args.put("userId", userId);
+            if (spec.injectUser()) {
+                args.put("userId", userId);
+            }
             if (spec.injectStage() && StringTools.isEmpty(args.getString("stage"))) {
                 String stage = contextStage(toolContext);
                 if (!StringTools.isEmpty(stage)) {
                     args.put("stage", stage);
                 }
             }
-            markWikiOp(toolContext);
+            if (spec.markWiki()) {
+                markWikiOp(toolContext);
+            }
             try {
-                return delegate.call(args.toJSONString());
+                long startedAt = System.currentTimeMillis();
+                String result = delegate.call(args.toJSONString());
+                // 工具调用轨迹（2026-10-07 起）：回答出现「平台事实」争议时，这是唯一能查证
+                // 「模型到底调了哪个工具、入参是什么、拿到什么结果」的依据（此前完全无迹可查）。
+                log.info("MCP 工具调用 tool={} args={} 耗时={}ms 返回长度={} 摘要={}",
+                        spec.name(), summarizeArgs(args), System.currentTimeMillis() - startedAt,
+                        result == null ? 0 : result.length(), summarizeResult(result));
+                return result;
             } catch (Exception e) {
-                log.warn("知识页 MCP 工具调用失败 tool={}", spec.name(), e);
+                log.warn("知识页 MCP 工具调用失败 tool={} args={}", spec.name(), summarizeArgs(args), e);
                 return "知识页服务暂不可用（MCP 服务 " + spec.name() + " 调用失败）："
                         + e.getMessage() + "。请稍后重试，或告知用户稍后再试。";
             }
+        }
+
+        /** 入参摘要：去掉 userId（上下文已固定）并截断，便于日志检索 */
+        private String summarizeArgs(JSONObject args) {
+            JSONObject copy = new JSONObject(args);
+            copy.remove("userId");
+            String text = copy.toJSONString();
+            return text.length() > 200 ? text.substring(0, 200) + "…" : text;
+        }
+
+        /** 返回摘要：单行化 + 截断，避免把整篇知识页写进日志 */
+        private String summarizeResult(String result) {
+            if (result == null) {
+                return "";
+            }
+            String oneLine = result.replace('\n', ' ').replace('\r', ' ');
+            return oneLine.length() > 240 ? oneLine.substring(0, 240) + "…" : oneLine;
         }
     }
 

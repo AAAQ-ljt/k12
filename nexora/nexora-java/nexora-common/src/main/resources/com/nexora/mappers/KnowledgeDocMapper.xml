@@ -27,6 +27,8 @@
 		<result column="source_resource_id" property="sourceResourceId"  />
 		<!--资料链接（超链接文档），可空-->
 		<result column="source_url" property="sourceUrl"  />
+		<!--所属知识页子文件夹（resource_directory.dir_id）；NULL=知识页根目录-->
+		<result column="folder_id" property="folderId"  />
 		<!--向量状态：0待处理 1处理中 2已完成 3失败 4过期-->
 		<result column="vector_status" property="vectorStatus"  />
 		<!--向量化失败时的错误原因，可空-->
@@ -47,7 +49,7 @@
 	<!-- 通用查询结果列-->
 	<sql id="base_column_list">
 		 k.doc_id,k.title,k.stage,k.knowledge_point_id,k.owner_id,k.difficulty,
-		 k.data_type,k.content,k.source_type,k.source_resource_id,k.source_url,
+		 k.data_type,k.content,k.source_type,k.source_resource_id,k.source_url,k.folder_id,
 		 k.vector_status,k.vector_error,k.chunk_count,k.status,k.create_by,
 		 k.create_time,k.update_time
 	</sql>
@@ -64,6 +66,10 @@
 			</if>
 			<if test="query.knowledgePointId != null and query.knowledgePointId!=''">
 				 and  k.knowledge_point_id = #{query.knowledgePointId}
+			</if>
+			<!-- 学科过滤（管理端知识目录按学科节点筛选）：文档表无学科列，经知识点表子查询 -->
+			<if test="query.subject != null and query.subject!=''">
+				 and  k.knowledge_point_id in (select knowledge_point_id from knowledge_point where subject = #{query.subject})
 			</if>
 			<if test="query.ownerId != null and query.ownerId!=''">
 				 and  k.owner_id = #{query.ownerId}
@@ -88,6 +94,16 @@
 			</if>
 			<if test="query.sourceResourceId != null and query.sourceResourceId!=''">
 				 and  k.source_resource_id = #{query.sourceResourceId}
+			</if>
+			<if test="query.folderId != null and query.folderId!=''">
+				 and  k.folder_id = #{query.folderId}
+			</if>
+			<if test="query.folderIdNull != null and query.folderIdNull">
+				 and  k.folder_id is null
+			</if>
+			<if test="query.folderIds != null and query.folderIds.size() > 0">
+				 and  k.folder_id in
+				 <foreach collection="query.folderIds" item="folderId" open="(" separator="," close=")">#{folderId}</foreach>
 			</if>
 			<if test="query.sourceUrl != null and query.sourceUrl!=''">
 				 and  k.source_url = #{query.sourceUrl}
@@ -619,6 +635,9 @@
 			<if test="bean.sourceUrl != null">
 				 source_url = #{bean.sourceUrl},
 			</if>
+			<if test="bean.folderId != null">
+				 folder_id = #{bean.folderId},
+			</if>
 			<if test="bean.vectorStatus != null">
 				 vector_status = #{bean.vectorStatus},
 			</if>
@@ -684,6 +703,9 @@
 			<if test="bean.sourceUrl != null">
 				 source_url = #{bean.sourceUrl},
 			</if>
+			<if test="bean.folderId != null">
+				 folder_id = #{bean.folderId},
+			</if>
 			<if test="bean.vectorStatus != null">
 				 vector_status = #{bean.vectorStatus},
 			</if>
@@ -718,5 +740,17 @@
 	<select id="selectByDocId" resultMap="base_result_map" >
 		select <include refid="base_column_list" /> from knowledge_doc k where doc_id=#{docId}
 	</select>
+
+	<!-- 改写/清空所属知识页子文件夹（通用 <if> 更新无法把列置 NULL，移回根目录走这里） -->
+	<update id="updateFolderIdByDocId">
+		update knowledge_doc set folder_id = #{folderId}, update_time = #{updateTime} where doc_id = #{docId}
+	</update>
+
+	<!-- 批量移回知识页根目录（删除子文件夹时，其子树内知识页一并归位） -->
+	<update id="updateFolderIdToNullBatch">
+		update knowledge_doc set folder_id = null, update_time = #{updateTime}
+		where doc_id in
+		<foreach collection="docIds" item="docId" open="(" separator="," close=")">#{docId}</foreach>
+	</update>
 
 </mapper>

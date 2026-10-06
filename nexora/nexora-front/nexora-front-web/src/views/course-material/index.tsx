@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, Button, Empty, Progress, Spin, Tabs, Tag } from 'antd';
-import { BookOpen, Layers, GraduationCap, PlusCircle } from 'lucide-react';
+import { App, Button, Empty, Input, Progress, Select, Spin, Tabs, Tag } from 'antd';
+import { BookOpen, Layers, GraduationCap, PlusCircle, Search, Users } from 'lucide-react';
 import {
   joinCourse,
   loadJoinCourses,
@@ -10,7 +10,7 @@ import {
   type CourseProgress,
   type StudentCourseInfo,
 } from '@/api/course';
-import { getGradeText } from '@/types/common';
+import { getGradeText, getStageOption } from '@/types/common';
 import { useAuthStore } from '@/stores/auth';
 import styles from './index.module.scss';
 
@@ -58,6 +58,34 @@ export default function CourseMaterial() {
 
   const gradeText = useMemo(() => getGradeText(userInfo), [userInfo]);
 
+  /** 「我的课程」筛选：关键词 + 学段 + 学科（前端过滤；学生加入的课程量级小，即时筛选体验更好） */
+  const [myKeyword, setMyKeyword] = useState('');
+  const [myStage, setMyStage] = useState<string>();
+  const [mySubject, setMySubject] = useState<string>();
+
+  const myStageOptions = useMemo(() => {
+    const stages = Array.from(new Set(myCourses.map((course) => course.stage).filter(Boolean)));
+    return stages.map((value) => ({ value, label: getStageOption(value)?.label || value }));
+  }, [myCourses]);
+
+  const mySubjectOptions = useMemo(() => {
+    const subjects = Array.from(new Set(myCourses.map((course) => course.subject).filter(Boolean)));
+    return subjects.map((value) => ({ value, label: value }));
+  }, [myCourses]);
+
+  const filteredMyCourses = useMemo(() => {
+    const keyword = myKeyword.trim().toLowerCase();
+    return myCourses.filter((course) => {
+      if (myStage && course.stage !== myStage) {
+        return false;
+      }
+      if (mySubject && course.subject !== mySubject) {
+        return false;
+      }
+      return !keyword || (course.courseName || '').toLowerCase().includes(keyword);
+    });
+  }, [myCourses, myStage, mySubject, myKeyword]);
+
   const handleOpen = (course: StudentCourseInfo) => {
     navigate(`/course-material/${course.courseId}`);
   };
@@ -102,6 +130,12 @@ export default function CourseMaterial() {
           <span>
             <Layers size={13} />
             {course.lessonCount} 课时
+          </span>
+        ) : null}
+        {course.studyCount ? (
+          <span title="当前加入该课程的学生人数">
+            <Users size={13} />
+            {course.studyCount} 人在学
           </span>
         ) : null}
       </div>
@@ -160,15 +194,46 @@ export default function CourseMaterial() {
               key: 'my',
               label: `我的课程 (${myCourses.length})`,
               children: (
-                <div className={styles.resourceGrid}>
-                  {myCourses.length === 0 ? (
-                    <Empty
-                      description="还没有加入任何课程，去「可加入课程」看看吧"
-                      className={styles.emptyBox}
+                <div>
+                  <div className={styles.filterBar}>
+                    <Input
+                      allowClear
+                      className={styles.searchInput}
+                      prefix={<Search size={14} />}
+                      placeholder="搜索课程名称"
+                      value={myKeyword}
+                      onChange={(e) => setMyKeyword(e.target.value)}
                     />
-                  ) : (
-                    myCourses.map((course) => renderCourseCard(course, false))
-                  )}
+                    <Select
+                      allowClear
+                      placeholder="全部学段"
+                      className={styles.filterSelect}
+                      options={myStageOptions}
+                      value={myStage}
+                      onChange={(value) => setMyStage(value)}
+                    />
+                    <Select
+                      allowClear
+                      placeholder="全部学科"
+                      className={styles.filterSelect}
+                      options={mySubjectOptions}
+                      value={mySubject}
+                      onChange={(value) => setMySubject(value)}
+                    />
+                    <span className={styles.filterCount}>共 {filteredMyCourses.length} 门</span>
+                  </div>
+                  <div className={styles.resourceGrid}>
+                    {myCourses.length === 0 ? (
+                      <Empty
+                        description="还没有加入任何课程，去「可加入课程」看看吧"
+                        className={styles.emptyBox}
+                      />
+                    ) : filteredMyCourses.length === 0 ? (
+                      <Empty description="没有符合筛选条件的课程" className={styles.emptyBox} />
+                    ) : (
+                      filteredMyCourses.map((course) => renderCourseCard(course, false))
+                    )}
+                  </div>
                 </div>
               ),
             },

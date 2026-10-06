@@ -32,3 +32,15 @@
     border: 0;
   }
 }
+
+.previewNotice {
+  margin: 8px 12px 0;
+}
+
+.viewerLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  background: #f7f8fa;
+}

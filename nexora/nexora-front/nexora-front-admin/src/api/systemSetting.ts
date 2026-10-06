@@ -118,6 +118,29 @@ export function switchImageProvider(provider: string): Promise<void> {
   return request.post('/systemSetting/imageProvider', { provider });
 }
 
+/** 对话模型供应商选项 */
+export interface ChatProviderOption {
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface ChatProviderOptions {
+  /** 当前生效的供应商编码：deepseek / opencode-go */
+  current: string;
+  options: ChatProviderOption[];
+}
+
+/** 对话模型供应商选项（当前生效值 + 可选项；生效端为学生端 AI 对话） */
+export function loadChatProvider(): Promise<ChatProviderOptions> {
+  return request.get('/systemSetting/chatProvider');
+}
+
+/** 切换对话模型供应商（白名单校验，保存即生效） */
+export function switchChatProvider(provider: string): Promise<void> {
+  return request.post('/systemSetting/chatProvider', { provider });
+}
+
 /** 各场景提示词生效情况（默认 ALL 学段） */
 export function loadPromptEffective(stage?: string): Promise<PromptEffectiveItem[]> {
   return request.get('/systemSetting/promptEffective', stage ? { params: { stage } } : undefined);

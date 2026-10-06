@@ -116,6 +116,12 @@ public class ResourceInfoQuery extends BaseParam {
 	private String directoryId;
 
 	/**
+	 * 目录ID集合（含子孙目录）：列表查询按「目录子树」过滤时使用；
+	 * directoryId 保持精确匹配语义（目录删除校验等依赖它）
+	 */
+	private List<String> directoryIds;
+
+	/**
 	 * 来源：0后台上传 1AI生成
 	 */
 	private Integer source;
@@ -147,6 +153,11 @@ public class ResourceInfoQuery extends BaseParam {
 	private String updateTimeStart;
 
 	private String updateTimeEnd;
+
+	/**
+	 * 更新时间早于该时刻（精确到秒，僵尸记录探活用；NULL=不过滤）
+	 */
+	private java.util.Date updateTimeBefore;
 
 
 	public void setResourceId(String resourceId){
@@ -357,6 +368,14 @@ public class ResourceInfoQuery extends BaseParam {
 		return this.directoryId;
 	}
 
+	public void setDirectoryIds(List<String> directoryIds){
+		this.directoryIds = directoryIds;
+	}
+
+	public List<String> getDirectoryIds(){
+		return this.directoryIds;
+	}
+
 	public void setKnowledgePointIdFuzzy(String knowledgePointIdFuzzy){
 		this.knowledgePointIdFuzzy = knowledgePointIdFuzzy;
 	}
@@ -433,6 +452,14 @@ public class ResourceInfoQuery extends BaseParam {
 
 	public String getUpdateTimeEnd(){
 		return this.updateTimeEnd;
+	}
+
+	public void setUpdateTimeBefore(java.util.Date updateTimeBefore){
+		this.updateTimeBefore = updateTimeBefore;
+	}
+
+	public java.util.Date getUpdateTimeBefore(){
+		return this.updateTimeBefore;
 	}
 
 }

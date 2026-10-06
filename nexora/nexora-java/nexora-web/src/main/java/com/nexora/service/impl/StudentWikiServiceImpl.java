@@ -118,13 +118,41 @@ public class StudentWikiServiceImpl implements StudentWikiService {
 
     @Override
     public List<KnowledgeDoc> listDrafts(String userId, String resourceId) {
+        return listDrafts(userId, resourceId, null);
+    }
+
+    @Override
+    public List<KnowledgeDoc> listDrafts(String userId, String resourceId, String folderId) {
         KnowledgeDocQuery query = new KnowledgeDocQuery();
         query.setOwnerId(userId);
         if (!StringTools.isEmpty(resourceId)) {
             query.setSourceResourceId(resourceId);
         }
+        if (!StringTools.isEmpty(folderId)) {
+            // "root"=仅根目录；具体文件夹ID=该文件夹内；不传=全部
+            if ("root".equals(folderId)) {
+                query.setFolderIdNull(Boolean.TRUE);
+            } else {
+                query.setFolderId(folderId);
+            }
+        }
         query.setOrderBy("update_time desc");
         return knowledgeDocService.findListByParam(query);
+    }
+
+    @Override
+    public String createFolder(String userId, String name, String parentFolderId) {
+        return wikiKnowledgeComponent.createWikiFolder(userId, name, parentFolderId);
+    }
+
+    @Override
+    public void moveDoc(String userId, String docId, String folderId) {
+        wikiKnowledgeComponent.moveDocToFolder(userId, docId, folderId);
+    }
+
+    @Override
+    public void deleteFolder(String userId, String folderId) {
+        wikiKnowledgeComponent.deleteWikiFolder(userId, folderId);
     }
 
     @Override
@@ -134,6 +162,11 @@ public class StudentWikiServiceImpl implements StudentWikiService {
 
     @Override
     public void cleanupByResource(String userId, String resourceId) {
+        if (StringTools.isEmpty(resourceId)) {
+            // 防御（2026-10-04）：资源ID为空时不做级联清理——若查询条件失效会误清该学生全部知识页
+            log.warn("资源删除级联清理跳过：resourceId 为空 userId={}", userId);
+            return;
+        }
         KnowledgeDocQuery query = new KnowledgeDocQuery();
         query.setOwnerId(userId);
         query.setSourceResourceId(resourceId);

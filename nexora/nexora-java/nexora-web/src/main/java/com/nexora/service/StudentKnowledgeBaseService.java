@@ -42,4 +42,9 @@ public interface StudentKnowledgeBaseService {
      * 校验目标目录是否允许存放该资源：raw 系统目录仅允许 md/txt 文档
      */
     void validateDirectoryState(String ownerId, String directoryId, String resourceType, String extension);
+
+    /**
+     * 解析目录所属的系统目录类型（沿 parentId 链回溯；纯自建目录树返回 null）
+     */
+    String resolveSystemDirType(String ownerId, String directoryId);
 }

@@ -42,6 +42,8 @@ export interface KnowledgeDocQuery extends PageParam {
   docId?: string;
   titleFuzzy?: string;
   stage?: string;
+  /** 学科过滤（经 knowledge_point.subject 子查询；文档表本身无学科列） */
+  subject?: string;
   knowledgePointId?: string;
   difficulty?: number;
   vectorStatus?: number;
@@ -168,6 +170,14 @@ export function loadTree(): Promise<KnowledgeTreeNode[]> {
 
 export function loadDocList(query: KnowledgeDocQuery): Promise<PageResult<KnowledgeDoc>> {
   return request.get('/knowledgeBase/docList', { params: query });
+}
+
+/**
+ * 文档详情（含正文）：列表接口只回元数据（正文单篇可达数万字，且入库轮询每 2 秒拉一次列表），
+ * 查看 / 编辑文档时用本接口按需拉取单篇正文。
+ */
+export function loadDocDetail(docId: string): Promise<KnowledgeDoc> {
+  return request.get('/knowledgeBase/docInfo', { params: { docId } });
 }
 
 export function addDoc(data: Partial<KnowledgeDoc>): Promise<void> {

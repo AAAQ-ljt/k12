@@ -1,5 +1,6 @@
 package com.nexora.service.impl;
 
+import java.util.Date;
 import java.util.List;
 
 import jakarta.annotation.Resource;
@@ -126,5 +127,24 @@ public class KnowledgeDocServiceImpl implements KnowledgeDocService {
 	@Override
 	public Integer deleteKnowledgeDocByDocId(String docId) {
 		return this.knowledgeDocMapper.deleteByDocId(docId);
+	}
+
+	/**
+	 * 改写所属知识页子文件夹（folderId 为 null 表示移回知识页根目录）
+	 */
+	@Override
+	public Integer updateKnowledgeDocFolder(String folderId, Date updateTime, String docId) {
+		return this.knowledgeDocMapper.updateFolderIdByDocId(folderId, updateTime, docId);
+	}
+
+	/**
+	 * 批量移回知识页根目录（删除子文件夹时，其子树内知识页一并归位）
+	 */
+	@Override
+	public Integer updateKnowledgeDocFolderToNullBatch(List<String> docIds, Date updateTime) {
+		if (docIds == null || docIds.isEmpty()) {
+			return 0;
+		}
+		return this.knowledgeDocMapper.updateFolderIdToNullBatch(docIds, updateTime);
 	}
 }

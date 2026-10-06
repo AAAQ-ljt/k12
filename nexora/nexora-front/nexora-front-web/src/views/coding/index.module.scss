@@ -1,83 +1,295 @@
+/* 整页锁一屏：高度取外层内容区（.main-content）的高度，页面本身不滚动，
+   三栏各自内部滚动。外层 .main-content 已设 overflow-y:auto，这里用 height:100% 拿它的内容高度，
+   避免再手算 100vh - header - padding（换布局就会错位）。 */
 .codingPage {
-  height: calc(100vh - var(--header-height) - 64px);
-  min-height: 520px;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .pageHeader {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
   background: var(--card-white);
   border: 1px solid var(--warm-bg-dark);
-  border-radius: 16px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pageTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: #fff;
+  background: var(--gradient-badge);
+  box-shadow: var(--shadow-xs);
+  flex: none;
 }
 
 .pageTitle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--font-size-lg);
+  margin: 0;
+  font-size: var(--font-size-md);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .pageDesc {
-  font-size: var(--font-size-sm);
+  margin: 2px 0 0;
+  font-size: var(--font-size-xs);
   color: var(--text-tertiary);
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stageTag {
+  margin: 0;
+  border-radius: 999px;
+  background: var(--warm-orange-100);
+  color: var(--warm-brown-700);
+  font-weight: 600;
+}
+
+.starBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--warm-orange-100);
+  color: var(--warm-brown-700);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.runtimeAlert {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 77, 79, 0.35);
+  background: rgba(255, 77, 79, 0.08);
+  color: #b03030;
+  font-size: 13px;
+}
+
+/* 进行中比赛横幅（普通练习模式下的提醒） */
+.contestBanner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--warm-orange-400);
+  background: linear-gradient(120deg, var(--warm-orange-200), var(--warm-orange-100));
+  box-shadow: var(--shadow-xs);
+  font-size: 13px;
+  color: var(--warm-brown-800);
+}
+
+.contestBannerTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--warm-brown-900);
+}
+
+.contestBannerCountdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #c05a1e;
+}
+
+.contestBannerProgress {
+  color: var(--warm-brown-700);
+}
+
+/* 比赛模式工具栏 */
+.contestBar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--warm-orange-400);
+  background: linear-gradient(120deg, #ffd9a8, #ffe9cf);
+  box-shadow: var(--shadow-xs);
+  font-size: 13px;
+  color: var(--warm-brown-800);
+}
+
+.contestBarTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--warm-brown-900);
+}
+
+.contestBarActions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.countdown,
+.countdownDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.countdown {
+  color: #c05a1e;
+}
+
+.countdownDanger {
+  color: #b03030;
+}
+
+.scoreCard {
+  font-weight: 600;
+  color: var(--warm-brown-800);
+}
+
+/* 通关提示条 */
+.passBar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--warm-orange-100);
+  border: 1px dashed var(--warm-orange-400);
+}
+
+.passText {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--warm-brown-700);
+}
+
+/* 判分诊断条：未通过时显示服务端给出的具体原因（全角符号 / 空行 / 大小写 / 空格 / 数值写法） */
+.judgeBar {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-warning);
+  background: var(--warm-orange-100);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--warm-brown-800);
+}
+
+.judgeText {
+  min-width: 0;
+}
+
+/* 参考解析（看答案后展示的讲解区） */
+.solutionBox {
+  flex: none;
+  max-height: 128px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--warm-orange-300);
+  background: var(--warm-orange-100);
+}
+
+.solutionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warm-brown-700);
+  margin-bottom: 4px;
+}
+
+.solutionClose {
+  margin-left: auto;
+}
+
+.solutionBody {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+/* 三栏工作台：占满剩余高度，栏内各自滚动 */
 .codingBody {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 14px;
-}
-
-.templatePanel {
-  background: var(--card-white);
-  border: 1px solid var(--warm-bg-dark);
-  border-radius: 16px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow: auto;
-}
-
-.panelTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.panelTip {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  line-height: 1.8;
-}
-
-.editorPanel {
-  background: var(--card-white);
-  border: 1px solid var(--warm-bg-dark);
-  border-radius: 16px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 250px minmax(0, 1fr) 360px;
   gap: 10px;
-  min-width: 0;
+  align-items: stretch;
 }
 
-.editorHeader {
+.codingBody > * {
+  min-height: 0;
+  height: 100%;
+}
+
+.workbench {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--card-white);
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.workbenchBar {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .runtimeInfo {
@@ -87,9 +299,9 @@
 
 .editorBox {
   flex: 1;
-  min-height: 260px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+  min-height: 160px;
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -98,57 +310,43 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.outputPanel {
-  height: 180px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #1e1e1e;
-}
-
-.outputTitle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 12px;
-}
-
-.outputTitle :global(.ant-btn) {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.outputBody {
-  flex: 1;
-  margin: 0;
-  padding: 10px 12px;
-  overflow: auto;
-  color: #d4d4d4;
+  color: var(--text-tertiary);
   font-size: 13px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
-.outputHint {
-  color: rgba(255, 255, 255, 0.35);
+/* 中屏：三栏同时收窄，保持一屏内不换行（换行会让页面变高、需要上下滚动） */
+@media (max-width: 1440px) {
+  .codingBody {
+    grid-template-columns: 215px minmax(0, 1fr) 320px;
+  }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1180px) {
+  .codingBody {
+    grid-template-columns: 185px minmax(0, 1fr) 285px;
+  }
+
+  .pageDesc {
+    display: none;
+  }
+}
+
+/* 窄屏 / 移动端：单列堆叠，此时允许整页滚动 */
+@media (max-width: 900px) {
+  .codingPage {
+    height: auto;
+    overflow: visible;
+  }
+
   .codingBody {
     grid-template-columns: 1fr;
   }
 
-  .templatePanel {
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
+  .codingBody > * {
+    height: auto;
+  }
+
+  .editorBox {
+    min-height: 240px;
   }
 }

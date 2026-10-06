@@ -109,6 +109,12 @@
 			<if test="query.directoryId != null and query.directoryId!=''">
 				 and  r.directory_id = #{query.directoryId}
 			</if>
+			<if test="query.directoryIds != null and query.directoryIds.size() > 0">
+				 and r.directory_id in
+				 <foreach collection="query.directoryIds" item="item" open="(" separator="," close=")">
+					 #{item}
+				 </foreach>
+			</if>
 			<if test="query.source != null">
 				 and  r.source = #{query.source}
 			</if>
@@ -177,6 +183,9 @@
 			</if>
 			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
 				 <![CDATA[ and  r.update_time< date_sub(str_to_date(#{query.updateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeBefore != null">
+				 <![CDATA[ and  r.update_time < #{query.updateTimeBefore} ]]>
 			</if>
 	 </where>
 	</sql>
@@ -800,5 +809,12 @@
 		select coalesce(sum(r.file_size), 0) from resource_info r
 		where r.owner_id = #{ownerId} and r.status in (0, 1)
 	</select>
+
+	<!-- 批量改状态（僵尸记录清理：把确认无进行中上传的「处理中」资源置为失败） -->
+	<update id="updateStatusByIds">
+		update resource_info set status = #{status}, update_time = #{updateTime}
+		where resource_id in
+		<foreach collection="resourceIds" item="resourceId" open="(" separator="," close=")">#{resourceId}</foreach>
+	</update>
 
 </mapper>

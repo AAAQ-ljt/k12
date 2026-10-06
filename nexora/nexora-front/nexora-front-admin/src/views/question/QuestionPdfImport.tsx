@@ -12,7 +12,12 @@ import { batchAddQuestions, type QuestionSaveDTO } from '@/api/question';
 import styles from './QuestionPdfImport.module.scss';
 
 /** 题目 MD 编写页（7.18 重构）：左侧 MD 编写 + 右侧 KaTeX 预览；docx 解析导入初稿；可直接入库 */
-export default function QuestionPdfImport() {
+interface QuestionPdfImportProps {
+  /** 入库成功回调（父级据此切回列表并刷新） */
+  onSuccess?: () => void;
+}
+
+export default function QuestionPdfImport({ onSuccess }: QuestionPdfImportProps) {
   const { message } = App.useApp();
   const [docxFile, setDocxFile] = useState<File>();
   const [parsing, setParsing] = useState(false);
@@ -74,6 +79,7 @@ export default function QuestionPdfImport() {
       }));
       const count = await batchAddQuestions(payload);
       message.success(`已入库 ${count} 道题`);
+      onSuccess?.();
     } catch {
       // 错误已由请求拦截器统一提示
     } finally {

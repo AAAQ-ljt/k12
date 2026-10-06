@@ -1,17 +1,16 @@
 package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
+import com.nexora.component.CourseResourceAccessComponent;
+import com.nexora.component.CourseResourceAccessComponent.BoundCourseAccess;
+import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.entity.dto.TokenUserInfoDTO;
-import com.nexora.entity.po.CourseChapterLessonResource;
-import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.ResourceInfo;
-import com.nexora.entity.query.CourseChapterLessonResourceQuery;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.vo.PaginationResultVO;
+import com.nexora.entity.vo.ResourcePreviewMetaVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
-import com.nexora.service.CourseChapterLessonResourceService;
-import com.nexora.service.CourseEnrollmentService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.utils.LoginUserContext;
 import com.nexora.utils.StringTools;
@@ -37,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -53,10 +53,10 @@ public class StudentResourceController extends ABaseController {
     private ResourceInfoService resourceInfoService;
 
     @Resource
-    private CourseChapterLessonResourceService courseChapterLessonResourceService;
+    private ResourcePreviewRenderer resourcePreviewRenderer;
 
     @Resource
-    private CourseEnrollmentService courseEnrollmentService;
+    private CourseResourceAccessComponent courseResourceAccessComponent;
 
     @Value("${project.folder}")
     private String projectFolder;
@@ -89,37 +89,21 @@ public class StudentResourceController extends ABaseController {
     public ResponseVO<StudentResourceVO> getInfo(@RequestParam String resourceId) {
         TokenUserInfoDTO current = LoginUserContext.get();
         ResourceInfo resource = getReadyResource(resourceId);
-        if (resource == null || !StringTools.isEmpty(resource.getOwnerId())
-                || !stageMatches(resource.getStage(), current == null ? null : current.getStage())) {
+        if (resource == null || !StringTools.isEmpty(resource.getOwnerId())) {
             throw new BusinessException("资源不存在或暂不可用");
         }
-        // 学习内容强制加入：绑定到课时的课程教材，未加入对应课程不允许查看
-        requireCourseEnrollment(resourceId, current);
-        return getSuccessResponseVO(toVO(resource));
-    }
-
-    /**
-     * 绑定到课时的课程教材资源须先加入课程；未绑定课时（个人/推荐等）资源不受限。
-     */
-    private void requireCourseEnrollment(String resourceId, TokenUserInfoDTO current) {
-        if (current == null || StringTools.isEmpty(current.getUserId())) {
-            return;
-        }
-        CourseChapterLessonResourceQuery bindQuery = new CourseChapterLessonResourceQuery();
-        bindQuery.setResourceId(resourceId);
-        List<CourseChapterLessonResource> binds = courseChapterLessonResourceService.findListByParam(bindQuery);
-        if (binds.isEmpty()) {
-            return;
-        }
-        boolean enrolled = binds.stream().map(CourseChapterLessonResource::getCourseId).distinct()
-                .anyMatch(courseId -> {
-                    CourseEnrollment enrollment = courseEnrollmentService
-                            .getCourseEnrollmentByUserIdAndCourseId(current.getUserId(), courseId);
-                    return enrollment != null && enrollment.getStatus() != null && enrollment.getStatus() == 1;
-                });
-        if (!enrolled) {
+        // 学习内容强制加入：绑定到课时的课程教材须先加入课程；已加入则豁免学段限制
+        // （2026-10-05 用户确认：加入的课程不区分年段，能学 / 能阅 / 能答题）
+        BoundCourseAccess access = courseResourceAccessComponent.resolve(resourceId,
+                current == null ? null : current.getUserId());
+        if (access == BoundCourseAccess.NOT_ENROLLED) {
             throw new BusinessException("请先加入课程后再查看该学习内容");
         }
+        if (access != BoundCourseAccess.ENROLLED
+                && !stageMatches(resource.getStage(), current == null ? null : current.getStage())) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+        return getSuccessResponseVO(toVO(resource));
     }
 
     @GetMapping("/video/{resourceId}/index.m3u8")
@@ -216,6 +200,58 @@ public class StudentResourceController extends ABaseController {
                 .body(new FileSystemResource(file));
     }
 
+    /**
+     * 资源在线预览产物元信息（Office 文档转 PDF/逐页图的状态与页数）；未生成过返回 null
+     */
+    @GetMapping("/preview/{resourceId}/meta")
+    public ResponseVO<ResourcePreviewMetaVO> previewMeta(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return getSuccessResponseVO(null);
+        }
+        return getSuccessResponseVO(resourcePreviewRenderer.readMeta(resource.getFilePath()));
+    }
+
+    /**
+     * 资源在线预览单页图片（大课件不再整包下载：按页懒加载，首屏只拉第 1 页）
+     */
+    @GetMapping("/preview/{resourceId}/page/{page}")
+    public ResponseEntity<FileSystemResource> previewPage(@PathVariable String resourceId,
+                                                          @PathVariable Integer page) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imagePath = resourcePreviewRenderer.resolvePageImage(resource.getFilePath(),
+                page == null ? 0 : page);
+        if (imagePath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(imagePath));
+    }
+
+    /**
+     * 资源在线预览 PDF（LibreOffice 转换产物，供下载/打印/降级预览）
+     */
+    @GetMapping("/preview/{resourceId}/pdf")
+    public ResponseEntity<FileSystemResource> previewPdf(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path pdfPath = resourcePreviewRenderer.resolvePreviewPdf(resource.getFilePath());
+        if (pdfPath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(pdfPath));
+    }
+
     private ResourceInfo getReadyResource(String resourceId) {
         if (StringTools.isEmpty(resourceId)) {
             return null;
@@ -249,9 +285,21 @@ public class StudentResourceController extends ABaseController {
         vo.setDirectoryId(resource.getDirectoryId());
         vo.setSource(resource.getSource());
         vo.setStatus(resource.getStatus());
+        vo.setFileExt(fileExtOf(resource.getFilePath()));
         vo.setCreateTime(resource.getCreateTime());
         vo.setUpdateTime(resource.getUpdateTime());
         return vo;
+    }
+
+    /**
+     * 原文件扩展名（小写、不含点）：资源名可能不含扩展名，前端预览组件据此判型
+     */
+    private String fileExtOf(String filePath) {
+        if (StringTools.isEmpty(filePath)) {
+            return "";
+        }
+        int dot = filePath.lastIndexOf('.');
+        return dot < 0 ? "" : filePath.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
     private Path resolveResourcePath(String relativePath) throws IOException {

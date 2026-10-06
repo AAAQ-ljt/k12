@@ -2,8 +2,10 @@ package com.nexora.admin.controller;
 
 import com.nexora.admin.dto.ResourceMoveDTO;
 import com.nexora.admin.dto.ResourceBatchDeleteDTO;
+import com.nexora.admin.dto.ResourceUploadAbandonDTO;
 import com.nexora.admin.service.ResourceUploadService;
 import com.nexora.admin.vo.ResourceUploadSessionVO;
+import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.constants.Constants;
 import com.nexora.controller.ABaseController;
 import com.nexora.entity.po.ResourceDirectory;
@@ -11,6 +13,7 @@ import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.query.ResourceInfoQuery;
 import com.nexora.entity.query.ResourceDirectoryQuery;
 import com.nexora.entity.vo.PaginationResultVO;
+import com.nexora.entity.vo.ResourcePreviewMetaVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
 import com.nexora.service.ResourceInfoService;
@@ -45,6 +48,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -65,6 +69,9 @@ public class ResourceInfoController extends ABaseController {
     @Resource
     private ResourceUploadService resourceUploadService;
 
+    @Resource
+    private ResourcePreviewRenderer resourcePreviewRenderer;
+
     @Value("${project.folder}")
     private String projectFolder;
 
@@ -77,7 +84,36 @@ public class ResourceInfoController extends ABaseController {
     @GetMapping("/loadDataList")
     public ResponseVO<PaginationResultVO<ResourceInfo>> loadDataList(ResourceInfoQuery query) {
         query.setOwnerIdNull(Boolean.TRUE);
+        // 目录过滤按「子树」：点父目录也要能看到子目录里的文件（此前精确匹配导致父目录恒为空）
+        String directoryId = query.getDirectoryId();
+        query.setDirectoryId(null);
+        if (!StringTools.isEmpty(directoryId) && !"root".equals(directoryId)) {
+            query.setDirectoryIds(resourceDirectoryService.findSubTreeDirIds(directoryId, null));
+        }
         return getSuccessResponseVO(resourceInfoService.findListByPage(query));
+    }
+
+    /**
+     * 资源详情（管理端通用）
+     *
+     * <p>公共资源直接返回；学生个人资源需带 userId 校验归属。不限制 status——
+     * 管理端需要能查看「处理中 / 失败」资源的详情。</p>
+     */
+    @GetMapping("/getInfo")
+    public ResponseVO<ResourceInfo> getInfo(@RequestParam String resourceId,
+                                            @RequestParam(required = false) String userId) {
+        if (StringTools.isEmpty(resourceId)) {
+            throw new BusinessException("资源ID不能为空");
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+        if (!StringTools.isEmpty(resource.getOwnerId())
+                && (StringTools.isEmpty(userId) || !userId.equals(resource.getOwnerId()))) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+        return getSuccessResponseVO(resource);
     }
 
     /**
@@ -305,6 +341,61 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
+     * 学生个人资源的在线预览产物元信息（学习分析里预览学生个人 pptx 用）
+     */
+    @GetMapping("/studentPreview/{resourceId}/meta")
+    public ResponseVO<ResourcePreviewMetaVO> studentPreviewMeta(@PathVariable String resourceId,
+                                                               @RequestParam String userId) {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return getSuccessResponseVO(null);
+        }
+        return getSuccessResponseVO(resourcePreviewRenderer.readMeta(resource.getFilePath()));
+    }
+
+    /**
+     * 学生个人资源的预览单页图片
+     */
+    @GetMapping("/studentPreview/{resourceId}/page/{page}")
+    public ResponseEntity<FileSystemResource> studentPreviewPage(@PathVariable String resourceId,
+                                                                 @RequestParam String userId,
+                                                                 @PathVariable Integer page) {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imagePath = resourcePreviewRenderer.resolvePageImage(resource.getFilePath(),
+                page == null ? 0 : page);
+        if (imagePath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(imagePath));
+    }
+
+    /**
+     * 学生个人资源的预览 PDF
+     */
+    @GetMapping("/studentPreview/{resourceId}/pdf")
+    public ResponseEntity<FileSystemResource> studentPreviewPdf(@PathVariable String resourceId,
+                                                                @RequestParam String userId) {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path pdfPath = resourcePreviewRenderer.resolvePreviewPdf(resource.getFilePath());
+        if (pdfPath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(pdfPath));
+    }
+
+    /**
      * 上传资源
      */
     @PostMapping("/add")
@@ -371,6 +462,72 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
+     * 资源在线预览产物元信息（Office 文档转 PDF/逐页图的状态与页数）；未生成过返回 null
+     */
+    @GetMapping("/preview/{resourceId}/meta")
+    public ResponseVO<ResourcePreviewMetaVO> previewMeta(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return getSuccessResponseVO(null);
+        }
+        return getSuccessResponseVO(resourcePreviewRenderer.readMeta(resource.getFilePath()));
+    }
+
+    /**
+     * 资源在线预览单页图片（弱网下按页懒加载，首屏只拉第 1 页）
+     */
+    @GetMapping("/preview/{resourceId}/page/{page}")
+    public ResponseEntity<FileSystemResource> previewPage(@PathVariable String resourceId,
+                                                          @PathVariable Integer page) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imagePath = resourcePreviewRenderer.resolvePageImage(resource.getFilePath(),
+                page == null ? 0 : page);
+        if (imagePath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                // 预览页是不可变产物（同名文件内容不会变），允许长缓存，弱网二次打开秒开
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(imagePath));
+    }
+
+    /**
+     * 资源在线预览 PDF（LibreOffice 转换产物，供下载/打印/降级预览）
+     */
+    @GetMapping("/preview/{resourceId}/pdf")
+    public ResponseEntity<FileSystemResource> previewPdf(@PathVariable String resourceId) {
+        ResourceInfo resource = getReadyResource(resourceId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path pdfPath = resourcePreviewRenderer.resolvePreviewPdf(resource.getFilePath());
+        if (pdfPath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(pdfPath));
+    }
+
+    /**
+     * 放弃上传（2026-10-04）：页面关闭 / 刷新或分片重试耗尽时由前端上报，
+     * 立即把「处理中」的资源收敛为「失败」，不必再等僵尸清扫窗口
+     */
+    @PostMapping("/abandonUpload")
+    public ResponseVO<Void> abandonUpload(@RequestBody ResourceUploadAbandonDTO dto) {
+        if (dto == null || StringTools.isEmpty(dto.getResourceId())) {
+            throw new BusinessException("资源ID不能为空");
+        }
+        resourceUploadService.abandon(dto.getUploadId(), dto.getResourceId());
+        return getSuccessResponseVO(null);
+    }
+
+    /**
      * 修改资源（重命名 / 转移等）
      */
     @PutMapping("/update")
@@ -408,11 +565,12 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
-     * 删除资源
+     * 删除资源（2026-10-04 起放宽：失败/处理中的资源也允许删除——
+     * 上传中断产生的僵尸记录必须能清掉；仅校验"管理端资源"归属，不再要求「可用」状态）
      */
     @DeleteMapping("/del")
     public ResponseVO<Void> del(@RequestParam String resourceId) {
-        assertPublicResource(resourceId);
+        assertDeletablePublicResource(resourceId);
         resourceInfoService.deleteResourceInfoByResourceId(resourceId);
         return getSuccessResponseVO(null);
     }
@@ -437,7 +595,7 @@ public class ResourceInfoController extends ABaseController {
         if (resourceIds != null) {
             for (String resourceId : resourceIds) {
                 if (!StringTools.isEmpty(resourceId)) {
-                    assertPublicResource(resourceId);
+                    assertDeletablePublicResource(resourceId);
                     resourceInfoService.deleteResourceInfoByResourceId(resourceId);
                 }
             }
@@ -522,6 +680,18 @@ public class ResourceInfoController extends ABaseController {
 
     private void assertPublicResource(String resourceId) {
         if (getReadyResource(resourceId) == null) {
+            throw new BusinessException("资源不存在或不可操作");
+        }
+    }
+
+    /**
+     * 删除用校验（2026-10-04）：仅要求资源存在且为管理端资源（owner 为空），
+     * 不要求「可用」状态——上传中断产生的失败/处理中僵尸记录必须允许删除
+     */
+    private void assertDeletablePublicResource(String resourceId) {
+        ResourceInfo resource = StringTools.isEmpty(resourceId)
+                ? null : resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null || !StringTools.isEmpty(resource.getOwnerId())) {
             throw new BusinessException("资源不存在或不可操作");
         }
     }

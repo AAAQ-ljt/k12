@@ -165,6 +165,29 @@
   display: inline-flex;
 }
 
+/* 课时标题旁的「已学完」标记（学习进度：打开课时资源即记完成） */
+.finishedMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  border: 1px solid #b7eb8f;
+  background: #f6ffed;
+  color: #389e0d;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* 最近学到的课时：标记更醒目，学生一眼看到自己学到哪一节 */
+.finishedMarkCurrent {
+  border-color: #52c41a;
+  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.12);
+}
+
 .quizBar {
   margin-top: 10px;
   display: flex;

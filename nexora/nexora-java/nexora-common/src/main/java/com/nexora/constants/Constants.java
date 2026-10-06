@@ -53,6 +53,11 @@ public class Constants {
     public static final String REDIS_KEY_RESOURCE_UPLOAD_SESSION = "resource:upload:session:";
 
     /**
+     * Redis key 前缀：资源ID → 上传会话ID 反查（僵尸记录探活用：无会话即上传/处理已终结）
+     */
+    public static final String REDIS_KEY_RESOURCE_UPLOAD_SESSION_BY_RESOURCE = "resource:upload:session:byResource:";
+
+    /**
      * Redis key 前缀：资源分片上传已收分片集合
      */
     public static final String REDIS_KEY_RESOURCE_UPLOAD_SHARDS = "resource:upload:shards:";
@@ -71,6 +76,16 @@ public class Constants {
      * Redis key：学生个人资源异步处理队列
      */
     public static final String REDIS_KEY_STUDENT_RESOURCE_UPLOAD_QUEUE = "student:resource:upload:queue";
+
+    /**
+     * Redis key：资源在线预览产物生成队列（Office 文档转 PDF/逐页图；统一由 nexora-admin 消费，避免两个进程各跑一个 LibreOffice）
+     */
+    public static final String REDIS_KEY_RESOURCE_PREVIEW_QUEUE = "resource:preview:queue";
+
+    /**
+     * Redis key：重活互斥锁（文档预览转换 / 视频转码，同一时刻只允许一个，防 8G 机器 OOM）
+     */
+    public static final String REDIS_KEY_RESOURCE_HEAVY_LOCK = "resource:heavy:lock";
 
     /**
      * Redis key：学生个人知识文档解析入库异步队列

@@ -8,6 +8,7 @@ import StatusTag from '@/components/StatusTag';
 import { GRADE_OPTIONS, COURSE_STATUS_MAP } from '@/types/common';
 import { loadDataList, del } from '@/api/course';
 import type { CourseInfo, CourseInfoQuery } from '@/api/course';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import CourseFormModal from './CourseFormModal';
 import CourseDetailDrawer from './CourseDetailDrawer';
 
@@ -72,7 +73,13 @@ export default function CourseManagement() {
     try {
       await del(courseId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }

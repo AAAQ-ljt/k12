@@ -88,8 +88,14 @@ mybatis:
 project:
   ai:
     vision-model: ${NEXORA_VISION_MODEL:deepseek-flash}
-    embedding:
-      fallback-models: ${NEXORA_EMBEDDING_FALLBACK_MODELS:qwen3.7-text-embedding-flash}
+    # 对话模型供应商：管理端不装配对话路由，这里的值仅用于「环境配置」页展示学生端（nexora-web）的生效值；
+    # 真正的切换入口是「环境配置 → 对话模型供应商」卡片（写 system_config，web 端运行时读取）
+    chat:
+      provider: ${NEXORA_CHAT_PROVIDER:deepseek}
+      opencode-go:
+        base-url: ${NEXORA_OPENCODE_GO_BASE_URL:https://opencode.ai/zen/go/v1}
+        api-key: ${NEXORA_OPENCODE_GO_API_KEY:}
+        model: ${NEXORA_OPENCODE_GO_MODEL:glm-5.3-flash}
     image:
       provider: ${NEXORA_IMAGE_PROVIDER:ark}
       model: ${NEXORA_IMAGE_MODEL:qwen-image-3.0}
@@ -121,6 +127,12 @@ resource:
   temp-dir: resource/temp
   file-dir: resource/files
   upload-session-ttl-minutes: 120
+  # 上传进度探活窗口（分钟）：每次分片写入刷新该键 TTL，超时无进展即判为已中断（僵尸清扫用）
+  upload-progress-ttl-minutes: 15
+  # 在线预览产物生成（Office 文档 → PDF → 逐页图）：LibreOffice 路径与渲染参数
+  soffice-path: soffice
+  preview-image-width: 1600
+  preview-timeout-seconds: 300
   ffmpeg-path: ffmpeg
   ffprobe-path: ffprobe
 

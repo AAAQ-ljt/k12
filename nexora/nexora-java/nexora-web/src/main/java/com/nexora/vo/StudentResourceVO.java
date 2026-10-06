@@ -35,6 +35,12 @@ public class StudentResourceVO {
 
     private Integer status;
 
+    /**
+     * 原文件扩展名（小写、不含点）。个人资源名在上传时被去掉了扩展名，
+     * 前端在线预览组件需要它判型（如 pptx/docx/pptx）；不暴露内部存储路径本身。
+     */
+    private String fileExt;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date createTime;
 
@@ -143,6 +149,14 @@ public class StudentResourceVO {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public String getFileExt() {
+        return fileExt;
+    }
+
+    public void setFileExt(String fileExt) {
+        this.fileExt = fileExt;
     }
 
     public Date getCreateTime() {

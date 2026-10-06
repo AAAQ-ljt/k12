@@ -25,7 +25,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 个性化学习路径落地组件（learning_path / learning_path_item 的唯一写入方）。
@@ -202,15 +204,72 @@ public class LearningPathComponent {
     }
 
     /**
-     * 删除路径（级联删除节点）
+     * 删除路径（级联删除节点，并清理路径专属的孤儿知识点及其掌握度）
      */
     public void deletePath(String userId, String pathId) {
         requireOwnedPath(userId, pathId);
         LearningPathItemQuery itemQuery = new LearningPathItemQuery();
         itemQuery.setPathId(pathId);
+        // 先取出被删节点：删除后无法再反查，随后清理"路径专属知识点"要用
+        List<LearningPathItem> deletedItems = learningPathItemService.findListByParam(itemQuery);
         learningPathItemService.deleteByParam(itemQuery);
         learningPathService.deleteLearningPathByPathId(pathId);
-        log.info("学习路径已删除 userId={} pathId={}", userId, pathId);
+        cleanupOrphanPoints(deletedItems);
+        log.info("学习路径已删除 userId={} pathId={} 节点数={}", userId, pathId,
+                deletedItems == null ? 0 : deletedItems.size());
+    }
+
+    /**
+     * 清理"由学习路径自动创建、且已不再被任何路线引用"的知识点及其掌握度。
+     *
+     * 删除路径后不清理会留下孤儿数据：知识点已无归属，其掌握度仍计入该学生的
+     * 「学习概览-进行中」与掌握度统计（2026-10-04 用户反馈"删了路线还有进行中的学习路线进度"）。
+     * 仅清理本组件自动创建的点（description 带前缀标记）且无任何路径引用；仍被其它路线引用的保留。
+     * 全程三条批量 SQL，不在循环里查库。
+     */
+    private void cleanupOrphanPoints(List<LearningPathItem> deletedItems) {
+        if (deletedItems == null || deletedItems.isEmpty()) {
+            return;
+        }
+        List<String> pointIds = deletedItems.stream()
+                .map(LearningPathItem::getKnowledgePointId)
+                .filter(id -> !StringTools.isEmpty(id))
+                .distinct()
+                .toList();
+        if (pointIds.isEmpty()) {
+            return;
+        }
+        // 仍被其它路线引用的知识点（一次查询）
+        LearningPathItemQuery refQuery = new LearningPathItemQuery();
+        refQuery.setKnowledgePointIds(pointIds);
+        List<LearningPathItem> refItems = learningPathItemService.findListByParam(refQuery);
+        Set<String> referenced = (refItems == null ? List.<LearningPathItem>of() : refItems).stream()
+                .map(LearningPathItem::getKnowledgePointId)
+                .collect(Collectors.toSet());
+        List<String> orphanIds = pointIds.stream().filter(id -> !referenced.contains(id)).toList();
+        if (orphanIds.isEmpty()) {
+            return;
+        }
+        // 只删本组件自动创建的点（description 前缀标记），防误删官方/手工知识点
+        KnowledgePointQuery pointQuery = new KnowledgePointQuery();
+        pointQuery.setKnowledgePointIds(orphanIds);
+        List<KnowledgePoint> orphans = knowledgePointService.findListByParam(pointQuery);
+        List<String> removable = (orphans == null ? List.<KnowledgePoint>of() : orphans).stream()
+                .filter(point -> point.getDescription() != null
+                        && point.getDescription().startsWith(AUTO_POINT_REMARK))
+                .map(KnowledgePoint::getKnowledgePointId)
+                .toList();
+        if (removable.isEmpty()) {
+            return;
+        }
+        // 掌握度（点已无归属，连带所有学生对该点的记录）与知识点本体，各一条批量删除
+        KnowledgeMasteryQuery masteryQuery = new KnowledgeMasteryQuery();
+        masteryQuery.setKnowledgePointIds(removable);
+        knowledgeMasteryService.deleteByParam(masteryQuery);
+        KnowledgePointQuery deleteQuery = new KnowledgePointQuery();
+        deleteQuery.setKnowledgePointIds(removable);
+        knowledgePointService.deleteByParam(deleteQuery);
+        log.info("学习路径孤儿知识点已清理 数量={} pointIds={}", removable.size(), removable);
     }
 
     public LearningPath requireOwnedPath(String userId, String pathId) {

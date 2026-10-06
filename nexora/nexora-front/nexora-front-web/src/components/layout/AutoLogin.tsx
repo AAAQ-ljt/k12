@@ -21,9 +21,14 @@ export default function AutoLogin({ children }: AutoLoginProps) {
       const info = await getStudentInfo();
       setUserInfo(info);
     } catch (error) {
-      // Token 无效或过期，清除本地数据
-      console.log('Token 验证失败，已清除本地登录信息');
-      clear();
+      // 登录失效（401）已由 api/request.ts 的响应拦截器清理登录态（token 变为 null）；
+      // 网络异常 / 服务不可用时只放弃本次补用户信息，保留 token，等后续请求或刷新再拉，避免把用户误踢出登录
+      const status = (error as { response?: { status?: number } } | undefined)?.response?.status;
+      if (status === 401 || !useAuthStore.getState().token) {
+        clear();
+      } else {
+        console.warn('获取用户信息失败（非登录失效），保留本地登录态，稍后重试', error);
+      }
     }
   }, [setUserInfo, clear]);
 

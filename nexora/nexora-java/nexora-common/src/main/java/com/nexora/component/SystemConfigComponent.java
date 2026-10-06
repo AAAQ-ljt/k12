@@ -32,10 +32,17 @@ public class SystemConfigComponent {
     /** 文生图供应商配置键（值白名单：dashscope / ark / gpt-image-2） */
     public static final String KEY_IMAGE_PROVIDER = "image_provider";
 
+    /** 对话模型供应商配置键（值白名单：deepseek / opencode-go） */
+    public static final String KEY_CHAT_PROVIDER = "chat_provider";
+
     /** 文生图供应商编码 */
     public static final String PROVIDER_DASHSCOPE = "dashscope";
     public static final String PROVIDER_ARK = "ark";
     public static final String PROVIDER_GPT_IMAGE_2 = "gpt-image-2";
+
+    /** 对话模型供应商编码 */
+    public static final String PROVIDER_DEEPSEEK = "deepseek";
+    public static final String PROVIDER_OPENCODE_GO = "opencode-go";
 
     /** 配置类型 */
     public static final String TYPE_INT = "INT";
@@ -207,5 +214,35 @@ public class SystemConfigComponent {
         }
         String value = provider.trim();
         return PROVIDER_DASHSCOPE.equals(value) || PROVIDER_ARK.equals(value) || PROVIDER_GPT_IMAGE_2.equals(value);
+    }
+
+    // ==================== 对话模型供应商切换 ====================
+
+    /**
+     * 读取对话模型供应商：优先 system_config 表覆盖值，其次回落启动配置默认值。
+     */
+    public String getChatProviderValue(String defaultProvider) {
+        return getValue(GROUP_AI_MODEL, KEY_CHAT_PROVIDER, defaultProvider);
+    }
+
+    /**
+     * 对话供应商编码规范化：白名单内直接返回；非法 / 空值回落 deepseek。
+     */
+    public static String normalizeChatProvider(String provider) {
+        if (PROVIDER_OPENCODE_GO.equals(provider) || PROVIDER_DEEPSEEK.equals(provider)) {
+            return provider;
+        }
+        return PROVIDER_DEEPSEEK;
+    }
+
+    /**
+     * 是否为受支持的对话模型供应商编码
+     */
+    public static boolean isSupportedChatProvider(String provider) {
+        if (provider == null) {
+            return false;
+        }
+        String value = provider.trim();
+        return PROVIDER_DEEPSEEK.equals(value) || PROVIDER_OPENCODE_GO.equals(value);
     }
 }

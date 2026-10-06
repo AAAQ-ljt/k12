@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
+  FileSpreadsheet,
   FileText,
   Film,
   GraduationCap,
@@ -13,6 +14,7 @@ import {
   Link2,
   Lock,
   PlusCircle,
+  Presentation,
   Sparkles,
 } from 'lucide-react';
 import {
@@ -38,7 +40,34 @@ const RESOURCE_META: Record<string, { label: string; icon: typeof FileText; colo
   LINK: { label: '链接', icon: Link2, color: '#722ed1' },
 };
 
-function resourceMeta(type?: string) {
+/** 按扩展名细化文档类标签：课程里一眼能看出是 PPT / Word / Excel / PDF */
+const EXT_META: Record<string, { label: string; icon: typeof FileText; color: string }> = {
+  ppt: { label: 'PPT', icon: Presentation, color: '#d4380d' },
+  pptx: { label: 'PPT', icon: Presentation, color: '#d4380d' },
+  doc: { label: 'Word', icon: FileText, color: '#1677ff' },
+  docx: { label: 'Word', icon: FileText, color: '#1677ff' },
+  xls: { label: 'Excel', icon: FileSpreadsheet, color: '#389e0d' },
+  xlsx: { label: 'Excel', icon: FileSpreadsheet, color: '#389e0d' },
+  pdf: { label: 'PDF', icon: FileText, color: '#cf1322' },
+};
+
+function extOfName(name?: string): string {
+  if (!name) {
+    return '';
+  }
+  const dot = name.lastIndexOf('.');
+  if (dot < 0) {
+    return '';
+  }
+  const ext = name.slice(dot + 1).toLowerCase();
+  return EXT_META[ext] ? ext : '';
+}
+
+function resourceMeta(type?: string, name?: string) {
+  const ext = extOfName(name);
+  if (ext) {
+    return EXT_META[ext];
+  }
   return RESOURCE_META[type || ''] || RESOURCE_META.DOCUMENT;
 }
 
@@ -135,6 +164,34 @@ export default function CourseDetail() {
     [detail],
   );
 
+  /** 已学课时数（course_study_lesson_progress.finished） */
+  const finishedLessons = useMemo(
+    () => detail?.chapters.reduce(
+      (sum, chapter) => sum + chapter.lessons.filter((item) => item.finished).length, 0) ?? 0,
+    [detail],
+  );
+
+  /**
+   * 最近学完的课时：按 finishTime 取最新（缺时间时退化为顺序上最后一个已学）。
+   * 用于把「学到哪一节了」标得更醒目——学生一眼能找到自己上次学到的地方。
+   */
+  const latestFinishedLessonId = useMemo(() => {
+    const lessons = detail?.chapters.flatMap((chapter) => chapter.lessons) ?? [];
+    let latestId: string | undefined;
+    let latestTime = -1;
+    for (const item of lessons) {
+      if (!item.finished) {
+        continue;
+      }
+      const time = item.finishTime ? new Date(item.finishTime).getTime() : 0;
+      if (time >= latestTime) {
+        latestTime = time;
+        latestId = item.lesson.lessonId;
+      }
+    }
+    return latestId;
+  }, [detail]);
+
   const openResource = (resource: StudentLessonResource) => {
     if (resource.resourceType === 'LINK') {
       const url = resource.description?.startsWith('http') ? resource.description : '';
@@ -155,7 +212,7 @@ export default function CourseDetail() {
     setSyncing(true);
     try {
       const doc = await syncStudentWikiFromCourse(courseId);
-      message.success(`已生成知识页草稿《${doc.title || ''}》，可在「资源中心 → 知识页」查看并确认入库`);
+      message.success(`已生成知识页草稿《${doc.title || ''}》，可在「知识中心 → 知识页」查看并确认入库`);
     } catch {
       // 错误已统一提示
     } finally {
@@ -206,7 +263,7 @@ export default function CourseDetail() {
               ) : null}
               <span>
                 <Layers size={13} />
-                {totalLessons} 课时
+                {finishedLessons > 0 ? `已学 ${finishedLessons}/${totalLessons} 课时` : `${totalLessons} 课时`}
               </span>
             </div>
           </div>
@@ -279,6 +336,15 @@ export default function CourseDetail() {
                           {chapterIndex + 1}.{lessonIndex + 1}
                         </span>
                         <h4>{lesson.lesson.lessonName}</h4>
+                        {lesson.finished ? (
+                          <span
+                            className={`${styles.finishedMark}${lesson.lesson.lessonId === latestFinishedLessonId ? ` ${styles.finishedMarkCurrent}` : ''}`}
+                            title={lesson.finishTime ? `完成于 ${lesson.finishTime}` : '已学完'}
+                          >
+                            <CheckCircle2 size={12} />
+                            已学
+                          </span>
+                        ) : null}
                         {status?.hasQuiz ? (
                           <Tag color={passed ? 'success' : 'gold'}>{passed ? '测验已通过' : '含通关测验'}</Tag>
                         ) : null}
@@ -296,7 +362,7 @@ export default function CourseDetail() {
                           <span className={styles.noResource}>暂无学习资料</span>
                         ) : (
                           lesson.resources.map((resource) => {
-                            const meta = resourceMeta(resource.resourceType);
+                            const meta = resourceMeta(resource.resourceType, resource.resourceName);
                             const Icon = meta.icon;
                             return (
                               <button

@@ -43,4 +43,10 @@ public interface LearningAnalysisMapper {
     List<AiRecentMessageVO> selectAiRecentMessageList(@Param("userId") String userId);
 
     List<KnowledgeMasteryVO> selectMasteryList(@Param("userId") String userId);
+
+    /**
+     * 按学段过滤的掌握度查询（MCP queryMastery 工具用）：stage 来自学生登录档案注入，
+     * 与 selectMasteryList 同结构，仅多一个学段条件；admin 侧既有调用方不受影响
+     */
+    List<KnowledgeMasteryVO> selectMasteryListByStage(@Param("userId") String userId, @Param("stage") String stage);
 }

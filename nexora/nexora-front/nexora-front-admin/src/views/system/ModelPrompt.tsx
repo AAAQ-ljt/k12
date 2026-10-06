@@ -174,7 +174,7 @@ export default function ModelPrompt() {
                         <Space direction="vertical" size={0}>
                           <span style={{ wordBreak: 'break-all' }}>{item.value || '-'}</span>
                           {item.remark ? (
-                            <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{item.remark}</span>
+                            <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.remark}</span>
                           ) : null}
                         </Space>
                       </Descriptions.Item>
@@ -222,7 +222,7 @@ export default function ModelPrompt() {
         okText="保存并生效"
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+          <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
             学段：{STAGE_OPTIONS.find((item) => item.value === stage)?.label}；{' '}
             {'{stageDesc}'} 占位符会被自动替换为学段描述。
           </span>

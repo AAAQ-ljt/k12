@@ -5,8 +5,11 @@ import {
   loadRuntimeInfo,
   loadImageProvider,
   switchImageProvider,
+  loadChatProvider,
+  switchChatProvider,
   type RuntimeInfo,
   type ImageProviderOptions,
+  type ChatProviderOptions,
 } from '@/api/systemSetting';
 import {
   modelTestChat,
@@ -52,9 +55,69 @@ function statusTag(state: CheckState) {
   return <Tag>未检测</Tag>;
 }
 
+interface ProviderOptionItem {
+  code: string;
+  name: string;
+  description?: string;
+}
+
+/** 供应商切换卡片（对话模型 / 文生图共用：单选 + 选项说明 + 保存） */
+function ProviderSwitchCard({
+  title,
+  hint,
+  options,
+  current,
+  selected,
+  saving,
+  onSelect,
+  onSave,
+}: {
+  title: string;
+  hint: string;
+  options?: ProviderOptionItem[];
+  current: string;
+  selected: string;
+  saving: boolean;
+  onSelect: (code: string) => void;
+  onSave: () => void;
+}) {
+  const list = options ?? [];
+  return (
+    <Card title={title}>
+      <Space direction="vertical" style={{ width: '100%' }} size={10}>
+        <div style={{ color: 'var(--color-text-secondary)' }}>{hint}</div>
+        <Radio.Group value={selected} onChange={(event) => onSelect(event.target.value)}>
+          {list.map((option) => (
+            <Radio.Button key={option.code} value={option.code}>
+              {option.name}
+            </Radio.Button>
+          ))}
+        </Radio.Group>
+        {list.map((option) =>
+          option.code === selected && option.description ? (
+            <div key={option.code} style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
+              {option.description}
+            </div>
+          ) : null,
+        )}
+        <Button
+          type="primary"
+          icon={<Save size={14} />}
+          loading={saving}
+          disabled={!current || selected === current}
+          onClick={onSave}
+        >
+          保存切换
+        </Button>
+      </Space>
+    </Card>
+  );
+}
+
 /**
  * 系统设置 → 环境配置：运行时环境与模型配置**只读展示**（Key 一律掩码）
- * 文生图供应商可在本页切换（写库即生效，无需重启）；需要修改其余模型、地址或密钥请改环境变量 / 配置文件并重启服务。
+ * 对话模型供应商（学生端 AI 对话）与文生图供应商可在本页切换（写库即生效，无需重启）；
+ * 需要修改其余模型、地址或密钥请改环境变量 / 配置文件并重启服务。
  * 本页提供一键连通性体检。
  */
 export default function EnvConfig() {
@@ -68,6 +131,9 @@ export default function EnvConfig() {
   const [providerState, setProviderState] = useState<ImageProviderOptions | null>(null);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [switching, setSwitching] = useState(false);
+  const [chatProviderState, setChatProviderState] = useState<ChatProviderOptions | null>(null);
+  const [selectedChatProvider, setSelectedChatProvider] = useState('');
+  const [switchingChat, setSwitchingChat] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,13 +151,20 @@ export default function EnvConfig() {
     } catch {
       // 错误已统一提示
     }
+    try {
+      const provider = await loadChatProvider();
+      setChatProviderState(provider);
+      setSelectedChatProvider(provider.current);
+    } catch {
+      // 错误已统一提示
+    }
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const switchProvider = async () => {
+  const handleSwitchImage = async () => {
     if (!selectedProvider || !providerState || selectedProvider === providerState.current) {
       message.info('请先选择新的文生图供应商');
       return;
@@ -105,6 +178,23 @@ export default function EnvConfig() {
       // 错误已统一提示
     } finally {
       setSwitching(false);
+    }
+  };
+
+  const handleSwitchChat = async () => {
+    if (!selectedChatProvider || !chatProviderState || selectedChatProvider === chatProviderState.current) {
+      message.info('请先选择新的对话模型供应商');
+      return;
+    }
+    setSwitchingChat(true);
+    try {
+      await switchChatProvider(selectedChatProvider);
+      message.success('对话模型供应商已切换，学生端下一次对话即生效');
+      await load();
+    } catch {
+      // 错误已统一提示
+    } finally {
+      setSwitchingChat(false);
     }
   };
 
@@ -151,7 +241,7 @@ export default function EnvConfig() {
       <Descriptions.Item key={item.label} label={item.label}>
         <Space direction="vertical" size={0}>
           <span style={{ wordBreak: 'break-all' }}>{item.value || '-'}</span>
-          {item.remark ? <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{item.remark}</span> : null}
+          {item.remark ? <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.remark}</span> : null}
         </Space>
       </Descriptions.Item>
     ));
@@ -162,7 +252,7 @@ export default function EnvConfig() {
         type="info"
         showIcon
         message="模型与密钥只读展示（来自环境变量 / 配置文件，改动需重启服务）"
-        description="所有 Key 已掩码处理，页面不会展示也不会写入明文。文生图供应商可在下方卡片切换（保存即生效，无需重启）；其余模型、地址或密钥请修改启动配置后重启对应服务。可调参数请见「RAG 配置」。"
+        description="所有 Key 已掩码处理，页面不会展示也不会写入明文。对话模型供应商（学生端 AI 对话）与文生图供应商可在下方卡片切换（保存即生效，无需重启）；其余模型、地址或密钥请修改启动配置后重启对应服务。可调参数请见「RAG 配置」。"
       />
       <Card
         title="基础设施"
@@ -184,40 +274,26 @@ export default function EnvConfig() {
           {renderItems(info?.models)}
         </Descriptions>
       </Card>
-      <Card title="文生图供应商（切换立即生效）">
-        <Space direction="vertical" style={{ width: '100%' }} size={10}>
-          <div style={{ color: 'rgba(0,0,0,0.65)' }}>
-            切换后学生端绘本插图与管理端生图立即走新供应商，无需重启；请先确认对应供应商的 API Key
-            已在环境变量配置（见选项说明）。保存后建议用下方「连通性体检」验证。
-          </div>
-          <Radio.Group
-            value={selectedProvider}
-            onChange={(event) => setSelectedProvider(event.target.value)}
-          >
-            {(providerState?.options ?? []).map((option) => (
-              <Radio.Button key={option.code} value={option.code}>
-                {option.name}
-              </Radio.Button>
-            ))}
-          </Radio.Group>
-          {(providerState?.options ?? []).map((option) =>
-            option.code === selectedProvider && option.description ? (
-              <div key={option.code} style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
-                {option.description}
-              </div>
-            ) : null,
-          )}
-          <Button
-            type="primary"
-            icon={<Save size={14} />}
-            loading={switching}
-            disabled={!providerState || selectedProvider === providerState.current}
-            onClick={() => void switchProvider()}
-          >
-            保存切换
-          </Button>
-        </Space>
-      </Card>
+      <ProviderSwitchCard
+        title="对话模型供应商（切换立即生效）"
+        hint="控制学生端 AI 答疑使用的大模型：切换后学生端下一次对话即走新供应商，无需重启，且带图问答同步生效。请先确认对应供应商的 API Key 已在环境变量配置（见下方选项说明）；管理端自身的出题 / 解析 / 模型验证仍走 DeepSeek。"
+        options={chatProviderState?.options}
+        current={chatProviderState?.current ?? ''}
+        selected={selectedChatProvider}
+        saving={switchingChat}
+        onSelect={setSelectedChatProvider}
+        onSave={() => void handleSwitchChat()}
+      />
+      <ProviderSwitchCard
+        title="文生图供应商（切换立即生效）"
+        hint="切换后学生端绘本插图与管理端生图立即走新供应商，无需重启；请先确认对应供应商的 API Key 已在环境变量配置（见选项说明）。保存后建议用下方「连通性体检」验证。"
+        options={providerState?.options}
+        current={providerState?.current ?? ''}
+        selected={selectedProvider}
+        saving={switching}
+        onSelect={setSelectedProvider}
+        onSave={() => void handleSwitchImage()}
+      />
       <Card
         title="连通性体检"
         extra={
@@ -235,15 +311,15 @@ export default function EnvConfig() {
           />
           <div>
             1. 对话模型 {statusTag(chat)}{' '}
-            <span style={{ color: 'rgba(0,0,0,0.65)' }}>{chat.text}</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>{chat.text}</span>
           </div>
           <div>
             2. 向量模型 {statusTag(embed)}{' '}
-            <span style={{ color: 'rgba(0,0,0,0.65)' }}>{embed.text}</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>{embed.text}</span>
           </div>
           <div>
             3. 文生图 {statusTag(image)}{' '}
-            <span style={{ color: 'rgba(0,0,0,0.65)', wordBreak: 'break-all' }}>{image.text}</span>
+            <span style={{ color: 'var(--color-text-secondary)', wordBreak: 'break-all' }}>{image.text}</span>
           </div>
         </Space>
       </Card>

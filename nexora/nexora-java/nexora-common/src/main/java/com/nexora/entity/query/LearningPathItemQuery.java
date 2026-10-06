@@ -1,6 +1,7 @@
 package com.nexora.entity.query;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -34,6 +35,11 @@ public class LearningPathItemQuery extends BaseParam {
 	private String knowledgePointId;
 
 	private String knowledgePointIdFuzzy;
+
+	/**
+	 * 知识点ID集合（批量查询/批量删除用）
+	 */
+	private List<String> knowledgePointIds;
 
 	/**
 	 * 知识点名【冗余快照】
@@ -160,6 +166,14 @@ public class LearningPathItemQuery extends BaseParam {
 
 	public String getKnowledgePointIdFuzzy(){
 		return this.knowledgePointIdFuzzy;
+	}
+
+	public void setKnowledgePointIds(List<String> knowledgePointIds){
+		this.knowledgePointIds = knowledgePointIds;
+	}
+
+	public List<String> getKnowledgePointIds(){
+		return this.knowledgePointIds;
 	}
 
 	public void setKnowledgePointName(String knowledgePointName){

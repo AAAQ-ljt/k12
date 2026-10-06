@@ -1,0 +1,313 @@
+/* 题库 / 比赛面板：整栏高度内部分区，列表自身滚动（不撑高页面） */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 10px 0;
+  background: var(--card-white);
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Tab 导航只做切换，内容区由 .tabPane 占满剩余高度（避免嵌套高度计算） */
+.tabs {
+  flex: none;
+  margin-top: 2px;
+
+  :global(.ant-tabs-nav) {
+    margin: 0;
+    padding: 0 4px;
+  }
+}
+
+.tabPane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 2px 10px;
+  overflow: hidden;
+}
+
+.filters {
+  flex: none;
+  display: flex;
+  gap: 6px;
+
+  :global(.ant-input-affix-wrapper) {
+    font-size: 12px;
+  }
+}
+
+.difficultySelect {
+  width: 106px;
+  flex: none;
+}
+
+.statusSelect {
+  width: 84px;
+  flex: none;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.item,
+.itemActive {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+
+  &:hover {
+    background: var(--warm-bg-mid);
+    transform: translateX(1px);
+  }
+}
+
+.itemActive {
+  background: var(--gradient-selected-nav);
+  border-color: var(--warm-orange-400);
+  color: var(--warm-brown-900);
+  font-weight: 600;
+}
+
+.index {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--warm-bg-mid);
+  font-size: 11px;
+}
+
+.itemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.itemTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.stars {
+  color: var(--warm-orange-600);
+  letter-spacing: -1px;
+}
+
+.score {
+  color: var(--warm-brown-600);
+  font-weight: 600;
+}
+
+.starOn {
+  flex: none;
+}
+
+.footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 2px 10px;
+  border-top: 1px dashed var(--warm-bg-dark);
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.footerValue {
+  color: var(--warm-orange-600);
+  font-size: 13px;
+}
+
+.combo,
+.comboIdle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.combo {
+  color: var(--warm-orange-600);
+}
+
+.comboIdle {
+  color: var(--text-disabled);
+}
+
+/* ==================== 比赛模式（锁定赛题） ==================== */
+.contestName {
+  flex: none;
+  margin: 6px 2px 0;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: var(--warm-orange-100);
+  border: 1px solid var(--warm-orange-300);
+  color: var(--warm-brown-800);
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==================== 比赛列表 ==================== */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.groupDotRunning,
+.groupDotUpcoming,
+.groupDotEnded {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.groupDotRunning {
+  background: #ff6b35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+}
+
+.groupDotUpcoming {
+  background: #1677ff;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+}
+
+.groupDotEnded {
+  background: var(--text-disabled);
+}
+
+.contestItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 10px;
+  border: 1px solid var(--warm-bg-dark);
+  border-radius: 11px;
+  background: var(--warm-bg-ultimate);
+}
+
+.contestItemHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contestItemTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contestItemMeta {
+  font-size: 11px;
+  color: var(--warm-brown-600);
+}
+
+.contestItemTime {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.contestItemFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.contestItemStatus {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.contestTip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px 10px;
+  border-top: 1px dashed var(--warm-bg-dark);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
