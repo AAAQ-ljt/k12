@@ -24,6 +24,7 @@ import {
   type CodingContestVO,
 } from '@/api/codingLab';
 import { contestPhaseOf, formatDuration, formatTimeWindow } from '@/utils/coding';
+import { CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
 import styles from './index.module.scss';
 
@@ -85,6 +86,8 @@ export default function Profile() {
   const stage = userInfo?.stage;
   /** 小学段无学习路径入口（导航同规则）：隐藏「最近学习路线」卡片，待办提示也不提路线 */
   const isPrimary = stage === 'PRIMARY_LOW' || stage === 'PRIMARY_HIGH';
+  /** 编程比赛入口与 /coding 学段守卫同口径（小学低年级不开放） */
+  const canUseCoding = !!stage && CODING_STAGES.includes(stage);
   const stageLabel = stage ? getStageOption(stage)?.label : '';
   const gradeText = getGradeText(userInfo);
 
@@ -156,9 +159,22 @@ export default function Profile() {
     }
   };
 
+  /** 待复习未命中路线：转 AI 助教对话复习（预填问题） */
+  const goReviewWithAiTutor = (point: { knowledgePointId: string; knowledgePointName: string }) => {
+    navigate('/ai-tutor', {
+      state: { presetQuestion: `点开我的掌握度里有一个「${point.knowledgePointName}」需要复习，帮我出几道题复习巩固一下` },
+    });
+  };
+
   /** 待复习知识点：命中学习路径节点 → 跳路线做节点快测；未命中 → AI 助教对话复习 */
   const handleReviewPoint = async (point: { knowledgePointId: string; knowledgePointName: string }) => {
     if (locatingId) {
+      return;
+    }
+    // 学段不在学习路径开放范围内（小学两段）：与 /learning-path 守卫同口径，直接转 AI 助教对话，
+    // 不再调 locate 尝试定位路线（否则会跳进自己无入口的页面）
+    if (!stage || !PATH_STAGES.includes(stage)) {
+      goReviewWithAiTutor(point);
       return;
     }
     setLocatingId(point.knowledgePointId);
@@ -168,9 +184,7 @@ export default function Profile() {
         message.success(`已定位到你的学习路线「${locate.knowledgePointName || point.knowledgePointName}」`);
         navigate(`/learning-path/${locate.pathId}`, { state: { focusItemId: locate.itemId } });
       } else {
-        navigate('/ai-tutor', {
-          state: { presetQuestion: `点开我的掌握度里有一个「${point.knowledgePointName}」需要复习，帮我出几道题复习巩固一下` },
-        });
+        goReviewWithAiTutor(point);
       }
     } catch {
       // 错误已统一提示
@@ -507,6 +521,7 @@ export default function Profile() {
             )}
           </Card>
 
+          {canUseCoding ? (
           <Card>
             <div className={styles.cardTitle}>
               <Trophy size={16} />
@@ -564,6 +579,7 @@ export default function Profile() {
               </div>
             )}
           </Card>
+          ) : null}
 
           <Card>
             <div className={styles.accountRow}>

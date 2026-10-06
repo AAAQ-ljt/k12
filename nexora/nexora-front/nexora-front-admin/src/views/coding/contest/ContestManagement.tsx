@@ -15,6 +15,7 @@ import {
 } from '../constants';
 import { delContest, finishContest, loadDataList, publishContest } from '@/api/codingContest';
 import type { CodingContestQuery, CodingContestVO } from '@/api/codingContest';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import ContestFormModal from './ContestFormModal';
 import ContestProblemDrawer from './ContestProblemDrawer';
 
@@ -101,7 +102,13 @@ export default function ContestManagement() {
     try {
       await delContest(contestId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }

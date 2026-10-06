@@ -8,6 +8,7 @@ import StatusTag from '@/components/StatusTag';
 import { GRADE_OPTIONS, STAGE_OPTIONS, USER_STATUS_MAP, USER_AUDIT_STATUS_MAP } from '@/types/common';
 import { loadDataList, del, changeStatus, audit } from '@/api/user';
 import type { UserInfo, UserQuery } from '@/api/user';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import UserFormModal from './UserFormModal';
 
 interface UserManagementProps {
@@ -104,7 +105,13 @@ export default function UserManagement({ roleType = 1 }: UserManagementProps) {
     try {
       await del(userId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }

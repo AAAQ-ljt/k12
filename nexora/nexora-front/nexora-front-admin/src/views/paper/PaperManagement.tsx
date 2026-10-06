@@ -8,6 +8,7 @@ import StatusTag from '@/components/StatusTag';
 import { GRADE_OPTIONS } from '@/types/common';
 import { delPaper, getInfo, loadDataList } from '@/api/paper';
 import type { PaperDetail, PaperInfo, PaperInfoQuery } from '@/api/paper';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import PaperEditorDrawer from './PaperEditorDrawer';
 import { downloadPaperMarkdown } from './paperExport';
 
@@ -100,7 +101,13 @@ export default function PaperManagement() {
     try {
       await delPaper(paperId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }

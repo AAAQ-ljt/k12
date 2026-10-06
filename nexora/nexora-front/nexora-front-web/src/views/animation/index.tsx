@@ -176,8 +176,14 @@ export default function Animation() {
     }
     if (snapshot.status === 'COMPLETED') {
       sessionStorage.removeItem(ANIM_TASK_KEY);
-      message.success(`动画《${snapshot.title || ''}》生成完成`);
-      navigate(`/animation/${snapshot.animationResourceId}`);
+      if (snapshot.animationResourceId) {
+        message.success(`动画《${snapshot.title || ''}》生成完成`);
+        navigate(`/animation/${snapshot.animationResourceId}`);
+      } else {
+        // 任务完成但未回传资源 id：拼不出播放地址，提示并刷新列表兜底（与恢复分支的判空口径一致）
+        message.warning('动画已生成，但暂未获取到资源信息，请刷新列表查看');
+        void load();
+      }
       return true;
     }
     sessionStorage.removeItem(ANIM_TASK_KEY);

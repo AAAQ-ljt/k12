@@ -102,6 +102,7 @@ export default function DocumentPreviewModal({
           key={resource.resourceId}
           resourceId={resource.resourceId}
           resourceName={resource.resourceName}
+          userId={userId}
         />
       ) : resource && useViewer ? (
         <Suspense

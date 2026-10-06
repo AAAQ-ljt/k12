@@ -9,6 +9,7 @@ import {
   type PracticeReviewStats,
 } from '@/api/questionReview';
 import { GRADE_OPTIONS, QUESTION_TYPE_OPTIONS, SUBJECT_OPTIONS } from '@/types/common';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import SearchForm from '@/components/SearchForm';
 import BaseTable from '@/components/BaseTable';
 import StatCard from '@/components/StatCard';
@@ -133,7 +134,9 @@ export default function AnswerReview() {
       });
       message.success('批阅完成');
       setCurrent(null);
-      await Promise.all([loadList(pageNo), loadStats()]);
+      // 批阅后该条会从「待批阅」筛选结果中消失：若它是末页最后一条则回退一页，避免空页
+      const nextPageNo = resolvePageNoAfterRemove(pageNo, 10, total);
+      await Promise.all([loadList(nextPageNo), loadStats()]);
     } catch {
       // 请求层统一提示
     } finally {

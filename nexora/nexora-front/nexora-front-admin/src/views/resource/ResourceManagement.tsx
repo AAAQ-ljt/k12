@@ -594,6 +594,8 @@ export default function ResourceManagement() {
     try {
       await delResource(resourceId);
       message.success('资源已删除');
+      // 同步移除已删除的选中项，避免残留选不中的 key（批量操作仍按它计数）
+      setSelectedRowKeys((prev) => prev.filter((key) => String(key) !== resourceId));
       await loadFiles();
     } catch {
       // 错误已由请求拦截器统一提示
@@ -656,6 +658,15 @@ export default function ResourceManagement() {
       return;
     }
     message.info('该类型暂不支持预览');
+  };
+
+  const handleDownloadFile = (record: ResourceInfo) => {
+    // 与「预览」同一守卫：处理中 / 失败的资源后端还没有可下载的产物，直接打开会得到 404 空白页
+    if (record.status !== 1) {
+      message.warning(record.status === 0 ? '资源处理中，请稍后重试' : '资源不可下载');
+      return;
+    }
+    window.open(getDownloadUrl(record.resourceId), '_blank', 'noopener,noreferrer');
   };
 
   const openRenameFile = (record: ResourceInfo) => {
@@ -813,7 +824,7 @@ export default function ResourceManagement() {
               type="link"
               size="small"
               icon={<Download size={13} />}
-              onClick={() => window.open(getDownloadUrl(record.resourceId), '_blank')}
+              onClick={() => handleDownloadFile(record)}
             >
               下载
             </Button>

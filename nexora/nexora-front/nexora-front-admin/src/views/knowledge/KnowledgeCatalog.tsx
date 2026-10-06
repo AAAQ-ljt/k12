@@ -24,6 +24,8 @@ import StageTag from '@/components/StageTag';
 import styles from '@/assets/styles/utilities.module.scss';
 import ResourceImportDrawer from './ResourceImportDrawer';
 import type { ResourceInfo } from '@/api/resource';
+import { getInfo as getResourceInfo } from '@/api/resource';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import {
   DIFFICULTY_OPTIONS,
   STAGE_OPTIONS,
@@ -268,7 +270,13 @@ export default function KnowledgeCatalog() {
     try {
       await delDoc(docId);
       message.success('删除成功');
-      fetchDocs();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(query.pageNo, query.pageSize, total);
+      if (nextPageNo !== query.pageNo) {
+        setQuery((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchDocs();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }
@@ -617,6 +625,8 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
   const [form] = Form.useForm();
   /** 源文件在线预览（资料解析来源的文档带 sourceResourceId） */
   const [previewResource, setPreviewResource] = useState<ResourceInfo | null>(null);
+  /** 拉取源文件详情中（按钮 loading，避免连点） */
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const record = state.initialValues ?? {};
   /**
@@ -659,15 +669,32 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
     }
   };
 
-  /** 预览源文件：仅需 resourceId 与名称即可拼出下载/预览地址 */
-  const openSourcePreview = () => {
+  /**
+   * 预览源文件：先取资源详情拿真实的 resourceName / resourceType / filePath。
+   * 标题（record.title）通常没有扩展名，DocumentPreviewModal 靠扩展名分流会全部落到 iframe——
+   * docx 变成下载、pptx 空白，所以必须用源文件自身的元信息构造预览对象；
+   * 取不到（已删除 / 归属不符）时明确提示，不再打开空白 iframe。
+   */
+  const openSourcePreview = async () => {
     if (!sourceResourceId) {
       return;
     }
-    setPreviewResource({
-      resourceId: sourceResourceId,
-      resourceName: record.title || '源文件预览',
-    } as ResourceInfo);
+    setPreviewLoading(true);
+    try {
+      const info = await getResourceInfo(sourceResourceId);
+      if (!info?.resourceId) {
+        message.warning('源文件不存在或已删除');
+        return;
+      }
+      setPreviewResource({
+        ...info,
+        resourceName: info.resourceName || record.title || '源文件预览',
+      });
+    } catch {
+      message.warning('源文件不存在或已删除');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   return (
@@ -764,7 +791,9 @@ function DocFormModal({ state, pointOptions, onCancel, onSuccess }: DocFormModal
             ) : null}
             {sourceResourceId ? (
               <div>
-                <Button size="small" onClick={openSourcePreview}>预览源文件</Button>
+                <Button size="small" loading={previewLoading} onClick={() => void openSourcePreview()}>
+                  预览源文件
+                </Button>
                 <span style={{ fontSize: 12, marginLeft: 8 }}>
                   可直接查看导入前的原始文档（PDF / Word / PPT 等）
                 </span>

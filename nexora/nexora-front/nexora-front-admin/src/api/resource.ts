@@ -94,9 +94,9 @@ export function loadDataList(query: ResourceInfoQuery): Promise<PageResult<Resou
   return request.get('/resourceInfo/loadDataList', { params: query });
 }
 
-/** 获取资源详情 */
-export function getInfo(resourceId: string): Promise<ResourceInfo> {
-  return request.get('/resourceInfo/getInfo', { params: { resourceId } });
+/** 获取资源详情（公共资源直接返回；个人资源需带 userId 校验归属） */
+export function getInfo(resourceId: string, userId?: string): Promise<ResourceInfo> {
+  return request.get('/resourceInfo/getInfo', { params: { resourceId, userId } });
 }
 
 /** 新增资源（multipart 上传文件 + 元数据） */
@@ -230,6 +230,26 @@ export function getPreviewPdfUrl(resourceId: string): string {
 /** 文件下载地址（下载原始文件） */
 export function getDownloadUrl(resourceId: string): string {
   return `/api/resourceInfo/download/${resourceId}`;
+}
+
+/** 学生个人资源在线预览产物元信息（与公共 preview/meta 同构，带 userId 校验归属） */
+export function getStudentPreviewMeta(
+  resourceId: string,
+  userId: string,
+): Promise<ResourcePreviewMeta | null> {
+  return request.get(`/resourceInfo/studentPreview/${resourceId}/meta`, {
+    params: { userId },
+  });
+}
+
+/** 学生个人资源在线预览单页图片地址 */
+export function getStudentPreviewPageUrl(resourceId: string, userId: string, page: number): string {
+  return `/api/resourceInfo/studentPreview/${resourceId}/page/${page}?userId=${encodeURIComponent(userId)}`;
+}
+
+/** 学生个人资源在线预览 PDF 地址 */
+export function getStudentPreviewPdfUrl(resourceId: string, userId: string): string {
+  return `/api/resourceInfo/studentPreview/${resourceId}/pdf?userId=${encodeURIComponent(userId)}`;
 }
 
 /** 学生个人资源 HLS 播放地址（管理端学习分析预览） */

@@ -36,7 +36,8 @@ public class WebAppConfigurer implements WebMvcConfigurer {
                         "/resourceInfo/studentVideo/**",
                         "/resourceInfo/studentImage/**",
                         "/resourceInfo/studentFile/**",
-                        "/resourceInfo/studentDownload/**"
+                        "/resourceInfo/studentDownload/**",
+                        "/resourceInfo/studentPreview/**"
                 );
     }
 

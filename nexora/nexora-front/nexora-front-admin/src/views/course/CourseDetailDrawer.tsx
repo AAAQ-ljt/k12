@@ -108,7 +108,7 @@ export default function CourseDetailDrawer({
     }
   }, [lessonModal.open, lessonModal.record, lessonForm]);
 
-  const loadDetail = async (courseId: string, keepSelection = false) => {
+  const loadDetail = async (courseId: string, keepSelection = false): Promise<CourseDetail | null> => {
     // 竞态守卫：快速切换课程时两次请求都在飞，只接受最后一次请求的详情，
     // 避免旧课程数据后到填进新课程抽屉（标题与内容错乱）
     latestCourseIdRef.current = courseId;
@@ -116,7 +116,7 @@ export default function CourseDetailDrawer({
     try {
       const data = await getDetail(courseId);
       if (latestCourseIdRef.current !== courseId) {
-        return;
+        return null;
       }
       setDetail(data);
       // 操作后刷新（keepSelection=true）保持当前章节/课时选择，不跳回第一个
@@ -125,8 +125,10 @@ export default function CourseDetailDrawer({
         setSelectedChapterId(firstChapter?.chapter.chapterId);
         setSelectedLessonId(firstChapter?.lessons[0]?.lesson.lessonId);
       }
+      return data;
     } catch {
       // 请求层已统一提示
+      return null;
     } finally {
       setLoading(false);
     }
@@ -331,10 +333,13 @@ export default function CourseDetailDrawer({
                       key="del"
                       title="删除章节会同时删除其课时和资源绑定，确认？"
                       onConfirm={async () => {
-                        await delChapter(item.chapter.chapterId);
+                        const chapterId = item.chapter.chapterId;
+                        await delChapter(chapterId);
                         message.success('章节已删除');
                         if (course?.courseId) {
-                          await loadDetail(course.courseId, true);
+                          // 删掉的正是当前选中章节时不能保持选中（面板会变「请先选择章节」，
+                          // 且 useEffect 还会拿已删课时去查通关测验），回退到刷新后的第一个章节/课时
+                          await loadDetail(course.courseId, chapterId !== selectedChapterId);
                         }
                         onChanged();
                       }}
@@ -402,10 +407,22 @@ export default function CourseDetailDrawer({
                         key="del"
                         title="删除课时会同时删除资源绑定，确认？"
                         onConfirm={async () => {
-                          await delLesson(item.lesson.lessonId);
+                          const lessonId = item.lesson.lessonId;
+                          await delLesson(lessonId);
                           message.success('课时已删除');
                           if (course?.courseId) {
-                            await loadDetail(course.courseId, true);
+                            if (lessonId === selectedLessonId) {
+                              // 删的是当前课时：刷新详情后回退到该章节下第一个课时；
+                              // 该章节已无课时则清空选中（面板显示「请先选择课时」），
+                              // 避免 useEffect 拿已删 lessonId 去查通关测验
+                              const data = await loadDetail(course.courseId, true);
+                              const chapter = data?.chapters.find(
+                                (entry) => entry.chapter.chapterId === selectedChapterId,
+                              );
+                              setSelectedLessonId(chapter?.lessons[0]?.lesson.lessonId);
+                            } else {
+                              await loadDetail(course.courseId, true);
+                            }
                           }
                           onChanged();
                         }}

@@ -94,6 +94,29 @@ public class ResourceInfoController extends ABaseController {
     }
 
     /**
+     * 资源详情（管理端通用）
+     *
+     * <p>公共资源直接返回；学生个人资源需带 userId 校验归属。不限制 status——
+     * 管理端需要能查看「处理中 / 失败」资源的详情。</p>
+     */
+    @GetMapping("/getInfo")
+    public ResponseVO<ResourceInfo> getInfo(@RequestParam String resourceId,
+                                            @RequestParam(required = false) String userId) {
+        if (StringTools.isEmpty(resourceId)) {
+            throw new BusinessException("资源ID不能为空");
+        }
+        ResourceInfo resource = resourceInfoService.getResourceInfoByResourceId(resourceId);
+        if (resource == null) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+        if (!StringTools.isEmpty(resource.getOwnerId())
+                && (StringTools.isEmpty(userId) || !userId.equals(resource.getOwnerId()))) {
+            throw new BusinessException("资源不存在或暂不可用");
+        }
+        return getSuccessResponseVO(resource);
+    }
+
+    /**
      * 获取 HLS 播放列表
      */
     @GetMapping("/video/{resourceId}/index.m3u8")
@@ -315,6 +338,61 @@ public class ResourceInfoController extends ABaseController {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(Files.size(file))
                 .body(new FileSystemResource(file));
+    }
+
+    /**
+     * 学生个人资源的在线预览产物元信息（学习分析里预览学生个人 pptx 用）
+     */
+    @GetMapping("/studentPreview/{resourceId}/meta")
+    public ResponseVO<ResourcePreviewMetaVO> studentPreviewMeta(@PathVariable String resourceId,
+                                                               @RequestParam String userId) {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return getSuccessResponseVO(null);
+        }
+        return getSuccessResponseVO(resourcePreviewRenderer.readMeta(resource.getFilePath()));
+    }
+
+    /**
+     * 学生个人资源的预览单页图片
+     */
+    @GetMapping("/studentPreview/{resourceId}/page/{page}")
+    public ResponseEntity<FileSystemResource> studentPreviewPage(@PathVariable String resourceId,
+                                                                 @RequestParam String userId,
+                                                                 @PathVariable Integer page) {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path imagePath = resourcePreviewRenderer.resolvePageImage(resource.getFilePath(),
+                page == null ? 0 : page);
+        if (imagePath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(imagePath));
+    }
+
+    /**
+     * 学生个人资源的预览 PDF
+     */
+    @GetMapping("/studentPreview/{resourceId}/pdf")
+    public ResponseEntity<FileSystemResource> studentPreviewPdf(@PathVariable String resourceId,
+                                                                @RequestParam String userId) {
+        ResourceInfo resource = getStudentResource(resourceId, userId);
+        if (resource == null || StringTools.isEmpty(resource.getFilePath())) {
+            return ResponseEntity.notFound().build();
+        }
+        Path pdfPath = resourcePreviewRenderer.resolvePreviewPdf(resource.getFilePath());
+        if (pdfPath == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(new FileSystemResource(pdfPath));
     }
 
     /**

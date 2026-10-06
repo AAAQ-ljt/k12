@@ -16,6 +16,7 @@ import {
 } from '../constants';
 import { changeStatus, delProblem, getInfo, loadDataList } from '@/api/codingProblem';
 import type { CodingProblem, CodingProblemQuery } from '@/api/codingProblem';
+import { resolvePageNoAfterRemove } from '@/utils/pagination';
 import ProblemFormModal from './ProblemFormModal';
 import ProblemPreviewModal from './ProblemPreviewModal';
 
@@ -103,7 +104,13 @@ export default function ProblemManagement() {
     try {
       await delProblem(problemId);
       message.success('删除成功');
-      fetchData();
+      // 删的是末页最后一条时回退一页，避免停在一个空页
+      const nextPageNo = resolvePageNoAfterRemove(searchParams.pageNo, searchParams.pageSize, total);
+      if (nextPageNo !== searchParams.pageNo) {
+        setSearchParams((prev) => ({ ...prev, pageNo: nextPageNo }));
+      } else {
+        fetchData();
+      }
     } catch {
       // 错误已由请求拦截器统一提示
     }
