@@ -1,11 +1,16 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { App, Avatar, Button, Dropdown } from 'antd';
 import { Sparkles, MessageSquare, Route, BookOpen, BookImage, Code, User, LogOut, PlaySquare, FolderOpen } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { useEffect, type ComponentType } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
+import { usePointStore } from '@/stores/point';
 import { studentLogout } from '@/api/auth';
+import PointToast from '@/components/point/PointToast';
 import { getGradeText, getStageOption } from '@/types/common';
+
+/** 积分到账轮询间隔：积分只由服务端学习事件结算，前端定时感知「变多了」即飘字 */
+const POINT_POLL_MS = 30_000;
 
 interface TabItem {
   path: string;
@@ -79,10 +84,35 @@ export default function MainLayout() {
       await studentLogout();
     } finally {
       clear();
+      usePointStore.getState().reset();
       message.success('已退出登录');
       navigate('/ai-tutor');
     }
   };
+
+  // 积分到账感知：登录后立即拉一次（首次只记基线不飘字），之后定时 + 回到前台时刷新
+  const refreshPoints = usePointStore((state) => state.refresh);
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    void refreshPoints();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshPoints();
+      }
+    }, POINT_POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshPoints();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [token, refreshPoints]);
 
   /** 用户下拉菜单 */
   const userMenuItems = [
@@ -182,6 +212,9 @@ export default function MainLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* 积分到账飘字（全局，任何页面学习得分都能看到） */}
+      <PointToast />
     </div>
   );
 }

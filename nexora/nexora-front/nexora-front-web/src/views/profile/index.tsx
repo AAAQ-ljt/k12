@@ -26,6 +26,7 @@ import {
 import { contestPhaseOf, formatDuration, formatTimeWindow } from '@/utils/coding';
 import { CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
+import GrowthCenterCard from '@/components/point/GrowthCenterCard';
 import styles from './index.module.scss';
 
 /**
@@ -396,6 +397,9 @@ export default function Profile() {
 
         {/* ==================== 右栏：学习事务 ==================== */}
         <div className={styles.colRight}>
+          {/* 成长中心（二期积分游戏化：等级/星星/徽章墙/排行榜） */}
+          <GrowthCenterCard />
+
           <Card>
             <div className={styles.cardTitle}>
               <Target size={16} />

@@ -1,0 +1,84 @@
+/* 积分到账飘字：固定在右上角内容区上方，浮入 → 停留 → 淡出（不拦截鼠标） */
+.pointToast {
+  position: fixed;
+  top: calc(var(--header-height) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--gradient-badge);
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  animation: pointToastIn 3200ms var(--motion-fast) both;
+}
+
+.icon {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.amount {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.total {
+  font-size: var(--font-size-xs);
+  opacity: 0.9;
+}
+
+/* 0-8% 浮入并轻微弹一下，8-84% 停留，84-100% 淡出上移 */
+@keyframes pointToastIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) scale(0.94);
+  }
+  8% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1.02);
+  }
+  12% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  84% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pointToast {
+    animation: pointToastFade 3200ms linear both;
+  }
+
+  @keyframes pointToastFade {
+    0% {
+      opacity: 0;
+    }
+    8% {
+      opacity: 1;
+    }
+    84% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}

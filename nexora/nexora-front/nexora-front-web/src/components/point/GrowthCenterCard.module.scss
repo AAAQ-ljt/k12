@@ -1,0 +1,336 @@
+/* 成长中心卡片（我的页面） */
+.growthCard {
+  border-radius: var(--radius-lg);
+}
+
+.cardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.stageTag {
+  margin-inline-start: 2px;
+  font-weight: 400;
+  color: var(--warm-brown-600);
+  background: var(--warm-orange-100);
+}
+
+.loadingBlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 0;
+  color: var(--text-tertiary);
+}
+
+/* 成长环 + 四项统计 */
+.overview {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.ringText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ringLevel {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ringHint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.stats {
+  flex: 1;
+  min-width: 260px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.statItem {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--warm-bg-ultimate);
+  border: 1px solid var(--warm-bg-dark);
+}
+
+.statValue {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--warm-brown-600);
+  line-height: var(--line-height-tight);
+}
+
+.statUnit {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-inline-start: 2px;
+}
+
+.statLabel {
+  margin-top: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* 今日进度条 */
+.todayBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--warm-bg-light);
+}
+
+.todayLabel {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.todayProgress {
+  flex: 1;
+  min-width: 120px;
+  margin: 0;
+}
+
+.todayHint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ===== 积分明细 ===== */
+.recordList {
+  display: flex;
+  flex-direction: column;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.recordItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px dashed var(--warm-bg-dark);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.recordIcon {
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.recordMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.recordTitle {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordMeta {
+  margin-top: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.pointsUp,
+.pointsDown {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pointsUp {
+  color: var(--color-warning);
+}
+
+.pointsDown {
+  color: var(--color-error);
+}
+
+/* ===== 徽章墙 ===== */
+.badgeSummary {
+  margin-bottom: 12px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+
+  b {
+    color: var(--warm-brown-600);
+  }
+}
+
+.badgeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 12px;
+}
+
+.badgeItem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px 8px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-card-hover);
+  border: 1px solid var(--warm-bg-dark);
+  transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* 未解锁：压暗但不隐藏，让学生看到「还差什么」 */
+.badgeLocked {
+  filter: grayscale(0.75);
+  opacity: 0.62;
+}
+
+.badgeIcon {
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.badgeName {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.badgeProgress {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.badgeReward {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  color: #ffffff;
+  background: var(--gradient-badge);
+}
+
+/* ===== 排行榜 ===== */
+.rankToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rankScope {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.rankList {
+  display: flex;
+  flex-direction: column;
+}
+
+.rankItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+
+  &:nth-child(odd) {
+    background: var(--warm-bg-ultimate);
+  }
+}
+
+.rankMe {
+  background: var(--gradient-selected-nav) !important;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.rankNo {
+  width: 30px;
+  text-align: center;
+  font-size: var(--font-size-md);
+  color: var(--text-tertiary);
+}
+
+.rankName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rankLevel {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--warm-brown-600);
+  background: var(--warm-orange-100);
+}
+
+.rankPoints {
+  min-width: 48px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--warm-brown-600);
+}
+
+.myRank {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--warm-bg-light);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+
+  b {
+    color: var(--warm-brown-600);
+  }
+}
+
+@media (max-width: 960px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .todayHint {
+    display: none;
+  }
+}
