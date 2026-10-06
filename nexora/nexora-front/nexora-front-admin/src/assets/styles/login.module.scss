@@ -1,46 +1,169 @@
-.loginContainer {
-  min-height: 100vh;
+// 登录页：左右分栏（左 45% 深色 WebGL 矢量字标视觉区 + 右 55% 登录表单区）。
+// 左栏固定深海军蓝（字标画布铺满，品牌文案叠加其上）；右栏走语义变量，随 data-theme 暗色自适应。
+// 输入框默认浅灰底（--color-fill-tertiary）、聚焦电光蓝边框（antd token colorPrimary）；
+// 登录按钮深蓝→青蓝渐变，悬停提亮。
+
+$brand-deep: #003d80;
+$brand-teal: #0077b6;
+
+.loginPage {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--gradient-aurora);
+  min-height: 100vh;
 }
 
-.loginCard {
-  width: 400px;
-  background: var(--color-bg-surface);
-  border-radius: 12px;
-  padding: 40px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+// ---------- 左侧字标视觉区 ----------
+
+.brandPanel {
+  position: relative;
+  flex: 0 0 45%;
+  min-width: 420px;
+  overflow: hidden;
+  // 字标画布的兜底底色（WebGL 不可用时仍有深色视觉区）
+  background-color: #030f24;
 }
 
-.loginHeader {
+// 品牌信息叠加层：不响应指针，保证字标画布的指针交互不被遮挡
+.brandOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-bottom: 32px;
+  justify-content: space-between;
+  padding: 40px 36px 28px;
+  pointer-events: none;
 }
 
-.loginLogo {
+.brandTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandMark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--gradient-brand);
-  color: var(--color-bg-surface);
-  margin-bottom: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
 }
 
-.loginTitle {
-  text-align: center;
+.brandName {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.brandBottom {
+  color: #fff;
+}
+
+.brandSlogan {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 6px;
+}
+
+.brandCopyright {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+// ---------- 右侧表单区 ----------
+
+.formPanel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: var(--color-bg-surface);
+}
+
+.formBox {
+  width: 380px;
+  max-width: 100%;
+
+  // 输入框：默认浅灰底，静置时弱化边框；聚焦态交回 antd token（colorPrimary 电光蓝边框 + 光晕）
+  :global(.ant-input-affix-wrapper) {
+    background-color: var(--color-fill-tertiary);
+  }
+
+  :global(.ant-input-affix-wrapper:not(.ant-input-affix-wrapper-focused):not(:focus-within)) {
+    border-color: transparent;
+  }
+
+  :global(.ant-input-affix-wrapper .ant-input) {
+    background-color: transparent;
+  }
+
+  // 登录按钮：深蓝→青蓝克制渐变，悬停提亮；抬高特异性以盖过 antd 主色 hover 规则
+  .loginButton:global(.ant-btn-primary) {
+    width: 100%;
+    border: none;
+    background: linear-gradient(135deg, $brand-deep, $brand-teal);
+    box-shadow: 0 4px 14px rgba(0, 61, 128, 0.28);
+
+    &:hover {
+      background: linear-gradient(135deg, #0b4fa0, #0d86c2);
+      box-shadow: 0 6px 18px rgba(0, 61, 128, 0.35);
+    }
+
+    &:active {
+      background: linear-gradient(135deg, #00336c, #00669c);
+      box-shadow: 0 2px 8px rgba(0, 61, 128, 0.3);
+    }
+  }
+}
+
+.formHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.formMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, $brand-deep, $brand-teal);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.formTitle {
   font-size: 22px;
   font-weight: 600;
   color: var(--color-text);
-  margin-bottom: 0;
+  line-height: 1.4;
+  margin: 0;
 }
 
-.loginButton {
-  width: 100%;
+.formSubtitle {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 4px 0 0;
+}
+
+// ---------- 响应式：窄屏隐藏视觉区，仅保留表单 ----------
+
+@media (max-width: 820px) {
+  .brandPanel {
+    display: none;
+  }
 }
