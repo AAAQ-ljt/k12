@@ -50,16 +50,35 @@
 		where user_id = #{userId}
 	</update>
 
-	<select id="selectTopByStage" resultMap="base_result_map">
-		select <include refid="base_column_list" /> from student_point_account a
-		where a.stage = #{stage}
-		order by a.total_points desc, a.update_time asc
+	<!-- 排行榜取样（A-5）：startTime 空=累计榜，非空=周榜（按流水求和）。昵称一次联表带出，避免逐行查询 -->
+	<select id="selectRankRows" resultType="com.nexora.entity.vo.PointRankItemVO">
+		select t.user_id as userId, t.points as points, a.stage as stage, a.level as level, u.nick_name as nickName
+		from (
+			<choose>
+				<when test="startTime != null">
+					select r.user_id as user_id, coalesce(sum(r.points), 0) as points
+					from student_point_record r
+					where r.create_time &gt;= #{startTime} and r.points &gt; 0
+					group by r.user_id
+				</when>
+				<otherwise>
+					select p.user_id as user_id, p.total_points as points
+					from student_point_account p
+				</otherwise>
+			</choose>
+		) t
+		join student_point_account a on a.user_id = t.user_id
+		left join user_info u on u.user_id = t.user_id
+		where t.points &gt; 0
+		<if test="stage != null and stage != ''">and a.stage = #{stage}</if>
+		order by t.points desc, a.update_time asc
 		limit #{limit}
 	</select>
 
-	<select id="selectTopAll" resultMap="base_result_map">
-		select <include refid="base_column_list" /> from student_point_account a
-		order by a.total_points desc, a.update_time asc
-		limit #{limit}
+	<!-- 累计积分严格高于我的学生数（+1 即名次；未上榜返回 0） -->
+	<select id="countAboveTotal" resultType="java.lang.Integer">
+		select count(1) from student_point_account a
+		where a.total_points &gt; #{points}
+		<if test="stage != null and stage != ''">and a.stage = #{stage}</if>
 	</select>
 </mapper>

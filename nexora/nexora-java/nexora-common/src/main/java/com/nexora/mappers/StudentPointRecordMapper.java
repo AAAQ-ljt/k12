@@ -42,4 +42,9 @@ public interface StudentPointRecordMapper {
 
     /** 流水分页列表（我的积分明细） */
     List<StudentPointRecord> selectListByParam(StudentPointRecordQuery query);
+
+    /** 周榜名次（A-5）：本周净得积分严格高于我的学生数（+1 即名次；未上榜返回 0） */
+    Integer countAboveWeek(@Param("stage") String stage,
+                           @Param("startTime") Date startTime,
+                           @Param("points") int points);
 }

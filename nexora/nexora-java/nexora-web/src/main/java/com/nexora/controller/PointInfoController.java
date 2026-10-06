@@ -4,6 +4,8 @@ import com.nexora.annotation.GlobalInterceptor;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.StudentPointRecord;
 import com.nexora.entity.vo.PointAccountVO;
+import com.nexora.entity.vo.PointBadgeVO;
+import com.nexora.entity.vo.PointRankResultVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.service.PointBiz;
 import com.nexora.utils.LoginUserContext;
@@ -34,7 +36,8 @@ public class PointInfoController extends ABaseController {
     public ResponseVO<PointAccountVO> getMyAccount() {
         TokenUserInfoDTO current = LoginUserContext.get();
         String userId = current == null ? null : current.getUserId();
-        return getSuccessResponseVO(pointBiz.myAccount(userId));
+        String stage = current == null ? null : current.getStage();
+        return getSuccessResponseVO(pointBiz.myAccount(userId, stage));
     }
 
     /** 我的积分明细（按时间倒序） */
@@ -47,5 +50,23 @@ public class PointInfoController extends ABaseController {
         TokenUserInfoDTO current = LoginUserContext.get();
         String userId = current == null ? null : current.getUserId();
         return getSuccessResponseVO(pointBiz.myRecords(userId, bizType, createTimeStart, createTimeEnd, pageSize));
+    }
+
+    /** 我的徽章墙：徽章 + 解锁状态 + 进度（进度与解锁判定同口径） */
+    @GetMapping("/getBadgeList")
+    public ResponseVO<List<PointBadgeVO>> getBadgeList() {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        String userId = current == null ? null : current.getUserId();
+        String stage = current == null ? null : current.getStage();
+        return getSuccessResponseVO(pointBiz.myBadges(userId, stage));
+    }
+
+    /** 排行榜：type=week 周榜 / 缺省累计榜；返回本学段 TOP20 + 我的名次（昵称脱敏；小学段不开放） */
+    @GetMapping("/getRankList")
+    public ResponseVO<PointRankResultVO> getRankList(@RequestParam(required = false) String type) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        String userId = current == null ? null : current.getUserId();
+        String stage = current == null ? null : current.getStage();
+        return getSuccessResponseVO(pointBiz.rank(userId, stage, type));
     }
 }

@@ -93,4 +93,17 @@
 		order by r.create_time desc, r.record_id desc
 		limit #{pageSize}
 	</select>
+
+	<!-- 周榜名次（A-5）：本周净得积分严格高于我的学生数（+1 即名次；未上榜返回 0） -->
+	<select id="countAboveWeek" resultType="java.lang.Integer">
+		select count(1) from (
+			select r.user_id as user_id, coalesce(sum(r.points), 0) as points
+			from student_point_record r
+			where r.create_time &gt;= #{startTime} and r.points &gt; 0
+			group by r.user_id
+		) t
+		join student_point_account a on a.user_id = t.user_id
+		where t.points &gt; #{points}
+		<if test="stage != null and stage != ''">and a.stage = #{stage}</if>
+	</select>
 </mapper>

@@ -1,5 +1,6 @@
 package com.nexora.component;
 
+import com.nexora.entity.enums.StageEnum;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -55,6 +56,32 @@ public class PointLevelComponent {
             return 0;
         }
         return level - 1 < steps.length ? steps[level - 1] : steps[steps.length - 1];
+    }
+
+    /**
+     * 小学段（小低/小高）：用「星星」计数、不开放排行榜（A-10 学段适配口径，
+     * 避免低龄儿童的排名压力）。展示层据此切换文案，服务端据此关闭排行榜。
+     */
+    public boolean starStage(String stage) {
+        return StageEnum.PRIMARY_LOW.getCode().equals(stage) || StageEnum.PRIMARY_HIGH.getCode().equals(stage);
+    }
+
+    /**
+     * 段位名（仅初高中段展示；小学段返回 null，前端按「N 颗星」展示）。
+     * 段位与等级门槛一一对应：1-2 青铜 / 3-4 白银 / 5-6 黄金 / 7-8 铂金 / 9 钻石 / 10+ 王者。
+     */
+    public String levelName(String stage, Integer level) {
+        if (stage == null || level == null || starStage(stage)) {
+            return null;
+        }
+        return switch (level) {
+            case 1, 2 -> "青铜";
+            case 3, 4 -> "白银";
+            case 5, 6 -> "黄金";
+            case 7, 8 -> "铂金";
+            case 9 -> "钻石";
+            default -> "王者";
+        };
     }
 
     /** 解析阶梯配置：逗号分隔的累计积分；缺省/非法（不足 2 档或非递增）时回落默认值 */

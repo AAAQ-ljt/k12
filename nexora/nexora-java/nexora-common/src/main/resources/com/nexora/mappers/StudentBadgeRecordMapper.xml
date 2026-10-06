@@ -29,4 +29,11 @@
 		<if test="start != null">and r.create_time &gt;= #{start}</if>
 		<if test="end != null">and r.create_time &lt;= #{end}</if>
 	</select>
+
+	<!-- 徽章墙用：解锁记录（含解锁时间），按解锁先后排序 -->
+	<select id="selectByUser" resultMap="base_result_map">
+		select r.record_id, r.user_id, r.badge_id, r.create_time from student_badge_record r
+		where r.user_id = #{userId}
+		order by r.create_time asc
+	</select>
 </mapper>

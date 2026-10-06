@@ -1,6 +1,7 @@
 package com.nexora.mappers;
 
 import com.nexora.entity.po.StudentPointAccount;
+import com.nexora.entity.vo.PointRankItemVO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Date;
@@ -32,11 +33,14 @@ public interface StudentPointAccountMapper {
                          @Param("lastStreakDate") Date lastStreakDate);
 
     /**
-     * 本学段累计积分榜（A-5 排行榜；limit 由调用方给上限）
+     * 排行榜取样（A-5）：startTime 为空取累计积分榜，非空取该时间点之后的周榜（流水求和）。
+     * 一次联表把昵称/等级带出，避免逐行再查（禁止循环里访问数据库）。
      * 注意：编程比赛成绩不进全局积分，排行榜只统计积分流水累计值。
      */
-    List<StudentPointAccount> selectTopByStage(@Param("stage") String stage, @Param("limit") int limit);
+    List<PointRankItemVO> selectRankRows(@Param("stage") String stage,
+                                         @Param("startTime") Date startTime,
+                                         @Param("limit") int limit);
 
-    /** 全站累计积分榜 */
-    List<StudentPointAccount> selectTopAll(@Param("limit") int limit);
+    /** 累计积分严格高于我的学生数（+1 即我的名次） */
+    Integer countAboveTotal(@Param("stage") String stage, @Param("points") int points);
 }

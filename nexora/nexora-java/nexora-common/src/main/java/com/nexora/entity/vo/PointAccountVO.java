@@ -22,6 +22,9 @@ public class PointAccountVO implements Serializable {
     /** 当前等级 */
     private Integer level;
 
+    /** 段位名（初高中段：青铜→王者；小学段为空，前端按「N 颗星」展示） */
+    private String levelName;
+
     /** 本级起点积分（进度条左端） */
     private Integer levelFloor;
 

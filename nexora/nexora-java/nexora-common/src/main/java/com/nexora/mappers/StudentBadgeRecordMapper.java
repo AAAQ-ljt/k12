@@ -20,4 +20,7 @@ public interface StudentBadgeRecordMapper {
     Integer countByUserAndTimeRange(@Param("userId") String userId,
                                     @Param("start") Date start,
                                     @Param("end") Date end);
+
+    /** 徽章墙用：解锁记录（含解锁时间） */
+    List<StudentBadgeRecord> selectByUser(@Param("userId") String userId);
 }

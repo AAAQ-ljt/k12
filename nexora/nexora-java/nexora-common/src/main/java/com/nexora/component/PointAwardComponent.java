@@ -5,6 +5,7 @@ import com.nexora.entity.po.StudentBadgeRecord;
 import com.nexora.entity.po.StudentPointAccount;
 import com.nexora.entity.po.StudentPointRecord;
 import com.nexora.entity.query.GameBadgeQuery;
+import com.nexora.entity.vo.PointBadgeVO;
 import com.nexora.mappers.GameBadgeMapper;
 import com.nexora.mappers.StudentBadgeRecordMapper;
 import com.nexora.mappers.StudentPointAccountMapper;
@@ -21,8 +22,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -368,7 +371,83 @@ public class PointAwardComponent {
         }
     }
 
+    /**
+     * 徽章墙（A-4）：本学段可见徽章 + 我的解锁状态与进度。
+     *
+     * 进度与解锁判定共用同一套规则（ruleReached），避免出现「进度已满却没发徽章」的展示/发放不一致。
+     * 小学段同样开放徽章（纯正向激励），只有排行榜对小学段关闭（见 A-10 学段适配）。
+     */
+    public List<PointBadgeVO> listBadges(String userId, String stage) {
+        List<PointBadgeVO> result = new ArrayList<>();
+        if (StringTools.isEmpty(userId)) {
+            return result;
+        }
+        GameBadgeQuery query = new GameBadgeQuery();
+        query.setStatus(1);
+        query.setStage(stage);
+        List<GameBadge> badges = badgeMapper.selectListByParam(query);
+        if (badges == null || badges.isEmpty()) {
+            return result;
+        }
+        StudentPointAccount account = accountMapper.selectByUserId(userId);
+        Map<String, Date> unlockedTime = new HashMap<>();
+        List<StudentBadgeRecord> unlockedRecords = badgeRecordMapper.selectByUser(userId);
+        if (unlockedRecords != null) {
+            for (StudentBadgeRecord record : unlockedRecords) {
+                unlockedTime.put(record.getBadgeId(), record.getCreateTime());
+            }
+        }
+        for (GameBadge badge : badges) {
+            int threshold = badge.getRuleValue() == null ? 0 : badge.getRuleValue();
+            boolean unlocked = unlockedTime.containsKey(badge.getBadgeId());
+            int progress = unlocked ? threshold : ruleProgress(badge, userId, account);
+            PointBadgeVO vo = new PointBadgeVO();
+            vo.setBadgeId(badge.getBadgeId());
+            vo.setName(badge.getName());
+            vo.setDescription(badge.getDescription());
+            vo.setIcon(badge.getIcon());
+            vo.setRuleType(badge.getRuleType());
+            vo.setRuleValue(threshold);
+            vo.setRewardPoints(badge.getRewardPoints());
+            vo.setUnlocked(unlocked);
+            vo.setUnlockedTime(unlockedTime.get(badge.getBadgeId()));
+            vo.setProgress(progress);
+            vo.setProgressText(progressText(badge.getRuleType(), progress, threshold));
+            result.add(vo);
+        }
+        return result;
+    }
+
+    /** 徽章当前进度值（与 ruleReached 同一口径，仅供展示） */
+    private int ruleProgress(GameBadge badge, String userId, StudentPointAccount account) {
+        String ruleType = badge.getRuleType() == null ? "" : badge.getRuleType();
+        return switch (ruleType) {
+            case "TOTAL_POINTS" -> account == null || account.getTotalPoints() == null ? 0 : account.getTotalPoints();
+            case "STREAK" -> account == null || account.getStreakDays() == null ? 0 : account.getStreakDays();
+            case "FIRST_PASS" -> recordMapper.countByUserAndBizTypes(userId, PASS_BIZ_TYPES);
+            case "MASTERY_COUNT" -> recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_MASTERY));
+            case "CODING_COUNT" -> recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_CODING_PROBLEM));
+            case "CREATION" -> recordMapper.countByUserAndBizTypes(userId, CREATION_BIZ_TYPES);
+            // 最高连击尚未持久化（A-4 待办）：进度恒为 0，前端按「敬请期待」展示
+            default -> 0;
+        };
+    }
+
+    /** 进度文案：`3/7 天`；规则未接入（COMBO_MAX）返回空串由前端兜底 */
+    private String progressText(String ruleType, int progress, int threshold) {
+        String unit = switch (ruleType == null ? "" : ruleType) {
+            case "STREAK" -> "天";
+            case "TOTAL_POINTS" -> "分";
+            case "CODING_COUNT" -> "道";
+            case "FIRST_PASS" -> "次";
+            case "MASTERY_COUNT", "CREATION" -> "个";
+            default -> null;
+        };
+        return unit == null ? "" : Math.min(progress, threshold) + "/" + threshold + " " + unit;
+    }
+
     // ====== 配置读取（GAME 组；缺失回落代码默认值） ======
+
 
     private int intConfig(String key, int defaultValue) {
         String raw = systemConfigComponent.getValue(SystemConfigComponent.GROUP_GAME, key, null);
