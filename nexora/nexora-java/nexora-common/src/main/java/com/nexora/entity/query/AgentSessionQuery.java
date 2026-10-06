@@ -47,6 +47,9 @@ public class AgentSessionQuery extends BaseParam {
 	 */
 	private Integer scene;
 
+	/** 排除场景（如排除编程练习会话：sceneNot=3） */
+	private Integer sceneNot;
+
 	/**
 	 * 消息数【冗余：会话列表展示】
 	 */
@@ -159,6 +162,14 @@ public class AgentSessionQuery extends BaseParam {
 
 	public void setScene(Integer scene){
 		this.scene = scene;
+	}
+
+	public void setSceneNot(Integer sceneNot){
+		this.sceneNot = sceneNot;
+	}
+
+	public Integer getSceneNot(){
+		return this.sceneNot;
 	}
 
 	public Integer getScene(){

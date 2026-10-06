@@ -43,7 +43,8 @@ public class AgentController extends ABaseController {
             throw new BusinessException("消息不能为空");
         }
         AgentMessage message = agentChatComponent.sendMessage(current, request.getSessionId(),
-                request.getMessage(), request.getImageResourceIds());
+                request.getMessage(), request.getImageResourceIds(), request.getScene(),
+                request.getSessionTitle());
         return getSuccessResponseVO(message);
     }
 
@@ -62,9 +63,36 @@ public class AgentController extends ABaseController {
         return getSuccessResponseVO(agentChatComponent.createSession(LoginUserContext.get()));
     }
 
+    /**
+     * 会话列表
+     *
+     * @param scene    只看某场景（如 3 = 编程练习）
+     * @param sceneNot 排除某场景（如 3 = 只要普通对话）
+     */
     @GetMapping("/sessionList")
-    public ResponseVO<List<AgentSession>> sessionList() {
-        return getSuccessResponseVO(agentChatComponent.sessionList(LoginUserContext.get()));
+    public ResponseVO<List<AgentSession>> sessionList(@RequestParam(required = false) Integer scene,
+                                                      @RequestParam(required = false) Integer sceneNot) {
+        return getSuccessResponseVO(agentChatComponent.sessionList(LoginUserContext.get(), scene, sceneNot));
+    }
+
+    /** 重命名会话 */
+    @PostMapping("/renameSession")
+    public ResponseVO<Void> renameSession(@RequestBody AgentSendMessageRequest request) {
+        if (request == null || StringTools.isEmpty(request.getSessionId())) {
+            throw new BusinessException("参数错误");
+        }
+        agentChatComponent.renameSession(LoginUserContext.get(), request.getSessionId(), request.getTitle());
+        return getSuccessResponseVO(null);
+    }
+
+    /** 置顶 / 取消置顶 */
+    @PostMapping("/topSession")
+    public ResponseVO<Void> topSession(@RequestBody AgentSendMessageRequest request) {
+        if (request == null || StringTools.isEmpty(request.getSessionId())) {
+            throw new BusinessException("参数错误");
+        }
+        agentChatComponent.topSession(LoginUserContext.get(), request.getSessionId(), request.getTop());
+        return getSuccessResponseVO(null);
     }
 
     @GetMapping("/loadHistoryMessage")

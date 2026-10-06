@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { App, Button, Input, Segmented, Tag, Tooltip } from 'antd';
+import { App, Button, Input, Modal, Segmented, Tag, Tooltip } from 'antd';
 import {
   BookOpen,
   Bot,
@@ -12,6 +12,9 @@ import {
   Link2,
   Maximize,
   MessageSquare,
+  Pencil,
+  Pin,
+  PinOff,
   Plus,
   Send,
   Settings,
@@ -26,7 +29,9 @@ import {
   deleteAgentSession,
   loadAgentHistory,
   loadAgentSessionList,
+  renameAgentSession,
   sendAgentMessage,
+  topAgentSession,
   type AgentMessageInfo,
   type AgentPushMessage,
   type AgentSessionInfo,
@@ -41,6 +46,7 @@ import PictureBookChatCard from '@/components/multimodal/PictureBookChatCard';
 import { syncStudentWikiFromMessage } from '@/api/studentWiki';
 import KnowledgeDrawer from './components/KnowledgeDrawer';
 import {
+  getStudentResource,
   getStudentResourceImageUrl,
   prepareStudentUpload,
   uploadStudentShard,
@@ -78,6 +84,32 @@ interface SessionItem {
   id: string;
   title: string;
   time: string;
+  /** 置顶：0 否 / 1 是 */
+  top: number;
+  /** 会话场景：0 自由对话 / 3 编程练习 */
+  scene: number;
+}
+
+/** 会话列表来源筛选：全部 / 普通对话（排除编程练习）/ 编程练习（scene=3） */
+type SessionFilter = 'all' | 'normal' | 'coding';
+
+const SESSION_FILTER_OPTIONS: { label: string; value: SessionFilter }[] = [
+  { label: '全部', value: 'all' },
+  { label: '普通对话', value: 'normal' },
+  { label: '编程练习', value: 'coding' },
+];
+
+/** 编程练习会话场景值（与后端 AgentChatComponent.SCENE_CODING 一致） */
+const SCENE_CODING = 3;
+
+function sessionFilterParams(filter: SessionFilter): { scene?: number; sceneNot?: number } | undefined {
+  if (filter === 'coding') {
+    return { scene: SCENE_CODING };
+  }
+  if (filter === 'normal') {
+    return { sceneNot: SCENE_CODING };
+  }
+  return undefined;
 }
 
 const SUGGESTIONS = [
@@ -140,8 +172,13 @@ function mapSession(item: AgentSessionInfo): SessionItem {
     id: item.sessionId,
     title: item.title || '新对话',
     time: formatTime(item.lastMessageTime) || '刚刚',
+    top: item.top ?? 0,
+    scene: item.scene ?? 0,
   };
 }
+
+/** 会话标题最长字数（与后端 renameSession 截断长度一致） */
+const SESSION_TITLE_MAX = 50;
 
 function parseHistoryImages(bizType?: string, bizData?: string): ChatImage[] | undefined {
   if (bizType !== 'USER_IMAGE' || !bizData) {
@@ -223,12 +260,19 @@ export default function AiTutor() {
   /** 整个小学阶段（小低+小高）不提供动画讲解能力 */
   const isPrimaryStage = userInfo?.stage === 'PRIMARY_LOW' || userInfo?.stage === 'PRIMARY_HIGH';
   const [input, setInput] = useState('');
+  /** 正在探活归属的推荐资源（避免重复点击 + 给按钮 loading 态） */
+  const [openingResourceId, setOpeningResourceId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
   const [attachedImages, setAttachedImages] = useState<ChatImage[]>([]);
+  /** 会话列表来源筛选：默认「普通对话」，避免一进页面就被编程练习会话刷屏 */
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>('normal');
+  const [renameTarget, setRenameTarget] = useState<SessionItem | null>(null);
+  const [renameTitle, setRenameTitle] = useState('');
+  const [renaming, setRenaming] = useState(false);
   // 学习路径节点「问 AI 助教」跳转过来时预填问题（用完即清，避免刷新重复填充）
   useEffect(() => {
     const state = location.state as { presetQuestion?: string } | null;
@@ -244,10 +288,17 @@ export default function AiTutor() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const messagesStateRef = useRef<ChatMessage[]>([]);
   const pendingRecommendsRef = useRef<Record<string, ResourceRecommendItem[]>>({});
+  /** 与 activeSessionId 同步的即时引用：列表刷新判断「当前会话是否还在新列表中」时用 */
+  const activeSessionIdRef = useRef('');
 
   const stageOption = useMemo(() => {
     return userInfo?.stage ? getStageOption(userInfo.stage) : undefined;
   }, [userInfo?.stage]);
+
+  const selectSession = useCallback((sessionId: string) => {
+    activeSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
+  }, []);
 
   const openKnowledge = useCallback((open: boolean) => {
     knowledgeOpenRef.current = open;
@@ -333,24 +384,35 @@ export default function AiTutor() {
     }
   }, [message]);
 
-  const loadSessionList = useCallback(async () => {
-    pendingRecommendsRef.current = {};
+  /**
+   * 加载会话列表。
+   *
+   * @param filter 来源筛选（全部 / 普通对话 / 编程练习）
+   * @param mode   keep：当前会话仍在新列表中时保持选中，不打断正在查看的对话（筛选切换 / 置顶 / 重命名后用）；
+   *               auto：始终选中第一条（登录进入页面后用）
+   */
+  const loadSessionList = useCallback(async (filter: SessionFilter, mode: 'auto' | 'keep' = 'auto') => {
     try {
-      const list = await loadAgentSessionList();
+      const list = await loadAgentSessionList(sessionFilterParams(filter));
       const items = list.map(mapSession);
       setSessions(items);
+      const currentId = activeSessionIdRef.current;
+      if (mode === 'keep' && currentId && items.some((item) => item.id === currentId)) {
+        return;
+      }
+      pendingRecommendsRef.current = {};
       if (items.length > 0) {
-        setActiveSessionId(items[0].id);
+        selectSession(items[0].id);
         const history = await loadAgentHistory(items[0].id);
         setMessages(mapHistory(history));
       } else {
-        setActiveSessionId('');
+        selectSession('');
         setMessages([]);
       }
     } catch {
       // 请求层已统一提示
     }
-  }, []);
+  }, [selectSession]);
 
   useEffect(() => {
     if (!token) {
@@ -358,7 +420,7 @@ export default function AiTutor() {
       websocket.disconnect();
       setSessions([]);
       setMessages([]);
-      setActiveSessionId('');
+      selectSession('');
       setStreaming(false);
       setStreamingMessageId('');
       pendingRecommendsRef.current = {};
@@ -366,7 +428,8 @@ export default function AiTutor() {
     }
     websocket.connect(token);
     websocket.onMessage('*', handleAgentPush);
-    void loadSessionList();
+    // 进入页面默认加载「普通对话」（与 sessionFilter 初始值一致）
+    void loadSessionList('normal');
     return () => {
       // 仅解绑回调，不断开连接：切换页面时让 AI 流式生成继续在后台运行，
       // 重新进入页面后重新注册回调，继续接收增量（或从历史同步最终结果）
@@ -408,15 +471,21 @@ export default function AiTutor() {
       if (!sessionId) {
         const session = await createAgentSession();
         sessionId = session.sessionId;
-        setActiveSessionId(sessionId);
-        setSessions((prev) => [mapSession(session), ...prev]);
+        selectSession(sessionId);
+        // 本页新建的会话属于普通对话：当前筛选在「编程练习」时切回默认筛选并刷新，避免新会话被过滤掉
+        if (sessionFilter === 'coding') {
+          setSessionFilter('normal');
+          void loadSessionList('normal', 'keep');
+        } else {
+          setSessions((prev) => [mapSession(session), ...prev]);
+        }
       }
       const result = await sendAgentMessage({
         sessionId,
         message: text,
         imageResourceIds: imageIds.length > 0 ? imageIds : undefined,
       });
-      setActiveSessionId(result.sessionId);
+      selectSession(result.sessionId);
       setStreamingMessageId(result.messageId);
       const pending = pendingRecommendsRef.current[result.messageId];
       delete pendingRecommendsRef.current[result.messageId];
@@ -524,8 +593,14 @@ export default function AiTutor() {
     }
     try {
       const session = await createAgentSession();
-      setSessions((prev) => [mapSession(session), ...prev]);
-      setActiveSessionId(session.sessionId);
+      selectSession(session.sessionId);
+      // 本页新建的会话属于普通对话：当前筛选在「编程练习」时切回默认筛选并刷新，避免新会话被过滤掉
+      if (sessionFilter === 'coding') {
+        setSessionFilter('normal');
+        void loadSessionList('normal', 'keep');
+      } else {
+        setSessions((prev) => [mapSession(session), ...prev]);
+      }
       setMessages([]);
       pendingRecommendsRef.current = {};
     } catch {
@@ -537,7 +612,7 @@ export default function AiTutor() {
     if (streaming || sessionId === activeSessionId) {
       return;
     }
-    setActiveSessionId(sessionId);
+    selectSession(sessionId);
     setMessages([]);
     pendingRecommendsRef.current = {};
     try {
@@ -560,14 +635,91 @@ export default function AiTutor() {
     setSessions((prev) => prev.filter((item) => item.id !== sessionId));
     if (activeSessionId === sessionId) {
       setMessages([]);
-      setActiveSessionId('');
+      selectSession('');
       pendingRecommendsRef.current = {};
     }
   };
 
+  /** 会话列表来源筛选切换：重新按场景拉列表（生成中不切换，避免丢掉正在流式输出的回复） */
+  const handleSessionFilterChange = (value: SessionFilter) => {
+    if (value === sessionFilter || streaming) {
+      return;
+    }
+    setSessionFilter(value);
+    void loadSessionList(value, 'keep');
+  };
+
+  /** 置顶 / 取消置顶（后端按 top desc 排序，成功后刷新列表拿最新顺序） */
+  const handleToggleTop = async (session: SessionItem) => {
+    const nextTop = session.top === 1 ? 0 : 1;
+    try {
+      await topAgentSession(session.id, nextTop);
+    } catch {
+      return;
+    }
+    setSessions((prev) => prev.map((item) => (
+      item.id === session.id ? { ...item, top: nextTop } : item
+    )));
+    void loadSessionList(sessionFilter, 'keep');
+  };
+
+  const openRenameSession = (session: SessionItem) => {
+    setRenameTarget(session);
+    setRenameTitle(session.title);
+  };
+
+  /** 重命名会话：成功后同步更新列表标题并刷新（保持当前选中会话不变） */
+  const submitRenameSession = async () => {
+    if (!renameTarget) {
+      return;
+    }
+    const title = renameTitle.trim();
+    if (!title) {
+      message.warning('请输入会话名称');
+      return;
+    }
+    setRenaming(true);
+    try {
+      await renameAgentSession(renameTarget.id, title.slice(0, SESSION_TITLE_MAX));
+      setSessions((prev) => prev.map((item) => (
+        item.id === renameTarget.id ? { ...item, title } : item
+      )));
+      setRenameTarget(null);
+      void loadSessionList(sessionFilter, 'keep');
+    } catch {
+      // 请求层已统一提示
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   const handleOpenRecommend = (item: ResourceRecommendItem) => {
+    if (openingResourceId) {
+      // 归属探活中：忽略重复点击，避免连点造成多次跳转
+      return;
+    }
     if (item.resourceId) {
-    navigate(`/course-material/resource/${item.resourceId}`);
+      const resourceId = item.resourceId;
+      // ownerId 非空 = 该学生的个人资源：课程教材页只服务公共资源，个人资源去「知识中心」预览
+      if (item.ownerId) {
+        navigate(`/resource-center?preview=${encodeURIComponent(resourceId)}`);
+        return;
+      }
+      if (item.ownerId === undefined || item.ownerId === null) {
+        // 历史推荐卡（在 ownerId 字段上线前生成，数据存在消息里已无法回溯）没有归属信息：
+        // 这里先探一次个人资源接口再决定去哪，避免「先跳课程页、页面发现取不到再二次跳转」的怪跳。
+        setOpeningResourceId(resourceId);
+        getStudentResource(resourceId)
+          .then(() => {
+            navigate(`/resource-center?preview=${encodeURIComponent(resourceId)}`);
+          })
+          .catch(() => {
+            navigate(`/course-material/resource/${resourceId}`);
+          })
+          .finally(() => setOpeningResourceId(null));
+        return;
+      }
+      navigate(`/course-material/resource/${resourceId}`);
       return;
     }
     if (item.sourceUrl) {
@@ -622,6 +774,16 @@ export default function AiTutor() {
           </Tooltip>
         </div>
 
+        <div className={styles.sessionFilter}>
+          <Segmented<SessionFilter>
+            block
+            size="small"
+            value={sessionFilter}
+            onChange={handleSessionFilterChange}
+            options={SESSION_FILTER_OPTIONS}
+          />
+        </div>
+
         <Button
           type="primary"
           block
@@ -634,7 +796,9 @@ export default function AiTutor() {
 
         <div className={styles.sessionList}>
           {sessions.length === 0 ? (
-            <div className={styles.emptySessions}>暂无历史会话</div>
+            <div className={styles.emptySessions}>
+              {sessionFilter === 'coding' ? '暂无编程练习会话' : sessionFilter === 'normal' ? '暂无普通对话' : '暂无历史会话'}
+            </div>
           ) : (
             sessions.map((session) => (
               <div
@@ -644,20 +808,47 @@ export default function AiTutor() {
               >
                 <MessageSquare size={15} />
                 <div className={styles.sessionMeta}>
-                  <div className={styles.sessionTitle}>{session.title}</div>
+                  <div className={styles.sessionTitle}>
+                    {session.top === 1 ? <Pin size={12} className={styles.pinMark} /> : null}
+                    <span className={styles.sessionTitleText}>{session.title}</span>
+                  </div>
                   <div className={styles.sessionTime}>{session.time}</div>
                 </div>
-                <Tooltip title="删除会话">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<Trash2 size={14} />}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void handleDeleteSession(session.id);
-                    }}
-                  />
-                </Tooltip>
+                <div className={styles.sessionActions}>
+                  <Tooltip title={session.top === 1 ? '取消置顶' : '置顶会话'}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={session.top === 1 ? <PinOff size={14} /> : <Pin size={14} />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleToggleTop(session);
+                      }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="重命名会话">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<Pencil size={14} />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openRenameSession(session);
+                      }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="删除会话">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<Trash2 size={14} />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDeleteSession(session.id);
+                      }}
+                    />
+                  </Tooltip>
+                </div>
               </div>
             ))
           )}
@@ -782,11 +973,14 @@ export default function AiTutor() {
                   {item.role === 'assistant' && item.animation ? (
                     <div className={styles.animationCard}>
                       <SvgStepPlayer script={item.animation} compact />
-                      <div className={styles.animationActions}>
-                        <Button size="small" type="text" icon={<Maximize size={13} />} onClick={() => navigate('/animation')}>
-                          全屏查看
-                        </Button>
-                      </div>
+                      {/* 小学两段不开放动画讲解（与 /animation 学段守卫、旁边「动画讲解」按钮同口径） */}
+                      {!isPrimaryStage ? (
+                        <div className={styles.animationActions}>
+                          <Button size="small" type="text" icon={<Maximize size={13} />} onClick={() => navigate('/animation')}>
+                            全屏查看
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                   {item.role === 'assistant' && item.quiz ? (
@@ -933,6 +1127,26 @@ export default function AiTutor() {
       </section>
 
       <KnowledgeDrawer open={knowledgeOpen} onClose={() => openKnowledge(false)} reloadKey={wikiReloadKey} />
+
+      <Modal
+        title="重命名会话"
+        open={!!renameTarget}
+        onOk={() => void submitRenameSession()}
+        onCancel={() => setRenameTarget(null)}
+        okText="保存"
+        confirmLoading={renaming}
+        destroyOnHidden
+      >
+        <Input
+          placeholder="会话名称（必填，最长 50 字）"
+          value={renameTitle}
+          maxLength={SESSION_TITLE_MAX}
+          showCount
+          autoFocus
+          onChange={(event) => setRenameTitle(event.target.value)}
+          onPressEnter={() => void submitRenameSession()}
+        />
+      </Modal>
     </div>
   );
 }

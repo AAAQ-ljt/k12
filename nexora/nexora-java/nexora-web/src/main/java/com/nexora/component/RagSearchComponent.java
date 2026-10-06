@@ -264,6 +264,7 @@ public class RagSearchComponent {
                 vo.setResourceId(resource.getResourceId());
                 vo.setResourceType(resource.getResourceType());
                 vo.setSourceUrl(hit.sourceUrl());
+                vo.setOwnerId(resource.getOwnerId());
                 result.add(vo);
             } else if (!StringTools.isEmpty(hit.sourceUrl()) && seen.add("url:" + hit.sourceUrl())) {
                 ResourceRecommendVO vo = new ResourceRecommendVO();

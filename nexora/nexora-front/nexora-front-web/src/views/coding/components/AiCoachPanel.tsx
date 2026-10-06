@@ -50,6 +50,9 @@ interface AiCoachPanelProps {
 const CODE_LIMIT = 1500;
 const OUTPUT_LIMIT = 600;
 
+/** 会话场景：3 = 编程练习（与后端 AgentChatComponent.SCENE_CODING 一致，仅新建会话时生效） */
+const SCENE_CODING = 3;
+
 /** 比赛教练模式提问前缀：把「只引导不代写」作为硬约束交给 AI */
 const COACH_PREFIX = '这是比赛中的题目，请只给思路和引导问题，不要直接给完整代码。';
 
@@ -201,6 +204,9 @@ export default function AiCoachPanel({
         const result = await sendAgentMessage({
           sessionId: sessionIdRef.current || undefined,
           message: prompt,
+          // 场景 3 = 编程练习（仅后端新建会话时生效）：会话列表可按来源筛选，标题带上当前题目
+          scene: SCENE_CODING,
+          sessionTitle: taskTitle ? `编程练习 · ${taskTitle}` : '编程练习',
         });
         sessionIdRef.current = result.sessionId;
         streamingIdRef.current = result.messageId;

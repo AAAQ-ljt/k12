@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   App, Breadcrumb, Button, Empty, Input, Modal, Progress, Select, Space, Table, Tag, Tree, Upload,
 } from 'antd';
@@ -11,7 +11,7 @@ import VideoPlayer from '@/views/course-material/components/VideoPlayer';
 import DocumentViewer from '@/views/course-material/components/DocumentViewer';
 import SlidePreview from '@/views/course-material/components/SlidePreview';
 import {
-  addStudentDirectory, deleteStudentDirectory, deleteStudentResource, getStudentResourceDownloadUrl,
+  addStudentDirectory, deleteStudentDirectory, deleteStudentResource, getStudentResource, getStudentResourceDownloadUrl,
   getStudentResourceFileUrl, getStudentResourceImageUrl, getStudentResourceVideoUrl, loadStudentDirectories,
   loadStudentResources, loadStudentStorage, initStudentKnowledgeBase, moveStudentResource, prepareStudentUpload,
   sortStudentDirectories, updateStudentDirectory, updateStudentResource, uploadStudentShard,
@@ -117,6 +117,7 @@ function detectResourceType(fileName: string) {
 export default function ResourceCenter() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [directories, setDirectories] = useState<StudentDirectory[]>([]);
   const [currentDirId, setCurrentDirId] = useState<string>();
   const [resources, setResources] = useState<StudentResource[]>([]);
@@ -534,15 +535,49 @@ export default function ResourceCenter() {
   /** 预览：绘本/动画跳转对应页，其余打开预览弹窗 */
   const handlePreview = (record: StudentResource) => {
     if (record.resourceType === 'PICTURE_BOOK') {
+      // 绘本页（views/picture-book）目前只按列表页内状态打开阅读弹窗，不支持按 query/state 直达指定绘本，保持只跳列表
       navigate('/picture-book');
       return;
     }
     if (record.resourceType === 'ANIMATION') {
-      navigate('/animation');
+      // 动画播放页支持 /animation/:resourceId 直达，带上资源 id 避免落在列表页
+      navigate(`/animation/${record.resourceId}`);
       return;
     }
     setPreviewResource(record);
   };
+
+  /**
+   * AI 推荐卡跳入：URL 带 ?preview={resourceId} 时直接拉取个人资源并打开预览。
+   * 用后即清（replace），避免刷新页面反复弹窗；资源不存在则提示。
+   */
+  const previewQueryId = searchParams.get('preview');
+  const previewHandledRef = useRef('');
+  useEffect(() => {
+    if (!previewQueryId) {
+      previewHandledRef.current = '';
+      return;
+    }
+    // 同一 resourceId 只处理一次（含开发模式 StrictMode 的重复执行）
+    if (previewHandledRef.current === previewQueryId) {
+      return;
+    }
+    previewHandledRef.current = previewQueryId;
+    // 用后即清：只删 preview 这个键，保留当前 URL 上其它 query 参数
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('preview');
+      return next;
+    }, { replace: true });
+    void (async () => {
+      try {
+        const resource = await getStudentResource(previewQueryId);
+        handlePreview(resource);
+      } catch {
+        message.error('资源不存在或已删除');
+      }
+    })();
+  }, [previewQueryId, setSearchParams, message, handlePreview]);
 
   const columns: TableProps<StudentResource>['columns'] = [
     {
@@ -624,6 +659,8 @@ export default function ResourceCenter() {
             size="small"
             icon={<Download size={14} />}
             href={getStudentResourceDownloadUrl(record.resourceId)}
+            target="_blank"
+            rel="noopener noreferrer"
           />
           <Button
             type="text"
@@ -936,6 +973,8 @@ export default function ResourceCenter() {
             type="primary"
             icon={<Download size={15} />}
             href={getStudentResourceDownloadUrl(previewResource.resourceId)}
+            target="_blank"
+            rel="noopener noreferrer"
           >
             下载
           </Button>

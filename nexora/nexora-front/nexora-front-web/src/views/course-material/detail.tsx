@@ -21,6 +21,7 @@ import {
   getResourceVideoUrl,
   type StudentResourceInfo,
 } from '@/api/resource';
+import { getStudentResource } from '@/api/studentResource';
 import { reportStudy } from '@/api/course';
 import VideoPlayer from './components/VideoPlayer';
 import DocumentViewer from './components/DocumentViewer';
@@ -131,9 +132,20 @@ export default function CourseMaterialDetail() {
         }
         if (error instanceof Error && error.message.includes('加入')) {
           setNeedJoin(true);
-        } else {
-          setNotFound(true);
+          return;
         }
+        // 兼容：个人资源（自己上传/保存的）不属于课程教材，课程页取不到详情。
+        // 历史推荐卡里没有 ownerId 时点击会走到这里，此时再试一次个人资源详情，
+        // 命中就转到「知识中心」预览，避免直接报「资源不存在或暂不可用」。
+        getStudentResource(resourceId)
+          .then(() => {
+            navigate(`/resource-center?preview=${encodeURIComponent(resourceId)}`, { replace: true });
+          })
+          .catch(() => {
+            if (active) {
+              setNotFound(true);
+            }
+          });
       })
       .finally(() => {
         if (active) {
@@ -242,7 +254,8 @@ export default function CourseMaterialDetail() {
           <Button
             icon={<Download size={16} />}
             onClick={() => {
-              window.location.href = getResourceDownloadUrl(resource.resourceId);
+              // 新标签页下载：失败只影响新标签，用户不丢当前 SPA 页面
+              window.open(getResourceDownloadUrl(resource.resourceId), '_blank', 'noopener,noreferrer');
             }}
           >
             下载

@@ -167,7 +167,18 @@ public class AgentChatComponent {
     private String projectFolder;
 
     public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage, List<String> imageResourceIds) {
-        AgentSession session = resolveSession(user, sessionId);
+        return sendMessage(user, sessionId, userMessage, imageResourceIds, null, null);
+    }
+
+    /**
+     * 发送消息（带场景标记）
+     *
+     * @param scene        新会话场景（0 自由对话 / 3 编程练习），仅新建会话时生效
+     * @param sessionTitle 新会话标题（仅新建会话时生效）
+     */
+    public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage,
+                                    List<String> imageResourceIds, Integer scene, String sessionTitle) {
+        AgentSession session = resolveSession(user, sessionId, scene, sessionTitle);
 
         // 校验并解析随消息图片（个人库 IMAGE 资源），带图时走视觉模型
         List<String> imageDataUrls = new ArrayList<>();
@@ -231,13 +242,30 @@ public class AgentChatComponent {
         agentMessageService.updateAgentMessageByMessageId(updateBean, messageId);
     }
 
+    /** 场景：自由对话 */
+    public static final int SCENE_CHAT = 0;
+
+    /** 场景：编程练习（学生端会话列表按此筛选，避免与普通对话混在一起） */
+    public static final int SCENE_CODING = 3;
+
     public AgentSession createSession(TokenUserInfoDTO user) {
+        return createSession(user, SCENE_CHAT, null);
+    }
+
+    /**
+     * 创建会话
+     *
+     * @param scene 场景：0 自由对话 / 1 课程引导 / 2 路径引导 / **3 编程练习**（学生端会话列表可按场景筛选）
+     * @param title 指定标题（如「编程练习 · 星星塔」）；为空时由首条用户消息截断生成
+     */
+    public AgentSession createSession(TokenUserInfoDTO user, Integer scene, String title) {
         AgentSession session = new AgentSession();
         session.setSessionId(generateId());
         session.setUserId(user.getUserId());
-        session.setTitle("新对话");
+        session.setTitle(StringTools.isEmpty(title) ? "新对话" : title);
         session.setStage(user.getStage());
-        session.setScene(0);
+        session.setScene(scene == null ? SCENE_CHAT : scene);
+        session.setTop(0);
         session.setMessageCount(0);
         session.setStatus(0);
         session.setCreateTime(new Date());
@@ -246,11 +274,43 @@ public class AgentChatComponent {
         return session;
     }
 
-    public List<AgentSession> sessionList(TokenUserInfoDTO user) {
+    /** 学生端会话列表：置顶优先，其余按最后消息时间倒序 */
+    public List<AgentSession> sessionList(TokenUserInfoDTO user, Integer scene, Integer sceneNot) {
         AgentSessionQuery query = new AgentSessionQuery();
         query.setUserId(user.getUserId());
-        query.setOrderBy("last_message_time desc");
+        query.setScene(scene);
+        query.setSceneNot(sceneNot);
+        query.setOrderBy("a.top desc, a.last_message_time desc");
         return agentSessionService.findListByParam(query);
+    }
+
+    /** 重命名会话 */
+    public void renameSession(TokenUserInfoDTO user, String sessionId, String title) {
+        AgentSession session = requireOwnSession(user, sessionId);
+        if (StringTools.isEmpty(title)) {
+            throw new BusinessException("会话名称不能为空");
+        }
+        AgentSession updateBean = new AgentSession();
+        updateBean.setTitle(title.length() > 50 ? title.substring(0, 50) : title);
+        updateBean.setUpdateTime(new Date());
+        agentSessionService.updateAgentSessionBySessionId(updateBean, session.getSessionId());
+    }
+
+    /** 置顶 / 取消置顶 */
+    public void topSession(TokenUserInfoDTO user, String sessionId, Integer top) {
+        AgentSession session = requireOwnSession(user, sessionId);
+        AgentSession updateBean = new AgentSession();
+        updateBean.setTop(top != null && top == 1 ? 1 : 0);
+        updateBean.setUpdateTime(new Date());
+        agentSessionService.updateAgentSessionBySessionId(updateBean, session.getSessionId());
+    }
+
+    private AgentSession requireOwnSession(TokenUserInfoDTO user, String sessionId) {
+        AgentSession session = agentSessionService.getAgentSessionBySessionId(sessionId);
+        if (session == null || !user.getUserId().equals(session.getUserId())) {
+            throw new BusinessException("会话不存在");
+        }
+        return session;
     }
 
     public List<AgentMessage> historyMessage(TokenUserInfoDTO user, String sessionId) {
@@ -882,9 +942,9 @@ public class AgentChatComponent {
         return historyMessages;
     }
 
-    private AgentSession resolveSession(TokenUserInfoDTO user, String sessionId) {
+    private AgentSession resolveSession(TokenUserInfoDTO user, String sessionId, Integer scene, String sessionTitle) {
         if (StringTools.isEmpty(sessionId)) {
-            return createSession(user);
+            return createSession(user, scene, sessionTitle);
         }
         AgentSession session = agentSessionService.getAgentSessionBySessionId(sessionId);
         if (session == null || !user.getUserId().equals(session.getUserId())) {

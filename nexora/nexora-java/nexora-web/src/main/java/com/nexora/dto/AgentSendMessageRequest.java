@@ -22,6 +22,18 @@ public class AgentSendMessageRequest {
      */
     private List<String> imageResourceIds;
 
+    /** 新会话场景：0 自由对话 / 3 编程练习（仅新建会话时生效） */
+    private Integer scene;
+
+    /** 新会话标题（仅新建会话时生效，如「编程练习 · 星星塔」） */
+    private String sessionTitle;
+
+    /** 重命名会话用的新名称 */
+    private String title;
+
+    /** 置顶：0否 1是 */
+    private Integer top;
+
     public String getSessionId() {
         return sessionId;
     }
@@ -44,5 +56,37 @@ public class AgentSendMessageRequest {
 
     public void setImageResourceIds(List<String> imageResourceIds) {
         this.imageResourceIds = imageResourceIds;
+    }
+
+    public Integer getScene() {
+        return scene;
+    }
+
+    public void setScene(Integer scene) {
+        this.scene = scene;
+    }
+
+    public String getSessionTitle() {
+        return sessionTitle;
+    }
+
+    public void setSessionTitle(String sessionTitle) {
+        this.sessionTitle = sessionTitle;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public Integer getTop() {
+        return top;
+    }
+
+    public void setTop(Integer top) {
+        this.top = top;
     }
 }

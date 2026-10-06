@@ -45,6 +45,9 @@ public class AgentSession implements Serializable {
 	 */
 	private Integer scene;
 
+	/** 置顶：0否 1是（列表按 top desc, last_message_time desc 排序） */
+	private Integer top;
+
 	/**
 	 * 消息数【冗余：会话列表展示】
 	 */
@@ -123,6 +126,14 @@ public class AgentSession implements Serializable {
 
 	public Integer getScene(){
 		return this.scene;
+	}
+
+	public void setTop(Integer top){
+		this.top = top;
+	}
+
+	public Integer getTop(){
+		return this.top;
 	}
 
 	public void setMessageCount(Integer messageCount){

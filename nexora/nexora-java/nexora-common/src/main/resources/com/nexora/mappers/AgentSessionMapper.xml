@@ -56,6 +56,9 @@
 			<if test="query.scene != null">
 				 and  a.scene = #{query.scene}
 			</if>
+			<if test="query.sceneNot != null">
+				 and  a.scene != #{query.sceneNot}
+			</if>
 			<if test="query.messageCount != null">
 				 and  a.message_count = #{query.messageCount}
 			</if>
