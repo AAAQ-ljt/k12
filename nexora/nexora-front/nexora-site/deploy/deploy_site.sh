@@ -24,8 +24,9 @@ FRPC_CONF=/etc/frp/frpc.toml
 
 # ---- 0) 前置检查 ----
 [ -f "$SITE_PKG" ] || { echo "!! 缺少 $SITE_PKG，先用 nx_put.py 上传 dist 打包"; exit 1; }
-if ss -tln | grep -q ":${SITE_PORT} "; then
-  echo "!! 端口 ${SITE_PORT} 已被占用，先确认占用方再调整 SITE_PORT"; exit 1
+# 仅首次部署（nginx 站点尚未创建）要求端口空闲；更新跑时 8090 由本站点的 nginx 持有是正常状态
+if [ ! -f /etc/nginx/sites-available/nexora-site ] && ss -tln | grep -q ":${SITE_PORT} "; then
+  echo "!! 首次部署但端口 ${SITE_PORT} 已被占用，先确认占用方再调整 SITE_PORT"; exit 1
 fi
 
 # ---- 1) 解压 dist（先解到 .tmp 校验，再换目录） ----
@@ -78,9 +79,11 @@ echo "  nginx: $(systemctl is-active nginx)"
 
 # ---- 3) frp：公网 80 -> 本机 8090（幂等追加） ----
 log "追加 frp 映射（公网 80 -> 本机 ${SITE_PORT}）"
+FRPC_CHANGED=0
 if grep -Eq 'name *= *"site"' "$FRPC_CONF"; then
   echo "  frpc.toml 已含 site 代理，跳过追加"
 else
+  FRPC_CHANGED=1
   cp -n "$FRPC_CONF" "$FRPC_CONF.bak" || true
   cat >> "$FRPC_CONF" <<'EOF'
 
@@ -98,8 +101,12 @@ EOF
   echo "  已追加（原配置备份在 ${FRPC_CONF}.bak）"
 fi
 
-# ---- 4) 重启 frpc（延迟 1 秒，脚本先退出保住 SSH 通道） ----
-log "调度 frpc 重启（1 秒后执行）"
-nohup bash -c "sleep 1; systemctl restart frpc" >/tmp/frpc-restart.log 2>&1 &
-log "完成。约 5 秒后公网可访问 http://121.40.149.155/ ，验收： curl -sI http://121.40.149.155/"
+# ---- 4) 重启 frpc（仅隧道配置有变化时；纯内容更新不动隧道，避免无谓瞬断） ----
+if [ "$FRPC_CHANGED" = "1" ]; then
+  log "调度 frpc 重启（1 秒后执行）"
+  nohup bash -c "sleep 1; systemctl restart frpc" >/tmp/frpc-restart.log 2>&1 &
+else
+  log "frpc 配置未变化，跳过重启（纯内容更新）"
+fi
+log "完成。公网入口 http://121.40.149.155/ ，验收： curl -sI http://121.40.149.155/"
 echo "DEPLOY_SITE_DONE"
