@@ -70,6 +70,35 @@ public class QuizGenerateComponent {
     /**
      * 生成校验后的测验脚本；LLM 输出不合法时抛出异常（调用方降级为文字出题）
      */
+    /**
+     * 从学生需求里解析"要几道题"（支持「出 3 道题」「来5题」「3 道」等写法）；解析不到返回 0。
+     */
+    private int extractQuestionCount(String topic) {
+        if (topic == null || topic.isBlank()) {
+            return 0;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("([0-9０-９一二三四五六七八九十])\s*道?\s*题").matcher(topic);
+        if (!matcher.find()) {
+            return 0;
+        }
+        String raw = matcher.group(1);
+        int value;
+        if (raw.matches("[0-9]")) {
+            value = Integer.parseInt(raw);
+        } else if (raw.matches("[０-９]")) {
+            value = Integer.parseInt(raw) - 65248; // 全角数字转半角
+        } else {
+            String digits = "一二三四五六七八九十";
+            int index = digits.indexOf(raw);
+            value = index >= 0 ? index + 1 : 0;
+            if ("十".equals(raw)) {
+                value = 10;
+            }
+        }
+        // 只接受 1~MAX_QUESTIONS 之间的题量，其它当作没提
+        return value >= 1 && value <= MAX_QUESTIONS ? value : 0;
+    }
+
     public QuizScript generate(String stage, String topic) {
         return generate(stage, topic, null);
     }
@@ -81,8 +110,11 @@ public class QuizGenerateComponent {
     public QuizScript generate(String stage, String topic, String contextDigest) {
         String stageDesc = stageDesc(stage);
         String systemPrompt = String.format(SYSTEM_PROMPT, stageDesc, stageDesc);
+        // 学生明确说了"出 3 道题"就要正好 3 道（原来提示词写死 3-5 道，忽略了这个要求 —— 2026-10-07 修复）
+        int wantCount = extractQuestionCount(topic);
+        String countHint = wantCount > 0 ? "（学生明确要求：正好出 " + wantCount + " 道题，不要多也不要少）" : "";
         String userPrompt = "请围绕主题「" + (topic == null ? "" : topic)
-                + "」出一份小测验（学生学段：" + stageDesc + "）。只输出 JSON。";
+                + "」出一份小测验（学生学段：" + stageDesc + "）。只输出 JSON。" + countHint;
         if (!StringTools.isEmpty(contextDigest)) {
             userPrompt += "\n\n【会话摘录（用于确定「刚才讲解的内容」）】\n" + contextDigest.stripTrailing();
         }
@@ -98,7 +130,12 @@ public class QuizGenerateComponent {
             log.error("出题生成调用失败", e);
             throw new RuntimeException("出题失败");
         }
-        return parseAndValidate(raw);
+        QuizScript quiz = parseAndValidate(raw);
+        // 模型没听话时兜底：学生要 N 道就只保留前 N 道（不补齐，避免编造）
+        if (wantCount > 0 && quiz.questions().size() > wantCount) {
+            return new QuizScript(quiz.title(), new java.util.ArrayList<>(quiz.questions().subList(0, wantCount)));
+        }
+        return quiz;
     }
 
     private QuizScript parseAndValidate(String raw) {
