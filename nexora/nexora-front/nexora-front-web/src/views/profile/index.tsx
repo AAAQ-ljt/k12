@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { App, Avatar, Button, Card, Modal, Progress, Select, Space, Spin, Tag, Tooltip } from 'antd';
 import {
+  Lightbulb,
   BookImage, Compass, FolderOpen, GraduationCap, PenLine, PlaySquare, Route, Sparkles, LogOut,
   CalendarCheck, ChevronDown, ChevronRight, ChevronUp, Flame, Medal, Target, Trophy,
 } from 'lucide-react';
@@ -26,6 +27,7 @@ import {
 import { contestPhaseOf, formatDuration, formatTimeWindow } from '@/utils/coding';
 import { CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
+import AiPreferenceModal from '@/components/profile/AiPreferenceModal';
 import GrowthCenterCard from '@/components/point/GrowthCenterCard';
 import { usePointStore } from '@/stores/point';
 import { levelTitle } from '@/utils/point';
@@ -82,6 +84,8 @@ export default function Profile() {
   const [rankContest, setRankContest] = useState<CodingContestVO | null>(null);
   const [loading, setLoading] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  /** AI 偏好设置弹窗（计划 C2）：与「编辑学习档案」并排 */
+  const [aiPrefOpen, setAiPrefOpen] = useState(false);
   const [locatingId, setLocatingId] = useState<string | null>(null);
   /** 今日待办是否展开全部（默认折叠展示前 DUE_PREVIEW_COUNT 条） */
   const [dueExpanded, setDueExpanded] = useState(false);
@@ -308,6 +312,10 @@ export default function Profile() {
             <Button block icon={<PenLine size={14} />} style={{ marginTop: 10 }} onClick={() => setProfileOpen(true)}>
               编辑学习档案
             </Button>
+            <Button block icon={<Lightbulb size={14} />} style={{ marginTop: 8 }} onClick={() => setAiPrefOpen(true)}>
+              AI 偏好设置
+            </Button>
+            <div className={styles.prefHint}>设定 AI 怎么称呼你、讲多细、先举例还是先讲原理</div>
           </Card>
 
           <Card>
@@ -623,6 +631,8 @@ export default function Profile() {
           void load();
         }}
       />
+
+      <AiPreferenceModal open={aiPrefOpen} onClose={() => setAiPrefOpen(false)} />
 
       <Modal
         open={rankOpen}

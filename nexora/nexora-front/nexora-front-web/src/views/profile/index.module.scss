@@ -597,3 +597,11 @@
   color: var(--warm-brown-600);
   background: var(--warm-orange-100);
 }
+
+/* 「AI 偏好设置」按钮下的一句说明（计划 C2） */
+.prefHint {
+  margin-top: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  line-height: var(--line-height-base);
+}
