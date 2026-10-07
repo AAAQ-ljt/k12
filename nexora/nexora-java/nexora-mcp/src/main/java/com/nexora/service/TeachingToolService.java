@@ -4,7 +4,10 @@ import com.nexora.entity.po.CourseChapterLesson;
 import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.CourseInfo;
 import com.nexora.entity.po.CourseStudyLessonProgress;
+import com.nexora.component.LearningPathComponent;
 import com.nexora.entity.po.KnowledgePoint;
+import com.nexora.entity.po.LearningPath;
+import com.nexora.entity.po.LearningPathItem;
 import com.nexora.entity.po.ResourceInfo;
 import com.nexora.entity.po.StudentLearningRecord;
 import com.nexora.entity.po.UserInfo;
@@ -69,6 +72,10 @@ public class TeachingToolService {
         }
         return code;
     }
+
+    /** 学习路径（二期 7.60 第二批：路径类工具复用 common 的组件，不新写 SQL） */
+    @Resource
+    private LearningPathComponent learningPathComponent;
 
     @Resource
     private KnowledgePointService knowledgePointService;
@@ -455,6 +462,199 @@ public class TeachingToolService {
         } catch (Exception e) {
             log.warn("saveLearningRecord 失败", e);
             return "记录学习行为失败：" + e.getMessage();
+        }
+    }
+
+    // ==================== 学习路径工具（二期 7.60 第二批）====================
+
+    @Tool(name = "queryLearningPath", description = "查询学生的全部学习路径：每条路径的标题、进行状态、进度、当前该学的节点，"
+            + "以及还没掌握的节点状态（进行中/未解锁）。当学生问「我的学习路径是什么 / 我学到哪了 / 下一步学哪个节点」时先调用本工具。")
+    public String queryLearningPath(
+            @ToolParam(description = "学生用户ID，由系统自动注入") String userId,
+            @ToolParam(description = "学段编码，由系统自动注入") String stage) {
+        try {
+            if (StringTools.isEmpty(userId)) {
+                return "参数错误：缺少学生ID";
+            }
+            List<LearningPathComponent.PathWithItems> paths = learningPathComponent.listMyPaths(userId.trim());
+            if (paths.isEmpty()) {
+                return "该学生还没有学习路径（可在学生端「学习路径」页生成一条）";
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("共 ").append(paths.size()).append(" 条学习路径：\n");
+            for (LearningPathComponent.PathWithItems each : paths) {
+                LearningPath path = each.path();
+                sb.append("\n【").append(path.getTitle()).append("】")
+                        .append(path.getStatus() != null && path.getStatus() == 1 ? "（已完成）" : "（进行中）")
+                        .append(" 进度 ").append(path.getProgress() == null ? 0 : path.getProgress()).append("%")
+                        .append("，节点 ").append(path.getFinishedItems() == null ? 0 : path.getFinishedItems())
+                        .append("/").append(path.getTotalItems() == null ? 0 : path.getTotalItems())
+                        .append("；pathId=").append(path.getPathId()).append("\n");
+                List<LearningPathItem> items = each.items() == null ? List.<LearningPathItem>of() : each.items();
+                int index = 1;
+                for (LearningPathItem item : items) {
+                    if (item.getStatus() != null && item.getStatus() == 2) {
+                        continue;
+                    }
+                    if (index > 6) {
+                        sb.append("  …（其余节点见学生端）\n");
+                        break;
+                    }
+                    sb.append("  ").append(index++).append(". ").append(item.getKnowledgePointName())
+                            .append(item.getStatus() != null && item.getStatus() == 0 ? "（未解锁）" : "（进行中）");
+                    if (item.getDueDate() != null) {
+                        sb.append("，计划完成 ").append(item.getDueDate());
+                    }
+                    sb.append("；itemId=").append(item.getItemId()).append("\n");
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("queryLearningPath 失败", e);
+            return "查询学习路径失败：" + e.getMessage();
+        }
+    }
+
+    @Tool(name = "queryPathNode", description = "查询某个学习路径节点的详情：节点状态、是否已到复习时间、计划/完成时间、本节点任务，"
+            + "以及该知识点的掌握度、练习次数与下次复习时间。学生问「我这个节点学得怎么样 / 要不要复习某知识点」时调用。")
+    public String queryPathNode(
+            @ToolParam(description = "节点名或其中关键词（与知识点名一致）") String nodeName,
+            @ToolParam(description = "学生用户ID，由系统自动注入") String userId) {
+        try {
+            if (StringTools.isEmpty(userId) || StringTools.isEmpty(nodeName)) {
+                return "参数错误：缺少学生ID或节点名";
+            }
+            String keyword = nodeName.trim();
+            List<LearningPathComponent.PathWithItems> paths = learningPathComponent.listMyPaths(userId.trim());
+            LearningPathItem hit = null;
+            String hitPathTitle = null;
+            for (LearningPathComponent.PathWithItems each : paths) {
+                List<LearningPathItem> items = each.items() == null ? List.<LearningPathItem>of() : each.items();
+                for (LearningPathItem item : items) {
+                    String itemName = item.getKnowledgePointName() == null ? "" : item.getKnowledgePointName();
+                    if (!itemName.isBlank() && (itemName.contains(keyword) || keyword.contains(itemName))) {
+                        hit = item;
+                        hitPathTitle = each.path().getTitle();
+                        break;
+                    }
+                }
+                if (hit != null) {
+                    break;
+                }
+            }
+            if (hit == null) {
+                return "没有找到名为「" + keyword + "」的路径节点，可以先用 queryLearningPath 看学生的全部节点";
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("节点《").append(hit.getKnowledgePointName()).append("》");
+            if (hitPathTitle != null) {
+                sb.append("（属于路径《").append(hitPathTitle).append("》）");
+            }
+            sb.append("\n- 状态：")
+                    .append(hit.getStatus() == null ? "未知"
+                            : (hit.getStatus() == 2 ? "已掌握" : hit.getStatus() == 0 ? "未解锁" : "进行中"))
+                    .append("\n- 是否已到复习时间：")
+                    .append(hit.getDueDate() != null && hit.getDueDate().compareTo(new java.util.Date()) <= 0 ? "是" : "否");
+            if (hit.getDueDate() != null) {
+                sb.append("\n- 计划完成：").append(hit.getDueDate());
+            }
+            if (hit.getFinishTime() != null) {
+                sb.append("\n- 实际完成：").append(hit.getFinishTime());
+            }
+            List<KnowledgeMasteryVO> masteryList = learningAnalysisMapper.selectMasteryList(userId.trim());
+            for (KnowledgeMasteryVO mastery : masteryList) {
+                if (hit.getKnowledgePointId() != null && hit.getKnowledgePointId().equals(mastery.getKnowledgePointId())) {
+                    sb.append("\n- 掌握度：").append(mastery.getMasteryScore() == null ? 0 : mastery.getMasteryScore())
+                            .append("，已练习 ").append(mastery.getPracticeCount() == null ? 0 : mastery.getPracticeCount())
+                            .append(" 次，正确率 ").append(mastery.getAccuracy() == null ? 0 : mastery.getAccuracy()).append("%");
+                    if (mastery.getNextReviewTime() != null) {
+                        sb.append("，下次复习 ").append(mastery.getNextReviewTime());
+                    }
+                    break;
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("queryPathNode 失败", e);
+            return "查询节点失败：" + e.getMessage();
+        }
+    }
+
+    @Tool(name = "planNextStep", description = "给出「下一步学什么、复习什么」的建议清单：依据学生的真实到期待复习节点、进行中的节点与掌握度薄弱知识点排优先级。"
+            + "学生问「我下一步该学什么 / 我哪里薄弱 / 今天学点啥」时调用；必须基于返回的真实清单作答，不得只讲通用方法。")
+    public String planNextStep(
+            @ToolParam(description = "学生用户ID，由系统自动注入") String userId,
+            @ToolParam(description = "学段编码，由系统自动注入") String stage) {
+        try {
+            if (StringTools.isEmpty(userId)) {
+                return "参数错误：缺少学生ID";
+            }
+            String uid = userId.trim();
+            List<LearningPathComponent.PathWithItems> paths = learningPathComponent.listMyPaths(uid);
+            List<String> review = new java.util.ArrayList<>();
+            List<String> current = new java.util.ArrayList<>();
+            java.util.Date now = new java.util.Date();
+            for (LearningPathComponent.PathWithItems each : paths) {
+                String title = each.path().getTitle();
+                List<LearningPathItem> items = each.items() == null ? List.<LearningPathItem>of() : each.items();
+                for (LearningPathItem item : items) {
+                    if (item.getStatus() != null && item.getStatus() == 2) {
+                        continue;
+                    }
+                    String label = item.getKnowledgePointName() + "（路径《" + title + "》）";
+                    boolean dueNow = item.getDueDate() != null && item.getDueDate().compareTo(now) <= 0;
+                    if (dueNow) {
+                        review.add(label);
+                    } else if (item.getStatus() != null && item.getStatus() == 1 && current.size() < 3) {
+                        current.add(label);
+                    }
+                }
+            }
+            List<KnowledgeMasteryVO> masteryList = learningAnalysisMapper.selectMasteryList(uid);
+            List<KnowledgeMasteryVO> weak = new java.util.ArrayList<>();
+            for (KnowledgeMasteryVO item : masteryList) {
+                int score = item.getMasteryScore() == null ? 0 : item.getMasteryScore();
+                int practice = item.getPracticeCount() == null ? 0 : item.getPracticeCount();
+                if (practice > 0 && score < 70) {
+                    weak.add(item);
+                }
+            }
+            weak.sort(java.util.Comparator.comparingInt(item -> item.getMasteryScore() == null ? 0 : item.getMasteryScore()));
+
+            if (review.isEmpty() && current.isEmpty() && weak.isEmpty()) {
+                return "该学生暂时没有到期待复习的节点与掌握度薄弱点，可建议他先按学习路径推进当前节点，或做一次练习以形成数据。";
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("建议按下面的顺序安排（数据来自学生真实学习记录）：\n");
+            int order = 1;
+            if (!review.isEmpty()) {
+                sb.append("\n【优先：到期待复习】\n");
+                for (String item : review) {
+                    sb.append(order++).append(". ").append(item).append("\n");
+                }
+            }
+            if (!current.isEmpty()) {
+                sb.append("\n【继续推进：进行中的节点】\n");
+                for (String item : current) {
+                    sb.append(order++).append(". ").append(item).append("\n");
+                }
+            }
+            if (!weak.isEmpty()) {
+                sb.append("\n【薄弱知识点（建议回炉）】\n");
+                int limit = 0;
+                for (KnowledgeMasteryVO item : weak) {
+                    if (limit++ >= 5) {
+                        break;
+                    }
+                    sb.append(order++).append(". ").append(item.getKnowledgePointName())
+                            .append("（掌握度 ").append(item.getMasteryScore() == null ? 0 : item.getMasteryScore())
+                            .append("，练习 ").append(item.getPracticeCount() == null ? 0 : item.getPracticeCount()).append(" 次）\n");
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("planNextStep 失败", e);
+            return "生成下一步建议失败：" + e.getMessage();
         }
     }
 }

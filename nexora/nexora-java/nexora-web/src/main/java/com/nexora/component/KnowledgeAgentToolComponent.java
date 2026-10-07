@@ -200,6 +200,29 @@ public class KnowledgeAgentToolComponent {
                     """
                             {"type":"object","properties":{}}""",
                     true, true, false),
+            new McpToolSpec("queryLearningPath",
+                    "查询当前学生的全部学习路径：每条路径的标题、进行状态、进度与还没掌握的节点（含节点状态、计划完成时间）。"
+                    + "学生问「我的学习路径是什么 / 我学到哪了 / 下一步学哪个节点」时先调用本工具。",
+                    """
+                            {"type":"object","properties":{}}
+                    """,
+                    true, true, false),
+            new McpToolSpec("queryPathNode",
+                    "查询某个学习路径节点的详情：节点状态、是否已到复习时间、计划/完成时间，以及该知识点的掌握度、练习次数与下次复习时间。"
+                    + "学生问「我这个节点学得怎么样 / 要不要复习某个知识点」时调用。",
+                    """
+                            {"type":"object","properties":{
+                              "nodeName":{"type":"string","description":"节点名或其中关键词（与知识点名一致）"}
+                            },"required":["nodeName"]}
+                    """,
+                    false, true, false),
+            new McpToolSpec("planNextStep",
+                    "给出「下一步学什么、复习什么」的建议清单：依据学生的真实到期待复习节点、进行中的节点与掌握度薄弱知识点排优先级。"
+                    + "学生问「我下一步该学什么 / 我哪里薄弱 / 今天学点啥」时调用，必须基于返回的真实清单作答。",
+                    """
+                            {"type":"object","properties":{}}
+                    """,
+                    true, true, false),
             new McpToolSpec("saveLearningRecord",
                     "记录学生学习行为（VIEW/COMPLETE/PRACTICE/ANIMATION/PARSE/AI_CHAT）。"
                             + "仅在用户明确要求记录学习行为时调用，不要擅自记录。",
