@@ -285,7 +285,12 @@ export default function AiTutor() {
       navigate(location.pathname, { replace: true, state: null });
       // 一键直达（二期 7.60）：带上下文的问题直接发出，学生不必再点一次发送
       if (state.autoSend) {
-        void handleSend(state.presetQuestion);
+        // 一键直达：清空当前视图并置标记，避免会话列表加载抢视图（见 autoSendPendingRef 注释）
+        autoSendPendingRef.current = true;
+        setMessages([]);
+        void handleSend(state.presetQuestion).finally(() => {
+          autoSendPendingRef.current = false;
+        });
       }
     }
     // handleSend 在本次渲染稍后定义，但 effect 在渲染完成后才执行，这里引用是安全的
@@ -300,6 +305,15 @@ export default function AiTutor() {
   const pendingRecommendsRef = useRef<Record<string, ResourceRecommendItem[]>>({});
   /** 流式状态镜像（供 WS 回调在重连时判断，避免闭包拿到旧值） */
   const streamingRef = useRef(false);
+  /**
+   * 「一键直达」自动发送进行中标记（二期 7.60）。
+   *
+   * 从学习路径节点跳过来时，本页会在挂载后同时发生两件事：
+   * ① 会话列表加载完成后自动选中「最新一条会话」并载入它的历史；② 自动发送新建会话并填入提问。
+   * 两者都写 messages，于是新会话里会混进上一条对话的内容（刷新后才恢复）。
+   * 这个标记用来让 ① 在自动发送期间不要抢视图。
+   */
+  const autoSendPendingRef = useRef(false);
   const streamingMessageIdRef = useRef('');
   /** 与 activeSessionId 同步的即时引用：列表刷新判断「当前会话是否还在新列表中」时用 */
   const activeSessionIdRef = useRef('');
@@ -320,6 +334,11 @@ export default function AiTutor() {
 
   const handleAgentPush = useCallback((data: AgentPushMessage) => {
     if (!data?.messageId) {
+      return;
+    }
+    // 会话归属校验：切会话/新建会话时，上一条会话仍在流式的推送不能落到当前视图（二期 7.60 修复）
+    const currentSessionId = activeSessionIdRef.current;
+    if (data.sessionId && currentSessionId && data.sessionId !== currentSessionId) {
       return;
     }
     if (data.type === 'recommend') {
@@ -415,11 +434,20 @@ export default function AiTutor() {
       if (mode === 'keep' && currentId && items.some((item) => item.id === currentId)) {
         return;
       }
+      // 抢视图的两个前提：没有正在进行的「一键直达」自动发送，且当前还没有选中会话。
+      // 少了任一前提就会出现「新会话里混进上一条会话内容」（2026-10-07 用户反馈）。
+      if (autoSendPendingRef.current || activeSessionIdRef.current) {
+        return;
+      }
       pendingRecommendsRef.current = {};
       if (items.length > 0) {
-        selectSession(items[0].id);
-        const history = await loadAgentHistory(items[0].id);
-        setMessages(mapHistory(history));
+        const pickedId = items[0].id;
+        selectSession(pickedId);
+        const history = await loadAgentHistory(pickedId);
+        // 过期响应保护：等历史回来时当前会话可能已经变了（例如期间新建了会话），此时丢弃
+        if (activeSessionIdRef.current === pickedId) {
+          setMessages(mapHistory(history));
+        }
       } else {
         selectSession('');
         setMessages([]);
@@ -454,6 +482,9 @@ export default function AiTutor() {
       }
       void loadAgentHistory(sessionId)
         .then((history) => {
+          if (activeSessionIdRef.current !== sessionId) {
+            return;
+          }
           const fresh = mapHistory(history);
           setMessages((prev) => {
             const localById = new Map(prev.map((item) => [item.id, item]));
@@ -679,9 +710,14 @@ export default function AiTutor() {
     pendingRecommendsRef.current = {};
     try {
       const history = await loadAgentHistory(sessionId);
-      setMessages(mapHistory(history));
+      // 过期响应保护：用户连点两个会话时，慢的那个响应不能覆盖当前视图
+      if (activeSessionIdRef.current === sessionId) {
+        setMessages(mapHistory(history));
+      }
     } catch {
-      setMessages([]);
+      if (activeSessionIdRef.current === sessionId) {
+        setMessages([]);
+      }
     }
   };
 
