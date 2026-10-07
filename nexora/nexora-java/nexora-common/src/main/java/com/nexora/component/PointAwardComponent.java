@@ -63,6 +63,12 @@ public class PointAwardComponent {
     /** 兑换扣分（A-7）：流水 points 为负，幂等键 = 兑换单号 */
     public static final String BIZ_EXCHANGE = "EXCHANGE";
 
+    /** 学习路径节点完成（幂等键 = 节点 ID） */
+    public static final String BIZ_PATH_NODE = "PATH_NODE";
+
+    /** 整条学习路径完成（幂等键 = 路径 ID） */
+    public static final String BIZ_PATH_DONE = "PATH_DONE";
+
     /** 受每日上限约束的「可重复」来源 */
     private static final Set<String> DAILY_CAP_TYPES = new HashSet<>(
             Arrays.asList(BIZ_SIGN_IN, BIZ_PICTURE_BOOK, BIZ_ANIMATION, BIZ_WIKI_CONFIRM));
@@ -95,6 +101,8 @@ public class PointAwardComponent {
     private static final int DEFAULT_PICTURE_BOOK_POINTS = 15;
     private static final int DEFAULT_WIKI_CONFIRM_POINTS = 10;
     private static final int DEFAULT_ANIMATION_POINTS = 5;
+    private static final int DEFAULT_PATH_NODE_POINTS = 15;
+    private static final int DEFAULT_PATH_DONE_POINTS = 50;
     private static final int[] DEFAULT_STREAK_BONUS = {10, 20, 40, 80};
 
     @Resource
@@ -418,6 +426,8 @@ public class PointAwardComponent {
                 return recordMapper.countByUserAndBizTypes(userId, CREATION_BIZ_TYPES) >= threshold;
             case "COMBO_MAX":
                 return currentCombo(userId) >= Math.max(threshold, 1);
+            case "PATH_DONE_COUNT":
+                return recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_PATH_DONE)) >= Math.max(threshold, 1);
             default:
                 log.debug("未支持的徽章规则类型 ruleType={} badge={}", ruleType, badge.getBadgeId());
                 return false;
@@ -482,6 +492,7 @@ public class PointAwardComponent {
             case "CODING_COUNT" -> recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_CODING_PROBLEM));
             case "CREATION" -> recordMapper.countByUserAndBizTypes(userId, CREATION_BIZ_TYPES);
             case "COMBO_MAX" -> currentCombo(userId);
+            case "PATH_DONE_COUNT" -> recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_PATH_DONE));
             default -> 0;
         };
     }
@@ -495,9 +506,42 @@ public class PointAwardComponent {
             case "FIRST_PASS" -> "次";
             case "MASTERY_COUNT", "CREATION" -> "个";
             case "COMBO_MAX" -> "连对";
+            case "PATH_DONE_COUNT" -> "条";
             default -> null;
         };
         return unit == null ? "" : Math.min(progress, threshold) + "/" + threshold + " " + unit;
+    }
+
+    /**
+     * 学习路径节点完成奖励（二期 PATH）：节点刚跨入「已掌握」时发一次，幂等键 = 节点 ID。
+     * 调用点在 LearningPathComponent 的状态刷新里，异常只记日志，绝不影响路径状态本身。
+     */
+    public int awardPathNode(String userId, String stage, String itemId, String itemName) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(itemId)) {
+            return 0;
+        }
+        int points = intConfig("POINT_PATH_NODE", DEFAULT_PATH_NODE_POINTS);
+        if (points <= 0) {
+            return 0;
+        }
+        return award(userId, stage, BIZ_PATH_NODE, itemId, points,
+                "完成学习路径节点" + (StringTools.isEmpty(itemName) ? "" : "《" + itemName + "》"));
+    }
+
+    /**
+     * 整条学习路径完成奖励（二期 PATH）：路径刚变为「已完成」时发一次，幂等键 = 路径 ID；
+     * 发分同时触发徽章判定，「路径通学者」（PATH_DONE_COUNT≥1）随之一并解锁。
+     */
+    public int awardPathDone(String userId, String stage, String pathId, String pathTitle) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(pathId)) {
+            return 0;
+        }
+        int points = intConfig("POINT_PATH_DONE", DEFAULT_PATH_DONE_POINTS);
+        if (points <= 0) {
+            return 0;
+        }
+        return award(userId, stage, BIZ_PATH_DONE, pathId, points,
+                "走完学习路径" + (StringTools.isEmpty(pathTitle) ? "" : "《" + pathTitle + "》"));
     }
 
     /**

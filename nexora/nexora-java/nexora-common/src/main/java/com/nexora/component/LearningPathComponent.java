@@ -73,6 +73,10 @@ public class LearningPathComponent {
     /** 自动创建知识点的描述前缀（便于管理端识别来源） */
     private static final String AUTO_POINT_REMARK = "由学习路径自动创建";
 
+    /** 积分发放（路径节点/整条完成奖励，二期 PATH） */
+    @Resource
+    private PointAwardComponent pointAwardComponent;
+
     @Resource
     private LearningPathService learningPathService;
 
@@ -413,6 +417,16 @@ public class LearningPathComponent {
                     update.setFinishTime(item.getFinishTime() == null ? now : item.getFinishTime());
                 }
                 learningPathItemService.updateLearningPathItemByItemId(update, item.getItemId());
+                if (newStatus == ITEM_STATUS_MASTERED) {
+                    // 节点完成奖励（二期 PATH）：刚跨入已掌握时发一次（幂等键=节点ID）
+                    try {
+                        pointAwardComponent.awardPathNode(path.getUserId(), path.getStage(),
+                                item.getItemId(), item.getKnowledgePointName());
+                    } catch (Exception e) {
+                        log.warn("路径节点奖励发放失败（不影响路径状态刷新）userId={} itemId={}",
+                                path.getUserId(), item.getItemId(), e);
+                    }
+                }
                 item.setStatus(newStatus);
                 if (update.getFinishTime() != null) {
                     item.setFinishTime(update.getFinishTime());
@@ -443,6 +457,17 @@ public class LearningPathComponent {
             }
             update.setUpdateTime(now);
             learningPathService.updateLearningPathByPathId(update, path.getPathId());
+            // 整条路径完成奖励（二期 PATH）：本次刷新刚好变为「已完成」时发一次（幂等键=路径ID）
+            if (expectedStatus == PATH_STATUS_FINISHED
+                    && (pathStatus == null || pathStatus != PATH_STATUS_FINISHED)) {
+                try {
+                    pointAwardComponent.awardPathDone(path.getUserId(), path.getStage(),
+                            path.getPathId(), path.getTitle());
+                } catch (Exception e) {
+                    log.warn("路径完成奖励发放失败（不影响路径状态刷新）userId={} pathId={}",
+                            path.getUserId(), path.getPathId(), e);
+                }
+            }
             path.setTotalItems(total);
             path.setFinishedItems(finished);
             path.setProgress(progress);
