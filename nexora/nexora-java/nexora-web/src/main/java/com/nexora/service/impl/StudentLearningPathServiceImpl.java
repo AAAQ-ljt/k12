@@ -317,6 +317,20 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
         if (!records.isEmpty()) {
             practiceRecordService.addBatch(records);
+            // 连击（COMBO，二期）：节点小测落库后按最新一条**答对**记录派生连击并结算
+            try {
+                PracticeRecord latestCorrect = null;
+                for (PracticeRecord quizRecord : records) {
+                    if (quizRecord.getIsCorrect() != null && quizRecord.getIsCorrect() == 1) {
+                        latestCorrect = quizRecord;
+                    }
+                }
+                if (latestCorrect != null && latestCorrect.getRecordId() != null) {
+                    pointAwardComponent.awardCombo(userId, path.getStage(), String.valueOf(latestCorrect.getRecordId()));
+                }
+            } catch (Exception e) {
+                log.warn("连击结算失败（不影响节点小测判分）userId={}", userId, e);
+            }
         }
         // 掌握度回写（本次得分率达标 + 足够练习次数 → 节点跨入已掌握，闭环即时生效）
         if (!outcomes.isEmpty()) {

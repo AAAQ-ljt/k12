@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.PracticeComboMapper">
+
+	<!-- 连击派生：取最近 N 条作答的对错（时间倒序），业务侧从最新往前数连续答对 -->
+	<select id="selectRecentIsCorrect" resultType="java.lang.Integer">
+		select p.is_correct from practice_record p
+		where p.user_id = #{userId}
+		order by p.create_time desc, p.record_id desc
+		limit #{limit}
+	</select>
+</mapper>

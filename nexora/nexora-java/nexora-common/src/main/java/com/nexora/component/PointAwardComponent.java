@@ -78,6 +78,15 @@ public class PointAwardComponent {
     /** 连续学习阶梯的天数档位（与 GAME.STREAK_BONUS 的奖励值一一对应） */
     private static final int[] STREAK_TIERS = {3, 7, 15, 30};
 
+    /** 连击档位（连对几题算一档）：达到档位立刻给对应奖励，档内继续连对不重复给 */
+    private static final int[] COMBO_TIERS = {3, 5, 10};
+
+    /** 派生连击时取的最近作答条数（够覆盖最高档位即可） */
+    private static final int COMBO_SCAN_LIMIT = 60;
+
+    /** 默认连击奖励（对应 3/5/10 连对）；可用 GAME.POINT_COMBO 覆盖 */
+    private static final int[] DEFAULT_COMBO_BONUS = {2, 5, 10};
+
     private static final int DEFAULT_DAILY_CAP = 200;
     private static final int DEFAULT_SIGN_IN_POINTS = 5;
     private static final int DEFAULT_MASTERY_POINTS = 50;
@@ -105,6 +114,9 @@ public class PointAwardComponent {
 
     @Resource
     private PointLevelComponent levelComponent;
+
+    @Resource
+    private com.nexora.mappers.PracticeComboMapper practiceComboMapper;
 
     /** 编程题「看过答案」标记（Redis，TTL 6 小时） */
     @Resource
@@ -405,8 +417,7 @@ public class PointAwardComponent {
             case "CREATION":
                 return recordMapper.countByUserAndBizTypes(userId, CREATION_BIZ_TYPES) >= threshold;
             case "COMBO_MAX":
-                // 待办（A-4）：练习链路把最高连击写入流水后再判定
-                return false;
+                return currentCombo(userId) >= Math.max(threshold, 1);
             default:
                 log.debug("未支持的徽章规则类型 ruleType={} badge={}", ruleType, badge.getBadgeId());
                 return false;
@@ -470,7 +481,7 @@ public class PointAwardComponent {
             case "MASTERY_COUNT" -> recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_MASTERY));
             case "CODING_COUNT" -> recordMapper.countByUserAndBizTypes(userId, List.of(BIZ_CODING_PROBLEM));
             case "CREATION" -> recordMapper.countByUserAndBizTypes(userId, CREATION_BIZ_TYPES);
-            // 最高连击尚未持久化（A-4 待办）：进度恒为 0，前端按「敬请期待」展示
+            case "COMBO_MAX" -> currentCombo(userId);
             default -> 0;
         };
     }
@@ -483,9 +494,85 @@ public class PointAwardComponent {
             case "CODING_COUNT" -> "道";
             case "FIRST_PASS" -> "次";
             case "MASTERY_COUNT", "CREATION" -> "个";
+            case "COMBO_MAX" -> "连对";
             default -> null;
         };
         return unit == null ? "" : Math.min(progress, threshold) + "/" + threshold + " " + unit;
+    }
+
+    /**
+     * 当前连击（连对题数，二期 COMBO）：从 practice_record 按时间倒序数连续答对，
+     * 遇到第一条答错即停止。不落库、不加字段，避免计数器漂移。
+     */
+    public int currentCombo(String userId) {
+        if (StringTools.isEmpty(userId)) {
+            return 0;
+        }
+        List<Integer> flags = practiceComboMapper.selectRecentIsCorrect(userId, COMBO_SCAN_LIMIT);
+        if (flags == null || flags.isEmpty()) {
+            return 0;
+        }
+        int combo = 0;
+        for (Integer flag : flags) {
+            if (flag != null && flag == 1) {
+                combo++;
+            } else {
+                break;
+            }
+        }
+        return combo;
+    }
+
+    /**
+     * 连击奖励（练习链路在**答对**落库后调用）：连对达到档位时发一次奖励，档内继续连对不重复发。
+     *
+     * 幂等键 = 触发的那条 practice_record 主键（同一条作答不会重复发），
+     * 因此连对到 3/5/10 各发一次，第 4、11 题不会再发。发分同时会触发徽章判定，
+     * 「十全十美」（COMBO_MAX≥10）随之一并解锁。
+     *
+     * @return 本次实际发放的积分（0 = 未到档位/已发过）
+     */
+    public int awardCombo(String userId, String stage, String practiceRecordId) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(practiceRecordId)) {
+            return 0;
+        }
+        int combo = currentCombo(userId);
+        int tierIndex = -1;
+        for (int i = 0; i < COMBO_TIERS.length; i++) {
+            if (combo == COMBO_TIERS[i]) {
+                tierIndex = i;
+                break;
+            }
+        }
+        if (tierIndex < 0) {
+            return 0;
+        }
+        int[] bonus = comboBonus();
+        int points = tierIndex < bonus.length ? bonus[tierIndex] : bonus[bonus.length - 1];
+        if (points <= 0) {
+            return 0;
+        }
+        return award(userId, stage, BIZ_COMBO, practiceRecordId, points,
+                "连续答对 " + combo + " 题");
+    }
+
+    /** 连击奖励档位奖励值（GAME.POINT_COMBO，逗号分隔；与 COMBO_TIERS 一一对应） */
+    private int[] comboBonus() {
+        String raw = systemConfigComponent.getValue(SystemConfigComponent.GROUP_GAME, "POINT_COMBO", null);
+        if (raw == null || raw.isBlank()) {
+            return DEFAULT_COMBO_BONUS;
+        }
+        try {
+            String[] parts = raw.trim().split(",");
+            int[] parsed = new int[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                parsed[i] = Integer.parseInt(parts[i].trim());
+            }
+            return parsed.length > 0 ? parsed : DEFAULT_COMBO_BONUS;
+        } catch (NumberFormatException e) {
+            log.warn("GAME.POINT_COMBO 解析失败，回落默认值：{}", raw);
+            return DEFAULT_COMBO_BONUS;
+        }
     }
 
     // ====== 配置读取（GAME 组；缺失回落代码默认值） ======

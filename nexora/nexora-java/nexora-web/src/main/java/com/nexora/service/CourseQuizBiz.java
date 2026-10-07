@@ -255,6 +255,20 @@ public class CourseQuizBiz {
         }
         if (!records.isEmpty()) {
             practiceRecordService.addBatch(records);
+            // 连击（COMBO，二期）：批量入库后按最新一条**答对**记录派生连击并结算
+            try {
+                PracticeRecord latestCorrect = null;
+                for (PracticeRecord item : records) {
+                    if (item.getIsCorrect() != null && item.getIsCorrect() == 1) {
+                        latestCorrect = item;
+                    }
+                }
+                if (latestCorrect != null && latestCorrect.getRecordId() != null) {
+                    pointAwardComponent.awardCombo(userId, stage, String.valueOf(latestCorrect.getRecordId()));
+                }
+            } catch (Exception e) {
+                log.warn("连击结算失败（不影响测验判分）userId={}", userId, e);
+            }
         }
         // 判分 → 掌握度回写（供学习分析 / 学生端学习进度 / 个性化学习路径消费）
         if (!masteryOutcomes.isEmpty()) {
