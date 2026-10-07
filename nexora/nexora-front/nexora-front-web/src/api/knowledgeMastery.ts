@@ -1,4 +1,4 @@
-import { get } from './request';
+import { get, post } from './request';
 
 /** 知识点掌握度明细项 */
 export interface MasteryItem {
@@ -15,6 +15,9 @@ export interface MasteryItem {
   nextReviewTime?: string | null;
   /** 是否已到复习时间 */
   due?: boolean;
+
+  /** 该知识点所属的学习路径节点 ID（「就地复习快测」用；不在任何路线里则为空） */
+  itemId?: string | null;
 }
 
 /** 我的学习进度（掌握度概览，数据来自判分回写） */
@@ -63,4 +66,14 @@ export interface ReviewLocate {
 
 export function locateReviewPoint(knowledgePointId: string): Promise<ReviewLocate> {
   return get('/knowledgeMastery/locateReview', { knowledgePointId });
+}
+
+/** 复习提醒静音（复习闭环）：until=today 今天不用提醒 / forever 不再提醒该知识点 */
+export function muteReviewReminder(knowledgePointId: string, until: 'today' | 'forever' = 'today') {
+  return post('/knowledgeMastery/muteReview', null, { params: { knowledgePointId, until } });
+}
+
+/** 恢复复习提醒 */
+export function unmuteReviewReminder(knowledgePointId: string) {
+  return post('/knowledgeMastery/unmuteReview', null, { params: { knowledgePointId } });
 }

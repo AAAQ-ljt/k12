@@ -60,7 +60,11 @@ export default function OnboardingGuide() {
     try {
       const data = await getOnboardingStatus();
       setStatus(data);
-      if (data?.firstTime) {
+      // 欢迎卡"一天只自动弹一次"：避免每次刷新都跳出来打断操作（用户 2026-10-07 反馈）
+      const today = new Date().toISOString().slice(0, 10);
+      const shownDate = window.localStorage.getItem('onboarding.welcomeDate');
+      if (data?.firstTime && shownDate !== today) {
+        window.localStorage.setItem('onboarding.welcomeDate', today);
         setWelcomeOpen(true);
       }
     } catch {

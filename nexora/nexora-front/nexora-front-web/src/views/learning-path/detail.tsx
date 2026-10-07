@@ -81,9 +81,9 @@ export default function LearningPathDetailPage() {
         const focusNode = [...stages.flatMap((stage) => stage.nodes ?? [])]
           .find((node) => node.itemId === focusItemId);
         if (focusNode) {
-          if (focusNode.status !== 0) {
-            setActiveNode(focusNode);
-          }
+          // 复习定位：即使节点显示"未解锁"也直接打开抽屉——该知识点已经掌握过，
+          // 复习不该被解锁状态拦住（选学分支常处于未解锁，之前就是这个条件导致只弹提示不跳抽屉）
+          setActiveNode(focusNode);
           // 展开该节点所在阶段（优先于当前节点所在阶段）
           const focusStage = stages.find((stage) =>
             (stage.nodes ?? []).some((node) => node.itemId === focusItemId));
@@ -120,7 +120,9 @@ export default function LearningPathDetailPage() {
 
   /** 未解锁节点：不打开抽屉，提示需要先完成的前置节点 */
   const handleNodeClick = (node: LearningPathNode) => {
-    if (node.status === 0) {
+    // 选学分支（兴趣分支）人人可学、不参与主线解锁链：即使状态是"未解锁"也直接打开抽屉
+    // （2026-10-07 用户反馈：选学节点点不动，但它本来就可以学、且已有学习记录）
+    if (node.branchType !== 1 && node.status === 0) {
       const prerequisite = node.prerequisiteName || '上一个节点';
       message.info(`请先完成前置节点「${prerequisite}」，本节点会自动解锁`);
       return;
@@ -716,8 +718,17 @@ export default function LearningPathDetailPage() {
             <div className={styles.drawerBlock}>
               <div className={styles.drawerLabel}>下一步</div>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                {activeNode.due ? (
+                  <div style={{ fontSize: 12, color: 'var(--warm-brown-600)', lineHeight: 1.7 }}>
+                    已到复习时间：做一组复习题，掌握度达标后复习时间会自动往后推（不会一直堆着）
+                  </div>
+                ) : null}
                 <Button type="primary" block icon={<PenLine size={14} />} disabled={quizRunning} onClick={() => startNodeQuiz(activeNode)}>
-                  {quizRunning ? '正在出题...' : '节点快测（计入掌握度）'}
+                  {quizRunning
+                    ? '正在出题...'
+                    : activeNode.due
+                      ? '复习快测（计入掌握度）'
+                      : '节点快测（计入掌握度）'}
                 </Button>
                 <Button block onClick={() => askAi(activeNode, 'explain')}>
                   让 AI 讲这个知识点
