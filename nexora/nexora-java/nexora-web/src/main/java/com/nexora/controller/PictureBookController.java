@@ -43,6 +43,10 @@ import java.util.List;
 @GlobalInterceptor(checkLogin = true)
 public class PictureBookController extends ABaseController {
 
+    /** 音色解锁集合（免费 / 已兑换），用于生成前的服务端门禁 */
+    @Resource
+    private com.nexora.component.PointExchangeComponent pointExchangeComponent;
+
     @Resource
     private PictureBookService pictureBookService;
 
@@ -64,6 +68,12 @@ public class PictureBookController extends ABaseController {
         if (request.getVoice() != null && !request.getVoice().isBlank()
                 && !TtsProvider.isValidVoice(request.getVoice().trim())) {
             throw new BusinessException("不支持的音色");
+        }
+        // 音色门禁（A-7）：合法白名单里也有收费音色，未解锁的在这里拦下（服务端兜底，前端加锁只是提示）
+        String requestedVoice = request.getVoice() == null ? null : request.getVoice().trim();
+        if (!StringTools.isEmpty(requestedVoice)
+                && !pointExchangeComponent.voiceAllowed(current.getUserId(), requestedVoice)) {
+            throw new BusinessException("音色「" + requestedVoice + "」还没有解锁，可在成长中心的「兑换」里用积分解锁");
         }
         return getSuccessResponseVO(pictureBookTaskService.submit(
                 current.getUserId(), current.getStage(), request.getTopic().trim(),

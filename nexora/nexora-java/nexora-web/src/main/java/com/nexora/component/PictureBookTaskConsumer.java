@@ -211,7 +211,7 @@ public class PictureBookTaskConsumer {
             task.setMessage("正在录制旁白...");
             pictureBookTaskService.update(task);
 
-            narrationVoice = pictureBookAudioComponent.resolveVoice(task.getStage(), task.getVoice());
+            narrationVoice = pictureBookAudioComponent.resolveVoice(task.getStage(), task.getVoice(), task.getUserId());
             generateAudiosConcurrently(task, email, story.title(), texts, pageObjects,
                     narrationVoice, lastAudioError);
 

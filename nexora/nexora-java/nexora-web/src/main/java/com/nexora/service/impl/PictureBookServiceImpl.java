@@ -61,6 +61,10 @@ public class PictureBookServiceImpl implements PictureBookService {
     @Value("${project.folder}")
     private String projectFolder;
 
+    /** 音色解锁集合（A-7 音色门禁） */
+    @Resource
+    private com.nexora.component.PointExchangeComponent pointExchangeComponent;
+
     @Resource
     private ResourceInfoService resourceInfoService;
 
@@ -333,6 +337,11 @@ public class PictureBookServiceImpl implements PictureBookService {
         if (voice != null && !voice.isBlank() && !TtsProvider.isValidVoice(voice.trim())) {
             throw new BusinessException("不支持的音色");
         }
+        // 音色门禁（A-7）：收费音色未解锁时拒绝，与绘本生成入口同一口径
+        if (voice != null && !voice.isBlank()
+                && !pointExchangeComponent.voiceAllowed(userId, voice.trim())) {
+            throw new BusinessException("音色「" + voice.trim() + "」还没有解锁，可在成长中心的「兑换」里用积分解锁");
+        }
         JSONArray pages = parsePages(book);
         if (pages == null || pages.isEmpty()) {
             throw new BusinessException("绘本页面数据异常");
@@ -353,7 +362,7 @@ public class PictureBookServiceImpl implements PictureBookService {
             }
         }
 
-        String finalVoice = pictureBookAudioComponent.resolveVoice(book.getStage(), voice);
+        String finalVoice = pictureBookAudioComponent.resolveVoice(book.getStage(), voice, userId);
         PictureBookAudioTaskVO vo = new PictureBookAudioTaskVO();
         vo.setTaskId(taskId);
         vo.setResourceId(resourceId);

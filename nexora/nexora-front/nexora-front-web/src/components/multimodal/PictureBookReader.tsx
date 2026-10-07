@@ -8,6 +8,7 @@ import {
   type PictureBookAudioTask,
   type PictureBookScript,
 } from '@/api/pictureBook';
+import { loadExchangeList } from '@/api/point';
 import styles from './PictureBookReader.module.scss';
 
 /** 音色选择器选项：默认音色（学段默认）+ 9 个预置音色 */
@@ -45,6 +46,8 @@ export default function PictureBookReader({
   const [current, setCurrent] = useState(0);
   /** 所选音色（''=默认音色，即学段默认） */
   const [selectedVoice, setSelectedVoice] = useState(script.voice ?? '');
+  /** 未解锁音色（音色名 → 解锁所需积分），见二期 A-7：解锁状态在成长中心「兑换」里看 */
+  const [lockedVoices, setLockedVoices] = useState<Record<string, number>>({});
   /** 重录完成后的音频版本号，用于击穿浏览器缓存 */
   const [audioVersion, setAudioVersion] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -113,6 +116,35 @@ export default function PictureBookReader({
     (item) => !item.audioFile || (selectedVoice && item.audioVoice !== selectedVoice),
   );
   const audioTaskRunning = !!audioTask;
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await loadExchangeList();
+        const locked: Record<string, number> = {};
+        (data?.items ?? []).forEach((item) => {
+          if (item.category === 'VOICE' && !item.unlocked) {
+            locked[item.itemName.replace('朗读音色 · ', '')] = item.costPoints;
+          }
+        });
+        if (!cancelled) {
+          setLockedVoices(locked);
+        }
+      } catch {
+        // 未登录/接口异常：不显示锁，不影响已有能力
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** 音色下拉：未解锁的置灰并标出解锁所需积分 */
+  const voiceOptions = VOICE_OPTIONS.map((option) => {
+    const cost = option.value ? lockedVoices[option.value] : undefined;
+    return cost ? { ...option, label: `🔒 ${option.label}（${cost} 分解锁）`, disabled: true } : option;
+  });
+
   const voiceLabel = selectedVoice || '默认音色';
 
   const handlePlayPause = () => {
@@ -171,7 +203,7 @@ export default function PictureBookReader({
             size="middle"
             value={selectedVoice}
             onChange={setSelectedVoice}
-            options={VOICE_OPTIONS}
+            options={voiceOptions}
             className={styles.voiceSelect}
             aria-label="选择朗读音色"
           />

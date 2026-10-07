@@ -28,6 +28,9 @@ public class PictureBookAudioComponent {
     private TtsProvider ttsProvider;
 
     @Resource
+    private PointExchangeComponent pointExchangeComponent;
+
+    @Resource
     private AiUsageRecordComponent aiUsageRecordComponent;
 
     @Value("${project.folder}")
@@ -48,8 +51,15 @@ public class PictureBookAudioComponent {
 
     /**
      * 最终音色解析：显式指定优先，其次学段默认，最后全局默认。
+     *
+     * A-7 音色门禁：指定音色必须是「免费 ∪ 该生已解锁」，否则回落学段默认——
+     * 异步任务里的旧音色、或有人绕过前端直接调接口，都不会用上未解锁音色。
      */
-    public String resolveVoice(String stage, String voice) {
+    public String resolveVoice(String stage, String voice, String userId) {
+        if (!StringTools.isEmpty(voice) && !pointExchangeComponent.voiceAllowed(userId, voice)) {
+            log.info("音色未解锁，回落学段默认 userId={} voice={}", userId, voice);
+            return ttsProvider.resolveVoice(stage, null);
+        }
         return ttsProvider.resolveVoice(stage, voice);
     }
 
