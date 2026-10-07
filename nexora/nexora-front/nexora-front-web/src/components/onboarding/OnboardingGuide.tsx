@@ -3,10 +3,13 @@ import { Button, Modal, Space, Tag } from 'antd';
 import { CircleHelp } from 'lucide-react';
 import {
   getOnboardingStatus,
+  recordOnboardingSteps,
   recordOnboardingWelcome,
   touchOnboardingOpen,
   type OnboardingStatusVO,
 } from '@/api/onboarding';
+import OnboardingTour from './OnboardingTour';
+import { tourStepsOf } from './tourSteps';
 import { useAuthStore } from '@/stores/auth';
 
 /**
@@ -23,6 +26,8 @@ export default function OnboardingGuide() {
   const stage = useAuthStore((state) => state.userInfo?.stage);
   const [status, setStatus] = useState<OnboardingStatusVO | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  /** 分步高亮导览（计划 D2）：由欢迎卡的「开始导览」启动 */
+  const [tourOpen, setTourOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const isPrimaryLow = stage === 'PRIMARY_LOW';
@@ -74,6 +79,19 @@ export default function OnboardingGuide() {
     } catch {
       // 静默：记录失败不影响使用
     }
+    // 接着走分步高亮（D2）：按学段给不同步数，已完成过的步骤会自动跳过
+    setTourOpen(true);
+  };
+
+  /** 导览结束（走完或中途关闭）：把已看步骤上报，走完则标记完成版本 */
+  const handleTourClose = async (doneSteps: string[], finished: boolean) => {
+    setTourOpen(false);
+    try {
+      await recordOnboardingSteps({ steps: doneSteps, finished });
+      await load();
+    } catch {
+      // 静默
+    }
   };
 
   const handleSkip = async () => {
@@ -111,6 +129,13 @@ export default function OnboardingGuide() {
       >
         新手指引
       </Button>
+
+      <OnboardingTour
+        open={tourOpen}
+        steps={tourStepsOf(stage)}
+        initialDone={status?.stepsDone ?? []}
+        onClose={(doneSteps, finished) => void handleTourClose(doneSteps, finished)}
+      />
 
       <Modal
         open={welcomeOpen}

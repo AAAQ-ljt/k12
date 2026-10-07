@@ -145,6 +145,7 @@ export default function MainLayout() {
                 <NavLink
                   key={tab.path}
                   to={tab.path}
+                  data-tour={`nav-${tab.path.replace('/', '')}`}
                   className={({ isActive }) =>
                     isActive ? `nav-item active` : 'nav-item'
                   }
