@@ -75,6 +75,14 @@ public class LearningPathComponent {
 
     /** 积分发放（路径节点/整条完成奖励，二期 PATH） */
     /** 学生画像（计划 C1：路径状态变化后标记待刷新） */
+    /** 删路径级联：清理孤儿知识点的个人掌握度（复习闭环 / 用户 2026-10-07 要求） */
+    @Resource
+    private com.nexora.mappers.KnowledgeMasteryMapper knowledgeMasteryMapper;
+
+    /** 删路径级联：清理孤儿知识点的练习记录（正确率统计随之归零） */
+    @Resource
+    private com.nexora.mappers.PracticeRecordMapper practiceRecordMapper;
+
     @Resource
     private StudentProfileComponent studentProfileComponent;
 
@@ -222,7 +230,7 @@ public class LearningPathComponent {
         List<LearningPathItem> deletedItems = learningPathItemService.findListByParam(itemQuery);
         learningPathItemService.deleteByParam(itemQuery);
         learningPathService.deleteLearningPathByPathId(pathId);
-        cleanupOrphanPoints(deletedItems);
+        cleanupOrphanPoints(userId, deletedItems);
         log.info("学习路径已删除 userId={} pathId={} 节点数={}", userId, pathId,
                 deletedItems == null ? 0 : deletedItems.size());
     }
@@ -235,7 +243,7 @@ public class LearningPathComponent {
      * 仅清理本组件自动创建的点（description 带前缀标记）且无任何路径引用；仍被其它路线引用的保留。
      * 全程三条批量 SQL，不在循环里查库。
      */
-    private void cleanupOrphanPoints(List<LearningPathItem> deletedItems) {
+    private void cleanupOrphanPoints(String userId, List<LearningPathItem> deletedItems) {
         if (deletedItems == null || deletedItems.isEmpty()) {
             return;
         }
@@ -257,6 +265,15 @@ public class LearningPathComponent {
         List<String> orphanIds = pointIds.stream().filter(id -> !referenced.contains(id)).toList();
         if (orphanIds.isEmpty()) {
             return;
+        }
+        // 先清该生在这些"孤儿知识点"上的个人数据（用户要求：删掉路线后原先的掌握度/正确率都不再保留）
+        // —— 知识点定义本身仍然只删自动创建的那种，避免误删平台/手工知识点
+        try {
+            knowledgeMasteryMapper.deleteByUserAndPoints(userId, orphanIds);
+            practiceRecordMapper.deleteByUserAndPoints(userId, orphanIds);
+            log.info("已清理孤儿知识点的个人数据 userId={} 知识点数={}", userId, orphanIds.size());
+        } catch (Exception e) {
+            log.warn("清理孤儿知识点个人数据失败 userId={}", userId, e);
         }
         // 只删本组件自动创建的点（description 前缀标记），防误删官方/手工知识点
         KnowledgePointQuery pointQuery = new KnowledgePointQuery();

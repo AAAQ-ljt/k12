@@ -1,5 +1,11 @@
 package com.nexora.service;
 
+import lombok.extern.slf4j.Slf4j;
+
+import com.nexora.exception.BusinessException;
+
+import com.nexora.component.ReviewComponent;
+
 import com.nexora.entity.enums.DateTimePatternEnum;
 import com.nexora.entity.po.KnowledgeMastery;
 import com.nexora.entity.po.KnowledgePoint;
@@ -37,6 +43,7 @@ import java.util.Set;
  * 供个性化学习路径页展示真实进度与待复习提醒。
  */
 @Service
+@Slf4j
 public class KnowledgeMasteryBiz {
 
     /** 明细默认返回条数 */
@@ -44,6 +51,10 @@ public class KnowledgeMasteryBiz {
 
     /** 明细上限 */
     private static final int MAX_LIMIT = 100;
+
+    /** 复习判定唯一口径（设计点①④） */
+    @Resource
+    private ReviewComponent reviewComponent;
 
     @Resource
     private KnowledgeMasteryService knowledgeMasteryService;
@@ -84,6 +95,23 @@ public class KnowledgeMasteryBiz {
         int dueCount = 0;
         Date now = new Date();
         List<KnowledgeMasteryItemVO> items = new ArrayList<>();
+        // 知识点 → 所属节点（"就地复习快测"要用节点 ID 出题；一次查询建映射，不在循环里查库）
+        java.util.Map<String, String> pointItemId = new java.util.HashMap<>();
+        try {
+            com.nexora.entity.query.LearningPathItemQuery itemQuery = new com.nexora.entity.query.LearningPathItemQuery();
+            itemQuery.setUserId(userId);
+            java.util.List<com.nexora.entity.po.LearningPathItem> pathItems =
+                    learningPathItemService.findListByParam(itemQuery);
+            if (pathItems != null) {
+                for (com.nexora.entity.po.LearningPathItem pathItem : pathItems) {
+                    if (pathItem.getKnowledgePointId() != null && pathItem.getItemId() != null) {
+                        pointItemId.putIfAbsent(pathItem.getKnowledgePointId(), pathItem.getItemId());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("加载节点映射失败（复习快测将回落为对话复习）userId={}", userId, e);
+        }
         int size = limit == null || limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
         for (KnowledgeMastery mastery : list) {
             int score = mastery.getMasteryScore() == null ? 0 : mastery.getMasteryScore();
@@ -98,7 +126,8 @@ public class KnowledgeMasteryBiz {
             } else if (status == 1) {
                 learning++;
             }
-            boolean due = mastery.getNextReviewTime() != null && !mastery.getNextReviewTime().after(now);
+            // 口径统一（复习闭环设计点①）：待复习只认 ReviewComponent（含静音过滤）
+            boolean due = reviewComponent.isDue(mastery);
             if (due) {
                 dueCount++;
             }
@@ -115,6 +144,7 @@ public class KnowledgeMasteryBiz {
                 item.setLastPracticeTime(formatTime(mastery.getLastPracticeTime()));
                 item.setNextReviewTime(formatTime(mastery.getNextReviewTime()));
                 item.setDue(due);
+                item.setItemId(pointItemId.get(mastery.getKnowledgePointId()));
                 items.add(item);
             }
         }
@@ -245,5 +275,28 @@ public class KnowledgeMasteryBiz {
         vo.setItemId(item.getItemId());
         vo.setKnowledgePointName(item.getKnowledgePointName());
         return vo;
+    }
+
+    /**
+     * 复习提醒静音（复习闭环设计点④）：until=today 今天不用提醒（静音到明天 0 点）/ forever 不再提醒。
+     * 静音只影响"待复习"的提示，不影响掌握度本身。
+     */
+    public void muteReview(String userId, String knowledgePointId, String until) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(knowledgePointId)) {
+            throw new BusinessException("参数不完整");
+        }
+        if ("forever".equalsIgnoreCase(until)) {
+            reviewComponent.muteForever(userId, knowledgePointId);
+        } else {
+            reviewComponent.muteToday(userId, knowledgePointId);
+        }
+    }
+
+    /** 恢复复习提醒 */
+    public void unmuteReview(String userId, String knowledgePointId) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(knowledgePointId)) {
+            throw new BusinessException("参数不完整");
+        }
+        reviewComponent.unmute(userId, knowledgePointId);
     }
 }

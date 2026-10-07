@@ -262,7 +262,9 @@
             k.correct_count,
             COALESCE(ROUND(k.correct_count * 100.0 / NULLIF(k.practice_count, 0), 1), 0) AS accuracy,
             k.last_practice_time,
-            k.next_review_time
+            k.next_review_time,
+            k.muted,
+            k.mute_until
         FROM knowledge_mastery k
         LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = k.knowledge_point_id
         WHERE k.user_id = #{userId}
@@ -280,7 +282,9 @@
             k.correct_count,
             COALESCE(ROUND(k.correct_count * 100.0 / NULLIF(k.practice_count, 0), 1), 0) AS accuracy,
             k.last_practice_time,
-            k.next_review_time
+            k.next_review_time,
+            k.muted,
+            k.mute_until
         FROM knowledge_mastery k
         LEFT JOIN knowledge_point kp ON kp.knowledge_point_id = k.knowledge_point_id
         WHERE k.user_id = #{userId}

@@ -81,6 +81,12 @@ public class KnowledgeMastery implements Serializable {
 	 */
 	private Integer reviewStage;
 
+	/** 是否不再提醒复习：0正常 1长期静音（复习闭环设计点④） */
+	private Integer muted;
+
+	/** 临时静音到期时间（到点后恢复提醒；「今天不用提醒」写明天） */
+	private java.util.Date muteUntil;
+
 	/**
 	 * 创建时间
 	 */
@@ -187,6 +193,22 @@ public class KnowledgeMastery implements Serializable {
 	public void setReviewStage(Integer reviewStage){
 		this.reviewStage = reviewStage;
 	}
+	public Integer getMuted(){
+		return this.muted;
+	}
+
+	public void setMuted(Integer muted){
+		this.muted = muted;
+	}
+
+	public java.util.Date getMuteUntil(){
+		return this.muteUntil;
+	}
+
+	public void setMuteUntil(java.util.Date muteUntil){
+		this.muteUntil = muteUntil;
+	}
+
 
 	public Integer getReviewStage(){
 		return this.reviewStage;

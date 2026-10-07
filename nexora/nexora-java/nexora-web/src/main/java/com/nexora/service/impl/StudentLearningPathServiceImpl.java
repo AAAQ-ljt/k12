@@ -1,5 +1,7 @@
 package com.nexora.service.impl;
 
+import com.nexora.component.ReviewComponent;
+
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -87,6 +89,10 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
     private static final int QUESTION_TYPE_SINGLE = 0;
 
     /** 路径已得积分归集（二期 PATH） */
+    /** 复习判定唯一口径（设计点①④） */
+    @Resource
+    private ReviewComponent reviewComponent;
+
     @Resource
     private LearningPathPointMapper learningPathPointMapper;
 
@@ -555,7 +561,8 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             node.setMasteryScore(mastery.getMasteryScore());
             node.setPracticeCount(mastery.getPracticeCount());
             node.setNextReviewTime(formatTime(mastery.getNextReviewTime()));
-            node.setDue(mastery.getNextReviewTime() != null && !mastery.getNextReviewTime().after(now));
+            // 口径统一：节点是否待复习同样走 ReviewComponent（含静音）
+            node.setDue(reviewComponent.isDue(mastery));
         } else {
             node.setMasteryScore(0);
             node.setPracticeCount(0);

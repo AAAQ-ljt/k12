@@ -43,4 +43,13 @@ public interface KnowledgeMasteryMapper<T,P> extends BaseMapper<T,P> {
 	 T selectByUserIdAndKnowledgePointId(@Param("userId") String userId,@Param("knowledgePointId") String knowledgePointId);
 
 
+
+    /** 复习闭环（设计点④）：设置/清除静音（muted=1 长期静音；muteUntil 临时静音；两者置空即恢复提醒） */
+    Integer updateReviewMute(@Param("userId") String userId,
+                             @Param("knowledgePointId") String knowledgePointId,
+                             @Param("muted") Integer muted,
+                             @Param("muteUntil") java.util.Date muteUntil);
+
+    /** 按学生 + 知识点批量删除掌握度（删路径时清理孤儿知识点，不在循环里查库） */
+    Integer deleteByUserAndPoints(@Param("userId") String userId, @Param("pointIds") java.util.List<String> pointIds);
 }

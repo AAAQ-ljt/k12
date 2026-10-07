@@ -706,4 +706,11 @@
 		select <include refid="base_column_list" /> from practice_record p where record_id=#{recordId}
 	</select>
 
+	<!-- 删路径级联：按学生 + 知识点批量清理练习记录（正确率等统计随掌握度一起归零） -->
+	<delete id="deleteByUserAndPoints">
+		delete from practice_record
+		where user_id = #{userId}
+		and knowledge_point_id in
+		<foreach collection="pointIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+	</delete>
 </mapper>

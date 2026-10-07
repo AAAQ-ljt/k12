@@ -35,6 +35,9 @@ public class KnowledgeMasteryItemVO {
     /** 是否已到复习时间 */
     private Boolean due;
 
+    /** 该知识点所属的学习路径节点 ID（用于"就地复习快测"；不在任何路线里则为空） */
+    private String itemId;
+
     public String getKnowledgePointId() {
         return knowledgePointId;
     }
@@ -113,5 +116,13 @@ public class KnowledgeMasteryItemVO {
 
     public void setDue(Boolean due) {
         this.due = due;
+    }
+
+    public String getItemId() {
+        return itemId;
+    }
+
+    public void setItemId(String itemId) {
+        this.itemId = itemId;
     }
 }

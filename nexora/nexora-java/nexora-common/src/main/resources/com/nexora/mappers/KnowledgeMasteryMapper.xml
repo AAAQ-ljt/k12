@@ -29,6 +29,8 @@
 		<result column="next_review_time" property="nextReviewTime"  />
 		<!--遗忘曲线阶段0-4（对应1/3/7/15天间隔）-->
 		<result column="review_stage" property="reviewStage"  />
+		<result column="muted" property="muted"  />
+		<result column="mute_until" property="muteUntil"  />
 		<!--创建时间-->
 		<result column="create_time" property="createTime"  />
 		<!--更新时间-->
@@ -40,7 +42,7 @@
 	<sql id="base_column_list">
 		 k.id,k.user_id,k.knowledge_point_id,k.stage,k.mastery_score,
 		 k.status,k.practice_count,k.correct_count,k.last_practice_time,k.last_master_time,
-		 k.next_review_time,k.review_stage,k.create_time,k.update_time
+		 k.next_review_time,k.review_stage,k.muted,k.mute_until,k.create_time,k.update_time
 	</sql>
 
 	<sql id="base_condition_filed">
@@ -189,7 +191,7 @@
 				 next_review_time,
 			</if>
 			<if test="bean.reviewStage != null">
-				 review_stage,
+				 review_stage,				 muted,				 mute_until,
 			</if>
 			<if test="bean.createTime != null">
 				 create_time,
@@ -230,7 +232,13 @@
 				 #{bean.nextReviewTime},
 			</if>
 			<if test="bean.reviewStage!=null">
-				 #{bean.reviewStage},
+				 #{bean.reviewStage},				 #{bean.muted},				 #{bean.muteUntil},
+			</if>
+			<if test="bean.muted!=null">
+				 #{bean.muted},
+			</if>
+			<if test="bean.muteUntil!=null">
+				 #{bean.muteUntil},
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
@@ -279,7 +287,7 @@
 				 next_review_time,
 			</if>
 			<if test="bean.reviewStage != null">
-				 review_stage,
+				 review_stage,				 muted,				 mute_until,
 			</if>
 			<if test="bean.createTime != null">
 				 create_time,
@@ -323,7 +331,13 @@
 				 #{bean.nextReviewTime},
 			</if>
 			<if test="bean.reviewStage!=null">
-				 #{bean.reviewStage},
+				 #{bean.reviewStage},				 #{bean.muted},				 #{bean.muteUntil},
+			</if>
+			<if test="bean.muted!=null">
+				 #{bean.muted},
+			</if>
+			<if test="bean.muteUntil!=null">
+				 #{bean.muteUntil},
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
@@ -389,7 +403,7 @@
 			 last_practice_time,
 			 last_master_time,
 			 next_review_time,
-			 review_stage,
+			 review_stage,			 muted,			 mute_until,
 			 create_time,
 			 update_time
 		 )values
@@ -425,7 +439,7 @@
 			 last_practice_time,
 			 last_master_time,
 			 next_review_time,
-			 review_stage,
+			 review_stage,			 muted,			 mute_until,
 			 create_time,
 			 update_time
 		 )values
@@ -623,4 +637,18 @@
 		select <include refid="base_column_list" /> from knowledge_mastery k where user_id=#{userId} and knowledge_point_id=#{knowledgePointId}
 	</select>
 
+	<!-- 复习闭环（设计点④）：静音与取消静音（muted=1 长期；muteUntil 临时；都置空即恢复提醒） -->
+	<update id="updateReviewMute">
+		update knowledge_mastery k
+		set k.muted = #{muted}, k.mute_until = #{muteUntil}, k.update_time = now()
+		where k.user_id = #{userId} and k.knowledge_point_id = #{knowledgePointId}
+	</update>
+
+	<!-- 复习闭环 / 删路径级联：按学生 + 知识点批量清理掌握度（孤儿知识点不再计入统计） -->
+	<delete id="deleteByUserAndPoints">
+		delete from knowledge_mastery
+		where user_id = #{userId}
+		and knowledge_point_id in
+		<foreach collection="pointIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+	</delete>
 </mapper>

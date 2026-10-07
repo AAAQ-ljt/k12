@@ -30,4 +30,7 @@ public interface PracticeRecordMapper<T,P> extends BaseMapper<T,P> {
 	 T selectByRecordId(@Param("recordId") Long recordId);
 
 
+
+    /** 按学生 + 知识点批量删除练习记录（删路径时清理孤儿知识点，不在循环里查库） */
+    Integer deleteByUserAndPoints(@Param("userId") String userId, @Param("pointIds") java.util.List<String> pointIds);
 }

@@ -17,6 +17,12 @@ public class KnowledgeMasteryVO {
     private Date lastPracticeTime;
     private Date nextReviewTime;
 
+    /** 是否不再提醒复习：0正常 1长期静音（复习闭环设计点④） */
+    private Integer muted;
+
+    /** 临时静音到期时间（到点恢复提醒） */
+    private Date muteUntil;
+
     public String getKnowledgePointId() {
         return knowledgePointId;
     }
@@ -83,6 +89,22 @@ public class KnowledgeMasteryVO {
 
     public Date getNextReviewTime() {
         return nextReviewTime;
+    }
+
+    public Integer getMuted() {
+        return muted;
+    }
+
+    public void setMuted(Integer muted) {
+        this.muted = muted;
+    }
+
+    public Date getMuteUntil() {
+        return muteUntil;
+    }
+
+    public void setMuteUntil(Date muteUntil) {
+        this.muteUntil = muteUntil;
     }
 
     public void setNextReviewTime(Date nextReviewTime) {

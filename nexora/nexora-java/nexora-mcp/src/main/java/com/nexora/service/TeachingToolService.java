@@ -5,6 +5,7 @@ import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.CourseInfo;
 import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.component.LearningPathComponent;
+import com.nexora.component.ReviewComponent;
 import com.nexora.entity.po.PracticeRecord;
 import com.nexora.entity.query.PracticeRecordQuery;
 import com.nexora.service.PracticeRecordService;
@@ -80,6 +81,10 @@ public class TeachingToolService {
 
     /** 学习路径（二期 7.60 第二批：路径类工具复用 common 的组件，不新写 SQL） */
     /** 练习记录（计划 C5：逐题复盘的数据源） */
+    /** 复习判定唯一口径（设计点①④：待复习判定与静音） */
+    @Resource
+    private ReviewComponent reviewComponent;
+
     @Resource
     private PracticeRecordService practiceRecordService;
 
@@ -610,6 +615,9 @@ public class TeachingToolService {
             List<KnowledgeMasteryVO> masteryList = learningAnalysisMapper.selectMasteryList(userId.trim());
             for (KnowledgeMasteryVO mastery : masteryList) {
                 if (hit.getKnowledgePointId() != null && hit.getKnowledgePointId().equals(mastery.getKnowledgePointId())) {
+                    if (reviewComponent.isMuted(mastery)) {
+                        sb.append("\n- 复习提醒：已静音（学生设了不再提醒）");
+                    }
                     sb.append("\n- 掌握度：").append(mastery.getMasteryScore() == null ? 0 : mastery.getMasteryScore())
                             .append("，已练习 ").append(mastery.getPracticeCount() == null ? 0 : mastery.getPracticeCount())
                             .append(" 次，正确率 ").append(mastery.getAccuracy() == null ? 0 : mastery.getAccuracy()).append("%");
@@ -742,7 +750,7 @@ public class TeachingToolService {
             java.util.Set<String> reviewDueItemIds = new java.util.HashSet<>();
             java.util.Map<String, java.util.Date> reviewDueByPoint = new java.util.HashMap<>();
             for (KnowledgeMasteryVO mastery : masteryForDue) {
-                if (mastery.getNextReviewTime() != null && mastery.getNextReviewTime().before(new java.util.Date())) {
+                if (reviewComponent.isDue(mastery)) {
                     reviewDueByPoint.put(mastery.getKnowledgePointId(), mastery.getNextReviewTime());
                 }
             }

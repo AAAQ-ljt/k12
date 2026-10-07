@@ -1,6 +1,7 @@
 package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
+import org.springframework.web.bind.annotation.PostMapping;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.exception.BusinessException;
@@ -55,5 +56,22 @@ public class KnowledgeMasteryController extends ABaseController {
             throw new BusinessException("登录状态异常");
         }
         return getSuccessResponseVO(knowledgeMasteryBiz.locateReview(current.getUserId(), knowledgePointId));
+    }
+
+    /** 复习提醒静音：until=today（今天不用提醒）/ forever（不再提醒这个知识点） */
+    @PostMapping("/muteReview")
+    public ResponseVO<Void> muteReview(@RequestParam String knowledgePointId,
+                                       @RequestParam(required = false) String until) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        knowledgeMasteryBiz.muteReview(current == null ? null : current.getUserId(), knowledgePointId, until);
+        return getSuccessResponseVO(null);
+    }
+
+    /** 恢复复习提醒 */
+    @PostMapping("/unmuteReview")
+    public ResponseVO<Void> unmuteReview(@RequestParam String knowledgePointId) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        knowledgeMasteryBiz.unmuteReview(current == null ? null : current.getUserId(), knowledgePointId);
+        return getSuccessResponseVO(null);
     }
 }
