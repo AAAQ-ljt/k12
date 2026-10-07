@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.StudentProfileMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.StudentProfile">
+		<id column="user_id" property="userId" />
+		<result column="stage" property="stage" />
+		<result column="grade" property="grade" />
+		<result column="mastery_summary" property="masterySummary" />
+		<result column="path_summary" property="pathSummary" />
+		<result column="weak_points" property="weakPoints" />
+		<result column="point_summary" property="pointSummary" />
+		<result column="preference_doc_id" property="preferenceDocId" />
+		<result column="dirty" property="dirty" />
+		<result column="refresh_time" property="refreshTime" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<select id="selectByUserId" resultMap="base_result_map">
+		select p.user_id,p.stage,p.grade,p.mastery_summary,p.path_summary,p.weak_points,p.point_summary,
+		       p.preference_doc_id,p.dirty,p.refresh_time,p.create_time,p.update_time
+		from student_profile p
+		where p.user_id = #{userId}
+	</select>
+
+	<!-- 覆盖写摘要：dirty 归零、refresh_time 置当前时间（画像由学习事件驱动重建） -->
+	<insert id="upsertSummary" parameterType="com.nexora.entity.po.StudentProfile">
+		insert into student_profile
+			(user_id, stage, grade, mastery_summary, path_summary, weak_points, point_summary, dirty, refresh_time, create_time)
+		values
+			(#{userId}, #{stage}, #{grade}, #{masterySummary}, #{pathSummary}, #{weakPoints}, #{pointSummary}, 0, now(), now())
+		on duplicate key update
+			stage = values(stage),
+			grade = values(grade),
+			mastery_summary = values(mastery_summary),
+			path_summary = values(path_summary),
+			weak_points = values(weak_points),
+			point_summary = values(point_summary),
+			dirty = 0,
+			refresh_time = now()
+	</insert>
+
+	<!-- 学习事件发生后标记待刷新；画像行不存在时先建一个空壳（dirty=1），保证首次事件就能留下标记 -->
+	<insert id="markDirty">
+		insert into student_profile (user_id, dirty, refresh_time, create_time)
+		values (#{userId}, 1, now(), now())
+		on duplicate key update dirty = 1
+	</insert>
+
+	<update id="updatePreferenceDocId">
+		update student_profile set preference_doc_id = #{preferenceDocId} where user_id = #{userId}
+	</update>
+</mapper>

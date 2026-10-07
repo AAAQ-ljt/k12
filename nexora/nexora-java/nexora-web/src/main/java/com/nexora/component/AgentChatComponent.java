@@ -138,6 +138,10 @@ public class AgentChatComponent {
     /** emoji 占位符匹配：[xx] 后面紧跟 "(" 或 ":" 时可能是 Markdown 链接语法，不做替换 */
     private static final Pattern EMOJI_PLACEHOLDER_PATTERN = Pattern.compile("\\[([a-zA-Z_]{2,20})\\](?![(:])");
 
+    /** 学生画像（计划 C1：对话注入画像速览） */
+    @Resource
+    private StudentProfileComponent studentProfileComponent;
+
     @Resource
     private ChatProvider chatProvider;
 
@@ -1019,8 +1023,13 @@ public class AgentChatComponent {
         }
         // 平台事实约束（常驻）：课程/人数/难度等只能来自工具返回，参考资料不等于课程清单
         String withFactRule = promptWithRag + "\n\n" + PLATFORM_FACT_RULE;
+        // 学生画像速览（计划 C1）：让模型不调工具也知道学生概况；取不到就不注入（降级不影响对话）
+        String profileLine = studentProfileComponent.profileLine(
+                user.getUserId(), user.getStage(), user.getGrade());
+        String withProfile = StringTools.isEmpty(profileLine) ? withFactRule
+                : withFactRule + "\n\n## 学生画像速览（可直接参考；更细的掌握度/复习时间请用工具查）\n" + profileLine;
         // 产品功能自述块：不依赖 MCP 始终注入（按学段生成，防止介绍能力时漏掉绘本/编程等内建功能）
-        String withProduct = appendProductCapabilities(withFactRule, user.getStage());
+        String withProduct = appendProductCapabilities(withProfile, user.getStage());
         // 输出格式规范：与前端渲染层规范化双保险（模型偶发输出无空格标题/列表导致前端原样显示源码）
         String withFormat = withProduct + "\n\n" + MARKDOWN_FORMAT_RULE;
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力

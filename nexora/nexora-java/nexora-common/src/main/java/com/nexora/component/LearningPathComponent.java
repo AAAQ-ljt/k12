@@ -74,6 +74,10 @@ public class LearningPathComponent {
     private static final String AUTO_POINT_REMARK = "由学习路径自动创建";
 
     /** 积分发放（路径节点/整条完成奖励，二期 PATH） */
+    /** 学生画像（计划 C1：路径状态变化后标记待刷新） */
+    @Resource
+    private StudentProfileComponent studentProfileComponent;
+
     @Resource
     private PointAwardComponent pointAwardComponent;
 
@@ -457,6 +461,8 @@ public class LearningPathComponent {
             }
             update.setUpdateTime(now);
             learningPathService.updateLearningPathByPathId(update, path.getPathId());
+            // 画像待刷新（计划 C1）：路径进度/节点状态变了
+            studentProfileComponent.markDirty(path.getUserId());
             // 整条路径完成奖励（二期 PATH）：本次刷新刚好变为「已完成」时发一次（幂等键=路径ID）
             if (expectedStatus == PATH_STATUS_FINISHED
                     && (pathStatus == null || pathStatus != PATH_STATUS_FINISHED)) {

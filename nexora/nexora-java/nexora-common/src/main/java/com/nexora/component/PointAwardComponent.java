@@ -105,6 +105,10 @@ public class PointAwardComponent {
     private static final int DEFAULT_PATH_DONE_POINTS = 50;
     private static final int[] DEFAULT_STREAK_BONUS = {10, 20, 40, 80};
 
+    /** 学生画像（计划 C1：学习事件后标记待刷新） */
+    @Resource
+    private StudentProfileComponent studentProfileComponent;
+
     @Resource
     private StudentPointAccountMapper accountMapper;
 
@@ -184,6 +188,8 @@ public class PointAwardComponent {
         }
         // 5) 徽章判定（可能连带发放徽章奖励分；在同一事务内，自身调用不经过代理仍同事务）
         evaluateBadges(userId, stage, account);
+        // 画像待刷新（计划 C1）：发放积分意味着学情变了，下次对话前重建速览
+        studentProfileComponent.markDirty(userId);
         return points;
     }
 
@@ -222,6 +228,8 @@ public class PointAwardComponent {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             throw new BusinessException("该兑换单已处理，请刷新后重试");
         }
+        // 兑换改了可用积分，画像里的积分摘要也要跟着刷（计划 C1）
+        studentProfileComponent.markDirty(userId);
         return account.getAvailablePoints() == null ? 0 : account.getAvailablePoints();
     }
 
