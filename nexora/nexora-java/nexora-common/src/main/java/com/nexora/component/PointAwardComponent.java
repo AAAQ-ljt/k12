@@ -6,6 +6,7 @@ import com.nexora.entity.po.StudentPointAccount;
 import com.nexora.entity.po.StudentPointRecord;
 import com.nexora.entity.query.GameBadgeQuery;
 import com.nexora.entity.vo.PointBadgeVO;
+import com.nexora.exception.BusinessException;
 import com.nexora.mappers.GameBadgeMapper;
 import com.nexora.mappers.StudentBadgeRecordMapper;
 import com.nexora.mappers.StudentPointAccountMapper;
@@ -58,6 +59,9 @@ public class PointAwardComponent {
     public static final String BIZ_MASTERY = "MASTERY";
     public static final String BIZ_BADGE = "BADGE";
     public static final String BIZ_COMBO = "COMBO";
+
+    /** 兑换扣分（A-7）：流水 points 为负，幂等键 = 兑换单号 */
+    public static final String BIZ_EXCHANGE = "EXCHANGE";
 
     /** 受每日上限约束的「可重复」来源 */
     private static final Set<String> DAILY_CAP_TYPES = new HashSet<>(
@@ -161,6 +165,44 @@ public class PointAwardComponent {
         // 5) 徽章判定（可能连带发放徽章奖励分；在同一事务内，自身调用不经过代理仍同事务）
         evaluateBadges(userId, stage, account);
         return points;
+    }
+
+    /**
+     * 兑换扣分（二期 A-7）：**只减可用积分，累计积分不动**，并写一条负分流水。
+     *
+     * 余额校验用条件更新（`where available_points >= cost`）而不是「先查再减」，
+     * 并发下也不会把余额扣成负数；余额不足直接抛业务异常，由调用方决定提示文案。
+     * 幂等键 = 兑换单号，同一单重复提交会被流水唯一键拦下并回滚本次扣分。
+     *
+     * @return 扣分后的可用积分
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int spend(String userId, String stage, String bizId, int cost, String reason) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(bizId) || cost <= 0) {
+            throw new BusinessException("兑换参数不完整");
+        }
+        if (accountMapper.spendAvailable(userId, cost) == 0) {
+            throw new BusinessException("可用积分不足，本次需要 " + cost + " 分");
+        }
+        StudentPointAccount account = accountMapper.selectByUserId(userId);
+        if (account == null) {
+            throw new BusinessException("积分账户异常，请稍后重试");
+        }
+        StudentPointRecord record = new StudentPointRecord();
+        record.setUserId(userId);
+        record.setStage(stage);
+        record.setBizType(BIZ_EXCHANGE);
+        record.setBizId(bizId);
+        record.setPoints(-cost);
+        // 与其他流水同口径：balance_after 记累计积分；可用积分余额在兑换记录表里
+        record.setBalanceAfter(account.getTotalPoints());
+        record.setReason(reason);
+        if (recordMapper.insertIgnore(record) == 0) {
+            log.info("兑换重复提交被幂等拦下 userId={} bizId={}", userId, bizId);
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            throw new BusinessException("该兑换单已处理，请刷新后重试");
+        }
+        return account.getAvailablePoints() == null ? 0 : account.getAvailablePoints();
     }
 
     /**

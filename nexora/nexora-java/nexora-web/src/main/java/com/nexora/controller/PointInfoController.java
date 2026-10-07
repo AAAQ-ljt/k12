@@ -5,12 +5,16 @@ import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.StudentPointRecord;
 import com.nexora.entity.vo.PointAccountVO;
 import com.nexora.entity.vo.PointBadgeVO;
+import com.nexora.entity.vo.PointExchangeListVO;
+import com.nexora.entity.vo.PointExchangeResultVO;
 import com.nexora.entity.vo.PointRankResultVO;
 import com.nexora.entity.vo.ResponseVO;
 import com.nexora.service.PointBiz;
 import com.nexora.utils.LoginUserContext;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,5 +72,36 @@ public class PointInfoController extends ABaseController {
         String userId = current == null ? null : current.getUserId();
         String stage = current == null ? null : current.getStage();
         return getSuccessResponseVO(pointBiz.rank(userId, stage, type));
+    }
+
+    /** 兑换页：可用积分 + 商品（上传额度扩容 / 朗读音色解锁）+ 我的兑换记录 */
+    @GetMapping("/getExchangeList")
+    public ResponseVO<PointExchangeListVO> getExchangeList() {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        String userId = current == null ? null : current.getUserId();
+        String stage = current == null ? null : current.getStage();
+        return getSuccessResponseVO(pointBiz.exchangeCatalog(userId, stage));
+    }
+
+    /** 兑换权益：只扣可用积分（累计积分不变），幂等 + 余额不足直接拒绝 */
+    @PostMapping("/exchange")
+    public ResponseVO<PointExchangeResultVO> exchange(@RequestBody PointExchangeBody body) {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        String userId = current == null ? null : current.getUserId();
+        String stage = current == null ? null : current.getStage();
+        return getSuccessResponseVO(pointBiz.exchange(userId, stage, body == null ? null : body.getItemCode()));
+    }
+
+    /** 兑换入参（学生端内部使用） */
+    public static class PointExchangeBody {
+        private String itemCode;
+
+        public String getItemCode() {
+            return itemCode;
+        }
+
+        public void setItemCode(String itemCode) {
+            this.itemCode = itemCode;
+        }
     }
 }

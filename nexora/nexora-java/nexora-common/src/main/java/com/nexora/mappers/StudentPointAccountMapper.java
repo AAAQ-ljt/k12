@@ -27,6 +27,11 @@ public interface StudentPointAccountMapper {
     /** 更新等级（仅当与现值不同时） */
     Integer updateLevel(@Param("userId") String userId, @Param("level") int level);
 
+    /**
+     * 兑换扣分：只减可用积分，**累计积分不动**；返回 0 表示可用积分不足（条件更新保证不会扣成负数）。
+     */
+    Integer spendAvailable(@Param("userId") String userId, @Param("cost") int cost);
+
     /** 更新连续学习天数与归属日期 */
     Integer updateStreak(@Param("userId") String userId,
                          @Param("streakDays") int streakDays,

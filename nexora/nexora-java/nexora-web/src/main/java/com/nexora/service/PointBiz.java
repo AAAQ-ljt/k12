@@ -1,12 +1,15 @@
 package com.nexora.service;
 
 import com.nexora.component.PointAwardComponent;
+import com.nexora.component.PointExchangeComponent;
 import com.nexora.component.PointLevelComponent;
 import com.nexora.entity.po.StudentPointAccount;
 import com.nexora.entity.po.StudentPointRecord;
 import com.nexora.entity.query.StudentPointRecordQuery;
 import com.nexora.entity.vo.PointAccountVO;
 import com.nexora.entity.vo.PointBadgeVO;
+import com.nexora.entity.vo.PointExchangeListVO;
+import com.nexora.entity.vo.PointExchangeResultVO;
 import com.nexora.entity.vo.PointRankItemVO;
 import com.nexora.entity.vo.PointRankResultVO;
 import com.nexora.mappers.StudentPointAccountMapper;
@@ -47,6 +50,9 @@ public class PointBiz {
     @Resource
     private PointAwardComponent pointAwardComponent;
 
+    @Resource
+    private PointExchangeComponent pointExchangeComponent;
+
     /** 我的积分账户概览（账户不存在时返回零值，等级按 1 级起算） */
     public PointAccountVO myAccount(String userId, String stage) {
         StudentPointAccount account = userId == null ? null : accountMapper.selectByUserId(userId);
@@ -83,6 +89,16 @@ public class PointBiz {
     /** 我的徽章墙（徽章 + 解锁状态 + 进度） */
     public List<PointBadgeVO> myBadges(String userId, String stage) {
         return pointAwardComponent.listBadges(userId, stage);
+    }
+
+    /** 兑换页：可用积分 + 商品（上传额度扩容 / 音色解锁）+ 我的兑换记录 */
+    public PointExchangeListVO exchangeCatalog(String userId, String stage) {
+        return pointExchangeComponent.catalog(userId, stage);
+    }
+
+    /** 兑换权益（可用积分扣减；累计积分不变） */
+    public PointExchangeResultVO exchange(String userId, String stage, String itemCode) {
+        return pointExchangeComponent.exchange(userId, stage, itemCode);
     }
 
     /**

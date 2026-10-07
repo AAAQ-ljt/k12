@@ -1,5 +1,6 @@
 package com.nexora.service.impl;
 
+import com.nexora.component.StudentQuotaComponent;
 import com.nexora.constants.Constants;
 import com.nexora.entity.po.ResourceDirectory;
 import com.nexora.entity.query.ResourceDirectoryQuery;
@@ -12,7 +13,6 @@ import com.nexora.vo.StudentStorageVO;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -38,8 +38,9 @@ public class StudentKnowledgeBaseServiceImpl implements StudentKnowledgeBaseServ
 
     private static final List<String> RAW_DOCUMENT_EXTENSIONS = List.of("md", "txt");
 
-    @Value("${resource.student-quota-mb:300}")
-    private long studentQuotaMb;
+    /** 配额唯一口径：基础额度 + 积分兑换扩容（A-7） */
+    @Resource
+    private StudentQuotaComponent studentQuotaComponent;
 
     @Resource
     private ResourceDirectoryService resourceDirectoryService;
@@ -69,7 +70,7 @@ public class StudentKnowledgeBaseServiceImpl implements StudentKnowledgeBaseServ
     @Override
     public StudentStorageVO getStorageInfo(String ownerId) {
         ensureSystemDirectories(ownerId);
-        long quotaBytes = studentQuotaMb * 1024 * 1024;
+        long quotaBytes = studentQuotaComponent.quotaBytes(ownerId);
         Long used = resourceInfoService.getUsedSizeByOwner(ownerId);
         long usedBytes = used == null ? 0L : used;
 

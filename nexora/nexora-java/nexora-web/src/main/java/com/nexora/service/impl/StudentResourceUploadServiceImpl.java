@@ -2,6 +2,7 @@ package com.nexora.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.nexora.component.RedisComponent;
+import com.nexora.component.StudentQuotaComponent;
 import com.nexora.component.ResourceHeavyJobLock;
 import com.nexora.component.ResourcePreviewRenderer;
 import com.nexora.constants.Constants;
@@ -74,8 +75,9 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
     @Value("${resource.upload-session-ttl-minutes:120}")
     private long sessionTtlMinutes;
 
-    @Value("${resource.student-quota-mb:300}")
-    private long studentQuotaMb;
+    /** 配额唯一口径：基础额度 + 积分兑换扩容（A-7） */
+    @Resource
+    private StudentQuotaComponent studentQuotaComponent;
 
     @Resource
     private ResourceInfoService resourceInfoService;
@@ -430,11 +432,11 @@ public class StudentResourceUploadServiceImpl implements StudentResourceUploadSe
             throw new BusinessException("学生个人知识库仅支持文档、图片和视频");
         }
 
-        long quotaBytes = studentQuotaMb * 1024 * 1024;
+        long quotaBytes = studentQuotaComponent.quotaBytes(ownerId);
         Long usedBytes = resourceInfoService.getUsedSizeByOwner(ownerId);
         long used = usedBytes == null ? 0L : usedBytes;
         if (used + fileSize > quotaBytes) {
-            throw new BusinessException("存储空间不足，每人额度为 " + studentQuotaMb + "MB");
+            throw new BusinessException("存储空间不足，你的额度为 " + studentQuotaComponent.quotaMb(ownerId) + "MB（" + (studentQuotaComponent.quotaMb(ownerId) - studentQuotaComponent.baseQuotaMbValue() > 0 ? "已含兑换扩容 " + (studentQuotaComponent.quotaMb(ownerId) - studentQuotaComponent.baseQuotaMbValue()) + "MB" : "可在成长中心用积分扩容") + "）");
         }
     }
 

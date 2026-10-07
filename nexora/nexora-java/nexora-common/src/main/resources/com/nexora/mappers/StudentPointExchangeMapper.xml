@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.StudentPointExchangeMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.StudentPointExchange">
+		<id column="exchange_id" property="exchangeId" />
+		<result column="user_id" property="userId" />
+		<result column="stage" property="stage" />
+		<result column="item_code" property="itemCode" />
+		<result column="item_name" property="itemName" />
+		<result column="cost_points" property="costPoints" />
+		<result column="balance_after" property="balanceAfter" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+	<sql id="base_column_list">
+		e.exchange_id,e.user_id,e.stage,e.item_code,e.item_name,e.cost_points,e.balance_after,e.create_time
+	</sql>
+
+	<!-- 主键重复返回 0（调用方据此判定重复提交） -->
+	<insert id="insert" parameterType="com.nexora.entity.po.StudentPointExchange">
+		insert into student_point_exchange
+			(exchange_id, user_id, stage, item_code, item_name, cost_points, balance_after, create_time)
+		values
+			(#{exchangeId}, #{userId}, #{stage}, #{itemCode}, #{itemName}, #{costPoints}, #{balanceAfter}, now())
+	</insert>
+
+	<select id="selectByUser" resultMap="base_result_map">
+		select <include refid="base_column_list" /> from student_point_exchange e
+		where e.user_id = #{userId}
+		order by e.create_time desc, e.exchange_id desc
+		limit #{limit}
+	</select>
+
+	<select id="countByUserAndItem" resultType="java.lang.Integer">
+		select count(1) from student_point_exchange e
+		where e.user_id = #{userId} and e.item_code = #{itemCode}
+	</select>
+
+	<select id="selectItemCodesByUser" resultType="java.lang.String">
+		select distinct e.item_code from student_point_exchange e
+		where e.user_id = #{userId}
+	</select>
+</mapper>

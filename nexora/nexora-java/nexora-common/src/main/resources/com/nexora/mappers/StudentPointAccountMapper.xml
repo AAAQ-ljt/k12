@@ -50,6 +50,13 @@
 		where user_id = #{userId}
 	</update>
 
+	<!-- 兑换扣分：只减可用积分（累计积分只增不减）；返回 0 行 = 余额不足，调用方直接报错，不会扣成负数 -->
+	<update id="spendAvailable">
+		update student_point_account
+		set available_points = available_points - #{cost}, update_time = now()
+		where user_id = #{userId} and available_points &gt;= #{cost}
+	</update>
+
 	<!-- 排行榜取样（A-5）：startTime 空=累计榜，非空=周榜（按流水求和）。昵称一次联表带出，避免逐行查询 -->
 	<select id="selectRankRows" resultType="com.nexora.entity.vo.PointRankItemVO">
 		select t.user_id as userId, t.points as points, a.stage as stage, a.level as level, u.nick_name as nickName
