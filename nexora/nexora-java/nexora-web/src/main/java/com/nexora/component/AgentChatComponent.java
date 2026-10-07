@@ -139,6 +139,10 @@ public class AgentChatComponent {
     private static final Pattern EMOJI_PLACEHOLDER_PATTERN = Pattern.compile("\\[([a-zA-Z_]{2,20})\\](?![(:])");
 
     /** 学生画像（计划 C1：对话注入画像速览） */
+    /** 用户端提示词规则（计划 C2：学生自定义偏好，第四层注入） */
+    @Resource
+    private UserPromptRuleComponent userPromptRuleComponent;
+
     @Resource
     private StudentProfileComponent studentProfileComponent;
 
@@ -1029,7 +1033,11 @@ public class AgentChatComponent {
         String withProfile = StringTools.isEmpty(profileLine) ? withFactRule
                 : withFactRule + "\n\n## 学生画像速览（可直接参考；更细的掌握度/复习时间请用工具查）\n" + profileLine;
         // 产品功能自述块：不依赖 MCP 始终注入（按学段生成，防止介绍能力时漏掉绘本/编程等内建功能）
-        String withProduct = appendProductCapabilities(withProfile, user.getStage());
+        // 学生自定义偏好（计划 C2）：系统提示词第四层，优先级低于上面的平台安全与事实规则；
+        // 总开关关闭、或学生没设规则时不注入（块内也写明"平台规则优先"，不只靠拼接顺序）
+        String ruleBlock = userPromptRuleComponent.promptBlock(user.getUserId());
+        String withUserRules = StringTools.isEmpty(ruleBlock) ? withProfile : withProfile + "\n\n" + ruleBlock;
+        String withProduct = appendProductCapabilities(withUserRules, user.getStage());
         // 输出格式规范：与前端渲染层规范化双保险（模型偶发输出无空格标题/列表导致前端原样显示源码）
         String withFormat = withProduct + "\n\n" + MARKDOWN_FORMAT_RULE;
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力

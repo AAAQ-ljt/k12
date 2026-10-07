@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.UserPromptRuleMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.UserPromptRule">
+		<id column="rule_id" property="ruleId" />
+		<result column="user_id" property="userId" />
+		<result column="rule_type" property="ruleType" />
+		<result column="rule_value" property="ruleValue" />
+		<result column="scope" property="scope" />
+		<result column="status" property="status" />
+		<result column="source" property="source" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<insert id="insert" parameterType="com.nexora.entity.po.UserPromptRule"
+	        useGeneratedKeys="true" keyProperty="ruleId">
+		insert into user_prompt_rule (user_id, rule_type, rule_value, scope, status, source, create_time)
+		values (#{userId}, #{ruleType}, #{ruleValue}, #{scope}, #{status}, #{source}, now())
+	</insert>
+
+	<select id="selectByUser" resultMap="base_result_map">
+		select r.rule_id,r.user_id,r.rule_type,r.rule_value,r.scope,r.status,r.source,r.create_time,r.update_time
+		from user_prompt_rule r
+		where r.user_id = #{userId}
+		<if test="statusList != null and statusList.size() > 0">
+			and r.status in
+			<foreach collection="statusList" item="item" open="(" separator="," close=")">#{item}</foreach>
+		</if>
+		order by r.rule_type asc, r.rule_id asc
+	</select>
+
+	<select id="countEnabled" resultType="java.lang.Integer">
+		select count(1) from user_prompt_rule r where r.user_id = #{userId} and r.status = 1
+	</select>
+
+	<update id="updateStatus">
+		update user_prompt_rule set status = #{status}, update_time = now()
+		where user_id = #{userId} and rule_id = #{ruleId}
+	</update>
+
+	<delete id="deleteById">
+		delete from user_prompt_rule where user_id = #{userId} and rule_id = #{ruleId}
+	</delete>
+
+	<delete id="deleteBySource">
+		delete from user_prompt_rule where user_id = #{userId} and source = #{source}
+	</delete>
+</mapper>
