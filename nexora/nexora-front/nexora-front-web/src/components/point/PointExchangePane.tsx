@@ -145,7 +145,8 @@ export default function PointExchangePane() {
             {stars ? '还没有兑换过，攒够星星来换容量或音色吧' : '还没有兑换过，攒够积分来换容量或音色吧'}
           </div>
         ) : (
-          records.map((record) => (
+          <div className={styles.recordScroll}>
+          {records.map((record) => (
             <div className={styles.recordItem} key={record.exchangeId}>
               <span className={styles.recordName}>{record.itemName}</span>
               <span className={styles.recordTime}>{formatTime(record.createTime)}</span>
@@ -153,7 +154,8 @@ export default function PointExchangePane() {
                 <Lock size={11} /> -{record.costPoints}
               </span>
             </div>
-          ))
+          ))}
+          </div>
         )}
       </div>
     </div>

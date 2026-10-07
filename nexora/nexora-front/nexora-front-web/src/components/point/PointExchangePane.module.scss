@@ -114,6 +114,14 @@
   color: var(--text-tertiary);
 }
 
+/* 兑换记录：固定 5 行高度，超出在列表内滚动（行高约 31px） */
+.recordScroll {
+  min-height: 0;
+  max-height: 158px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .recordItem {
   display: flex;
   align-items: center;

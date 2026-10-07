@@ -117,11 +117,14 @@
 }
 
 /* ===== 积分明细 ===== */
+/* 积分明细：固定 5 行高度，超出在列表内滚动（行高约 47px），避免把整张卡片顶高 */
 .recordList {
   display: flex;
   flex-direction: column;
-  max-height: 380px;
+  min-height: 0;
+  max-height: 236px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .recordItem {
