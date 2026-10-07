@@ -191,7 +191,7 @@
 				 next_review_time,
 			</if>
 			<if test="bean.reviewStage != null">
-				 review_stage,				 muted,				 mute_until,
+				 review_stage,
 			</if>
 			<if test="bean.createTime != null">
 				 create_time,
@@ -232,13 +232,7 @@
 				 #{bean.nextReviewTime},
 			</if>
 			<if test="bean.reviewStage!=null">
-				 #{bean.reviewStage},				 #{bean.muted},				 #{bean.muteUntil},
-			</if>
-			<if test="bean.muted!=null">
-				 #{bean.muted},
-			</if>
-			<if test="bean.muteUntil!=null">
-				 #{bean.muteUntil},
+				 #{bean.reviewStage},
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
@@ -287,7 +281,7 @@
 				 next_review_time,
 			</if>
 			<if test="bean.reviewStage != null">
-				 review_stage,				 muted,				 mute_until,
+				 review_stage,
 			</if>
 			<if test="bean.createTime != null">
 				 create_time,
@@ -331,13 +325,7 @@
 				 #{bean.nextReviewTime},
 			</if>
 			<if test="bean.reviewStage!=null">
-				 #{bean.reviewStage},				 #{bean.muted},				 #{bean.muteUntil},
-			</if>
-			<if test="bean.muted!=null">
-				 #{bean.muted},
-			</if>
-			<if test="bean.muteUntil!=null">
-				 #{bean.muteUntil},
+				 #{bean.reviewStage},
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
@@ -403,7 +391,7 @@
 			 last_practice_time,
 			 last_master_time,
 			 next_review_time,
-			 review_stage,			 muted,			 mute_until,
+			 review_stage,
 			 create_time,
 			 update_time
 		 )values
@@ -439,7 +427,7 @@
 			 last_practice_time,
 			 last_master_time,
 			 next_review_time,
-			 review_stage,			 muted,			 mute_until,
+			 review_stage,
 			 create_time,
 			 update_time
 		 )values
