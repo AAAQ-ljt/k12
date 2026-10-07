@@ -82,7 +82,10 @@ export default function ReviewPointModal({ item, onClose, onFinished }: ReviewPo
     try {
       const submitted = await submitNodeQuiz({ itemId: quiz.itemId, questions: quiz.questions, answers });
       setResult(submitted);
-      if (submitted.mastered || submitted.passed) {
+      if (submitted.masteryUpdated === false) {
+        // 服务端回写异常：判分是真的，但掌握度/复习计划没落库，不能谎称已后推
+        message.warning('成绩已判分，但掌握度与复习计划未能写入，请稍后重试或联系老师');
+      } else if (submitted.mastered || submitted.passed) {
         message.success('复习通过：下次复习时间已往后推');
       } else {
         message.warning('本轮有答错，已计入练习次数；明天会再提醒你复习一次');

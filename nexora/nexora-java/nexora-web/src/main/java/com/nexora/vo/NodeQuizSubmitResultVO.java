@@ -28,6 +28,13 @@ public class NodeQuizSubmitResultVO {
     /** 是否已跨入「已掌握」 */
     private boolean mastered;
 
+    /**
+     * 掌握度与复习计划是否已成功写入。
+     * false = 服务端回写异常：本次成绩已判分但**未计入掌握度**，复习时间也没有后推，
+     * 前端必须如实提示（不要把「通过」说成「下次复习时间已往后推」，2026-10-07 踩过）。
+     */
+    private boolean masteryUpdated = true;
+
     /** 逐题判分明细 */
     private List<QuestionResult> results;
 
@@ -77,6 +84,14 @@ public class NodeQuizSubmitResultVO {
 
     public void setMastered(boolean mastered) {
         this.mastered = mastered;
+    }
+
+    public boolean isMasteryUpdated() {
+        return masteryUpdated;
+    }
+
+    public void setMasteryUpdated(boolean masteryUpdated) {
+        this.masteryUpdated = masteryUpdated;
     }
 
     public List<QuestionResult> getResults() {

@@ -28,6 +28,9 @@ public class LessonQuizSubmitResultVO {
     /** 及格线 */
     private int passScore;
 
+    /** 掌握度与复习计划是否已成功写入（false = 服务端回写异常，本次成绩未计入掌握度，前端需如实提示） */
+    private boolean masteryUpdated = true;
+
     /** 逐题判分明细 */
     private List<QuestionResult> results;
 
@@ -210,6 +213,14 @@ public class LessonQuizSubmitResultVO {
 
     public void setPassed(boolean passed) {
         this.passed = passed;
+    }
+
+    public boolean isMasteryUpdated() {
+        return masteryUpdated;
+    }
+
+    public void setMasteryUpdated(boolean masteryUpdated) {
+        this.masteryUpdated = masteryUpdated;
     }
 
     public int getCorrectCount() {

@@ -274,8 +274,10 @@ public class CourseQuizBiz {
             }
         }
         // 判分 → 掌握度回写（供学习分析 / 学生端学习进度 / 个性化学习路径消费）
+        // 回写失败不阻断判分，但要把失败如实带出去：前端据此提示「成绩已判、掌握度未计入」
+        boolean masteryUpdated = true;
         if (!masteryOutcomes.isEmpty()) {
-            knowledgeMasteryComponent.recordAnswers(userId, stage, masteryOutcomes);
+            masteryUpdated = knowledgeMasteryComponent.recordAnswers(userId, stage, masteryOutcomes);
         }
 
         // 全部为主观题的测验无可判分内容，不自动判定通过
@@ -293,6 +295,7 @@ public class CourseQuizBiz {
 
         LessonQuizSubmitResultVO resultVO = new LessonQuizSubmitResultVO();
         resultVO.setPassed(passed);
+        resultVO.setMasteryUpdated(masteryUpdated);
         resultVO.setCorrectCount(correctCount);
         resultVO.setTotalCount(totalCount);
         resultVO.setScore(score);

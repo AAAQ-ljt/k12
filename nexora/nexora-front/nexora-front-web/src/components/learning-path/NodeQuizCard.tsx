@@ -129,18 +129,21 @@ export default function NodeQuizCard({ quiz, result, submitting, onSubmit, onClo
           style={{
             padding: '10px 12px',
             borderRadius: 8,
-            background: 'var(--warm-bg-light)',
+            background: result.masteryUpdated === false ? 'rgba(255,77,79,0.08)' : 'var(--warm-bg-light)',
             fontSize: 13,
             lineHeight: 1.9,
           }}
         >
           <div style={{ fontWeight: 600 }}>
-            本次得分 {result.score} 分（答对 {result.correctCount}/{result.totalCount}，掌握度更新为 {result.masteryScore}）
+            本次得分 {result.score} 分（答对 {result.correctCount}/{result.totalCount}
+            {result.masteryUpdated === false ? '' : `，掌握度更新为 ${result.masteryScore}`}）
           </div>
-          <div style={{ color: 'var(--text-secondary)' }}>
-            {result.mastered || result.passed
-              ? '本次达标，下次复习时间已往后推。'
-              : '本次有答错，已计入练习次数；明天会再提醒你复习一次。'}
+          <div style={{ color: result.masteryUpdated === false ? '#cf1322' : 'var(--text-secondary)' }}>
+            {result.masteryUpdated === false
+              ? '成绩已判分，但掌握度与复习计划未能写入（服务端异常）：学习进度、今日待办里的「该复习了」不会变化，请稍后重试或联系老师。'
+              : result.mastered || result.passed
+                ? '本次达标，下次复习时间已往后推。'
+                : '本次有答错，已计入练习次数；明天会再提醒你复习一次。'}
           </div>
         </div>
       ) : null}

@@ -288,7 +288,10 @@ export default function LearningPathDetailPage() {
     try {
       const result = await submitNodeQuiz({ itemId: quiz.itemId, questions: quiz.questions ?? [], answers });
       setQuizResult(result);
-      if (result.mastered) {
+      if (result.masteryUpdated === false) {
+        // 判分有效但掌握度未写入：如实提示，避免学生以为进度已推进
+        message.warning('成绩已判分，但掌握度与复习计划未能写入，请稍后重试或联系老师');
+      } else if (result.mastered) {
         message.success('已全部掌握，该节点解锁下一个！');
       } else if (result.passed) {
         message.success('本轮全对，继续保持');

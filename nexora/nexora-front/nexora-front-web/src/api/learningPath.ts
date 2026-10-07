@@ -221,6 +221,12 @@ export interface NodeQuizResult {
   masteryScore: number;
   /** 是否已跨入「已掌握」 */
   mastered: boolean;
+  /**
+   * 掌握度与复习计划是否已成功写入。
+   * false = 服务端回写异常：成绩已判分但**未计入掌握度**、复习时间也没后推，
+   * 此时不能提示「下次复习时间已往后推」（2026-10-07 踩过：界面说通过、进度一动不动）。
+   */
+  masteryUpdated?: boolean;
   results: NodeQuizQuestionResult[];
 }
 

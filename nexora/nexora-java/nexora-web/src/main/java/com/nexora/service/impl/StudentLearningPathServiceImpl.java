@@ -368,8 +368,11 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             }
         }
         // 掌握度回写（本次得分率达标 + 足够练习次数 → 节点跨入已掌握，闭环即时生效）
+        // 回写失败不阻断判分，但要把失败如实带给前端：否则界面会说「下次复习时间已往后推」，
+        // 而学习进度 / 今日待办仍显示「该复习了」（2026-10-07 实际踩到过一次）
+        boolean masteryUpdated = true;
         if (!outcomes.isEmpty()) {
-            knowledgeMasteryComponent.recordAnswers(userId, path.getStage(), outcomes);
+            masteryUpdated = knowledgeMasteryComponent.recordAnswers(userId, path.getStage(), outcomes);
         }
         // 回写后刷新节点三态与路径进度，再取最新掌握度
         learningPathComponent.getMyPath(userId, item.getPathId());
@@ -381,6 +384,7 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
         boolean passed = total > 0 && score >= KnowledgeMasteryComponent.REVIEW_CORRECT_PERCENT;
         NodeQuizSubmitResultVO resultVO = new NodeQuizSubmitResultVO();
         resultVO.setPassed(passed);
+        resultVO.setMasteryUpdated(masteryUpdated);
         // 节点快测通过积分（bizId=路径节点ID，每节点只奖一次）—— 二期规划 A-2 第 4 条。
         // 积分异常只记日志：绝不能因为积分问题让学生答不了题。
         if (passed) {

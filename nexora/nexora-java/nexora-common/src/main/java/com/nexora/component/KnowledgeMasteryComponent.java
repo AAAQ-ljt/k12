@@ -75,11 +75,18 @@ public class KnowledgeMasteryComponent {
     }
 
     /**
-     * 批量回写掌握度：单次查询 + 单次批量 upsert；回写失败只记日志，不影响判分主流程
+     * 批量回写掌握度：单次查询 + 单次批量 upsert。
+     *
+     * <p>回写失败不影响判分主流程（判分照常返回），但**必须把失败如实告诉调用方**：
+     * 调用方据此提示学生「成绩已判、掌握度未计入」，否则前端会谎称「下次复习时间已后推」，
+     * 而学习进度 / 今日待办仍显示「该复习了」（2026-10-07 实际踩到：进程未重启导致 upsert 报错，
+     * 学生做完复习题看到「通过」，进度却一动不动）。
+     *
+     * @return true = 已成功写入（或本就无需写入）；false = 写入异常，本次成绩未计入掌握度
      */
-    public void recordAnswers(String userId, String stage, List<AnswerOutcome> outcomes) {
+    public boolean recordAnswers(String userId, String stage, List<AnswerOutcome> outcomes) {
         if (StringTools.isEmpty(userId) || outcomes == null || outcomes.isEmpty()) {
-            return;
+            return true;
         }
         Map<String, Integer> attemptMap = new LinkedHashMap<>();
         Map<String, Integer> correctMap = new LinkedHashMap<>();
@@ -94,7 +101,7 @@ public class KnowledgeMasteryComponent {
             }
         }
         if (attemptMap.isEmpty()) {
-            return;
+            return true;
         }
         Map<String, KnowledgeMastery> existing = loadExisting(userId, attemptMap.keySet());
         Date now = new Date();
@@ -109,8 +116,9 @@ public class KnowledgeMasteryComponent {
         try {
             knowledgeMasteryService.addOrUpdateBatch(upsertList);
         } catch (Exception e) {
-            log.warn("掌握度批量回写失败 userId={} 知识点数={}", userId, upsertList.size(), e);
-            return;
+            log.error("掌握度批量回写失败 userId={} 知识点数={}（本次成绩未计入掌握度，需提示学生）",
+                    userId, upsertList.size(), e);
+            return false;
         }
         // 跨入「已掌握」→ 发积分（二期积分体系 A-2 第 5 条）。
         // 幂等由 PointAwardComponent 保证（bizId = 知识点 ID，同一知识点只奖一次）；
@@ -136,6 +144,7 @@ public class KnowledgeMasteryComponent {
                         userId, bean.getKnowledgePointId(), e);
             }
         }
+        return true;
     }
 
     /**

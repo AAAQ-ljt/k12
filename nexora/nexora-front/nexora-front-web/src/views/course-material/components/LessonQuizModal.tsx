@@ -397,6 +397,11 @@ export default function LessonQuizModal({
                   重新作答
                 </Button>
               ) : null}
+              {result.masteryUpdated === false ? (
+                <div className={styles.bannerStats} style={{ color: '#cf1322' }}>
+                  提示：成绩已判分，但掌握度与复习计划未能写入（服务端异常），学习进度与今日待办可能未更新，请稍后重试或联系老师。
+                </div>
+              ) : null}
             </div>
           </div>
           <div className={styles.resultListHead}>

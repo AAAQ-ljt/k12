@@ -84,6 +84,8 @@ export interface LessonQuizSubmitResult {
   passScore: number;
   /** 结果回显时返回：最近一次提交时间 */
   submitTime?: string;
+  /** 掌握度与复习计划是否已成功写入（false = 服务端回写异常，成绩已判但未计入掌握度） */
+  masteryUpdated?: boolean;
   results: {
     questionId: string;
     title: string;
