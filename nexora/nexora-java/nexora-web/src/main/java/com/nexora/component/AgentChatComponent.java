@@ -1086,7 +1086,15 @@ public class AgentChatComponent {
         // 学生当前学习上下文（来自学习路径节点等入口）：独立段落，优先参考；取不到则跳过
         String withLearning = StringTools.isEmpty(learningContext) ? withUserRules
                 : withUserRules + "\n\n## 学生当前学习上下文（本轮消息带入，请直接引用）\n" + learningContext;
-        String withProduct = appendProductCapabilities(withLearning, user.getStage());
+        // 当前时间（2026-10-07 修复）：模型自身没有可靠的"今天几号"，
+        // 判断复习是否到期/逾期多久必须以这里注入的时间为准，否则会把已过期说成"还没到时间"。
+        String withNow = withLearning + "\n\n## 当前时间\n今天是 "
+                + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                + "（" + "周" + "一二三四五六日".charAt(java.time.LocalDate.now().getDayOfWeek().getValue() - 1)
+                + "）" + java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+                + "。凡涉及\"是否到期 / 逾期多久 / 今天该学什么\"，一律以这个时间为准；"
+                + "工具返回的时间若早于它，就是**已经逾期**，不要说\"还没到时间\"。";
+        String withProduct = appendProductCapabilities(withNow, user.getStage());
         // 输出格式规范：与前端渲染层规范化双保险（模型偶发输出无空格标题/列表导致前端原样显示源码）
         String withFormat = withProduct + "\n\n" + MARKDOWN_FORMAT_RULE;
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力

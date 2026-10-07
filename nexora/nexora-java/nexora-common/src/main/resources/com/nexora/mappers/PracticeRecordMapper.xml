@@ -47,7 +47,7 @@
 	<!-- 通用查询结果列-->
 	<sql id="base_column_list">
 		 p.record_id,p.user_id,p.knowledge_point_id,p.stage,p.question_id,
-		 p.question_type,p.user_answer,p.is_correct,p.score,p.duration,
+		 p.question_type,p.user_answer,p.question_text,p.correct_answer,p.is_correct,p.score,p.duration,
 		 p.source,p.biz_id,p.create_time,
 		 p.review_status,p.review_score,p.reviewer_id,p.review_comment,p.review_time
 	</sql>

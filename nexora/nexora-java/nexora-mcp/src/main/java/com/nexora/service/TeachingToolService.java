@@ -574,10 +574,15 @@ public class TeachingToolService {
             sb.append("\n- 状态：")
                     .append(hit.getStatus() == null ? "未知"
                             : (hit.getStatus() == 2 ? "已掌握" : hit.getStatus() == 0 ? "未解锁" : "进行中"))
-                    .append("\n- 是否已到复习时间：")
-                    .append(hit.getDueDate() != null && hit.getDueDate().compareTo(new java.util.Date()) <= 0 ? "是" : "否");
+                    .append("\n- 计划完成时间：")
+                    .append(hit.getDueDate() == null ? "未设置"
+                            : (DateUtil.format(hit.getDueDate(), DateTimePatternEnum.YYYY_MM_DD.getPattern())
+                            + (hit.getDueDate().compareTo(new java.util.Date()) <= 0 ? "（已逾期）" : "")));
             if (hit.getDueDate() != null) {
-                sb.append("\n- 计划完成：").append(hit.getDueDate());
+                long overdueDays = (System.currentTimeMillis() - hit.getDueDate().getTime()) / 86400000L;
+                if (overdueDays > 0) {
+                    sb.append("，逾期 ").append(overdueDays).append(" 天");
+                }
             }
             if (hit.getFinishTime() != null) {
                 sb.append("\n- 实际完成：").append(hit.getFinishTime());
@@ -609,7 +614,12 @@ public class TeachingToolService {
                             .append("，已练习 ").append(mastery.getPracticeCount() == null ? 0 : mastery.getPracticeCount())
                             .append(" 次，正确率 ").append(mastery.getAccuracy() == null ? 0 : mastery.getAccuracy()).append("%");
                     if (mastery.getNextReviewTime() != null) {
-                        sb.append("，下次复习 ").append(mastery.getNextReviewTime());
+                        long overdueDays = (System.currentTimeMillis() - mastery.getNextReviewTime().getTime()) / 86400000L;
+                        sb.append("，下次复习 ")
+                                .append(DateUtil.format(mastery.getNextReviewTime(), DateTimePatternEnum.YYYY_MM_DD.getPattern()));
+                        if (overdueDays > 0) {
+                            sb.append("（**已逾期 ").append(overdueDays).append(" 天，建议现在复习**）");
+                        }
                     }
                     break;
                 }
@@ -726,6 +736,15 @@ public class TeachingToolService {
             }
             String uid = userId.trim();
             List<LearningPathComponent.PathWithItems> paths = learningPathComponent.listMyPaths(uid);
+            // 掌握度里"下次复习时间已过"的节点也算到期（学习路径的 due_date 常常是空的，只看它就永远不算到期）
+            List<KnowledgeMasteryVO> masteryForDue = learningAnalysisMapper.selectMasteryList(uid);
+            java.util.Set<String> reviewDueItemIds = new java.util.HashSet<>();
+            java.util.Map<String, java.util.Date> reviewDueByPoint = new java.util.HashMap<>();
+            for (KnowledgeMasteryVO mastery : masteryForDue) {
+                if (mastery.getNextReviewTime() != null && mastery.getNextReviewTime().before(new java.util.Date())) {
+                    reviewDueByPoint.put(mastery.getKnowledgePointId(), mastery.getNextReviewTime());
+                }
+            }
             List<String> review = new java.util.ArrayList<>();
             List<String> current = new java.util.ArrayList<>();
             java.util.Date now = new java.util.Date();
@@ -737,8 +756,18 @@ public class TeachingToolService {
                         continue;
                     }
                     String label = item.getKnowledgePointName() + "（路径《" + title + "》）";
+                    // 逾期与否在下面统一判断（先算 dueNow，再决定是否补逾期天数）
+                    // 到期判定（2026-10-07 修复）：节点的 due_date 与掌握度的 next_review_time 取更早者
                     boolean dueNow = item.getDueDate() != null && item.getDueDate().compareTo(now) <= 0;
+                    if (!dueNow && reviewDueItemIds.contains(item.getItemId())) {
+                        dueNow = true;
+                    }
                     if (dueNow) {
+                        String pointId = item.getKnowledgePointId();
+                        if (pointId != null && reviewDueByPoint.containsKey(pointId)) {
+                            long overdueDays = (System.currentTimeMillis() - reviewDueByPoint.get(pointId).getTime()) / 86400000L;
+                            label = label + "（下次复习已逾期 " + Math.max(overdueDays, 1) + " 天）";
+                        }
                         review.add(label);
                     } else if (item.getStatus() != null && item.getStatus() == 1 && current.size() < 3) {
                         current.add(label);
