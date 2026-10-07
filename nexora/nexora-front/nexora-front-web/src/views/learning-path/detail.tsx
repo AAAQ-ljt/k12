@@ -124,12 +124,43 @@ export default function LearningPathDetailPage() {
     setActiveNode(node);
   };
 
+  /**
+   * 把节点的真实学习情况整理成一句话上下文（二期 7.60 第一批）。
+   *
+   * 以前只把知识点名拼成一句自然语言，AI 拿不到掌握度/练习次数/复习时间，回答必然笼统；
+   * 这里把学生此刻的真实状态一并交出去，助教页会自动发送（一键直达）。
+   */
+  const buildLearningContext = (node: LearningPathNode): string => {
+    const parts: string[] = [];
+    parts.push(`我正在学习路径《${detail?.title || '我的学习路径'}》里的节点《${node.knowledgePointName}》`);
+    const statusText = node.status === 2 ? '已掌握' : node.status === 0 ? '未解锁' : '进行中';
+    parts.push(`节点状态：${statusText}`);
+    if (typeof node.masteryScore === 'number') {
+      parts.push(`我的掌握度：${node.masteryScore}`);
+    }
+    if (typeof node.practiceCount === 'number') {
+      parts.push(`已练习 ${node.practiceCount} 次`);
+    }
+    if (node.nextReviewTime) {
+      parts.push(`下次复习时间：${node.nextReviewTime}`);
+    }
+    if (node.due) {
+      parts.push('已经到复习时间了');
+    }
+    if (node.task) {
+      parts.push(`本节点要做的任务是：${node.task}`);
+    }
+    return parts.join('；');
+  };
+
   const askAi = (node: LearningPathNode, mode: 'explain' | 'quiz') => {
+    const context = buildLearningContext(node);
     const question = mode === 'explain'
-      ? `请给我讲讲「${node.knowledgePointName}」，并结合我的学习路径告诉我该重点掌握什么。`
-      : `针对《${node.knowledgePointName}》出 3 道题考考我。`;
+      ? `请结合我的实际情况给我讲讲「${node.knowledgePointName}」。${context}。请告诉我这个节点该重点掌握什么、有没有需要先补的地方。`
+      : `针对《${node.knowledgePointName}》出 3 道题考考我。${context}。请按我的掌握度调整难度。`;
     setActiveNode(null);
-    navigate('/ai-tutor', { state: { presetQuestion: question } });
+    // autoSend：进对话页直接发送，不用学生再点一次发送（7.60 验收口径 1）
+    navigate('/ai-tutor', { state: { presetQuestion: question, autoSend: true } });
   };
 
   /** 是否正在出题：生成期间按钮禁用，防止连续点击产生多个快测任务 */

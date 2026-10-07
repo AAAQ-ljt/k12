@@ -279,11 +279,17 @@ export default function AiTutor() {
   const [renaming, setRenaming] = useState(false);
   // 学习路径节点「问 AI 助教」跳转过来时预填问题（用完即清，避免刷新重复填充）
   useEffect(() => {
-    const state = location.state as { presetQuestion?: string } | null;
+    const state = location.state as { presetQuestion?: string; autoSend?: boolean } | null;
     if (state?.presetQuestion) {
       setInput(state.presetQuestion);
       navigate(location.pathname, { replace: true, state: null });
+      // 一键直达（二期 7.60）：带上下文的问题直接发出，学生不必再点一次发送
+      if (state.autoSend) {
+        void handleSend(state.presetQuestion);
+      }
     }
+    // handleSend 在本次渲染稍后定义，但 effect 在渲染完成后才执行，这里引用是安全的
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, navigate]);
 
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
