@@ -7,6 +7,7 @@ import { useUiStore } from '@/stores/ui';
 import { usePointStore } from '@/stores/point';
 import { studentLogout } from '@/api/auth';
 import PointToast from '@/components/point/PointToast';
+import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import { getGradeText, getStageOption } from '@/types/common';
 
 /** 积分到账轮询间隔：积分只由服务端学习事件结算，前端定时感知「变多了」即飘字 */
@@ -199,6 +200,8 @@ export default function MainLayout() {
             K12 AI 通识课教学平台
           </div>
           <div className="header-actions">
+            {/* 新手指引（计划 D1）：常驻顶栏最右侧，首次自动弹欢迎卡，忘记操作随时重看 */}
+            <OnboardingGuide />
             {(userInfo?.grade || stageOption) && (
               <span className="grade-badge" style={{ '--stage-color': stageOption?.color } as React.CSSProperties}>
                 {getGradeText(userInfo)}
