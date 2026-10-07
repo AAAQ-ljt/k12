@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, App, Button, Empty, Popconfirm, Progress, Space, Spin, Tag } from 'antd';
-import { BookOpen, Compass, GraduationCap, Plus, Sparkles, Target, Trash2 } from 'lucide-react';
+import {
+  Lightbulb, BookOpen, Compass, GraduationCap, Plus, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import {
@@ -14,6 +15,7 @@ import {
 import { loadMyMasteryOverview, type MasteryOverview } from '@/api/knowledgeMastery';
 import { loadStudentWikiProfile, type StudentWikiProfile } from '@/api/studentWiki';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
+import PreferencePageModal from '@/components/profile/PreferencePageModal';
 import styles from './index.module.scss';
 
 const STAGE_LABELS: Record<string, string> = {
@@ -57,6 +59,8 @@ export default function LearningPath() {
   /** 学习进度明细折叠：默认只展示前 N 条 */
   const [masteryExpanded, setMasteryExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  /** 《我的学习偏好》系统页弹窗（计划 C3：与「我的学习档案」并排） */
+  const [prefOpen, setPrefOpen] = useState(false);
   /** 因缺少学习目标被拦下时置位：档案保存后自动继续生成 */
   const pendingGenerateRef = useRef(false);
 
@@ -202,6 +206,9 @@ export default function LearningPath() {
         <Space>
           <Button icon={<BookOpen size={15} />} onClick={() => setProfileOpen(true)}>
             我的学习档案
+          </Button>
+          <Button icon={<Lightbulb size={15} />} onClick={() => setPrefOpen(true)}>
+            我的学习偏好
           </Button>
           <Button type="primary" icon={<Sparkles size={15} />} loading={generating} onClick={handleGenerate}>
             AI 生成新路线
@@ -376,6 +383,8 @@ export default function LearningPath() {
         }}
         onSaved={() => void handleProfileSaved()}
       />
+
+      <PreferencePageModal open={prefOpen} onClose={() => setPrefOpen(false)} />
     </div>
   );
 }

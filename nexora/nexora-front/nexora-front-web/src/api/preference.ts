@@ -55,3 +55,26 @@ export function changePromptRuleStatus(ruleId: number, status: number) {
 export function deletePromptRule(ruleId: number) {
   return post<void>('/userPromptRule/del', { ruleId });
 }
+
+/** 《我的学习偏好》系统页（计划 C3） */
+export interface PreferencePageVO {
+  docId: string;
+  title: string;
+  content: string;
+  vectorStatus?: number;
+}
+
+/** 打开偏好页（首次访问自动创建） */
+export function getPreferencePage() {
+  return get<PreferencePageVO>('/preferencePage/getInfo');
+}
+
+/** 保存正文（规则段由系统重新渲染，你写的内容保留） */
+export function savePreferencePage(content: string) {
+  return post<PreferencePageVO>('/preferencePage/save', { content });
+}
+
+/** 重置：清空自填规则 + 正文回初始内容 */
+export function resetPreferencePage() {
+  return post<PreferencePageVO>('/preferencePage/reset', {});
+}
