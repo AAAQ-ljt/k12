@@ -9,6 +9,10 @@
 -- 【禁止改已存在的表结构】本脚本只新增表/配置/徽章数据。
 -- =====================================================================
 
+-- 客户端字符集：徽章/图标里有 emoji（4 字节 UTF-8），Windows 下 mysql 客户端默认字符集
+-- 不是 utf8mb4 会报 1366 Incorrect string value，这里显式声明（Navicat 等图形客户端同样受益）。
+SET NAMES utf8mb4;
+
 -- ---------- ① 兑换记录（一次兑换一条，单号为主键天然幂等）----------
 CREATE TABLE IF NOT EXISTS `student_point_exchange` (
   `exchange_id` varchar(32) NOT NULL COMMENT '兑换单号',
