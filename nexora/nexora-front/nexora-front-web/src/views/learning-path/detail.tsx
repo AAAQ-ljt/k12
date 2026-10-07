@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { App, Button, Collapse, Drawer, Empty, Modal, Progress, Radio, Space, Spin, Tag, Tooltip } from 'antd';
 import {
+  History,
+  Search,
+  Route,
   ArrowLeft, CheckCircle2, Circle, Clock, Compass, Lock, PenLine, Play, Rocket, Sparkles, Target,
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -153,11 +156,27 @@ export default function LearningPathDetailPage() {
     return parts.join('；');
   };
 
-  const askAi = (node: LearningPathNode, mode: 'explain' | 'quiz') => {
+  /**
+   * 节点动作（二期 7.60 第三批）：讲 / 出题 / 找材料 / 复盘 / 带节奏复习。
+   *
+   * 全部走「一键直达」——把学生的真实学习情况一起交给 AI 并自动发送；
+   * 「找材料」和「复盘」不需要新增后端：AI 会用已挂载的 MCP 工具（recommendResource / queryPathNode / queryMastery）去查。
+   */
+  const askAi = (node: LearningPathNode, mode: 'explain' | 'quiz' | 'materials' | 'review' | 'guided') => {
     const context = buildLearningContext(node);
-    const question = mode === 'explain'
-      ? `请结合我的实际情况给我讲讲「${node.knowledgePointName}」。${context}。请告诉我这个节点该重点掌握什么、有没有需要先补的地方。`
-      : `针对《${node.knowledgePointName}》出 3 道题考考我。${context}。请按我的掌握度调整难度。`;
+    let question: string;
+    if (mode === 'explain') {
+      question = `请结合我的实际情况给我讲讲「${node.knowledgePointName}」。${context}。请告诉我这个节点该重点掌握什么、有没有需要先补的地方。`;
+    } else if (mode === 'quiz') {
+      question = `针对《${node.knowledgePointName}》出 3 道题考考我。${context}。请按我的掌握度调整难度。`;
+    } else if (mode === 'materials') {
+      question = `我想把「${node.knowledgePointName}」学扎实，帮我找几份合适的学习材料推荐给我。${context}。请优先推荐平台上已有的资源，并说明每份材料适合先看还是后看。`;
+    } else if (mode === 'review') {
+      question = `帮我复盘一下《${node.knowledgePointName}》这个节点我最近一次的练习情况。${context}。请指出我错得最多或最薄弱的地方，给出具体的补法，别只讲通用建议。`;
+    } else {
+      question = `带我做一轮「${node.knowledgePointName}」的复习：先用两三句话把关键点讲清楚，然后出 3 道题考我；`
+        + `我答完后你按结果决定——没掌握就回炉重讲，掌握了就告诉我可以进入下一个节点。${context}。`;
+    }
     setActiveNode(null);
     // autoSend：进对话页直接发送，不用学生再点一次发送（7.60 验收口径 1）
     navigate('/ai-tutor', { state: { presetQuestion: question, autoSend: true } });
@@ -564,6 +583,12 @@ export default function LearningPathDetailPage() {
             <Button icon={<Play size={14} />} onClick={() => askAi(currentNode, 'explain')}>
               让 AI 讲这个知识点
             </Button>
+            <Button icon={<Search size={14} />} onClick={() => askAi(currentNode, 'materials')}>
+              找材料
+            </Button>
+            <Button icon={<History size={14} />} onClick={() => askAi(currentNode, 'review')}>
+              复盘练习
+            </Button>
             <Button icon={<Sparkles size={14} />} onClick={() => askAi(currentNode, 'quiz')}>
               对话练一练
             </Button>
@@ -692,11 +717,20 @@ export default function LearningPathDetailPage() {
                 <Button block onClick={() => askAi(activeNode, 'explain')}>
                   让 AI 讲这个知识点
                 </Button>
+                <Button type="primary" ghost block icon={<Route size={14} />} onClick={() => askAi(activeNode, 'guided')}>
+                  带我一轮复习（讲 + 出题 + 按结果决定）
+                </Button>
                 <Tooltip title="对话内答题卡自测，不计入掌握度">
                   <Button block icon={<Sparkles size={14} />} onClick={() => askAi(activeNode, 'quiz')}>
                     对话练一练（不计掌握度）
                   </Button>
                 </Tooltip>
+                <Button block icon={<Search size={14} />} onClick={() => askAi(activeNode, 'materials')}>
+                  帮我找学习材料
+                </Button>
+                <Button block icon={<History size={14} />} onClick={() => askAi(activeNode, 'review')}>
+                  复盘我最近的练习
+                </Button>
               </Space>
             </div>
           </Space>
