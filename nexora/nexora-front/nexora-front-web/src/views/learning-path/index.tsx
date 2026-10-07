@@ -12,10 +12,11 @@ import {
   type LearningPathGenTask,
   type LearningPathSummary,
 } from '@/api/learningPath';
-import { loadMyMasteryOverview, type MasteryOverview } from '@/api/knowledgeMastery';
+import { loadMyMasteryOverview, type MasteryItem, type MasteryOverview } from '@/api/knowledgeMastery';
 import { loadStudentWikiProfile, type StudentWikiProfile } from '@/api/studentWiki';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
 import PreferencePageModal from '@/components/profile/PreferencePageModal';
+import ReviewPointModal from '@/components/learning-path/ReviewPointModal';
 import styles from './index.module.scss';
 
 const STAGE_LABELS: Record<string, string> = {
@@ -61,6 +62,8 @@ export default function LearningPath() {
   const [profileOpen, setProfileOpen] = useState(false);
   /** 《我的学习偏好》系统页弹窗（计划 C3：与「我的学习档案」并排） */
   const [prefOpen, setPrefOpen] = useState(false);
+  /** 复习弹窗当前选中的知识点（复习闭环：待复习行「复习一下」快捷入口） */
+  const [reviewItem, setReviewItem] = useState<MasteryItem | null>(null);
   /** 因缺少学习目标被拦下时置位：档案保存后自动继续生成 */
   const pendingGenerateRef = useRef(false);
 
@@ -281,6 +284,9 @@ export default function LearningPath() {
                       <span className={styles.masteryPoint}>{item.knowledgePointName}</span>
                       <Tag color={meta.color}>{meta.label}</Tag>
                       {item.due ? <Tag color="red">该复习了</Tag> : null}
+                      <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setReviewItem(item)}>
+                        复习一下
+                      </Button>
                     </div>
                     <div className={styles.masteryBar}>
                       <Progress
@@ -395,6 +401,12 @@ export default function LearningPath() {
       />
 
       <PreferencePageModal open={prefOpen} onClose={() => setPrefOpen(false)} />
+
+      <ReviewPointModal
+        item={reviewItem}
+        onClose={() => setReviewItem(null)}
+        onFinished={() => void load()}
+      />
     </div>
   );
 }

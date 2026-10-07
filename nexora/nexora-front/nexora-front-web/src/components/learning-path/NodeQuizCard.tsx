@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Progress, Radio, Space, Tag } from 'antd';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { sanitizeAnimationSvg } from '@/api/animation';
@@ -31,12 +31,20 @@ export default function NodeQuizCard({ quiz, result, submitting, onSubmit, onClo
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
+  // 换一套题（「再测一次」重新出题）时重置作答，避免沿用上一轮的选项
+  useEffect(() => {
+    setIndex(0);
+    setAnswers({});
+  }, [quiz]);
+
   const current = questions[index];
   const answeredCount = useMemo(
     () => questions.filter((question) => !!answers[question.index]).length,
     [questions, answers],
   );
   const percent = questions.length === 0 ? 0 : Math.round((answeredCount / questions.length) * 100);
+  /** 当前题在判分明细里的对应项（题号 0 起，与提交时的 index 一致） */
+  const currentResult = result?.results?.find((item) => item.index === current?.index);
 
   const renderSvg = (svg?: string) => {
     const clean = sanitizeAnimationSvg(svg);
@@ -100,6 +108,22 @@ export default function NodeQuizCard({ quiz, result, submitting, onSubmit, onClo
         ))}
       </Radio.Group>
 
+      {currentResult ? (
+        <div
+          style={{
+            padding: '8px 10px',
+            borderRadius: 8,
+            background: currentResult.correct ? 'rgba(82,196,26,0.08)' : 'rgba(255,77,79,0.08)',
+            fontSize: 13,
+            lineHeight: 1.9,
+          }}
+        >
+          <Tag color={currentResult.correct ? 'green' : 'red'}>{currentResult.correct ? '答对了' : '答错了'}</Tag>
+          正确答案：{currentResult.correctAnswer || '见解析'}
+          {currentResult.analysis ? <div style={{ color: 'var(--text-secondary)' }}>{currentResult.analysis}</div> : null}
+        </div>
+      ) : null}
+
       {result ? (
         <div
           style={{
@@ -111,23 +135,13 @@ export default function NodeQuizCard({ quiz, result, submitting, onSubmit, onClo
           }}
         >
           <div style={{ fontWeight: 600 }}>
-            得分 {result.score} 分（答对 {result.correctCount}/{result.totalCount}，掌握度更新为 {result.masteryScore}）
+            本次得分 {result.score} 分（答对 {result.correctCount}/{result.totalCount}，掌握度更新为 {result.masteryScore}）
           </div>
           <div style={{ color: 'var(--text-secondary)' }}>
             {result.mastered || result.passed
               ? '本次达标，下次复习时间已往后推。'
               : '本次有答错，已计入练习次数；明天会再提醒你复习一次。'}
           </div>
-          {result.results?.length ? (
-            <div style={{ marginTop: 6 }}>
-              {result.results.map((item, itemIndex) => (
-                <div key={itemIndex} style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  <Tag color={item.correct ? 'green' : 'red'}>{item.correct ? '对' : '错'}</Tag>
-                  {item.analysis || item.correctAnswer || ''}
-                </div>
-              ))}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -139,7 +153,15 @@ export default function NodeQuizCard({ quiz, result, submitting, onSubmit, onClo
           <Button type="text" onClick={onClose}>
             收起
           </Button>
-          {result ? null : index + 1 < questions.length ? (
+          {result ? (
+            <Button
+              icon={<ChevronRight size={14} />}
+              disabled={index + 1 >= questions.length}
+              onClick={() => setIndex(index + 1)}
+            >
+              下一题
+            </Button>
+          ) : index + 1 < questions.length ? (
             <Button type="primary" icon={<ChevronRight size={14} />} onClick={() => setIndex(index + 1)}>
               下一题
             </Button>

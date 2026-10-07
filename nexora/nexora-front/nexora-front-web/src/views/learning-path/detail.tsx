@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { App, Button, Collapse, Drawer, Empty, Modal, Progress, Radio, Space, Spin, Tag, Tooltip } from 'antd';
+import { App, Button, Collapse, Drawer, Empty, Modal, Progress, Space, Spin, Tag, Tooltip } from 'antd';
 import {
   CircleHelp,
   History,
@@ -20,7 +20,7 @@ import {
   type NodeQuizResult,
   type NodeQuizTask,
 } from '@/api/learningPath';
-import { sanitizeAnimationSvg } from '@/api/animation';
+import NodeQuizCard from '@/components/learning-path/NodeQuizCard';
 import styles from './index.module.scss';
 
 const NODE_STATUS: Record<number, { label: string; color: string; className: string; tip: string }> = {
@@ -56,7 +56,6 @@ export default function LearningPathDetailPage() {
   // 节点快测弹窗状态（Redis 状态机任务：PENDING → QUIZ_GENERATING → COMPLETED/FAILED）
   const [quiz, setQuiz] = useState<NodeQuiz | null>(null);
   const [quizTask, setQuizTask] = useState<NodeQuizTask | null>(null);
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizResult, setQuizResult] = useState<NodeQuizResult | null>(null);
 
@@ -195,7 +194,6 @@ export default function LearningPathDetailPage() {
   /** 打开快测弹窗（若尚未打开）并保持空态 */
   const openQuizBlank = (node: LearningPathNode) => {
     setQuizResult(null);
-    setQuizAnswers({});
     setQuizSubmitting(false);
     setQuiz(null);
     setQuizTask({
@@ -232,7 +230,6 @@ export default function LearningPathDetailPage() {
     }
     const itemId = quiz.itemId;
     setQuizResult(null);
-    setQuizAnswers({});
     setQuizSubmitting(false);
     setQuiz(null);
     setQuizTask({
@@ -282,21 +279,14 @@ export default function LearningPathDetailPage() {
     return () => clearTimeout(timer);
   }, [quizTask, message]);
 
-  /** 提交判分：把题目（含答案）与作答回传，服务端权威判分并回写掌握度 */
-  const submitQuiz = async () => {
+  /** 提交判分：把题目（含答案）与作答回传，服务端权威判分并回写掌握度（作答校验由答题卡统一负责） */
+  const submitQuiz = async (answers: { index: number; userAnswer: string }[]) => {
     if (!quiz) {
-      return;
-    }
-    const questions = quiz.questions ?? [];
-    const missing = questions.find((q) => !quizAnswers[q.index]);
-    if (missing) {
-      message.warning('还有题目未作答，请完成后再提交');
       return;
     }
     setQuizSubmitting(true);
     try {
-      const answers = questions.map((q) => ({ index: q.index, userAnswer: quizAnswers[q.index] }));
-      const result = await submitNodeQuiz({ itemId: quiz.itemId, questions, answers });
+      const result = await submitNodeQuiz({ itemId: quiz.itemId, questions: quiz.questions ?? [], answers });
       setQuizResult(result);
       if (result.mastered) {
         message.success('已全部掌握，该节点解锁下一个！');
@@ -311,28 +301,14 @@ export default function LearningPathDetailPage() {
     }
   };
 
-  /** 图表题题干 SVG 配图：清洗后渲染（不信任 LLM 原生字符串，后端/前端双保险） */
-  const renderQuizSvg = (svg?: string) => {
-    const clean = sanitizeAnimationSvg(svg);
-    if (!clean) {
-      return null;
-    }
-    return (
-      <div
-        style={{
-          maxWidth: 360,
-          margin: '8px 0',
-          border: '1px solid #eee',
-          borderRadius: 8,
-          padding: 8,
-          background: '#fff',
-        }}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
-    );
+  /** 关闭快测弹窗并清空状态 */
+  const closeQuiz = () => {
+    setQuiz(null);
+    setQuizTask(null);
+    setQuizResult(null);
   };
 
-  /** 快测弹窗内容：出题中 / 失败态 / 结果态 / 答题态 */
+  /** 快测弹窗内容：出题中 / 失败态 / 答题与结果（交由共用答题卡渲染） */
   const renderQuizBody = () => {
     // 出题中：轮询期间展示运行状态（PENDING → QUIZ_GENERATING）
     if (quizRunning) {
@@ -359,77 +335,33 @@ export default function LearningPathDetailPage() {
     if (!quiz) {
       return null;
     }
-    if (quizResult) {
-      return (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>
-              {quizResult.passed ? '本轮通过' : '本轮未通过'}
-              {quizResult.mastered ? <Tag color="green" style={{ marginLeft: 8 }}>已掌握</Tag> : null}
-            </div>
-            <div style={{ marginTop: 4, color: '#888' }}>
-              答对 {quizResult.correctCount}/{quizResult.totalCount}，本次得分率 {quizResult.score}%（≥80% 判通过）
-              {quizResult.mastered ? '，练习次数已达标，节点标记为已掌握并解锁下一个' : '，未全对可随时再测' }
-            </div>
-          </div>
-          {(quizResult.results ?? []).map((r) => {
-            const opts = r.options ?? [];
-            const source = (quiz.questions ?? []).find((q) => q.index === r.index);
-            return (
-              <div key={r.index} style={{ border: '1px solid #eee', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontWeight: 500 }}>
-                  {r.index + 1}. {r.question}
-                </div>
-                {renderQuizSvg(source?.svg)}
-                <div style={{ marginTop: 6 }}>
-                  {opts.map((opt) => {
-                    const isCorrect = opt === r.correctAnswer;
-                    const isUser = opt === r.userAnswer;
-                    const bg = isCorrect ? '#f6ffed' : isUser ? '#fff1f0' : 'transparent';
-                    const fg = isCorrect ? '#389e0d' : isUser ? '#cf1322' : 'inherit';
-                    return (
-                      <div key={opt} style={{ background: bg, color: fg, borderRadius: 6, padding: '4px 8px', marginTop: 4 }}>
-                        {opt}
-                        {isCorrect ? ' ✓' : ''}
-                        {isUser && !isCorrect ? ' ✗（你的选择）' : ''}
-                      </div>
-                    );
-                  })}
-                </div>
-                {r.analysis ? (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #eee', color: '#888' }}>
-                    解析：{r.analysis}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-          <Button type="primary" loading={quizRunning} onClick={retryNodeQuiz}>
-            再测一次
-          </Button>
-        </Space>
-      );
-    }
     return (
-      <Space direction="vertical" size={20} style={{ width: '100%' }}>
-        {(quiz.questions ?? []).map((q) => (
-          <div key={q.index}>
-            <div style={{ fontWeight: 500, marginBottom: 8 }}>{q.index + 1}. {q.question}</div>
-            {renderQuizSvg(q.svg)}
-            <Radio.Group
-              value={quizAnswers[q.index]}
-              onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [q.index]: e.target.value }))}
-            >
-              <Space direction="vertical">
-                {(q.options ?? []).map((opt) => <Radio key={opt} value={opt}>{opt}</Radio>)}
-              </Space>
-            </Radio.Group>
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <NodeQuizCard
+          quiz={quiz}
+          result={quizResult}
+          submitting={quizSubmitting}
+          onSubmit={(answers) => void submitQuiz(answers)}
+          onClose={closeQuiz}
+        />
+        {quizResult ? (
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <div style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
+              {quizResult.mastered
+                ? '已掌握：该节点标记为已掌握并解锁下一个'
+                : quizResult.passed
+                  ? '本轮通过（得分率 ≥80%）'
+                  : '本轮未达标，可再测一次；成绩已计入掌握度'}
+            </div>
+            <Button type="primary" block loading={quizRunning} onClick={retryNodeQuiz}>
+              再测一次
+            </Button>
+          </Space>
+        ) : (
+          <div style={{ color: '#bbb', fontSize: 12 }}>
+            提交后服务端自动判分并计入掌握度，得分率 ≥80% 判通过（练习次数达标即跨入已掌握）
           </div>
-        ))}
-        <Button type="primary" block loading={quizSubmitting} onClick={submitQuiz}>
-          提交判分
-        </Button>
-        <div style={{ color: '#bbb', fontSize: 12 }}>提交后服务端自动判分并计入掌握度，全对即可解锁下一个节点</div>
+        )}
       </Space>
     );
   };
@@ -761,11 +693,7 @@ export default function LearningPathDetailPage() {
         title={quiz ? `节点快测 · ${quiz.knowledgePointName}` : quizTask ? `节点快测 · ${quizTask.knowledgePointName}` : '节点快测'}
         width={640}
         footer={null}
-        onCancel={() => {
-          setQuiz(null);
-          setQuizTask(null);
-          setQuizResult(null);
-        }}
+        onCancel={closeQuiz}
       >
         <div style={{ maxHeight: 560, overflowY: 'auto' }}>{renderQuizBody()}</div>
       </Modal>
