@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.StudentOnboardingMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.po.StudentOnboarding">
+		<id column="user_id" property="userId" />
+		<result column="stage_snapshot" property="stageSnapshot" />
+		<result column="version" property="version" />
+		<result column="welcome_seen" property="welcomeSeen" />
+		<result column="skipped" property="skipped" />
+		<result column="steps_done" property="stepsDone" />
+		<result column="finished_time" property="finishedTime" />
+		<result column="last_open_time" property="lastOpenTime" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<select id="selectByUserId" resultMap="base_result_map">
+		select o.user_id,o.stage_snapshot,o.version,o.welcome_seen,o.skipped,o.steps_done,
+		       o.finished_time,o.last_open_time,o.create_time,o.update_time
+		from student_onboarding o
+		where o.user_id = #{userId}
+	</select>
+
+	<insert id="insertIfAbsent" parameterType="com.nexora.entity.po.StudentOnboarding">
+		insert into student_onboarding (user_id, stage_snapshot, version, welcome_seen, skipped, create_time)
+		values (#{userId}, #{stageSnapshot}, 0, 0, 0, now())
+		on duplicate key update user_id = user_id
+	</insert>
+
+	<update id="updateSteps">
+		update student_onboarding
+		set steps_done = #{stepsDone},
+			<if test="version != null">version = #{version},</if>
+			<if test="finished">finished_time = now(),</if>
+			update_time = now()
+		where user_id = #{userId}
+	</update>
+
+	<update id="markWelcome">
+		update student_onboarding
+		set welcome_seen = #{welcomeSeen}, skipped = #{skipped},
+			stage_snapshot = #{stageSnapshot}, update_time = now()
+		where user_id = #{userId}
+	</update>
+
+	<update id="touchOpen">
+		update student_onboarding set last_open_time = now(), update_time = now() where user_id = #{userId}
+	</update>
+
+	<update id="resetSteps">
+		update student_onboarding
+		set steps_done = null, finished_time = null, update_time = now()
+		where user_id = #{userId}
+	</update>
+
+	<select id="selectByUserIds" resultMap="base_result_map">
+		select o.user_id,o.stage_snapshot,o.version,o.welcome_seen,o.skipped,o.steps_done,
+		       o.finished_time,o.last_open_time,o.create_time,o.update_time
+		from student_onboarding o
+		where o.user_id in
+		<foreach collection="userIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+	</select>
+</mapper>
