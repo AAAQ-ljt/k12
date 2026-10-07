@@ -186,6 +186,8 @@
 			</if>
 			<if test="bean.userAnswer != null">
 				 user_answer,
+				 question_text,
+				 correct_answer,
 			</if>
 			<if test="bean.isCorrect != null">
 				 is_correct,
@@ -239,6 +241,12 @@
 			</if>
 			<if test="bean.userAnswer!=null">
 				 #{bean.userAnswer},
+			</if>
+			<if test="bean.questionText!=null">
+				 #{bean.questionText},
+			</if>
+			<if test="bean.correctAnswer!=null">
+				 #{bean.correctAnswer},
 			</if>
 			<if test="bean.isCorrect!=null">
 				 #{bean.isCorrect},
@@ -300,6 +308,8 @@
 			</if>
 			<if test="bean.userAnswer != null">
 				 user_answer,
+				 question_text,
+				 correct_answer,
 			</if>
 			<if test="bean.isCorrect != null">
 				 is_correct,
@@ -356,6 +366,12 @@
 			</if>
 			<if test="bean.userAnswer!=null">
 				 #{bean.userAnswer},
+			</if>
+			<if test="bean.questionText!=null">
+				 #{bean.questionText},
+			</if>
+			<if test="bean.correctAnswer!=null">
+				 #{bean.correctAnswer},
 			</if>
 			<if test="bean.isCorrect!=null">
 				 #{bean.isCorrect},
@@ -456,6 +472,8 @@
 			 question_id,
 			 question_type,
 			 user_answer,
+			 question_text,
+			 correct_answer,
 			 is_correct,
 			 score,
 			 duration,
@@ -476,6 +494,8 @@
 				 #{item.questionId},
 				 #{item.questionType},
 				 #{item.userAnswer},
+				 #{item.questionText},
+				 #{item.correctAnswer},
 				 #{item.isCorrect},
 				 #{item.score},
 				 #{item.duration},
@@ -500,6 +520,8 @@
 			 question_id,
 			 question_type,
 			 user_answer,
+			 question_text,
+			 correct_answer,
 			 is_correct,
 			 score,
 			 duration,
@@ -520,6 +542,8 @@
 				 #{item.questionId},
 				 #{item.questionType},
 				 #{item.userAnswer},
+				 #{item.questionText},
+				 #{item.correctAnswer},
 				 #{item.isCorrect},
 				 #{item.score},
 				 #{item.duration},

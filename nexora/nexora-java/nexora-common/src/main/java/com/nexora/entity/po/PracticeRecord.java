@@ -50,6 +50,12 @@ public class PracticeRecord implements Serializable {
 	 */
 	private String userAnswer;
 
+	/** 题干（选项题含选项，截断 500 字；早期记录为空） */
+	private String questionText;
+
+	/** 参考答案（客观题答案/主观题评分要点，截断 200 字） */
+	private String correctAnswer;
+
 	/**
 	 * 0错 1对
 	 */
@@ -161,6 +167,22 @@ public class PracticeRecord implements Serializable {
 	public void setUserAnswer(String userAnswer){
 		this.userAnswer = userAnswer;
 	}
+	public String getQuestionText(){
+		return this.questionText;
+	}
+
+	public void setQuestionText(String questionText){
+		this.questionText = questionText;
+	}
+
+	public String getCorrectAnswer(){
+		return this.correctAnswer;
+	}
+
+	public void setCorrectAnswer(String correctAnswer){
+		this.correctAnswer = correctAnswer;
+	}
+
 
 	public String getUserAnswer(){
 		return this.userAnswer;
