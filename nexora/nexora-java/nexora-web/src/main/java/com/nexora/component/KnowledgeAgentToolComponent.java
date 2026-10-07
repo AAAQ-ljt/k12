@@ -207,6 +207,14 @@ public class KnowledgeAgentToolComponent {
                             {"type":"object","properties":{}}
                     """,
                     true, true, false),
+            new McpToolSpec("queryNodeQuizRecords",
+                    "查询某学习路径节点最近几次练习的逐题作答记录（题面摘要、学生作答、对错、得分、时间）。"
+                            + "学生问「我哪道题错了 / 帮我复盘某个节点」时调用；没有题面的老记录会标注，不要编造。",
+                    """
+                            {"type":"object","properties":{
+                              "nodeName":{"type":"string","description":"节点名或关键词，可空=当前正在学的节点"}
+                            }}""",
+                    false, true, false),
             new McpToolSpec("queryPathNode",
                     "查询某个学习路径节点的详情：节点状态、是否已到复习时间、计划/完成时间，以及该知识点的掌握度、练习次数与下次复习时间。"
                     + "学生问「我这个节点学得怎么样 / 要不要复习某个知识点」时调用。",

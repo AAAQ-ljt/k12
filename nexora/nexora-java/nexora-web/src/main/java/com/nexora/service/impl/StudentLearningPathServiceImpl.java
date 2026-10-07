@@ -306,6 +306,9 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             record.setQuestionId("");
             record.setQuestionType(QUESTION_TYPE_SINGLE);
             record.setUserAnswer(userAnswer);
+            // 题干与参考答案一并落库（计划 C5-1）：让 AI 之后能逐题复盘，而不是只知道错了几题
+            record.setQuestionText(question.getQuestion());
+            record.setCorrectAnswer(correctAnswer);
             record.setIsCorrect(correct ? 1 : 0);
             record.setScore(correct ? NODE_QUIZ_QUESTION_SCORE : 0);
             record.setDuration(dto.getDuration() == null ? 0 : dto.getDuration());

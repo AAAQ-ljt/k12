@@ -240,6 +240,9 @@ public class CourseQuizBiz {
             record.setQuestionId(question.getQuestionId());
             record.setQuestionType(question.getQuestionType());
             record.setUserAnswer(userAnswer == null ? "" : userAnswer);
+            // 题干与参考答案一并落库（计划 C5-1）：题面来自题库，答案取题目自带字段
+            record.setQuestionText(question.getTitle());
+            record.setCorrectAnswer(question.getAnswer());
             record.setIsCorrect(correct ? 1 : 0);
             record.setScore(earned);
             record.setDuration(durationSeconds);

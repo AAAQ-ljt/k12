@@ -5,6 +5,11 @@ import com.nexora.entity.po.CourseEnrollment;
 import com.nexora.entity.po.CourseInfo;
 import com.nexora.entity.po.CourseStudyLessonProgress;
 import com.nexora.component.LearningPathComponent;
+import com.nexora.entity.po.PracticeRecord;
+import com.nexora.entity.query.PracticeRecordQuery;
+import com.nexora.service.PracticeRecordService;
+import com.nexora.entity.enums.DateTimePatternEnum;
+import com.nexora.utils.DateUtil;
 import com.nexora.entity.po.KnowledgePoint;
 import com.nexora.entity.po.LearningPath;
 import com.nexora.entity.po.LearningPathItem;
@@ -74,6 +79,10 @@ public class TeachingToolService {
     }
 
     /** 学习路径（二期 7.60 第二批：路径类工具复用 common 的组件，不新写 SQL） */
+    /** 练习记录（计划 C5：逐题复盘的数据源） */
+    @Resource
+    private PracticeRecordService practiceRecordService;
+
     @Resource
     private LearningPathComponent learningPathComponent;
 
@@ -573,6 +582,26 @@ public class TeachingToolService {
             if (hit.getFinishTime() != null) {
                 sb.append("\n- 实际完成：").append(hit.getFinishTime());
             }
+            // 最近练习摘要（计划 C5-2）：让"查节点"这一步就带上答题情况，学生不必再专门问一次
+            try {
+                PracticeRecordQuery recentQuery = new PracticeRecordQuery();
+                recentQuery.setUserId(userId.trim());
+                recentQuery.setBizId(hit.getItemId());
+                recentQuery.setPageSize(20);
+                List<PracticeRecord> recent = practiceRecordService.findListByParam(recentQuery);
+                if (recent != null && !recent.isEmpty()) {
+                    int wrong = 0;
+                    for (PracticeRecord record : recent) {
+                        if (record.getIsCorrect() != null && record.getIsCorrect() == 0) {
+                            wrong++;
+                        }
+                    }
+                    sb.append("\n" + "- 最近练习：共 " + recent.size() + " 条作答，错 " + wrong + " 条"
+                            + (wrong > 0 ? "（逐题明细见 queryNodeQuizRecords）" : ""));
+                }
+            } catch (Exception ignored) {
+                // 练习摘要取不到不影响节点详情
+            }
             List<KnowledgeMasteryVO> masteryList = learningAnalysisMapper.selectMasteryList(userId.trim());
             for (KnowledgeMasteryVO mastery : masteryList) {
                 if (hit.getKnowledgePointId() != null && hit.getKnowledgePointId().equals(mastery.getKnowledgePointId())) {
@@ -592,6 +621,100 @@ public class TeachingToolService {
         }
     }
 
+    @Tool(name = "queryNodeQuizRecords", description = "查询某学习路径节点**最近几次练习的逐题作答记录**（题面摘要、学生作答、对错、得分、时间）。"
+            + "学生问「我哪道题错了 / 帮我复盘某个节点 / 我最近练得怎么样」时调用；返回里没有题面的老记录会标注，不要编造题面。")
+    public String queryNodeQuizRecords(
+            @ToolParam(description = "节点名或关键词，可空表示当前正在学的节点") String nodeName,
+            @ToolParam(description = "学生用户ID，由系统自动注入") String userId) {
+        try {
+            if (StringTools.isEmpty(userId)) {
+                return "参数错误：缺少学生ID";
+            }
+            String uid = userId.trim();
+            List<LearningPathComponent.PathWithItems> paths = learningPathComponent.listMyPaths(uid);
+            String keyword = nodeName == null ? "" : nodeName.trim();
+            String itemId = null;
+            String hitName = null;
+            for (LearningPathComponent.PathWithItems each : paths) {
+                List<LearningPathItem> items = each.items() == null ? List.<LearningPathItem>of() : each.items();
+                for (LearningPathItem item : items) {
+                    String itemName = item.getKnowledgePointName() == null ? "" : item.getKnowledgePointName();
+                    boolean matched = keyword.isEmpty()
+                            ? item.getItemId() != null && item.getItemId().equals(each.path().getCurrentItemId())
+                            : (!itemName.isBlank() && (itemName.contains(keyword) || keyword.contains(itemName)));
+                    if (matched) {
+                        itemId = item.getItemId();
+                        hitName = itemName;
+                        break;
+                    }
+                }
+                if (itemId != null) {
+                    break;
+                }
+            }
+            if (itemId == null) {
+                return "没有找到对应的路径节点：可以先用 queryLearningPath 看学生有哪些节点，再带上准确的节点名来查";
+            }
+            PracticeRecordQuery query = new PracticeRecordQuery();
+            query.setUserId(uid);
+            query.setBizId(itemId);
+            query.setPageSize(30);
+            List<PracticeRecord> records = practiceRecordService.findListByParam(query);
+            if (records == null || records.isEmpty()) {
+                return "节点《" + hitName + "》还没有练习记录（做一次节点快测后这里就有逐题明细了）";
+            }
+            records.sort((first, second) -> {
+                if (first.getCreateTime() == null || second.getCreateTime() == null) {
+                    return 0;
+                }
+                return second.getCreateTime().compareTo(first.getCreateTime());
+            });
+            int total = records.size();
+            int wrong = 0;
+            StringBuilder sb = new StringBuilder();
+            sb.append("节点《").append(hitName).append("》最近练习记录（按时间倒序，最多 10 条）：").append("\n");
+            int shown = 0;
+            int index = 1;
+            for (PracticeRecord record : records) {
+                if (record.getIsCorrect() != null && record.getIsCorrect() == 0) {
+                    wrong++;
+                }
+                if (shown++ < 10) {
+                    String questionText = StringTools.isEmpty(record.getQuestionText())
+                            ? "（早期记录无题面）" : summarize(record.getQuestionText(), 60);
+                    sb.append("  ").append(index++).append(". [")
+                            .append(record.getIsCorrect() != null && record.getIsCorrect() == 1 ? "对" : "错").append("] ")
+                            .append(questionText).append("\n");
+                    sb.append("     我的作答：").append(summarize(record.getUserAnswer(), 40));
+                    if (!StringTools.isEmpty(record.getCorrectAnswer())) {
+                        sb.append("；参考答案：").append(summarize(record.getCorrectAnswer(), 40));
+                    }
+                    if (record.getCreateTime() != null) {
+                        sb.append("；时间：").append(DateUtil.format(record.getCreateTime(),
+                                DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+                    }
+                    sb.append("\n");
+                }
+            }
+            sb.append("汇总：最近 ").append(total).append(" 条作答，错 ").append(wrong).append(" 条。");
+            if (wrong > 0) {
+                sb.append("复盘时优先讲上面标 [错] 的题。").append("\n");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("queryNodeQuizRecords 失败", e);
+            return "查询节点练习记录失败：" + e.getMessage();
+        }
+    }
+
+    /** 文本摘要（压平空白并截断），供工具输出用 */
+    private String summarize(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+        String flat = text.replaceAll("\\s+", " ").trim();
+        return flat.length() > max ? flat.substring(0, max) + "…" : flat;
+    }
     @Tool(name = "planNextStep", description = "给出「下一步学什么、复习什么」的建议清单：依据学生的真实到期待复习节点、进行中的节点与掌握度薄弱知识点排优先级。"
             + "学生问「我下一步该学什么 / 我哪里薄弱 / 今天学点啥」时调用；必须基于返回的真实清单作答，不得只讲通用方法。")
     public String planNextStep(
