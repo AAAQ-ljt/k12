@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { App, Button, Empty, Input, Modal, Popconfirm, Select, Space, Table } from 'antd';
+import {
+  Tag, App, Button, Empty, Input, Modal, Popconfirm, Select, Space, Table } from 'antd';
 import type { TableProps } from 'antd';
 import { CheckCircle, Eye, FileText, FolderInput, FolderPlus, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import {
@@ -11,6 +12,7 @@ import {
   moveWikiDoc,
   type StudentWikiDoc,
 } from '@/api/studentWiki';
+import { getPreferencePage } from '@/api/preference';
 import { loadStudentDirectories, type StudentDirectory } from '@/api/studentResource';
 import WikiEditModal from './WikiEditModal';
 import WikiViewModal from './WikiViewModal';
@@ -66,6 +68,11 @@ export default function WikiListPanel({
 }: Props) {
   const { message } = App.useApp();
   const [list, setList] = useState<StudentWikiDoc[]>([]);
+  /**
+   * 《我的学习偏好》系统页的 docId（计划 C3）：用于把它置顶展示，并收起「移动/确认入库/删除」入口。
+   * 该页是系统页——服务端会拒绝对它的移动/删除/入库，前端这里只是不让入口误导学生。
+   */
+  const [preferenceDocId, setPreferenceDocId] = useState('');
   const [loading, setLoading] = useState(false);
   const [editDoc, setEditDoc] = useState<StudentWikiDoc | null>(null);
   const [viewDoc, setViewDoc] = useState<StudentWikiDoc | null>(null);
@@ -123,6 +130,10 @@ export default function WikiListPanel({
         loadStudentDirectories().catch(() => [] as StudentDirectory[]),
       ]);
       setList(wikiList);
+      // 偏好页 docId（失败不影响列表展示：只是不做置顶与入口收起）
+      void getPreferencePage()
+        .then((page) => setPreferenceDocId(page?.docId ?? ''))
+        .catch(() => undefined);
       // 知识页文件夹 = wiki 系统目录 + 其全部子文件夹（沿 parentId 收拢，防环）
       const root = dirList.find((dir) => dir.dirType === 'wiki');
       if (!root) {
@@ -176,6 +187,18 @@ export default function WikiListPanel({
       return true;
     });
   }, [list, activeKeyword, activeStatusFilter, activeFolderFilter]);
+
+  /** 展示顺序：《我的学习偏好》始终置顶（它是系统页，学生最常要看的是它） */
+  const ordered = useMemo(() => {
+    if (!preferenceDocId) {
+      return filtered;
+    }
+    return [...filtered].sort((first, second) => {
+      const firstPinned = first.docId === preferenceDocId ? 0 : 1;
+      const secondPinned = second.docId === preferenceDocId ? 0 : 1;
+      return firstPinned - secondPinned;
+    });
+  }, [filtered, preferenceDocId]);
 
   const folderNameOf = (doc: StudentWikiDoc) => {
     if (!doc.folderId) {
@@ -320,18 +343,20 @@ export default function WikiListPanel({
           <Button type="text" size="small" icon={<Pencil size={14} />} onClick={() => setEditDoc(record)}>
             编辑
           </Button>
-          <Button
-            type="text"
-            size="small"
-            icon={<FolderInput size={14} />}
-            onClick={() => {
-              setMoveTarget(record.folderId || 'root');
-              setMoveDoc(record);
-            }}
-          >
-            移动
-          </Button>
-          {(record.vectorStatus ?? 0) !== 1 && (record.vectorStatus ?? 0) !== 2 ? (
+          {record.docId === preferenceDocId ? null : (
+            <Button
+              type="text"
+              size="small"
+              icon={<FolderInput size={14} />}
+              onClick={() => {
+                setMoveTarget(record.folderId || 'root');
+                setMoveDoc(record);
+              }}
+            >
+              移动
+            </Button>
+          )}
+          {record.docId !== preferenceDocId && (record.vectorStatus ?? 0) !== 1 && (record.vectorStatus ?? 0) !== 2 ? (
             <Button
               type="text"
               size="small"
@@ -341,9 +366,13 @@ export default function WikiListPanel({
               确认入库
             </Button>
           ) : null}
-          <Popconfirm title="删除后该知识页将从知识库移除，确认删除？" onConfirm={() => void handleDelete(record.docId)}>
-            <Button type="text" size="small" danger icon={<Trash2 size={14} />} />
-          </Popconfirm>
+          {record.docId === preferenceDocId ? (
+            <Tag>系统页</Tag>
+          ) : (
+            <Popconfirm title="删除后该知识页将从知识库移除，确认删除？" onConfirm={() => void handleDelete(record.docId)}>
+              <Button type="text" size="small" danger icon={<Trash2 size={14} />} />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -394,7 +423,7 @@ export default function WikiListPanel({
       <Table
         rowKey="docId"
         columns={columns}
-        dataSource={filtered}
+        dataSource={ordered}
         loading={loading}
         pagination={false}
         scroll={withToolbar ? { x: 820 } : undefined}
