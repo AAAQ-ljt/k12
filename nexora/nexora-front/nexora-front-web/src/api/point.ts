@@ -1,4 +1,4 @@
-import { get } from './request';
+import { get, post } from './request';
 
 /**
  * 学生端积分（二期·积分游戏化）。
@@ -116,4 +116,60 @@ export function loadMyBadges() {
 /** 排行榜：type=week 周榜 / 缺省累计榜 */
 export function loadPointRank(type?: 'total' | 'week') {
   return get<PointRankResultVO>('/pointInfo/getRankList', { type });
+}
+
+/** 兑换商品（上传额度扩容 / 朗读音色解锁） */
+export interface PointExchangeItemVO {
+  itemCode: string;
+  itemName: string;
+  /** 效果说明 */
+  effect: string;
+  costPoints: number;
+  /** 最多可兑换次数（0=不限） */
+  maxTimes: number;
+  usedTimes: number;
+  /** 还能兑换几次（-1=不限次） */
+  remainingTimes: number;
+  /** 可用积分是否够 */
+  affordable: boolean;
+  /** 是否已解锁（音色类） */
+  unlocked: boolean;
+  /** UPLOAD_QUOTA 容量类 / VOICE 音色类 */
+  category: string;
+}
+
+/** 我的兑换记录 */
+export interface PointExchangeRecordVO {
+  exchangeId: string;
+  itemCode: string;
+  itemName: string;
+  costPoints: number;
+  balanceAfter: number;
+  createTime: string;
+}
+
+/** 兑换页数据 */
+export interface PointExchangeListVO {
+  availablePoints: number;
+  items: PointExchangeItemVO[];
+  records: PointExchangeRecordVO[];
+}
+
+/** 兑换结果 */
+export interface PointExchangeResultVO {
+  exchangeId: string;
+  itemName: string;
+  costPoints: number;
+  availablePoints: number;
+  tip?: string;
+}
+
+/** 兑换页：商品 + 我的兑换记录（可用积分以账户接口为准） */
+export function loadExchangeList() {
+  return get<PointExchangeListVO>('/pointInfo/getExchangeList');
+}
+
+/** 兑换权益：只扣可用积分，累计积分不变 */
+export function exchangeItem(itemCode: string) {
+  return post<PointExchangeResultVO>('/pointInfo/exchange', { itemCode });
 }

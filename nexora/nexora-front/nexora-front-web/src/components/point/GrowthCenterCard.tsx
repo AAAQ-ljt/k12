@@ -21,6 +21,7 @@ import {
   levelTitle,
   pointUnit,
 } from '@/utils/point';
+import PointExchangePane from './PointExchangePane';
 import styles from './GrowthCenterCard.module.scss';
 
 /** 前三名的奖牌 */
@@ -240,6 +241,7 @@ export default function GrowthCenterCard() {
   const tabItems = [
     { key: 'records', label: `明细`, children: recordList },
     { key: 'badges', label: `徽章墙 (${unlockedCount}/${badges.length})`, children: badgeWall },
+    { key: 'exchange', label: '兑换', children: <PointExchangePane /> },
     ...(stars ? [] : [{ key: 'rank', label: '排行榜', children: rankPane }]),
   ];
 

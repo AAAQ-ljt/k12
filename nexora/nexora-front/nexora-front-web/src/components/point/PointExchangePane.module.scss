@@ -1,0 +1,145 @@
+/* 积分兑换（成长中心 · 兑换标签页） */
+.exchangePane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.loadingBlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 0;
+  color: var(--text-tertiary);
+}
+
+.balanceBar {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--warm-bg-light);
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+
+  b {
+    font-size: var(--font-size-lg);
+    color: var(--warm-brown-600);
+  }
+}
+
+.balanceHint {
+  margin-inline-start: auto;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-card-hover);
+  border: 1px solid var(--warm-bg-dark);
+  transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.itemOwned {
+  opacity: 0.72;
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.itemIcon {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.itemName {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.itemEffect {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: var(--line-height-base);
+  min-height: 34px;
+}
+
+.itemFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.itemCount {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.recordBlock {
+  border-top: 1px dashed var(--warm-bg-dark);
+  padding-top: 10px;
+}
+
+.recordTitle {
+  margin-bottom: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.recordEmpty {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.recordItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 2px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.recordName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordTime {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.recordCost {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+  color: var(--color-error);
+}
