@@ -692,7 +692,8 @@ public class TeachingToolService {
                 if (shown++ < 10) {
                     String questionText = StringTools.isEmpty(record.getQuestionText())
                             ? "（早期记录无题面）" : summarize(record.getQuestionText(), 60);
-                    sb.append("  ").append(index++).append(". [")
+                    boolean reviewRecord = record.getSource() != null && record.getSource() == 3;
+                    sb.append("  ").append(index++).append(reviewRecord ? ". [复习][" : ". [")
                             .append(record.getIsCorrect() != null && record.getIsCorrect() == 1 ? "对" : "错").append("] ")
                             .append(questionText).append("\n");
                     sb.append("     我的作答：").append(summarize(record.getUserAnswer(), 40));

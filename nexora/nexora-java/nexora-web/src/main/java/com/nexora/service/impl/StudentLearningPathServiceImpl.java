@@ -77,6 +77,8 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
     /** 练习流水来源：路径快测 */
     private static final int PRACTICE_SOURCE_PATH_QUIZ = 1;
+    /** 练习来源：复习小测（提交前该知识点已处于待复习） */
+    private static final int PRACTICE_SOURCE_REVIEW = 3;
 
     /** 练习流水批阅状态：客观题无需批阅 */
     private static final int REVIEW_STATUS_UNNEEDED = 2;
@@ -284,6 +286,8 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
         int correctCount = 0;
 
         // 服务端权威判分：以题目携带的正确答案比对学生选项，不信任前端自带的判分
+        // 复习来源判定用（一次查询，避免在循环里查库）
+        Map<String, KnowledgeMastery> masterySnapshot = loadMasteryMap(userId);
         for (Map.Entry<Integer, NodeQuizVO.NodeQuizQuestionVO> entry : questionMap.entrySet()) {
             NodeQuizVO.NodeQuizQuestionVO question = entry.getValue();
             List<String> options = question.getOptions();
@@ -312,7 +316,14 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             record.setIsCorrect(correct ? 1 : 0);
             record.setScore(correct ? NODE_QUIZ_QUESTION_SCORE : 0);
             record.setDuration(dto.getDuration() == null ? 0 : dto.getDuration());
-            record.setSource(PRACTICE_SOURCE_PATH_QUIZ);
+            // 待复习状态下提交的快测记为「复习小测」（source=3）：便于统计与复盘区分初次/复习
+            boolean reviewAttempt = false;
+            if (masterySnapshot != null) {
+                KnowledgeMastery snapshot = masterySnapshot.get(record.getKnowledgePointId());
+                reviewAttempt = snapshot != null && snapshot.getNextReviewTime() != null
+                        && snapshot.getNextReviewTime().before(new Date());
+            }
+            record.setSource(reviewAttempt ? PRACTICE_SOURCE_REVIEW : PRACTICE_SOURCE_PATH_QUIZ);
             record.setBizId(item.getItemId());
             // 客观题无需人工批阅
             record.setReviewStatus(REVIEW_STATUS_UNNEEDED);

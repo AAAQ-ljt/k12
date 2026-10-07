@@ -49,6 +49,9 @@ public class KnowledgeMasteryComponent {
     /** 遗忘曲线复习间隔（天），索引即复习阶段 0-4 */
     public static final int[] REVIEW_INTERVALS_DAYS = {1, 3, 7, 15, 30};
 
+    /** 复习通过线（正确率百分比）：达到即视为复习通过、间隔拉长；未达到则回落 1 天 */
+    private static final int PASS_RATE_PERCENT = 60;
+
     /** 掌握状态：进行中 */
     public static final int STATUS_LEARNING = 1;
 
@@ -200,15 +203,17 @@ public class KnowledgeMasteryComponent {
                 bean.setNextReviewTime(plusDays(now, REVIEW_INTERVALS_DAYS[0]));
             } else {
                 bean.setLastMasterTime(existing.getLastMasterTime() == null ? now : existing.getLastMasterTime());
-                if (corrects >= attempts) {
-                    // 复习通过：阶段前进一档，下一次复习间隔拉长
+                // 复习通过线：正确率 ≥ 60%（原来要求"整批全对"，学生错一题就一直挂着过期时间 → 待复习越堆越多）
+                int passLine = Math.max(1, (attempts * PASS_RATE_PERCENT + 99) / 100);
+                if (corrects >= passLine) {
+                    // 复习通过：阶段前进一档，下一次复习间隔拉长（1→3→7→15→30 天）
                     int nextStage = Math.min((prevStage == null ? 0 : prevStage) + 1, REVIEW_INTERVALS_DAYS.length - 1);
                     bean.setReviewStage(nextStage);
                     bean.setNextReviewTime(plusDays(now, REVIEW_INTERVALS_DAYS[nextStage]));
                 } else {
-                    // 本批有错但仍在掌握线之上：保持原复习计划
-                    bean.setReviewStage(prevStage == null ? 0 : prevStage);
-                    bean.setNextReviewTime(existing.getNextReviewTime());
+                    // 复习未达标：间隔回落到 1 天（明天再来一次），而不是继续挂着已过期的旧时间
+                    bean.setReviewStage(0);
+                    bean.setNextReviewTime(plusDays(now, REVIEW_INTERVALS_DAYS[0]));
                 }
             }
         } else {
