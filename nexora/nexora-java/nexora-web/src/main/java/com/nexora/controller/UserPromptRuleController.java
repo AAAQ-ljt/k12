@@ -2,6 +2,7 @@ package com.nexora.controller;
 
 import com.nexora.annotation.GlobalInterceptor;
 import com.nexora.component.UserPromptRuleComponent;
+import com.nexora.component.PreferencePageComponent;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.po.UserPromptRule;
 import com.nexora.entity.vo.PromptRuleTypeVO;
@@ -29,6 +30,10 @@ import java.util.Map;
 @RequestMapping("/userPromptRule")
 @GlobalInterceptor(checkLogin = true)
 public class UserPromptRuleController extends ABaseController {
+
+    /** 偏好页同步（计划 C3：规则变更 → 知识页《我的学习偏好》规则段镜像） */
+    @Resource
+    private PreferencePageComponent preferencePageComponent;
 
     @Resource
     private UserPromptRuleComponent userPromptRuleComponent;
@@ -63,32 +68,44 @@ public class UserPromptRuleController extends ABaseController {
     /** 新增一条偏好 */
     @PostMapping("/add")
     public ResponseVO<Long> add(@RequestBody PromptRuleBody body) {
-        Long ruleId = userPromptRuleComponent.save(currentUserId(),
+        String userId = currentUserId();
+        Long ruleId = userPromptRuleComponent.save(userId,
                 body == null ? null : body.getRuleType(),
                 body == null ? null : body.getRuleValue(),
                 body == null ? null : body.getSource());
+        // 偏好页是"人类可读账本"（计划 C3）：规则变了就把规则段同步过去（自由段保留）
+        preferencePageComponent.syncRules(userId, currentStage());
         return getSuccessResponseVO(ruleId);
     }
 
     /** 停用/启用一条偏好 */
     @PostMapping("/changeStatus")
     public ResponseVO<Void> changeStatus(@RequestBody PromptRuleBody body) {
-        userPromptRuleComponent.changeStatus(currentUserId(),
+        String userId = currentUserId();
+        userPromptRuleComponent.changeStatus(userId,
                 body == null ? null : body.getRuleId(),
                 body == null ? null : body.getStatus());
+        preferencePageComponent.syncRules(userId, currentStage());
         return getSuccessResponseVO(null);
     }
 
     /** 删除一条偏好 */
     @PostMapping("/del")
     public ResponseVO<Void> del(@RequestBody PromptRuleBody body) {
-        userPromptRuleComponent.delete(currentUserId(), body == null ? null : body.getRuleId());
+        String userId = currentUserId();
+        userPromptRuleComponent.delete(userId, body == null ? null : body.getRuleId());
+        preferencePageComponent.syncRules(userId, currentStage());
         return getSuccessResponseVO(null);
     }
 
     private String currentUserId() {
         TokenUserInfoDTO current = LoginUserContext.get();
         return current == null ? null : current.getUserId();
+    }
+
+    private String currentStage() {
+        TokenUserInfoDTO current = LoginUserContext.get();
+        return current == null ? null : current.getStage();
     }
 
     /** 偏好入参 */

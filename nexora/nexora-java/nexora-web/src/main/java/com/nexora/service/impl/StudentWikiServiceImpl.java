@@ -1,6 +1,7 @@
 package com.nexora.service.impl;
 
 import com.nexora.component.AiStructureComponent;
+import com.nexora.component.PreferencePageComponent;
 import com.nexora.component.PointAwardComponent;
 import com.nexora.component.ResourceKnowledgeParser;
 import com.nexora.component.WikiKnowledgeComponent;
@@ -41,6 +42,10 @@ import java.util.List;
 public class StudentWikiServiceImpl implements StudentWikiService {
 
     private static final Logger log = LoggerFactory.getLogger(StudentWikiServiceImpl.class);
+
+    /** 偏好页保护与折叠渲染（计划 C3） */
+    @Resource
+    private PreferencePageComponent preferencePageComponent;
 
     @Resource
     private KnowledgeDocService knowledgeDocService;
@@ -99,14 +104,25 @@ public class StudentWikiServiceImpl implements StudentWikiService {
                 resourceId, structured, null);
     }
 
+    /**
+     * 偏好页保护（计划 C3）：编辑走"折叠渲染"——只取学生写的自由段，规则段由系统重新生成，
+     * 避免学生把规则段改坏；其它知识页走原逻辑。
+     */
     @Override
     public KnowledgeDoc updateDraft(String userId, String docId, String content) {
+        if (preferencePageComponent.saveFromEditor(userId, docId, content)) {
+            return getDraft(userId, docId);
+        }
         // 覆盖内容并回草稿态（旧向量由公共组件就地清理或投递清理任务）
         return wikiKnowledgeComponent.overwriteAsDraft(userId, docId, null, content);
     }
 
     @Override
     public KnowledgeDoc confirm(String userId, String docId) {
+        // 偏好页不做向量化（计划 C3）：它是给 AI 的个人资料，入库会进入 RAG 检索、反而干扰
+        if (preferencePageComponent.isPreferencePage(docId, userId)) {
+            throw new BusinessException("《我的学习偏好》不参与资料检索（系统页不做向量化），无需入库");
+        }
         KnowledgeDoc doc = wikiKnowledgeComponent.requireOwnedDoc(userId, docId);
         // 图片/视频轻量页：确认时刷新为最新标题+简介（用户手动编辑过的 content 不覆盖）
         if (isLightweightType(doc.getDataType())) {
@@ -160,6 +176,9 @@ public class StudentWikiServiceImpl implements StudentWikiService {
 
     @Override
     public void moveDoc(String userId, String docId, String folderId) {
+        if (preferencePageComponent.isPreferencePage(docId, userId)) {
+            throw new BusinessException("《我的学习偏好》固定在知识页根目录，不能移动");
+        }
         wikiKnowledgeComponent.moveDocToFolder(userId, docId, folderId);
     }
 
@@ -170,6 +189,9 @@ public class StudentWikiServiceImpl implements StudentWikiService {
 
     @Override
     public void deleteDraft(String userId, String docId) {
+        if (preferencePageComponent.isPreferencePage(docId, userId)) {
+            throw new BusinessException("《我的学习偏好》是系统页，不能删除；想恢复初始内容请用「重置」");
+        }
         wikiKnowledgeComponent.deleteOwned(userId, docId);
     }
 

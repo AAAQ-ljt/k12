@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.PreferencePageMapper">
+
+	<resultMap id="base_result_map" type="com.nexora.entity.vo.PreferencePageVO">
+		<id column="doc_id" property="docId" />
+		<result column="title" property="title" />
+		<result column="content" property="content" />
+		<result column="vector_status" property="vectorStatus" />
+		<result column="create_time" property="createTime" />
+		<result column="update_time" property="updateTime" />
+	</resultMap>
+
+	<select id="selectByOwner" resultMap="base_result_map">
+		select d.doc_id, d.title, d.content, d.vector_status, d.create_time, d.update_time
+		from knowledge_doc d
+		where d.owner_id = #{ownerId} and d.system_type = 'PREFERENCE'
+		order by d.doc_id asc
+		limit 1
+	</select>
+
+	<!-- knowledge_point_id 非空约束：系统页不属于任何知识点，落空串 -->
+	<insert id="insertPage">
+		insert into knowledge_doc
+			(doc_id, title, stage, knowledge_point_id, owner_id, difficulty, data_type, content,
+			 source_type, vector_status, chunk_count, status, folder_id, system_type, create_time)
+		values
+			(#{docId}, #{title}, #{stage}, '', #{ownerId}, 1, 'KNOWLEDGE', #{content},
+			 0, 0, 0, 0, null, 'PREFERENCE', now())
+	</insert>
+
+	<update id="updateContent">
+		update knowledge_doc
+		set title = #{title}, content = #{content}, update_time = now()
+		where doc_id = #{docId} and system_type = 'PREFERENCE'
+	</update>
+
+	<select id="countPreferencePage" resultType="java.lang.Integer">
+		select count(1) from knowledge_doc d
+		where d.doc_id = #{docId} and d.owner_id = #{ownerId} and d.system_type = 'PREFERENCE'
+	</select>
+</mapper>
