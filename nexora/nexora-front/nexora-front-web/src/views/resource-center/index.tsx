@@ -145,6 +145,11 @@ export default function ResourceCenter() {
   const [wikiFolderFilter, setWikiFolderFilter] = useState<string>('all');
   const [wikiStats, setWikiStats] = useState({ total: 0, ingested: 0 });
   const [wikiCreateSignal, setWikiCreateSignal] = useState(0);
+  /**
+   * 目录树展开状态（用户口径）：进页面时「全部资源」根目录默认展开、子目录（「知识页」这类）默认不展开；
+   * 用户点了才展开，并在本次会话内记住；状态只存组件 state，不落库（属于临时浏览状态）。
+   */
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([ALL_FILES_KEY]);
   const [moveResource, setMoveResource] = useState<StudentResource | null>(null);
   const [moveTargetDir, setMoveTargetDir] = useState<string>();
   const [movingResource, setMovingResource] = useState(false);
@@ -779,6 +784,8 @@ export default function ResourceCenter() {
             blockNode
             draggable
             treeData={treeData}
+            expandedKeys={expandedKeys}
+            onExpand={(keys) => setExpandedKeys(keys as React.Key[])}
             selectedKeys={[currentDirId || ALL_FILES_KEY]}
             onSelect={(keys) => {
               const key = (keys[0] as string) || ALL_FILES_KEY;
