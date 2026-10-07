@@ -14,6 +14,8 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Comparator;
 import java.util.List;
 
@@ -69,6 +71,10 @@ public class TextbookToolService {
                 }
                 sb.append("可换关键词重查（学科名 / 必修一 / 选择性必修二 / 年级等）。");
                 return sb.toString();
+            }
+            if (StringTools.isEmpty(keyword)) {
+                // 全量书目：按学科分组展示，并在结尾写明「这是完整清单」，避免模型再凭印象补书或漏书
+                return buildFullCatalog(docs, stage);
             }
             StringBuilder sb = new StringBuilder("匹配教材（共 ").append(matched.size()).append(" 本，按相关度排序）：\n");
             int index = 1;
@@ -175,13 +181,68 @@ public class TextbookToolService {
         return knowledgeDocService.findListByParam(query);
     }
 
+    /** 学科分组顺序与识别关键词（教材标题里带学科名，按此归组；未识别的进「其他」） */
+    private static final String[][] SUBJECT_GROUPS = {
+            {"语文", "语文"}, {"数学", "数学"}, {"英语", "英语"}, {"物理", "物理"}, {"化学", "化学"},
+            {"生物", "生物"}, {"历史", "历史"}, {"地理", "地理"}, {"政治", "政治"}, {"道德与法治", "道德与法治"},
+            {"信息技术", "信息技术"}, {"信息", "信息"}, {"科学", "科学"},
+    };
+
+    /**
+     * 全量教材书目（不含关键词时使用）：按学科分组列全，并明确声明「本清单已完整」。
+     *
+     * 之所以要声明完整：之前这里会截断到固定条数，模型据此得出「历史只有 1 本」这类错误结论；
+     * 现在给全量 + 明示总数，模型就能如实回答而不再"补书"或"漏书"。
+     */
+    private String buildFullCatalog(List<KnowledgeDoc> docs, String stage) {
+        Map<String, List<KnowledgeDoc>> grouped = new LinkedHashMap<>();
+        List<KnowledgeDoc> others = new ArrayList<>();
+        for (KnowledgeDoc doc : docs) {
+            String title = TextbookContentUtils.normalizeTitle(doc.getTitle());
+            String hit = null;
+            for (String[] group : SUBJECT_GROUPS) {
+                if (title.contains(group[1])) {
+                    hit = group[0];
+                    break;
+                }
+            }
+            if (hit == null) {
+                others.add(doc);
+            } else {
+                grouped.computeIfAbsent(hit, key -> new ArrayList<>()).add(doc);
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("教材书目（学段：").append(StringTools.isEmpty(stage) ? "全部" : stage)
+                .append("，共 ").append(docs.size()).append(" 本，以下为**完整清单**，不要再自行增删）：\n");
+        int index = 1;
+        for (Map.Entry<String, List<KnowledgeDoc>> entry : grouped.entrySet()) {
+            sb.append("\n【").append(entry.getKey()).append("】").append(entry.getValue().size()).append(" 本\n");
+            for (KnowledgeDoc doc : entry.getValue()) {
+                sb.append(index++).append(". 《").append(doc.getTitle()).append("》")
+                        .append("（docId:").append(doc.getDocId()).append("）\n");
+            }
+        }
+        if (!others.isEmpty()) {
+            sb.append("\n【其他】").append(others.size()).append(" 本\n");
+            for (KnowledgeDoc doc : others) {
+                sb.append(index++).append(". 《").append(doc.getTitle()).append("》")
+                        .append("（docId:").append(doc.getDocId()).append("）\n");
+            }
+        }
+        sb.append("\n以上合计 ").append(docs.size()).append(" 本。学生问某本书的目录或内容时，用 getTextbookToc / readTextbookSection 按 docId 继续查。");
+        return sb.toString();
+    }
+
     /**
      * 关键词匹配：关键词按空白拆 token，标题归一化（错别字/全半角兼容）后按命中 token 数打分排序；
      * 任一 token 都不命中视为不相关。keyword 为空时按原顺序返回全部（截断到上限）
      */
     private List<KnowledgeDoc> matchByKeyword(List<KnowledgeDoc> docs, String keyword) {
         if (StringTools.isEmpty(keyword)) {
-            return docs.size() > CATALOG_LIMIT ? new ArrayList<>(docs.subList(0, CATALOG_LIMIT)) : docs;
+            // 学生问「有哪些书」时不能截断：截断会让模型以为库里只有这些书，
+            // 进而给出「历史只有 1 本」这类错误结论（2026-10-07 用户反馈）。教材本数有限，直接给全量。
+            return docs;
         }
         String[] tokens = keyword.trim().split("\\s+");
         List<KnowledgeDoc> matched = new ArrayList<>();
@@ -208,7 +269,8 @@ public class TextbookToolService {
                     }
                     return -score;
                 }).thenComparing(KnowledgeDoc::getTitle));
-        return matched.size() > CATALOG_LIMIT ? new ArrayList<>(matched.subList(0, CATALOG_LIMIT)) : matched;
+        // 关键词命中也不再截断：命中本数本来就不多，截断同样会让模型误判「库里只有这几本」
+        return matched;
     }
 
     /**
