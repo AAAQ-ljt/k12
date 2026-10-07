@@ -10,9 +10,13 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -146,6 +150,16 @@ public class OpenCodeGoChatProvider implements ChatProvider {
         return Boolean.FALSE;
     }
 
+    /** 连接 10s / 读取 60s：网关不回包时走异常链路而不是无限等待（见 build() 内注释） */
+    private JdkClientHttpRequestFactory openCodeGoRequestFactory() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofSeconds(60));
+        return factory;
+    }
+
     private ChatClient build() {
         if (StringTools.isEmpty(apiKey)) {
             throw new BusinessException("OpenCode Go 未配置 API Key：请设置环境变量 NEXORA_OPENCODE_GO_API_KEY 后重启服务");
@@ -162,6 +176,10 @@ public class OpenCodeGoChatProvider implements ChatProvider {
                 .apiKey(apiKey)
                 .completionsPath(completionsPath)
                 .headers(headers)
+                // 超时兜底（2026-10-08）：网关偶尔不回包（实测同 Key 同 session 3.9s，新 session 首包 44.8s，
+                // 也有整轮挂住 9 分钟不回的情况），默认 JDK HttpClient 没有读超时 → 学生会一直看到「正在思考」。
+                // 这里给连接 10s / 读取 60s 上限，超时走正常异常链路（前端能收到失败提示），不再无限等待。
+                .restClientBuilder(RestClient.builder().requestFactory(openCodeGoRequestFactory()))
                 .build();
 
         OpenAiChatModel goChatModel = new OpenAiChatModel.Builder(openAiChatModel)
