@@ -50,6 +50,11 @@ export interface AgentSendParams {
   scene?: number;
   /** 新会话标题（仅新建会话时生效，如「编程练习 · 星星塔」） */
   sessionTitle?: string;
+  /**
+   * 学生当前学习上下文（学习路径节点等入口带入）：服务端只拼进系统提示词，
+   * **不写进消息正文**——气泡里只显示提问本身（见二期规划 7.60 收敛项）。
+   */
+  learningContext?: string;
 }
 
 /** AI 对话发送结果 */

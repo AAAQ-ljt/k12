@@ -1,5 +1,8 @@
 package com.nexora.component;
 
+import com.nexora.constants.Constants;
+import java.util.concurrent.TimeUnit;
+
 import com.alibaba.fastjson2.JSON;
 import com.nexora.dto.AgentMessagePushDTO;
 import com.nexora.dto.PictureBookTaskVO;
@@ -210,6 +213,18 @@ public class AgentChatComponent {
      */
     public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage,
                                     List<String> imageResourceIds, Integer scene, String sessionTitle) {
+        return sendMessage(user, sessionId, userMessage, imageResourceIds, scene, sessionTitle, null);
+    }
+
+    /**
+     * 发送消息（带学生学习上下文，计划 7.60 收敛项）。
+     *
+     * learningContext 由学习路径节点等入口带来：服务端把它暂存到 Redis（按消息 ID，TTL 30 分钟），
+     * 生成提示词时作为独立段落拼进系统提示词，**不写进消息正文**——气泡里只显示学生的提问本身。
+     */
+    public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage,
+                                    List<String> imageResourceIds, Integer scene, String sessionTitle,
+                                    String learningContext) {
         AgentSession session = resolveSession(user, sessionId, scene, sessionTitle);
 
         // 校验并解析随消息图片（个人库 IMAGE 资源），带图时走视觉模型
@@ -232,6 +247,15 @@ public class AgentChatComponent {
         AgentMessage message = new AgentMessage();
         message.setMessageId(generateId());
         message.setSessionId(session.getSessionId());
+        // 学习上下文暂存（按消息 ID）：生成阶段读出来拼提示词用，不进消息正文
+        if (!StringTools.isEmpty(learningContext) && !StringTools.isEmpty(message.getMessageId())) {
+            try {
+                redisComponent.setString(Constants.REDIS_KEY_AGENT_LEARNING_CONTEXT + message.getMessageId(),
+                        learningContext.trim(), 30, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                log.warn("暂存学习上下文失败（本轮不注入上下文）messageId={}", message.getMessageId(), e);
+            }
+        }
         message.setUserId(user.getUserId());
         message.setStage(user.getStage());
         message.setUserMessage(userMessage);
@@ -479,7 +503,8 @@ public class AgentChatComponent {
             // MCP 工具：未启用时返回空数组；构建提前到 prompt 组装之前，
             // 能力说明块按真实挂载的工具动态追加（MCP 关闭时模型不会声称具备这些能力）
             ToolCallback[] knowledgeTools = knowledgeAgentToolComponent.buildCallbacks();
-            String systemPrompt = resolvePromptWithRag(user, intent, ragResult.ragData(), knowledgeTools);
+            String systemPrompt = resolvePromptWithRag(user, intent, ragResult.ragData(), knowledgeTools,
+                    takeLearningContext(message.getMessageId()));
             sendRecommendPush(user, message, recommends);
             AtomicInteger promptTokens = new AtomicInteger(intentResult.promptTokens());
             AtomicInteger completionTokens = new AtomicInteger(intentResult.completionTokens());
@@ -1011,7 +1036,28 @@ public class AgentChatComponent {
         };
     }
 
-    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String ragData, ToolCallback[] tools) {
+    /**
+     * 取出并清理暂存的学习上下文（读一次即删，避免长期占用；取不到返回 null）。
+     */
+    private String takeLearningContext(String messageId) {
+        if (StringTools.isEmpty(messageId)) {
+            return null;
+        }
+        try {
+            String key = Constants.REDIS_KEY_AGENT_LEARNING_CONTEXT + messageId;
+            String context = redisComponent.getString(key);
+            if (!StringTools.isEmpty(context)) {
+                redisComponent.removeKey(key);
+            }
+            return context;
+        } catch (Exception e) {
+            log.warn("读取学习上下文失败 messageId={}", messageId, e);
+            return null;
+        }
+    }
+
+    private String resolvePromptWithRag(TokenUserInfoDTO user, String intent, String ragData, ToolCallback[] tools,
+                                       String learningContext) {
         String prompt = promptTemplateComponent.resolvePrompt(user.getStage(), intent);
         String promptWithRag;
         if (!shouldSearch(intent)) {
@@ -1037,7 +1083,10 @@ public class AgentChatComponent {
         // 总开关关闭、或学生没设规则时不注入（块内也写明"平台规则优先"，不只靠拼接顺序）
         String ruleBlock = userPromptRuleComponent.promptBlock(user.getUserId());
         String withUserRules = StringTools.isEmpty(ruleBlock) ? withProfile : withProfile + "\n\n" + ruleBlock;
-        String withProduct = appendProductCapabilities(withUserRules, user.getStage());
+        // 学生当前学习上下文（来自学习路径节点等入口）：独立段落，优先参考；取不到则跳过
+        String withLearning = StringTools.isEmpty(learningContext) ? withUserRules
+                : withUserRules + "\n\n## 学生当前学习上下文（本轮消息带入，请直接引用）\n" + learningContext;
+        String withProduct = appendProductCapabilities(withLearning, user.getStage());
         // 输出格式规范：与前端渲染层规范化双保险（模型偶发输出无空格标题/列表导致前端原样显示源码）
         String withFormat = withProduct + "\n\n" + MARKDOWN_FORMAT_RULE;
         // MCP 能力块：仅工具真实挂载时追加，MCP 关闭时模型不会声称具备这些能力

@@ -34,6 +34,12 @@ public class AgentSendMessageRequest {
     /** 置顶：0否 1是 */
     private Integer top;
 
+    /**
+     * 学生当前学习上下文（计划 C/7.60 收敛项）：由学习路径节点等入口带来，
+     * 服务端只把它拼进系统提示词，**不写进消息正文**——聊天气泡里不再出现那串机器味儿的文字。
+     */
+    private String learningContext;
+
     public String getSessionId() {
         return sessionId;
     }
@@ -88,5 +94,13 @@ public class AgentSendMessageRequest {
 
     public void setTop(Integer top) {
         this.top = top;
+    }
+
+    public String getLearningContext() {
+        return learningContext;
+    }
+
+    public void setLearningContext(String learningContext) {
+        this.learningContext = learningContext;
     }
 }

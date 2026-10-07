@@ -163,23 +163,24 @@ export default function LearningPathDetailPage() {
    * 「找材料」和「复盘」不需要新增后端：AI 会用已挂载的 MCP 工具（recommendResource / queryPathNode / queryMastery）去查。
    */
   const askAi = (node: LearningPathNode, mode: 'explain' | 'quiz' | 'materials' | 'review' | 'guided') => {
+    // 学习上下文单独传（不进消息正文）：气泡里只显示问题本身，上下文由服务端拼进系统提示词
     const context = buildLearningContext(node);
     let question: string;
     if (mode === 'explain') {
-      question = `请结合我的实际情况给我讲讲「${node.knowledgePointName}」。${context}。请告诉我这个节点该重点掌握什么、有没有需要先补的地方。`;
+      question = `请结合我的实际情况给我讲讲「${node.knowledgePointName}」，告诉我这个节点该重点掌握什么、有没有需要先补的地方。`;
     } else if (mode === 'quiz') {
-      question = `针对《${node.knowledgePointName}》出 3 道题考考我。${context}。请按我的掌握度调整难度。`;
+      question = `针对《${node.knowledgePointName}》出 3 道题考考我，请按我的掌握度调整难度。`;
     } else if (mode === 'materials') {
-      question = `我想把「${node.knowledgePointName}」学扎实，帮我找几份合适的学习材料推荐给我。${context}。请优先推荐平台上已有的资源，并说明每份材料适合先看还是后看。`;
+      question = `我想把「${node.knowledgePointName}」学扎实，帮我找几份合适的学习材料，优先推荐平台上已有的资源，并说明每份适合先看还是后看。`;
     } else if (mode === 'review') {
-      question = `帮我复盘一下《${node.knowledgePointName}》这个节点我最近一次的练习情况。${context}。请指出我错得最多或最薄弱的地方，给出具体的补法，别只讲通用建议。`;
+      question = `帮我复盘一下《${node.knowledgePointName}》这个节点我最近一次的练习情况，指出我错得最多或最薄弱的地方并给出具体补法，别只讲通用建议。`;
     } else {
       question = `带我做一轮「${node.knowledgePointName}」的复习：先用两三句话把关键点讲清楚，然后出 3 道题考我；`
-        + `我答完后你按结果决定——没掌握就回炉重讲，掌握了就告诉我可以进入下一个节点。${context}。`;
+        + `我答完后你按结果决定——没掌握就回炉重讲，掌握了就告诉我可以进入下一个节点。`;
     }
     setActiveNode(null);
     // autoSend：进对话页直接发送，不用学生再点一次发送（7.60 验收口径 1）
-    navigate('/ai-tutor', { state: { presetQuestion: question, autoSend: true } });
+    navigate('/ai-tutor', { state: { presetQuestion: question, presetContext: context, autoSend: true } });
   };
 
   /** 是否正在出题：生成期间按钮禁用，防止连续点击产生多个快测任务 */

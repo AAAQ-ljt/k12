@@ -42,6 +42,9 @@ public class Constants {
      */
     public static final String REDIS_KEY_AI_CANCEL = "ai_cancel:";
 
+    /** 学生学习上下文暂存（key = 前缀 + 消息ID；生成提示词时取一次即删） */
+    public static final String REDIS_KEY_AGENT_LEARNING_CONTEXT = "agent:learning-context:";
+
     /**
      * Redis key 前缀：提示词模板覆盖
      */

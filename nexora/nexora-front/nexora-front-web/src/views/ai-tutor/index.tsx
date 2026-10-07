@@ -279,7 +279,7 @@ export default function AiTutor() {
   const [renaming, setRenaming] = useState(false);
   // 学习路径节点「问 AI 助教」跳转过来时预填问题（用完即清，避免刷新重复填充）
   useEffect(() => {
-    const state = location.state as { presetQuestion?: string; autoSend?: boolean } | null;
+    const state = location.state as { presetQuestion?: string; presetContext?: string; autoSend?: boolean } | null;
     if (state?.presetQuestion) {
       setInput(state.presetQuestion);
       navigate(location.pathname, { replace: true, state: null });
@@ -288,7 +288,7 @@ export default function AiTutor() {
         // 一键直达：清空当前视图并置标记，避免会话列表加载抢视图（见 autoSendPendingRef 注释）
         autoSendPendingRef.current = true;
         setMessages([]);
-        void handleSend(state.presetQuestion).finally(() => {
+        void handleSend(state.presetQuestion, state.presetContext).finally(() => {
           autoSendPendingRef.current = false;
         });
       }
@@ -538,7 +538,7 @@ export default function AiTutor() {
     streamingMessageIdRef.current = streamingMessageId;
   }, [streaming, streamingMessageId]);
 
-  const handleSend = async (content?: string) => {
+  const handleSend = async (content?: string, learningContext?: string) => {
     const text = (content ?? input).trim();
     if ((!text && attachedImages.length === 0) || streaming) {
       return;
@@ -577,6 +577,8 @@ export default function AiTutor() {
         sessionId,
         message: text,
         imageResourceIds: imageIds.length > 0 ? imageIds : undefined,
+        // 学习上下文只进提示词、不进气泡（服务端按消息 ID 暂存后注入）
+        learningContext,
       });
       selectSession(result.sessionId);
       setStreamingMessageId(result.messageId);
