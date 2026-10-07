@@ -64,3 +64,22 @@ export function loadPointRecords(params: {
 export function addPoints(data: { userId: string; stage?: string; points: number; reason: string }) {
   return request.post<number>('/pointInfo/add', data);
 }
+
+/** 学生成长详情（A-9）：积分/段位/连续天数/徽章 + 最近 10 条流水 */
+export interface PointUserDetail {
+  userId: string;
+  stage?: string;
+  level: number;
+  levelName?: string | null;
+  totalPoints: number;
+  availablePoints: number;
+  streakDays: number;
+  unlockedBadgeCount: number;
+  badgeTotal: number;
+  recentRecords: PointRecordItem[];
+}
+
+/** 学生成长详情（学习档案抽屉用） */
+export function getUserPointDetail(userId: string) {
+  return request.get<PointUserDetail>('/pointInfo/getUserDetail', { params: { userId } });
+}

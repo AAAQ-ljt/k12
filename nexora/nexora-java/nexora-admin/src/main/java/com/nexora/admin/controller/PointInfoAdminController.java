@@ -48,6 +48,12 @@ public class PointInfoAdminController extends ABaseController {
         return getSuccessResponseVO(pointAdminBiz.loadDataList(query));
     }
 
+    /** 学生成长详情（A-9）：积分/段位/连续天数/徽章 + 最近 10 条流水 */
+    @GetMapping("/getUserDetail")
+    public ResponseVO<com.nexora.entity.vo.PointUserDetailVO> getUserDetail(@org.springframework.web.bind.annotation.RequestParam String userId) {
+        return getSuccessResponseVO(pointAdminBiz.userDetail(userId));
+    }
+
     /** 人工补分（补偿/活动奖励，只能加正数） */
     @PostMapping("/add")
     public ResponseVO<Integer> add(@RequestBody PointAdjustBody body, HttpServletRequest request) {

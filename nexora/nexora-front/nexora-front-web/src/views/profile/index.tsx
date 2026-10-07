@@ -27,6 +27,8 @@ import { contestPhaseOf, formatDuration, formatTimeWindow } from '@/utils/coding
 import { CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
 import GrowthCenterCard from '@/components/point/GrowthCenterCard';
+import { usePointStore } from '@/stores/point';
+import { levelTitle } from '@/utils/point';
 import styles from './index.module.scss';
 
 /**
@@ -90,6 +92,8 @@ export default function Profile() {
   /** 编程比赛入口与 /coding 学段守卫同口径（小学低年级不开放） */
   const canUseCoding = !!stage && CODING_STAGES.includes(stage);
   const stageLabel = stage ? getStageOption(stage)?.label : '';
+  // 成长信息（二期 A-9）：与成长中心共用积分 store，这里不再单独请求
+  const pointAccount = usePointStore((state) => state.account);
   const gradeText = getGradeText(userInfo);
 
   const load = useCallback(async () => {
@@ -311,6 +315,18 @@ export default function Profile() {
               <GraduationCap size={16} />
               <span>学习概览</span>
             </div>
+            {pointAccount && (
+              <div className={styles.growthInline}>
+                <span className={styles.growthChip}>
+                  {levelTitle(userInfo?.stage, pointAccount.level, pointAccount.levelName)}
+                </span>
+                <span className={styles.growthChip}>累计 {pointAccount.totalPoints}</span>
+                <span className={styles.growthChip}>连续学习 {pointAccount.streakDays} 天</span>
+                <span className={styles.growthChip}>
+                  今日 +{pointAccount.todayPoints}/{pointAccount.dailyCap}
+                </span>
+              </div>
+            )}
             {overview && overview.totalPractice > 0 ? (
               <div className={styles.statRow2}>
                 <div className={styles.statItem}>

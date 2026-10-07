@@ -1,12 +1,18 @@
 package com.nexora.admin.biz;
 
 import com.nexora.component.PointAwardComponent;
+import com.nexora.component.PointLevelComponent;
+import com.nexora.entity.po.GameBadge;
 import com.nexora.entity.po.StudentPointAccount;
 import com.nexora.entity.po.StudentPointRecord;
+import com.nexora.entity.query.GameBadgeQuery;
 import com.nexora.entity.query.StudentPointRecordQuery;
 import com.nexora.entity.vo.PaginationResultVO;
 import com.nexora.entity.vo.PointRankItemVO;
+import com.nexora.entity.vo.PointUserDetailVO;
 import com.nexora.exception.BusinessException;
+import com.nexora.mappers.GameBadgeMapper;
+import com.nexora.mappers.StudentBadgeRecordMapper;
 import com.nexora.mappers.StudentPointAccountMapper;
 import com.nexora.mappers.StudentPointRecordMapper;
 import com.nexora.utils.StringTools;
@@ -37,6 +43,9 @@ public class PointAdminBiz {
     /** 审计列表最大返回条数（用筛选缩小范围，不做深翻页） */
     private static final int AUDIT_LIMIT_MAX = 200;
 
+    /** 成长详情里的最近流水条数 */
+    private static final int RECENT_RECORD_LIMIT = 10;
+
     /** 学生积分总览条数上限 */
     private static final int ACCOUNT_LIMIT = 200;
 
@@ -48,6 +57,15 @@ public class PointAdminBiz {
 
     @Resource
     private PointAwardComponent pointAwardComponent;
+
+    @Resource
+    private PointLevelComponent levelComponent;
+
+    @Resource
+    private GameBadgeMapper badgeMapper;
+
+    @Resource
+    private StudentBadgeRecordMapper badgeRecordMapper;
 
     /**
      * 流水审计（时间倒序，最多 AUDIT_LIMIT_MAX 条；totalCount 是命中筛选的总条数，用来提示还有多少）。
@@ -103,5 +121,44 @@ public class PointAdminBiz {
         log.info("管理端人工补分 operator={} userId={} points={} granted={} reason={}",
                 operatorId, userId, points, granted, reason);
         return granted;
+    }
+
+    /**
+     * 学生成长详情（A-9）：学习档案抽屉里的成长信息卡数据。
+     *
+     * 等级/段位口径与学生端一致（都走 PointLevelComponent），徽章总数按该生学段统计，
+     * 与学生端徽章墙同一套可见规则。
+     */
+    public PointUserDetailVO userDetail(String userId) {
+        if (StringTools.isEmpty(userId)) {
+            throw new BusinessException("请先指定学生");
+        }
+        StudentPointAccount account = accountMapper.selectByUserId(userId);
+        PointUserDetailVO vo = new PointUserDetailVO();
+        vo.setUserId(userId);
+        int total = account == null || account.getTotalPoints() == null ? 0 : account.getTotalPoints();
+        vo.setTotalPoints(total);
+        vo.setAvailablePoints(account == null || account.getAvailablePoints() == null ? 0 : account.getAvailablePoints());
+        vo.setStreakDays(account == null || account.getStreakDays() == null ? 0 : account.getStreakDays());
+        String stage = account == null ? null : account.getStage();
+        vo.setStage(stage);
+        int level = levelComponent.levelOf(total);
+        vo.setLevel(level);
+        vo.setLevelName(levelComponent.levelName(stage, level));
+
+        Integer unlocked = badgeRecordMapper.countByUserAndTimeRange(userId, null, null);
+        vo.setUnlockedBadgeCount(unlocked == null ? 0 : unlocked);
+        GameBadgeQuery badgeQuery = new GameBadgeQuery();
+        badgeQuery.setStatus(1);
+        badgeQuery.setStage(stage);
+        List<GameBadge> badges = badgeMapper.selectListByParam(badgeQuery);
+        vo.setBadgeTotal(badges == null ? 0 : badges.size());
+
+        StudentPointRecordQuery recordQuery = new StudentPointRecordQuery();
+        recordQuery.setUserId(userId);
+        recordQuery.setPageSize(RECENT_RECORD_LIMIT);
+        List<StudentPointRecord> records = recordMapper.selectListByParam(recordQuery);
+        vo.setRecentRecords(records == null ? List.of() : records);
+        return vo;
     }
 }

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  App,
   Button,
   Descriptions,
+  Input,
+  InputNumber,
   Modal,
   Progress,
   Space,
@@ -32,6 +35,7 @@ import {
   USER_STATUS_MAP,
 } from '@/types/common';
 import { aiReport, getStudentDetail } from '@/api/learningAnalysis';
+import { addPoints, getUserPointDetail, type PointUserDetail } from '@/api/point';
 import type {
   AiIntentItem,
   AiRecentMessageItem,
@@ -117,6 +121,13 @@ export default function LearningUserDetailDrawer({
   const [reportOpen, setReportOpen] = useState(false);
   const [report, setReport] = useState('');
   const [reporting, setReporting] = useState(false);
+  /** 成长信息（二期 A-9）：积分/段位/连续天数/徽章 + 最近流水 */
+  const [point, setPoint] = useState<PointUserDetail | null>(null);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustPoints, setAdjustPoints] = useState(10);
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
+  const { message } = App.useApp();
 
   useEffect(() => {
     if (!open || !userId) return;
@@ -127,6 +138,35 @@ export default function LearningUserDetailDrawer({
       .catch(() => undefined)
       .finally(() => setLoading(false));
   }, [open, userId]);
+
+  // 成长信息（A-9）：与学生档案一起刷新，失败只当没有这块（不影响档案本身）
+  useEffect(() => {
+    if (!open || !userId) return;
+    setPoint(null);
+    getUserPointDetail(userId)
+      .then(setPoint)
+      .catch(() => undefined);
+  }, [open, userId]);
+
+  /** 手工补分：抽屉里直接补发（走服务端唯一发分入口，正数 + 必填原因） */
+  const submitAdjust = async () => {
+    if (!userId || !adjustReason.trim()) {
+      message.warning('请填写补分原因（学生端会看到）');
+      return;
+    }
+    setAdjusting(true);
+    try {
+      const granted = await addPoints({ userId, stage: point?.stage, points: adjustPoints, reason: adjustReason });
+      message.success(granted > 0 ? `已补发 ${granted} 分` : '本次未发放（可能撞上每日上限或被幂等拦下）');
+      setAdjustOpen(false);
+      setAdjustReason('');
+      setPoint(await getUserPointDetail(userId));
+    } catch {
+      // 请求层已提示
+    } finally {
+      setAdjusting(false);
+    }
+  };
 
   const handleGenerateReport = async () => {
     if (!userId) {
@@ -394,6 +434,80 @@ export default function LearningUserDetailDrawer({
           ]}
         />
       </section>
+
+      {/* 成长信息（二期 A-9）：段位/星星、累计与可用积分、连续学习、徽章、最近流水，并可当场补分 */}
+      {point && (
+        <section
+          style={{
+            margin: '12px 0',
+            padding: '12px 14px',
+            borderRadius: 10,
+            border: '1px solid var(--warm-bg-dark, #EDE8E1)',
+            background: 'var(--warm-bg-ultimate, #FDFBF7)',
+          }}
+        >
+          <Space size={10} wrap align="center">
+            <span style={{ fontWeight: 600 }}>成长信息</span>
+            <Tag color="orange">
+              {point.stage === 'PRIMARY_LOW' || point.stage === 'PRIMARY_HIGH'
+                ? `${point.level} 颗星`
+                : `${point.levelName || '青铜'} ${point.level} 段`}
+            </Tag>
+            <span>累计 {point.totalPoints}</span>
+            <span>可用 {point.availablePoints}</span>
+            <span>连续学习 {point.streakDays} 天</span>
+            <span>
+              徽章 {point.unlockedBadgeCount}/{point.badgeTotal}
+            </span>
+            <Button size="small" onClick={() => setAdjustOpen(true)}>
+              补分
+            </Button>
+          </Space>
+          {point.recentRecords.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+              {point.recentRecords.slice(0, 5).map((record) => (
+                <div key={record.recordId} style={{ display: 'flex', gap: 10 }}>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {record.reason || record.bizType}
+                  </span>
+                  <span>{record.points >= 0 ? `+${record.points}` : record.points}</span>
+                  <span>{record.createTime}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <Modal
+        open={adjustOpen}
+        title="手工补分"
+        okText="确认发放"
+        cancelText="取消"
+        confirmLoading={adjusting}
+        onOk={() => void submitAdjust()}
+        onCancel={() => setAdjustOpen(false)}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <InputNumber
+            addonBefore="补分"
+            min={1}
+            max={1000}
+            style={{ width: '100%' }}
+            value={adjustPoints}
+            onChange={(value) => setAdjustPoints(value ?? 1)}
+          />
+          <Input.TextArea
+            rows={3}
+            placeholder="补分原因（会写进流水，学生端在成长中心能看到）"
+            value={adjustReason}
+            onChange={(event) => setAdjustReason(event.target.value)}
+          />
+          <span style={{ color: '#999', fontSize: 12 }}>
+            补发只增加积分（累计与可用同时增加），走服务端唯一发分入口，幂等且受每日上限约束。
+          </span>
+        </Space>
+      </Modal>
 
       <div className={styles.metricGrid}>
         <MetricCard
