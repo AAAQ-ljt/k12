@@ -9,6 +9,7 @@ import {
   type OnboardingStatusVO,
 } from '@/api/onboarding';
 import OnboardingTour from './OnboardingTour';
+import OnboardingCenter from './OnboardingCenter';
 import { tourStepsOf } from './tourSteps';
 import { useAuthStore } from '@/stores/auth';
 
@@ -28,6 +29,8 @@ export default function OnboardingGuide() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   /** 分步高亮导览（计划 D2）：由欢迎卡的「开始导览」启动 */
   const [tourOpen, setTourOpen] = useState(false);
+  /** 引导中心（计划 D3）：右上角入口点开的是它，而不是只重播欢迎卡 */
+  const [centerOpen, setCenterOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const isPrimaryLow = stage === 'PRIMARY_LOW';
@@ -105,7 +108,7 @@ export default function OnboardingGuide() {
   };
 
   const handleOpenGuide = async () => {
-    setWelcomeOpen(true);
+    setCenterOpen(true);
     try {
       await touchOnboardingOpen();
     } catch {
@@ -129,6 +132,17 @@ export default function OnboardingGuide() {
       >
         新手指引
       </Button>
+
+      <OnboardingCenter
+        open={centerOpen}
+        needUpdate={status?.needUpdate}
+        stage={stage}
+        onClose={() => setCenterOpen(false)}
+        onReplay={() => {
+          setCenterOpen(false);
+          setTourOpen(true);
+        }}
+      />
 
       <OnboardingTour
         open={tourOpen}
