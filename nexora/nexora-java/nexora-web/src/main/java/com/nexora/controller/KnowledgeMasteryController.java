@@ -58,12 +58,15 @@ public class KnowledgeMasteryController extends ABaseController {
         return getSuccessResponseVO(knowledgeMasteryBiz.locateReview(current.getUserId(), knowledgePointId));
     }
 
-    /** 复习提醒静音：until=today（今天不用提醒）/ forever（不再提醒这个知识点） */
+    /** 复习提醒静音：until=today（今天不用提醒）/ forever（不再提醒这个知识点）；写入失败会抛错，避免前端谎称已静音 */
     @PostMapping("/muteReview")
     public ResponseVO<Void> muteReview(@RequestParam String knowledgePointId,
                                        @RequestParam(required = false) String until) {
         TokenUserInfoDTO current = LoginUserContext.get();
-        knowledgeMasteryBiz.muteReview(current == null ? null : current.getUserId(), knowledgePointId, until);
+        boolean ok = knowledgeMasteryBiz.muteReview(current == null ? null : current.getUserId(), knowledgePointId, until);
+        if (!ok) {
+            throw new BusinessException("静音没生效，请刷新后重试");
+        }
         return getSuccessResponseVO(null);
     }
 
@@ -71,7 +74,10 @@ public class KnowledgeMasteryController extends ABaseController {
     @PostMapping("/unmuteReview")
     public ResponseVO<Void> unmuteReview(@RequestParam String knowledgePointId) {
         TokenUserInfoDTO current = LoginUserContext.get();
-        knowledgeMasteryBiz.unmuteReview(current == null ? null : current.getUserId(), knowledgePointId);
+        boolean ok = knowledgeMasteryBiz.unmuteReview(current == null ? null : current.getUserId(), knowledgePointId);
+        if (!ok) {
+            throw new BusinessException("恢复提醒没生效，请刷新后重试");
+        }
         return getSuccessResponseVO(null);
     }
 }

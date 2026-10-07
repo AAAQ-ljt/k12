@@ -45,7 +45,8 @@ public class PreferencePageComponent {
             > 这篇文档是「AI 助教对你的个人设定」：你写在这里的偏好，AI 每次回答你时都会参考。
             > · 它固定放在这里（不能移动、不能删除），想恢复原样点「重置」即可；
             > · 它不会参与资料检索（不做向量化），所以不会在回答学习问题时被当作教材资料引用；
-            > · 除了在这里直接改，也可以在对话里直接说（例如「以后叫我小明」），或在「我的 → AI 偏好设置」里改。
+            > · 带标记的「规则段」由系统按「我的 → AI 偏好设置」里的规则生成，直接改会被下次同步覆盖；
+            > · 想加规则请去「我的 → AI 偏好设置」（或在知识中心点「我的学习偏好」）。
             """;
 
     /** 自由段的默认示例（学生照抄改写即可） */
@@ -76,7 +77,14 @@ public class PreferencePageComponent {
         try {
             PreferencePageVO page = preferencePageMapper.selectByOwner(userId);
             if (page == null) {
-                page = create(userId, stage);
+                // 并发保护：两个标签页（知识中心 + AI 助手的知识页抽屉）同时首次进入时，
+                // 原来的"查到没有就插入"会各插一行、产生两篇《我的学习偏好》（2026-10-08 修）
+                synchronized (this) {
+                    page = preferencePageMapper.selectByOwner(userId);
+                    if (page == null) {
+                        page = create(userId, stage);
+                    }
+                }
             }
             return page;
         } catch (Exception e) {
@@ -150,6 +158,43 @@ public class PreferencePageComponent {
         } catch (Exception e) {
             log.warn("偏好页判定失败 docId={}", docId, e);
             return false;
+        }
+    }
+
+    /**
+     * 自由段正文（注入系统提示词用，最低优先级）。
+     *
+     * <p>页面头部写着「你写在这里的偏好，AI 每次回答你时都会参考」，而自由段既不落规则表也不向量化，
+     * 之前**没有任何地方读它** → 学生写了等于没写（2026-10-08 修）。这里剥掉规则段与提示语、只取自由段；
+     * 仍是默认示例（学生没写过）时返回空串，不污染提示词。
+     */
+    public String freeSectionForPrompt(String userId) {
+        if (StringTools.isEmpty(userId)) {
+            return "";
+        }
+        try {
+            PreferencePageVO page = preferencePageMapper.selectByOwner(userId);
+            if (page == null || StringTools.isEmpty(page.getContent())) {
+                return "";
+            }
+            String free = parseFreeSection(page.getContent());
+            if (StringTools.isEmpty(free) || free.trim().equals(DEFAULT_FREE.trim())) {
+                return "";
+            }
+            // 只保留有内容的行，去掉示例行，避免把「例：…」当成学生的真实偏好喂给模型
+            StringBuilder sb = new StringBuilder();
+            for (String line : free.split("\n")) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("- 例：") || trimmed.startsWith("例：")
+                        || trimmed.startsWith("## ")) {
+                    continue;
+                }
+                sb.append(trimmed).append("\n");
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            log.warn("读取偏好页自由段失败 userId={}", userId, e);
+            return "";
         }
     }
 

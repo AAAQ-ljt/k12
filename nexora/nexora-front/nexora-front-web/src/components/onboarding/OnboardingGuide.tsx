@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth';
  */
 export default function OnboardingGuide() {
   const token = useAuthStore((state) => state.token);
+  const userId = useAuthStore((state) => state.userInfo?.userId);
   const stage = useAuthStore((state) => state.userInfo?.stage);
   const [status, setStatus] = useState<OnboardingStatusVO | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -60,11 +61,16 @@ export default function OnboardingGuide() {
     try {
       const data = await getOnboardingStatus();
       setStatus(data);
-      // 欢迎卡"一天只自动弹一次"：避免每次刷新都跳出来打断操作（用户 2026-10-07 反馈）
-      const today = new Date().toISOString().slice(0, 10);
-      const shownDate = window.localStorage.getItem('onboarding.welcomeDate');
+      // 欢迎卡"一天只自动弹一次"：避免每次刷新都跳出来打断操作（用户 2026-10-07 反馈）。
+      // 用**本地日期**而不是 toISOString()（UTC）：北京时间 0:00-8:00 用 UTC 会算成前一天，
+      // 会出现"早上刚看过、上午又弹一次"或"当天该弹却没弹"（2026-10-08 修）
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      // key 带用户ID：同一台电脑换账号登录时不会互相顶掉（演示机常见场景）
+      const storageKey = `onboarding.welcomeDate.${userId || 'anon'}`;
+      const shownDate = window.localStorage.getItem(storageKey);
       if (data?.firstTime && shownDate !== today) {
-        window.localStorage.setItem('onboarding.welcomeDate', today);
+        window.localStorage.setItem(storageKey, today);
         setWelcomeOpen(true);
       }
     } catch {
@@ -72,7 +78,7 @@ export default function OnboardingGuide() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, userId]);
 
   useEffect(() => {
     void load();

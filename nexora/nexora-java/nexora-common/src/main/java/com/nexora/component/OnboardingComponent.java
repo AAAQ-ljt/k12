@@ -44,7 +44,9 @@ public class OnboardingComponent {
                 vo.setWelcomeSeen(false);
                 vo.setSkipped(false);
                 vo.setVersion(0);
-                vo.setNeedUpdate(true);
+                // 从没看过导览的人不该看到「导览有更新」（那是给老用户的提示）：
+                // 他本来就该走一遍 D1 欢迎卡 + D2 分步导览（2026-10-08 修）
+                vo.setNeedUpdate(false);
                 return vo;
             }
             boolean welcomeSeen = record.getWelcomeSeen() != null && record.getWelcomeSeen() == 1;
@@ -54,7 +56,8 @@ public class OnboardingComponent {
             vo.setSkipped(skipped);
             vo.setVersion(version);
             vo.setFirstTime(!welcomeSeen && !skipped);
-            vo.setNeedUpdate(version < SCRIPT_VERSION);
+            // 只有"看过 / 主动跳过过"的用户才谈得上"有更新"
+            vo.setNeedUpdate((welcomeSeen || skipped) && version < SCRIPT_VERSION);
             vo.setStepsDone(parseSteps(record.getStepsDone()));
             return vo;
         } catch (Exception e) {

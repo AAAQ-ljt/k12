@@ -60,8 +60,9 @@ public class UserPromptRuleController extends ABaseController {
             }
         }
         vo.setEnabledCount(enabledCount);
-        vo.setEnabled(true);
-        vo.setMaxCount(5);
+        // 总开关与上限从后端配置读：之前写死 true/5，管理端关掉总开关后前端仍显示可用（2026-10-08 修）
+        vo.setEnabled(userPromptRuleComponent.isRuleEnabled());
+        vo.setMaxCount(userPromptRuleComponent.maxRuleCount());
         return getSuccessResponseVO(vo);
     }
 

@@ -1,5 +1,6 @@
 package com.nexora.component;
 
+import com.nexora.component.PreferencePageComponent;
 import com.nexora.constants.Constants;
 import java.util.concurrent.TimeUnit;
 
@@ -145,6 +146,9 @@ public class AgentChatComponent {
     /** 用户端提示词规则（计划 C2：学生自定义偏好，第四层注入） */
     @Resource
     private UserPromptRuleComponent userPromptRuleComponent;
+
+    @Resource
+    private PreferencePageComponent preferencePageComponent;
 
     @Resource
     private StudentProfileComponent studentProfileComponent;
@@ -1083,9 +1087,15 @@ public class AgentChatComponent {
         // 总开关关闭、或学生没设规则时不注入（块内也写明"平台规则优先"，不只靠拼接顺序）
         String ruleBlock = userPromptRuleComponent.promptBlock(user.getUserId());
         String withUserRules = StringTools.isEmpty(ruleBlock) ? withProfile : withProfile + "\n\n" + ruleBlock;
+        // 《我的学习偏好》自由段（计划 C3）：页面写着"AI 每次回答你时都会参考"，就必须真的注入。
+        // 优先级最低（放在规则之后）；学生没写过（仍是示例）时为空、不注入
+        String freePreference = preferencePageComponent.freeSectionForPrompt(user.getUserId());
+        String withFreePreference = StringTools.isEmpty(freePreference) ? withUserRules
+                : withUserRules + "\n\n## 学生自己写的学习偏好（自由段，优先级最低，与平台规则冲突时以平台规则为准）\n"
+                        + freePreference;
         // 学生当前学习上下文（来自学习路径节点等入口）：独立段落，优先参考；取不到则跳过
-        String withLearning = StringTools.isEmpty(learningContext) ? withUserRules
-                : withUserRules + "\n\n## 学生当前学习上下文（本轮消息带入，请直接引用）\n" + learningContext;
+        String withLearning = StringTools.isEmpty(learningContext) ? withFreePreference
+                : withFreePreference + "\n\n## 学生当前学习上下文（本轮消息带入，请直接引用）\n" + learningContext;
         // 当前时间（2026-10-07 修复）：模型自身没有可靠的"今天几号"，
         // 判断复习是否到期/逾期多久必须以这里注入的时间为准，否则会把已过期说成"还没到时间"。
         String withNow = withLearning + "\n\n## 当前时间\n今天是 "

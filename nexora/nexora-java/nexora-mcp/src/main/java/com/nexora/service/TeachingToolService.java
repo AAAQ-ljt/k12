@@ -700,7 +700,8 @@ public class TeachingToolService {
                 if (shown++ < 10) {
                     String questionText = StringTools.isEmpty(record.getQuestionText())
                             ? "（早期记录无题面）" : summarize(record.getQuestionText(), 60);
-                    boolean reviewRecord = record.getSource() != null && record.getSource() == 3;
+                    // 练习来源：1 路径快测 / 3 课时通关测验 / 4 复习小测（2026-10-08 起复习不再与课时测验共用 3）
+                    boolean reviewRecord = record.getSource() != null && record.getSource() == 4;
                     sb.append("  ").append(index++).append(reviewRecord ? ". [复习][" : ". [")
                             .append(record.getIsCorrect() != null && record.getIsCorrect() == 1 ? "对" : "错").append("] ")
                             .append(questionText).append("\n");
@@ -747,7 +748,6 @@ public class TeachingToolService {
             List<LearningPathComponent.PathWithItems> paths = learningPathComponent.listMyPaths(uid);
             // 掌握度里"下次复习时间已过"的节点也算到期（学习路径的 due_date 常常是空的，只看它就永远不算到期）
             List<KnowledgeMasteryVO> masteryForDue = learningAnalysisMapper.selectMasteryList(uid);
-            java.util.Set<String> reviewDueItemIds = new java.util.HashSet<>();
             java.util.Map<String, java.util.Date> reviewDueByPoint = new java.util.HashMap<>();
             for (KnowledgeMasteryVO mastery : masteryForDue) {
                 if (reviewComponent.isDue(mastery)) {
@@ -756,24 +756,25 @@ public class TeachingToolService {
             }
             List<String> review = new java.util.ArrayList<>();
             List<String> current = new java.util.ArrayList<>();
+            // 已被路线节点覆盖的知识点：循环结束后用它们找出"不在路线里但已到期"的知识点
+            java.util.Set<String> coveredPointIds = new java.util.HashSet<>();
             java.util.Date now = new java.util.Date();
             for (LearningPathComponent.PathWithItems each : paths) {
                 String title = each.path().getTitle();
                 List<LearningPathItem> items = each.items() == null ? List.<LearningPathItem>of() : each.items();
                 for (LearningPathItem item : items) {
-                    if (item.getStatus() != null && item.getStatus() == 2) {
-                        continue;
+                    if (item.getKnowledgePointId() != null) {
+                        coveredPointIds.add(item.getKnowledgePointId());
                     }
                     String label = item.getKnowledgePointName() + "（路径《" + title + "》）";
-                    // 逾期与否在下面统一判断（先算 dueNow，再决定是否补逾期天数）
-                    // 到期判定（2026-10-07 修复）：节点的 due_date 与掌握度的 next_review_time 取更早者
-                    boolean dueNow = item.getDueDate() != null && item.getDueDate().compareTo(now) <= 0;
-                    if (!dueNow && reviewDueItemIds.contains(item.getItemId())) {
-                        dueNow = true;
-                    }
+                    String pointId = item.getKnowledgePointId();
+                    // 到期判定（2026-10-07 修复）：节点的 due_date 与掌握度的 next_review_time 取更早者。
+                    // 注意：已掌握（status=2）**正是复习对象**，不能跳过 —— 之前跳过导致「页面说该复习了、AI 说没待复习」。
+                    boolean masteryDue = pointId != null && reviewDueByPoint.containsKey(pointId);
+                    boolean dueNow = masteryDue
+                            || (item.getDueDate() != null && item.getDueDate().compareTo(now) <= 0);
                     if (dueNow) {
-                        String pointId = item.getKnowledgePointId();
-                        if (pointId != null && reviewDueByPoint.containsKey(pointId)) {
+                        if (masteryDue) {
                             long overdueDays = (System.currentTimeMillis() - reviewDueByPoint.get(pointId).getTime()) / 86400000L;
                             label = label + "（下次复习已逾期 " + Math.max(overdueDays, 1) + " 天）";
                         }
@@ -782,6 +783,14 @@ public class TeachingToolService {
                         current.add(label);
                     }
                 }
+            }
+            // 不在任何学习路线里、但已到复习时间的知识点（课时测验学到的）也要提醒
+            for (java.util.Map.Entry<String, java.util.Date> entry : reviewDueByPoint.entrySet()) {
+                if (coveredPointIds.contains(entry.getKey())) {
+                    continue;
+                }
+                long overdueDays = (System.currentTimeMillis() - entry.getValue().getTime()) / 86400000L;
+                review.add(entry.getKey() + "（不在学习路线内，下次复习已逾期 " + Math.max(overdueDays, 1) + " 天）");
             }
             List<KnowledgeMasteryVO> masteryList = learningAnalysisMapper.selectMasteryList(uid);
             List<KnowledgeMasteryVO> weak = new java.util.ArrayList<>();

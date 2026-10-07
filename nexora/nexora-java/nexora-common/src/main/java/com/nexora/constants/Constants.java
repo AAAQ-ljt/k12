@@ -137,6 +137,13 @@ public class Constants {
     public static final String REDIS_KEY_LEARNING_PATH_QUIZ_RUNNING_PREFIX = "learningpath:quiztask:running:";
 
     /**
+     * Redis key：出题任务 → 学生ID 的反查前缀（`learningpath:quiztask:owner:<taskId>`）。
+     * 任务体丢失/过期时消费者拿不到 userId，无法释放运行锁，任务会卡在 PENDING 且该生 5 分钟内无法再出题；
+     * 存一份反查即可在丢弃任务时把锁释放掉（2026-10-08 修）。
+     */
+    public static final String REDIS_KEY_LEARNING_PATH_QUIZ_TASK_OWNER_PREFIX = "learningpath:quiztask:owner:";
+
+    /**
      * Redis key：学习路径 AI 生成异步任务队列/任务前缀/用户运行锁（任务体 = 路线生成任务 JSON）
      */
     public static final String REDIS_KEY_LEARNING_PATH_GEN_TASK_QUEUE = "learningpath:gentask:queue";

@@ -186,9 +186,13 @@
 			</if>
 			<if test="bean.userAnswer != null">
 				 user_answer,
-				 question_text,
-				 correct_answer,
-			</if>
+				 </if>
+				<if test="bean.questionText != null">
+					 question_text,
+				</if>
+				<if test="bean.correctAnswer != null">
+					 correct_answer,
+				</if>
 			<if test="bean.isCorrect != null">
 				 is_correct,
 			</if>
@@ -308,9 +312,13 @@
 			</if>
 			<if test="bean.userAnswer != null">
 				 user_answer,
-				 question_text,
-				 correct_answer,
-			</if>
+				 </if>
+				<if test="bean.questionText != null">
+					 question_text,
+				</if>
+				<if test="bean.correctAnswer != null">
+					 correct_answer,
+				</if>
 			<if test="bean.isCorrect != null">
 				 is_correct,
 			</if>

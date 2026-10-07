@@ -80,7 +80,8 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
     /** 练习流水来源：路径快测 */
     private static final int PRACTICE_SOURCE_PATH_QUIZ = 1;
     /** 练习来源：复习小测（提交前该知识点已处于待复习） */
-    private static final int PRACTICE_SOURCE_REVIEW = 3;
+    /** 练习来源：3 = 课时通关测验（CourseQuizBiz），复习小测另用 4，避免两处语义撞车 */
+    private static final int PRACTICE_SOURCE_REVIEW = 4;
 
     /** 练习流水批阅状态：客观题无需批阅 */
     private static final int REVIEW_STATUS_UNNEEDED = 2;
@@ -259,7 +260,10 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
         if (item == null || !userId.equals(item.getUserId())) {
             throw new BusinessException("节点不存在或无权操作");
         }
-        if (item.getStatus() != null && item.getStatus() == LearningPathComponent.ITEM_STATUS_LOCKED) {
+        // 锁定节点禁止快测，但**已练过的知识点例外**（回炉导致节点被锁时，它的复习计划还在跑，
+        // 必须允许复习，否则「该复习了」永远消不掉；与 NodeQuizTaskServiceImpl 同一口径）
+        boolean locked = item.getStatus() != null && item.getStatus() == LearningPathComponent.ITEM_STATUS_LOCKED;
+        if (locked && !knowledgeMasteryComponent.hasRecord(userId, item.getKnowledgePointId())) {
             throw new BusinessException("该节点还未解锁，请先完成前置节点");
         }
         LearningPath path = learningPathComponent.requireOwnedPath(userId, item.getPathId());
@@ -316,9 +320,11 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             record.setQuestionId("");
             record.setQuestionType(QUESTION_TYPE_SINGLE);
             record.setUserAnswer(userAnswer);
-            // 题干与参考答案一并落库（计划 C5-1）：让 AI 之后能逐题复盘，而不是只知道错了几题
-            record.setQuestionText(question.getQuestion());
-            record.setCorrectAnswer(correctAnswer);
+            // 题干与参考答案一并落库（计划 C5-1）：让 AI 之后能逐题复盘，而不是只知道错了几题。
+            // 列宽 question_text varchar(500) / correct_answer varchar(200)：模型偶尔给长题干，
+            // 不截断会触发 MySQL 1406 整批写入失败（那一轮作答就全丢了），这里按列宽兜底截断
+            record.setQuestionText(clip(question.getQuestion(), 480));
+            record.setCorrectAnswer(clip(correctAnswer, 190));
             record.setIsCorrect(correct ? 1 : 0);
             record.setScore(correct ? NODE_QUIZ_QUESTION_SCORE : 0);
             record.setDuration(dto.getDuration() == null ? 0 : dto.getDuration());
@@ -573,7 +579,9 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             node.setDue(false);
         }
         if (point != null && !StringTools.isEmpty(point.getDescription())) {
-            node.setLearningTip(point.getDescription());
+            // 自动生成的知识点描述带内部标记（「由学习路径自动创建｜学习建议：…」），
+            // 直接展示会把内部标记暴露给学生，这里只取标记之后的正文
+            node.setLearningTip(stripAutoPointMark(point.getDescription()));
         }
         if (narrativeNode != null) {
             node.setTask(narrativeNode.task());
@@ -780,5 +788,26 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
 
     private String formatDate(Date date) {
         return date == null ? null : DateUtil.format(date, DateTimePatternEnum.YYYY_MM_DD.getPattern());
+    }
+
+    /** 按列宽截断（题干 500 / 参考答案 200 的库表上限留一点余量），避免超长导致整批写入失败 */
+    private String clip(String value, int max) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= max ? trimmed : trimmed.substring(0, max);
+    }
+
+    /** 去掉自动创建知识点描述里的内部标记前缀（「由学习路径自动创建｜学习建议：」），只留学习建议正文 */
+    private String stripAutoPointMark(String description) {
+        if (StringTools.isEmpty(description)) {
+            return description;
+        }
+        int index = description.indexOf('：');
+        if (description.startsWith("由学习路径自动创建") && index > 0) {
+            return description.substring(index + 1).trim();
+        }
+        return description;
     }
 }

@@ -210,8 +210,12 @@ public class StudentProfileComponent {
         if (list == null || list.isEmpty()) {
             return "";
         }
+        // 先排序再截断：掌握度列表的 SQL 是 mastery_score DESC（最弱的排在最后），
+        // 直接按原顺序取会拿到"最不弱的 5 个"，与"薄弱点"语义相反（2026-10-08 修）
+        List<KnowledgeMasteryVO> sorted = new ArrayList<>(list);
+        sorted.sort(Comparator.comparingInt(item -> item.getMasteryScore() == null ? 0 : item.getMasteryScore()));
         List<String> weak = new ArrayList<>();
-        for (KnowledgeMasteryVO item : list) {
+        for (KnowledgeMasteryVO item : sorted) {
             int score = item.getMasteryScore() == null ? 0 : item.getMasteryScore();
             int practice = item.getPracticeCount() == null ? 0 : item.getPracticeCount();
             if (practice > 0 && score < WEAK_SCORE) {
@@ -241,7 +245,9 @@ public class StudentProfileComponent {
         if (running.isEmpty()) {
             return "已走完全部 " + paths.size() + " 条学习路径";
         }
-        // 当前路径取最近更新的那条；当前节点按其 currentItemId 定位（一次查全部节点，不在循环里查库）
+        // 当前路径取最近更新的那条（SQL 未排序时不能按返回顺序取）；当前节点按其 currentItemId 定位（一次查全部节点，不在循环里查库）
+        running.sort(Comparator.comparing(LearningPath::getUpdateTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
         LearningPath current = running.get(0);
         LearningPathItemQuery itemQuery = new LearningPathItemQuery();
         itemQuery.setUserId(userId);

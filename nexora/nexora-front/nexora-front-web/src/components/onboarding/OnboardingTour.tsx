@@ -41,7 +41,9 @@ export default function OnboardingTour({ open, steps, initialDone = [], onClose 
     return steps.filter((step) => !step.target || document.querySelector(step.target) !== null);
   }, [open, steps]);
 
-  const current = available[index];
+  /** 越界保护：索引落在可用步骤之外时取最后一步，避免 current 为空导致气泡不渲染 */
+  const safeIndex = Math.min(Math.max(index, 0), Math.max(available.length - 1, 0));
+  const current = available[safeIndex];
 
   const measure = useCallback(() => {
     if (!current?.target) {
@@ -62,13 +64,15 @@ export default function OnboardingTour({ open, steps, initialDone = [], onClose 
     });
   }, [current]);
 
-  // 打开时从续播位置开始（已完成的不再重复讲）
+  // 打开时从续播位置开始（已完成的不再重复讲）。
+  // 注意：续播位置要在**过滤后**的 available 上找，否则锚点缺失时索引会越界
   useEffect(() => {
     if (!open) {
       return;
     }
     setDone(initialDone);
-    const firstPending = steps.findIndex((step) => !initialDone.includes(step.key));
+    const usable = steps.filter((step) => !step.target || document.querySelector(step.target) !== null);
+    const firstPending = usable.findIndex((step) => !initialDone.includes(step.key));
     setIndex(firstPending < 0 ? 0 : firstPending);
   }, [open, initialDone, steps]);
 
@@ -101,16 +105,16 @@ export default function OnboardingTour({ open, steps, initialDone = [], onClose 
   const handleNext = () => {
     const finished = [...new Set([...done, current.key])];
     setDone(finished);
-    if (index + 1 >= available.length) {
+    if (safeIndex + 1 >= available.length) {
       onClose(finished, true);
       return;
     }
-    setIndex(index + 1);
+    setIndex(safeIndex + 1);
   };
 
   const handlePrev = () => {
-    if (index > 0) {
-      setIndex(index - 1);
+    if (safeIndex > 0) {
+      setIndex(safeIndex - 1);
     }
   };
 
@@ -128,13 +132,18 @@ export default function OnboardingTour({ open, steps, initialDone = [], onClose 
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, finish]);
 
-  if (!open) {
-    return null;
-  }
-
-  // 没有任何可高亮的步骤（例如锚点都没渲染）：直接按"看过"结束，不显示空导览
-  if (available.length === 0 || !current) {
+  // 没有任何可高亮的步骤（例如锚点都没渲染）：按"看过"结束，不显示空导览。
+  // 必须在 effect 里上报 —— 直接在 render 中调 onClose 会触发 React「渲染期间更新父组件」告警，
+  // 且会被 StrictMode 双跑成两次上报（2026-10-08 修）
+  const empty = open && available.length === 0;
+  useEffect(() => {
+    if (!empty) {
+      return;
+    }
     onClose(steps.map((step) => step.key), true);
+  }, [empty, onClose, steps]);
+
+  if (!open || empty || !current) {
     return null;
   }
 
@@ -190,7 +199,7 @@ export default function OnboardingTour({ open, steps, initialDone = [], onClose 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#333333' }}>{current.title}</span>
           <span style={{ fontSize: 12, color: '#999999' }}>
-            第 {index + 1}/{available.length} 步
+            第 {safeIndex + 1}/{available.length} 步
           </span>
         </div>
         <div style={{ fontSize: 13, lineHeight: 1.7, color: '#666666', marginBottom: 12 }}>{current.desc}</div>
@@ -199,11 +208,11 @@ export default function OnboardingTour({ open, steps, initialDone = [], onClose 
             跳过导览
           </Button>
           <Space size={8}>
-            <Button size="small" disabled={index === 0} onClick={handlePrev}>
+            <Button size="small" disabled={safeIndex === 0} onClick={handlePrev}>
               上一步
             </Button>
             <Button type="primary" size="small" onClick={handleNext}>
-              {index + 1 >= available.length ? '完成' : '下一步'}
+              {safeIndex + 1 >= available.length ? '完成' : '下一步'}
             </Button>
           </Space>
         </Space>

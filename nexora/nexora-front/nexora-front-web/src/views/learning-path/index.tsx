@@ -56,8 +56,7 @@ export default function LearningPath() {
   /** 生成进度文案（异步任务轮询期间展示） */
   const [genProgress, setGenProgress] = useState('');
   /** 组件卸载后停止轮询 */
-  const mountedRef = useRef(true);
-  /** 学习进度明细折叠：默认只展示前 N 条 */
+  const mountedRef = useRef(true);  /** 学习进度明细折叠：默认只展示前 N 条 */
   const [masteryExpanded, setMasteryExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   /** 《我的学习偏好》系统页弹窗（计划 C3：与「我的学习档案」并排） */
@@ -106,6 +105,9 @@ export default function LearningPath() {
   }, []);
 
   useEffect(() => {
+    // StrictMode 下 effect 会先跑一次 cleanup 再重跑：这里必须复位，否则第二轮一开始就认为"已卸载"，
+    // 生成路线轮询第一轮直接返回 PENDING → 本地 dev 下会误报「路线生成失败」（服务端其实已生成）
+    mountedRef.current = true;
     void load();
     return () => {
       mountedRef.current = false;
@@ -284,6 +286,7 @@ export default function LearningPath() {
                       <span className={styles.masteryPoint}>{item.knowledgePointName}</span>
                       <Tag color={meta.color}>{meta.label}</Tag>
                       {item.due ? <Tag color="red">该复习了</Tag> : null}
+                      {item.muted ? <Tag>已静音</Tag> : null}
                       <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setReviewItem(item)}>
                         复习一下
                       </Button>

@@ -155,6 +155,29 @@ public class KnowledgeMasteryComponent {
     }
 
     /**
+     * 该知识点是否已有掌握度记录（练过 / 掌握过）。
+     *
+     * <p>用途：一个已学过的节点可能因为前面某个节点回炉掉线而被重新置为「未解锁」，
+     * 但它自己的复习计划还在跑（页面「待复习 / 今日待办」会提示该复习了）——
+     * 这种情况下必须允许复习快测，否则那个「该复习了」永远消不掉（2026-10-08 修）。
+     */
+    public boolean hasRecord(String userId, String knowledgePointId) {
+        if (StringTools.isEmpty(userId) || StringTools.isEmpty(knowledgePointId)) {
+            return false;
+        }
+        try {
+            KnowledgeMasteryQuery query = new KnowledgeMasteryQuery();
+            query.setUserId(userId);
+            query.setKnowledgePointId(knowledgePointId);
+            List<KnowledgeMastery> list = knowledgeMasteryService.findListByParam(query);
+            return list != null && !list.isEmpty();
+        } catch (Exception e) {
+            log.warn("掌握度查询失败（按未练过处理）userId={} knowledgePointId={}", userId, knowledgePointId, e);
+            return false;
+        }
+    }
+
+    /**
      * 一次查出该生已有掌握度（按 uk_user_kp 建索引），避免循环查库
      */
     private Map<String, KnowledgeMastery> loadExisting(String userId, java.util.Set<String> knowledgePointIds) {
@@ -227,12 +250,21 @@ public class KnowledgeMasteryComponent {
             }
         } else {
             bean.setStatus(STATUS_LEARNING);
+            // 是否曾经掌握过 / 排过复习（回炉后可能已被降级，光看当前 status 判不出来）
+            boolean everScheduled = existing != null
+                    && (existing.getNextReviewTime() != null || existing.getLastMasterTime() != null);
             if (wasMastered) {
                 // 掉出掌握线 → 回炉：立即进入待复习
                 bean.setReviewStage(0);
                 bean.setNextReviewTime(now);
+            } else if (everScheduled) {
+                // 回炉后再失手：仍然排明天复习 —— 之前这里清空 next_review_time，
+                // 而全仓没有任何地方会重新排期，该知识点会静默从「待复习」里消失，
+                // 与前端「明天会再提醒你复习一次」的文案矛盾（2026-10-08 修）
+                bean.setReviewStage(0);
+                bean.setNextReviewTime(plusDays(now, REVIEW_INTERVALS_DAYS[0]));
             } else {
-                // 学习中：不排复习
+                // 从没掌握过（正常学习中）：不排复习
                 bean.setReviewStage(0);
                 bean.setNextReviewTime(null);
             }

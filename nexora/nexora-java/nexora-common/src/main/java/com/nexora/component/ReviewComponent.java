@@ -8,7 +8,9 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Calendar;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 /**
@@ -25,6 +27,9 @@ import java.util.Date;
 @Slf4j
 @Component
 public class ReviewComponent {
+
+    /** 统计与复习排期统一用东八区（与学习趋势、JDBC serverTimezone=GMT+8 保持一致） */
+    private static final ZoneId ZONE_SHANGHAI = ZoneId.of("Asia/Shanghai");
 
     @Resource
     private KnowledgeMasteryMapper knowledgeMasteryMapper;
@@ -79,39 +84,51 @@ public class ReviewComponent {
     }
 
     /** 「今天不用提醒」：临时静音到明天 0 点 */
-    public void muteToday(String userId, String knowledgePointId) {
-        updateMute(userId, knowledgePointId, 0, tomorrowStart());
+    public boolean muteToday(String userId, String knowledgePointId) {
+        return updateMute(userId, knowledgePointId, 0, tomorrowStart());
     }
 
     /** 「不再提醒这个知识点」：长期静音（可恢复） */
-    public void muteForever(String userId, String knowledgePointId) {
-        updateMute(userId, knowledgePointId, 1, null);
+    public boolean muteForever(String userId, String knowledgePointId) {
+        return updateMute(userId, knowledgePointId, 1, null);
     }
 
     /** 恢复提醒 */
-    public void unmute(String userId, String knowledgePointId) {
-        updateMute(userId, knowledgePointId, 0, null);
+    public boolean unmute(String userId, String knowledgePointId) {
+        return updateMute(userId, knowledgePointId, 0, null);
     }
 
-    private void updateMute(String userId, String knowledgePointId, Integer muted, Date muteUntil) {
+    /**
+     * 更新静音状态。
+     *
+     * @return true = 已写入；false = 写入失败或没有该掌握度记录（调用方要如实告诉学生，
+     *         否则界面提示「今天不再提醒」，而列表里该知识点依然挂着「该复习了」，2026-10-08 修）
+     */
+    private boolean updateMute(String userId, String knowledgePointId, Integer muted, Date muteUntil) {
         if (StringTools.isEmpty(userId) || StringTools.isEmpty(knowledgePointId)) {
-            return;
+            return false;
         }
         try {
-            knowledgeMasteryMapper.updateReviewMute(userId, knowledgePointId, muted, muteUntil);
+            Integer rows = knowledgeMasteryMapper.updateReviewMute(userId, knowledgePointId, muted, muteUntil);
+            if (rows == null || rows <= 0) {
+                log.warn("复习静音未生效（无对应掌握度记录）userId={} pointId={}", userId, knowledgePointId);
+                return false;
+            }
             log.info("复习提醒静音更新 userId={} pointId={} muted={} until={}", userId, knowledgePointId, muted, muteUntil);
+            return true;
         } catch (Exception e) {
-            log.warn("复习静音更新失败 userId={} pointId={}", userId, knowledgePointId, e);
+            log.error("复习静音更新失败 userId={} pointId={}（需提示学生）", userId, knowledgePointId, e);
+            return false;
         }
     }
 
     private Date tomorrowStart() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DAY_OF_MONTH, 1);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTime();
+        // 与统计口径（学习趋势按 Asia/Shanghai 分日）保持一致：
+        // 若 JVM 时区不是东八区，用系统默认时区算出的「明天 0 点」会偏移，
+        // 例如 UTC 下等于北京时间次日 8 点，会把明天上午的提醒一起吞掉
+        ZonedDateTime tomorrow = ZonedDateTime.now(ZONE_SHANGHAI)
+                .plusDays(1)
+                .truncatedTo(ChronoUnit.DAYS);
+        return Date.from(tomorrow.toInstant());
     }
 }

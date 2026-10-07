@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Button, Modal, Space } from 'antd';
-import { RotateCcw, Sparkles } from 'lucide-react';
+import { BellRing, RotateCcw, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   genNodeQuiz,
@@ -10,7 +10,7 @@ import {
   type NodeQuiz,
   type NodeQuizResult,
 } from '@/api/learningPath';
-import { muteReviewReminder, type MasteryItem } from '@/api/knowledgeMastery';
+import { muteReviewReminder, unmuteReviewReminder, type MasteryItem } from '@/api/knowledgeMastery';
 import NodeQuizCard from './NodeQuizCard';
 
 interface ReviewPointModalProps {
@@ -33,9 +33,14 @@ export default function ReviewPointModal({ item, onClose, onFinished }: ReviewPo
   const [quiz, setQuiz] = useState<NodeQuiz | null>(null);
   const [result, setResult] = useState<NodeQuizResult | null>(null);
   const [loading, setLoading] = useState(false);
+  /** 本次出题的轮询序号：换知识点/关闭弹窗/重新出题时自增，旧轮询的结果不再写回（避免串题） */
+  const pollRef = useRef(0);
+  const itemRef = useRef<MasteryItem | null>(item);
+  itemRef.current = item;
 
-  // 换一个知识点就重置做题状态，避免串题
+  // 换一个知识点就重置做题状态，避免串题（同时作废在途轮询）
   useEffect(() => {
+    pollRef.current += 1;
     setQuiz(null);
     setResult(null);
     setLoading(false);
@@ -49,17 +54,24 @@ export default function ReviewPointModal({ item, onClose, onFinished }: ReviewPo
       message.info('这个知识点不属于任何学习路线，先用「让 AI 讲讲这个知识点」复习吧');
       return;
     }
+    const pointId = item.knowledgePointId;
+    const ticket = pollRef.current + 1;
+    pollRef.current = ticket;
     setLoading(true);
     setResult(null);
     try {
       let task = await genNodeQuiz(item.itemId);
       // 出题是异步任务：轮询到题目就绪（最多约 90 秒）
       for (let i = 0; i < 45 && !task.quizJson; i += 1) {
-        if (task.status === 'FAILED') {
+        if (task.status === 'FAILED' || pollRef.current !== ticket) {
           break;
         }
         await new Promise((resolve) => setTimeout(resolve, 2000));
         task = await getNodeQuizTask(task.taskId);
+      }
+      // 轮询期间学生可能已关弹窗或换知识点：丢弃这次结果，别把 A 的题显示成 B 的
+      if (pollRef.current !== ticket || itemRef.current?.knowledgePointId !== pointId) {
+        return;
       }
       const parsed = parseNodeQuizTask(task);
       if (!parsed || parsed.questions.length === 0) {
@@ -70,7 +82,9 @@ export default function ReviewPointModal({ item, onClose, onFinished }: ReviewPo
     } catch {
       // 请求层已提示
     } finally {
-      setLoading(false);
+      if (pollRef.current === ticket) {
+        setLoading(false);
+      }
     }
   }, [item, message]);
 
@@ -118,7 +132,22 @@ export default function ReviewPointModal({ item, onClose, onFinished }: ReviewPo
     }
     try {
       await muteReviewReminder(item.knowledgePointId, until);
-      message.success(until === 'today' ? '好，今天不再提醒这个知识点' : '已不再提醒该知识点（可在掌握度里恢复）');
+      message.success(until === 'today' ? '好，今天不再提醒这个知识点' : '已不再提醒该知识点（随时可在这里恢复提醒）');
+      onClose();
+      onFinished();
+    } catch {
+      // 请求层已提示
+    }
+  };
+
+  /** 恢复提醒（静音后的出口：没有它，长期静音就没有任何恢复入口） */
+  const restore = async () => {
+    if (!item) {
+      return;
+    }
+    try {
+      await unmuteReviewReminder(item.knowledgePointId);
+      message.success('已恢复提醒，到复习时间会再次提示');
       onClose();
       onFinished();
     } catch {
@@ -179,13 +208,23 @@ export default function ReviewPointModal({ item, onClose, onFinished }: ReviewPo
 
           <div style={{ borderTop: '1px dashed var(--warm-bg-dark)', paddingTop: 10 }}>
             <Space size={8} wrap>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>这一项总提醒我：</span>
-              <Button size="small" icon={<RotateCcw size={13} />} onClick={() => void mute('today')}>
-                今天不用提醒
-              </Button>
-              <Button size="small" onClick={() => void mute('forever')}>
-                不再提醒这个知识点
-              </Button>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                {item.muted ? '这个知识点当前已静音：' : '这一项总提醒我：'}
+              </span>
+              {item.muted ? (
+                <Button size="small" type="primary" ghost icon={<BellRing size={13} />} onClick={() => void restore()}>
+                  恢复提醒
+                </Button>
+              ) : (
+                <>
+                  <Button size="small" icon={<RotateCcw size={13} />} onClick={() => void mute('today')}>
+                    今天不用提醒
+                  </Button>
+                  <Button size="small" onClick={() => void mute('forever')}>
+                    不再提醒这个知识点
+                  </Button>
+                </>
+              )}
             </Space>
           </div>
         </div>

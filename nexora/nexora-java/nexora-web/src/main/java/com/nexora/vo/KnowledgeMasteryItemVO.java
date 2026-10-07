@@ -38,6 +38,17 @@ public class KnowledgeMasteryItemVO {
     /** 该知识点所属的学习路径节点 ID（用于"就地复习快测"；不在任何路线里则为空） */
     private String itemId;
 
+    /** 是否处于静音状态（长期静音或「今天不用提醒」的临时静音）；学生端据此显示「已静音」与「恢复提醒」 */
+    private Boolean muted;
+
+    public Boolean getMuted() {
+        return muted;
+    }
+
+    public void setMuted(Boolean muted) {
+        this.muted = muted;
+    }
+
     public String getKnowledgePointId() {
         return knowledgePointId;
     }

@@ -39,10 +39,12 @@ public class NodeQuizTaskConsumer {
             task = nodeQuizTaskService.loadInternal(taskId);
         } catch (Exception e) {
             log.warn("节点快测任务读取失败 taskId={}", taskId, e);
+            releaseByOwner(taskId);
             return;
         }
         if (task == null) {
-            log.warn("节点快测任务不存在或已过期 taskId={}", taskId);
+            log.warn("节点快测任务不存在或已过期 taskId={}（释放运行锁，避免该生 5 分钟内出不了题）", taskId);
+            releaseByOwner(taskId);
             return;
         }
         try {
@@ -72,5 +74,17 @@ public class NodeQuizTaskConsumer {
         nodeQuizTaskService.update(task);
         log.info("节点快测出题完成 taskId={} userId={} topic={} 题数={}",
                 task.getTaskId(), task.getUserId(), task.getKnowledgePointName(), script.questions().size());
+    }
+
+    /** 任务体已丢失时按反查表释放运行锁（拿不到 owner 就只靠 5 分钟 TTL 兜底） */
+    private void releaseByOwner(String taskId) {
+        try {
+            String owner = nodeQuizTaskService.ownerOf(taskId);
+            if (owner != null) {
+                nodeQuizTaskService.releaseRunning(owner, taskId);
+            }
+        } catch (Exception e) {
+            log.warn("释放出题运行锁失败 taskId={}", taskId, e);
+        }
     }
 }

@@ -132,7 +132,16 @@ export default function WikiListPanel({
       setList(wikiList);
       // 偏好页 docId（失败不影响列表展示：只是不做置顶与入口收起）
       void getPreferencePage()
-        .then((page) => setPreferenceDocId(page?.docId ?? ''))
+        .then((page) => {
+          setPreferenceDocId(page?.docId ?? '');
+          // 首次进入时该页是**这一刻才创建**的，上面那次列表请求里没有它：
+          // 不补拉一次的话，"置顶的系统页"要刷新页面才看得到（2026-10-08 修）
+          if (page?.docId && !wikiList.some((doc) => doc.docId === page.docId)) {
+            void loadStudentWikiList()
+              .then((fresh) => setList(fresh))
+              .catch(() => undefined);
+          }
+        })
         .catch(() => undefined);
       // 知识页文件夹 = wiki 系统目录 + 其全部子文件夹（沿 parentId 收拢，防环）
       const root = dirList.find((dir) => dir.dirType === 'wiki');
@@ -306,7 +315,9 @@ export default function WikiListPanel({
       title: '状态',
       dataIndex: 'vectorStatus',
       width: 110,
-      render: (status: number, record) => vectorStatusTag(status, record.vectorError),
+      render: (status: number, record) =>
+        // 系统页（《我的学习偏好》）不做向量化，恒为"草稿"会让学生以为它没保存好 → 直接标「系统页」
+        record.docId === preferenceDocId ? <Tag color="blue">系统页</Tag> : vectorStatusTag(status, record.vectorError),
     },
     {
       title: '来源',

@@ -94,7 +94,6 @@ public class KnowledgeMasteryBiz {
         int correctSum = 0;
         int dueCount = 0;
         Date now = new Date();
-        List<KnowledgeMasteryItemVO> items = new ArrayList<>();
         // 知识点 → 所属节点（"就地复习快测"要用节点 ID 出题；一次查询建映射，不在循环里查库）
         java.util.Map<String, String> pointItemId = new java.util.HashMap<>();
         try {
@@ -113,6 +112,10 @@ public class KnowledgeMasteryBiz {
             log.warn("加载节点映射失败（复习快测将回落为对话复习）userId={}", userId, e);
         }
         int size = limit == null || limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        // 待复习的单独收集：明细上限只截断"非待复习"的部分，
+        // 否则掌握度条数 >100 时会出现「待复习计数 3、待办列表却是空的」（2026-10-08 修）
+        List<KnowledgeMasteryItemVO> dueItems = new ArrayList<>();
+        List<KnowledgeMasteryItemVO> otherItems = new ArrayList<>();
         for (KnowledgeMastery mastery : list) {
             int score = mastery.getMasteryScore() == null ? 0 : mastery.getMasteryScore();
             int status = mastery.getStatus() == null ? 0 : mastery.getStatus();
@@ -131,23 +134,30 @@ public class KnowledgeMasteryBiz {
             if (due) {
                 dueCount++;
             }
-            if (items.size() < size) {
-                KnowledgeMasteryItemVO item = new KnowledgeMasteryItemVO();
-                item.setKnowledgePointId(mastery.getKnowledgePointId());
-                String name = pointNames.get(mastery.getKnowledgePointId());
-                item.setKnowledgePointName(StringTools.isEmpty(name) ? mastery.getKnowledgePointId() : name);
-                item.setStage(mastery.getStage());
-                item.setMasteryScore(score);
-                item.setStatus(status);
-                item.setPracticeCount(practice);
-                item.setCorrectCount(correct);
-                item.setLastPracticeTime(formatTime(mastery.getLastPracticeTime()));
-                item.setNextReviewTime(formatTime(mastery.getNextReviewTime()));
-                item.setDue(due);
-                item.setItemId(pointItemId.get(mastery.getKnowledgePointId()));
-                items.add(item);
+            KnowledgeMasteryItemVO item = new KnowledgeMasteryItemVO();
+            item.setKnowledgePointId(mastery.getKnowledgePointId());
+            String name = pointNames.get(mastery.getKnowledgePointId());
+            item.setKnowledgePointName(StringTools.isEmpty(name) ? mastery.getKnowledgePointId() : name);
+            item.setStage(mastery.getStage());
+            item.setMasteryScore(score);
+            item.setStatus(status);
+            item.setPracticeCount(practice);
+            item.setCorrectCount(correct);
+            item.setLastPracticeTime(formatTime(mastery.getLastPracticeTime()));
+            item.setNextReviewTime(formatTime(mastery.getNextReviewTime()));
+            item.setDue(due);
+            // 静音状态（含「今天不用提醒」的临时静音）：学生端据此显示「已静音」与「恢复提醒」入口
+            item.setMuted(reviewComponent.isMuted(mastery));
+            item.setItemId(pointItemId.get(mastery.getKnowledgePointId()));
+            if (due) {
+                dueItems.add(item);
+            } else {
+                otherItems.add(item);
             }
         }
+        List<KnowledgeMasteryItemVO> items = new ArrayList<>(dueItems);
+        int remain = Math.max(size - dueItems.size(), 0);
+        items.addAll(otherItems.subList(0, Math.min(remain, otherItems.size())));
 
         vo.setMasteredCount(mastered);
         vo.setLearningCount(learning);
@@ -280,23 +290,24 @@ public class KnowledgeMasteryBiz {
     /**
      * 复习提醒静音（复习闭环设计点④）：until=today 今天不用提醒（静音到明天 0 点）/ forever 不再提醒。
      * 静音只影响"待复习"的提示，不影响掌握度本身。
+     *
+     * @return true = 已生效；false = 写入失败/无对应记录（前端要如实提示，不能说"已静音"）
      */
-    public void muteReview(String userId, String knowledgePointId, String until) {
+    public boolean muteReview(String userId, String knowledgePointId, String until) {
         if (StringTools.isEmpty(userId) || StringTools.isEmpty(knowledgePointId)) {
             throw new BusinessException("参数不完整");
         }
         if ("forever".equalsIgnoreCase(until)) {
-            reviewComponent.muteForever(userId, knowledgePointId);
-        } else {
-            reviewComponent.muteToday(userId, knowledgePointId);
+            return reviewComponent.muteForever(userId, knowledgePointId);
         }
+        return reviewComponent.muteToday(userId, knowledgePointId);
     }
 
     /** 恢复复习提醒 */
-    public void unmuteReview(String userId, String knowledgePointId) {
+    public boolean unmuteReview(String userId, String knowledgePointId) {
         if (StringTools.isEmpty(userId) || StringTools.isEmpty(knowledgePointId)) {
             throw new BusinessException("参数不完整");
         }
-        reviewComponent.unmute(userId, knowledgePointId);
+        return reviewComponent.unmute(userId, knowledgePointId);
     }
 }

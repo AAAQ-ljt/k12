@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import type { TableProps } from 'antd';
 import {
-  BookImage, BookOpen, Download, Eye, FileImage, FileText, FileVideo, FolderInput, FolderPlus, FolderOpen, Pencil, Trash2, UploadCloud,
+  BookImage, BookOpen, Download, Eye, FileImage, FileText, FileVideo, FolderInput, FolderPlus, FolderOpen, Lightbulb, Pencil, Trash2, UploadCloud,
 } from 'lucide-react';
 import VideoPlayer from '@/views/course-material/components/VideoPlayer';
 import DocumentViewer from '@/views/course-material/components/DocumentViewer';
@@ -21,6 +21,7 @@ import { generateStudentWiki, type StudentWikiDoc } from '@/api/studentWiki';
 import WikiListPanel, { WIKI_STATUS_OPTIONS } from '@/components/knowledge/WikiListPanel';
 import WikiEditModal from '@/components/knowledge/WikiEditModal';
 import LearningProfileModal from '@/components/profile/LearningProfileModal';
+import PreferencePageModal from '@/components/profile/PreferencePageModal';
 import styles from './index.module.scss';
 
 interface UploadTask {
@@ -139,6 +140,8 @@ export default function ResourceCenter() {
   const [wikiGenerating, setWikiGenerating] = useState(false);
   const [wikiReloadKey, setWikiReloadKey] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
+  /** 《我的学习偏好》系统页弹窗（计划 C3：与「我的学习档案」并排的快捷入口） */
+  const [prefOpen, setPrefOpen] = useState(false);
   /** 知识页视图：页面级工具栏状态（搜索/状态/目录筛选），由 WikiListPanel 受控模式消费 */
   const [wikiKeyword, setWikiKeyword] = useState('');
   const [wikiStatusFilter, setWikiStatusFilter] = useState<number>(-1);
@@ -744,6 +747,10 @@ export default function ResourceCenter() {
           <Button icon={<BookOpen size={16} />} onClick={() => setProfileOpen(true)}>
             我的学习档案
           </Button>
+          {/* 计划 C3 要求的并列快捷入口：小学段进不了学习路径页，这里是他们唯一能改偏好的地方 */}
+          <Button icon={<Lightbulb size={16} />} onClick={() => setPrefOpen(true)}>
+            我的学习偏好
+          </Button>
           {isWikiView ? (
             <Button icon={<FolderPlus size={16} />} onClick={() => setWikiCreateSignal((value) => value + 1)}>
               新建目录
@@ -1042,6 +1049,8 @@ export default function ResourceCenter() {
       />
 
       <LearningProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={() => setWikiReloadKey((prev) => prev + 1)} />
+
+      <PreferencePageModal open={prefOpen} onClose={() => setPrefOpen(false)} />
     </div>
   );
 }

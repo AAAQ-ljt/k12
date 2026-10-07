@@ -32,4 +32,9 @@ public interface NodeQuizTaskService {
      * 任务到达终态后释放用户运行锁（仅当锁仍指向本任务时释放）
      */
     void releaseRunning(String userId, String taskId);
+
+    /**
+     * 按 taskId 反查学生ID（任务体丢失时消费者凭它释放运行锁；取不到返回 null）
+     */
+    String ownerOf(String taskId);
 }

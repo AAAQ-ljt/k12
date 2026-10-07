@@ -60,6 +60,19 @@ public class WikiKnowledgeComponent {
     private ResourceDirectoryService resourceDirectoryService;
 
     /**
+     * 系统页（《我的学习偏好》）保护：**放在公共组件层**，web 接口与 MCP 工具同时受保护。
+     * 之前只有 web 层挡着，学生在对话里让 AI「把《我的学习偏好》入库 / 移走 / 删掉」会直接穿透（2026-10-08 修）。
+     */
+    @Resource
+    private PreferencePageComponent preferencePageComponent;
+
+    private void requireNotSystemPage(String userId, String docId, String action) {
+        if (preferencePageComponent.isPreferencePage(docId, userId)) {
+            throw new BusinessException("《我的学习偏好》是系统页，" + action);
+        }
+    }
+
+    /**
      * 取本人知识页，不存在或非本人一律按"无权操作"拒绝
      */
     public KnowledgeDoc requireOwnedDoc(String userId, String docId) {
@@ -228,6 +241,7 @@ public class WikiKnowledgeComponent {
      * 提交入库：置处理中并入队，由 web 端消费者完成向量化（草稿态才可提交，重复提交按状态拒绝）
      */
     public KnowledgeDoc markIngest(String userId, String docId) {
+        requireNotSystemPage(userId, docId, "不参与资料检索（系统页不做向量化），无需入库");
         KnowledgeDoc doc = requireOwnedDoc(userId, docId);
         if (StringTools.isEmpty(doc.getContent())) {
             throw new BusinessException("知识页内容为空，无法入库");
@@ -251,6 +265,7 @@ public class WikiKnowledgeComponent {
      * 删除本人知识页（含向量清理）
      */
     public void deleteOwned(String userId, String docId) {
+        requireNotSystemPage(userId, docId, "不能删除；想恢复初始内容请用「重置」");
         KnowledgeDoc doc = requireOwnedDoc(userId, docId);
         clearVector(doc);
         knowledgeDocService.deleteKnowledgeDocByDocId(docId);
@@ -428,6 +443,7 @@ public class WikiKnowledgeComponent {
      * 置空必须走专用更新（通用 update 的 &lt;if&gt; 会把 null 字段跳过，移回根目录会失效）
      */
     public void moveDocToFolder(String userId, String docId, String folderId) {
+        requireNotSystemPage(userId, docId, "固定在知识页根目录，不能移动");
         KnowledgeDoc doc = requireOwnedDoc(userId, docId);
         String targetFolderId = null;
         if (!StringTools.isEmpty(folderId)) {

@@ -316,6 +316,10 @@ export default function Profile() {
               AI 偏好设置
             </Button>
             <div className={styles.prefHint}>设定 AI 怎么称呼你、讲多细、先举例还是先讲原理</div>
+            {/* D1 要求的设置区文案：让新学生知道引导随时能重看（入口在顶栏右侧） */}
+            <div className={styles.prefHint} style={{ marginTop: 6 }}>
+              想再看一遍怎么用？点右上角「新手指引」，可以重看导览，也能按模块查。
+            </div>
           </Card>
 
           <Card>

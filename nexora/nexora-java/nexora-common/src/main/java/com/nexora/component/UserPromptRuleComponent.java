@@ -46,8 +46,17 @@ public class UserPromptRuleComponent {
     private static final int INJECT_LIMIT = 8;
 
     /** 指令特征（越权注入的典型措辞，命中即拒绝；与可配置黑名单叠加） */
+    /** 规则来源白名单（只允许学生自填与 AI 提议确认） */
+    private static final String SOURCE_STUDENT = "STUDENT";
+    private static final String SOURCE_AI_SUGGEST = "AI_SUGGEST";
+
+    /**
+     * 越权指令特征词：宁窄勿宽 —— 之前把「忽略」「无视」单独列为特征，
+     * 学生写「不要忽略我的错别字」这类正常偏好会被误拦（2026-10-08 收窄）
+     */
     private static final String[] INJECTION_PATTERNS = {
-            "忽略", "无视", "忘记你", "系统提示", "系统指令", "提示词", "prompt",
+            "忽略以上", "忽略之前", "忽略所有", "忽略上述", "忽略你", "忽略系统",
+            "无视以上", "无视之前", "忘记你", "系统提示", "系统指令", "提示词", "prompt",
             "扮演", "角色设定", "越狱", "不受限", "无限制", "开发者模式", "developer mode"
     };
 
@@ -69,8 +78,14 @@ public class UserPromptRuleComponent {
         if (StringTools.isEmpty(userId)) {
             return List.of();
         }
-        List<UserPromptRule> list = ruleMapper.selectByUser(userId, statusList);
-        return list == null ? List.of() : list;
+        try {
+            List<UserPromptRule> list = ruleMapper.selectByUser(userId, statusList);
+            return list == null ? List.of() : list;
+        } catch (Exception e) {
+            // 表未建/查询异常时降级为空列表（与画像、偏好页、引导的降级口径一致）
+            log.warn("读取用户提示词规则失败（按空列表降级）userId={}", userId, e);
+            return List.of();
+        }
     }
 
     /**
@@ -85,7 +100,8 @@ public class UserPromptRuleComponent {
         if (StringTools.isEmpty(ruleType) || !RULE_TYPES.containsKey(ruleType)) {
             throw new BusinessException("请选择要设置的偏好类型");
         }
-        String value = ruleValue == null ? "" : ruleValue.trim();
+        // 折叠成单行：规则会被拼进系统提示词块，多行内容可能伪造出"## 规则"之类的段落结构（2026-10-08 修）
+        String value = ruleValue == null ? "" : ruleValue.replaceAll("[\r\n\t]+", " ").replaceAll("\s{2,}", " ").trim();
         if (value.isEmpty()) {
             throw new BusinessException("请填写内容");
         }
@@ -104,7 +120,12 @@ public class UserPromptRuleComponent {
         rule.setRuleValue(value);
         rule.setScope("GLOBAL");
         rule.setStatus(1);
-        rule.setSource(StringTools.isEmpty(source) ? "STUDENT" : source);
+        // source 白名单：客户端自报的 source 若允许 SYSTEM/ADMIN，会出现"重置清不掉"与审计口径失真（2026-10-08 修）
+        String normalizedSource = StringTools.isEmpty(source) ? SOURCE_STUDENT : source.trim().toUpperCase();
+        if (!SOURCE_STUDENT.equals(normalizedSource) && !SOURCE_AI_SUGGEST.equals(normalizedSource)) {
+            normalizedSource = SOURCE_STUDENT;
+        }
+        rule.setSource(normalizedSource);
         ruleMapper.insert(rule);
         log.info("用户提示词规则已保存 userId={} type={} source={} value={}", userId, ruleType, rule.getSource(), value);
         return rule.getRuleId();
@@ -116,6 +137,13 @@ public class UserPromptRuleComponent {
             throw new BusinessException("参数不完整");
         }
         int target = status == null ? 0 : status;
+        if (target == 1) {
+            int max = intConfig("user_rule_max_count", 5);
+            Integer enabled = ruleMapper.countEnabled(userId);
+            if (enabled != null && enabled >= max) {
+                throw new BusinessException("已启用 " + enabled + " 条，最多 " + max + " 条；请先停用一条再启用");
+            }
+        }
         if (ruleMapper.updateStatus(userId, ruleId, target) == 0) {
             throw new BusinessException("规则不存在或不属于你");
         }
@@ -146,6 +174,16 @@ public class UserPromptRuleComponent {
      * 取不到规则、或总开关关闭时返回空串（调用方据此不注入）。
      * 块内明确写出"不得覆盖上面的平台规则"，把优先级写进提示词本身而不只依赖拼接顺序。
      */
+    /** 学生端偏好功能总开关（管理端可关） */
+    public boolean isRuleEnabled() {
+        return intConfig("user_rule_enabled", 1) != 0;
+    }
+
+    /** 学生可设置的规则条数上限（管理端可调） */
+    public int maxRuleCount() {
+        return intConfig("user_rule_max_count", 5);
+    }
+
     public String promptBlock(String userId) {
         if (StringTools.isEmpty(userId) || intConfig("user_rule_enabled", 1) == 0) {
             return "";
