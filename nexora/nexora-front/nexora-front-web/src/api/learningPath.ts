@@ -59,6 +59,8 @@ export interface LearningPathSummary {
   finishedItems: number;
   progress: number;
   currentNodeName?: string | null;
+  /** 本路径已获得积分（节点小测 + 节点完成 + 整条完成，二期 PATH） */
+  earnedPoints?: number | null;
   stageCount?: number | null;
   /** 旧版生成（无目标/阶段） */
   legacy?: boolean;

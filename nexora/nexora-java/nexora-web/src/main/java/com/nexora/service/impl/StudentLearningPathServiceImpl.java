@@ -6,7 +6,9 @@ import com.alibaba.fastjson2.JSONObject;
 import com.nexora.component.KnowledgeMasteryComponent;
 import com.nexora.component.LearningPathComponent;
 import com.nexora.component.LearningPathGenerateComponent;
+import com.nexora.entity.vo.PathPointRowVO;
 import com.nexora.component.PointAwardComponent;
+import com.nexora.mappers.LearningPathPointMapper;
 import com.nexora.dto.NodeQuizAnswerDTO;
 import com.nexora.dto.NodeQuizSubmitDTO;
 import com.nexora.entity.enums.DateTimePatternEnum;
@@ -82,6 +84,10 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
     /** 题型：单选 */
     private static final int QUESTION_TYPE_SINGLE = 0;
 
+    /** 路径已得积分归集（二期 PATH） */
+    @Resource
+    private LearningPathPointMapper learningPathPointMapper;
+
     @Resource
     private LearningPathItemService learningPathItemService;
 
@@ -154,6 +160,14 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             return new ArrayList<>();
         }
         Map<String, Narrative> narrativeMap = loadNarrativeMap(userId);
+        // 路径已得积分（二期 PATH）：两条聚合查询一次取回，在内存里合并，避免逐条路径查库
+        Map<String, Integer> earnedMap = new HashMap<>();
+        for (PathPointRowVO row : learningPathPointMapper.selectNodePointsByPath(userId)) {
+            earnedMap.merge(row.getBizKey(), row.getPoints() == null ? 0 : row.getPoints(), Integer::sum);
+        }
+        for (PathPointRowVO row : learningPathPointMapper.selectPathDonePoints(userId)) {
+            earnedMap.merge(row.getBizKey(), row.getPoints() == null ? 0 : row.getPoints(), Integer::sum);
+        }
         List<LearningPathSummaryVO> result = new ArrayList<>();
         for (LearningPathComponent.PathWithItems path : paths) {
             LearningPathSummaryVO vo = new LearningPathSummaryVO();
@@ -172,6 +186,7 @@ public class StudentLearningPathServiceImpl implements StudentLearningPathServic
             vo.setStageCount(narrative == null ? null : narrative.stages().size());
             vo.setGoal(narrative == null ? null : narrative.goal());
             vo.setCurrentNodeName(currentNodeName(dbPath, path.items()));
+            vo.setEarnedPoints(earnedMap.getOrDefault(dbPath.getPathId(), 0));
             result.add(vo);
         }
         return result;

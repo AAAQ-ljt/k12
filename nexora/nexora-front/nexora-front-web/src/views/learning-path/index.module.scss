@@ -780,3 +780,12 @@
 .nodeLockHint {
   color: #d46b08;
 }
+
+/* 路径卡片上的「已得积分」（二期 PATH） */
+.routePoints {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  color: var(--warm-brown-600);
+  background: var(--warm-orange-100);
+}

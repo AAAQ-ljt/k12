@@ -24,6 +24,9 @@ public class LearningPathSummaryVO {
 
     private Integer progress;
 
+    /** 本路径已获得积分（节点小测 + 节点完成 + 整条完成，二期 PATH） */
+    private Integer earnedPoints;
+
     /** 当前节点名 */
     private String currentNodeName;
 
@@ -99,6 +102,15 @@ public class LearningPathSummaryVO {
 
     public void setProgress(Integer progress) {
         this.progress = progress;
+    }
+
+    /** 本路径已获得积分（节点小测 + 节点完成 + 整条完成，二期 PATH） */
+    public Integer getEarnedPoints() {
+        return earnedPoints;
+    }
+
+    public void setEarnedPoints(Integer earnedPoints) {
+        this.earnedPoints = earnedPoints;
     }
 
     public String getCurrentNodeName() {

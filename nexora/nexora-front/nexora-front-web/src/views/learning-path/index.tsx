@@ -338,6 +338,9 @@ export default function LearningPath() {
                     节点 {path.finishedItems || 0}/{path.totalItems || 0}
                   </span>
                   {path.stageCount ? <span>{path.stageCount} 个阶段</span> : null}
+                  {path.earnedPoints ? (
+                    <span className={styles.routePoints}>已得 {path.earnedPoints} 积分</span>
+                  ) : null}
                   <span>{formatTime(path.updateTime || path.createTime)}</span>
                 </div>
                 <Progress percent={path.progress || 0} size="small" />

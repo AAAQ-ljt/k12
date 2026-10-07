@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nexora.mappers.LearningPathPointMapper">
+
+	<!-- 节点小测/节点完成：流水 biz_id 是节点 ID，join 节点表归到所属路径 -->
+	<select id="selectNodePointsByPath" resultType="com.nexora.entity.vo.PathPointRowVO">
+		select i.path_id as bizKey, coalesce(sum(r.points), 0) as points
+		from student_point_record r
+		join learning_path_item i on i.item_id = r.biz_id and i.user_id = r.user_id
+		where r.user_id = #{userId} and r.points &gt; 0
+			and r.biz_type in ('PATH_TEST', 'PATH_NODE')
+		group by i.path_id
+	</select>
+
+	<!-- 整条路径完成：流水 biz_id 就是路径 ID -->
+	<select id="selectPathDonePoints" resultType="com.nexora.entity.vo.PathPointRowVO">
+		select r.biz_id as bizKey, coalesce(sum(r.points), 0) as points
+		from student_point_record r
+		where r.user_id = #{userId} and r.points &gt; 0 and r.biz_type = 'PATH_DONE'
+		group by r.biz_id
+	</select>
+</mapper>
