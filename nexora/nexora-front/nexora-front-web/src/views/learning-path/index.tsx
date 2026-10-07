@@ -320,7 +320,17 @@ export default function LearningPath() {
           <span>我的学习路线（{list.length}）</span>
         </div>
         {list.length === 0 && !loading ? (
-          <Empty description="还没有学习路线，点右上角「AI 生成新路线」开始规划">
+          <Empty
+            description={
+              <div style={{ lineHeight: 1.9 }}>
+                <div>还没有学习路线。这里能做什么？</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  AI 会结合「我的学习档案」里的学习目标与兴趣，规划一条属于你的路线；
+                  每个节点做完小测就会推进，没掌握会自动回炉，到复习时间会提醒你。
+                </div>
+              </div>
+            }
+          >
             <Button icon={<Plus size={14} />} onClick={handleGenerate}>
               生成我的第一条路线
             </Button>
