@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { App, Button, Collapse, Drawer, Empty, Modal, Progress, Radio, Space, Spin, Tag, Tooltip } from 'antd';
 import {
+  CircleHelp,
   History,
   Search,
   Route,
@@ -162,7 +163,7 @@ export default function LearningPathDetailPage() {
    * 全部走「一键直达」——把学生的真实学习情况一起交给 AI 并自动发送；
    * 「找材料」和「复盘」不需要新增后端：AI 会用已挂载的 MCP 工具（recommendResource / queryPathNode / queryMastery）去查。
    */
-  const askAi = (node: LearningPathNode, mode: 'explain' | 'quiz' | 'materials' | 'review' | 'guided') => {
+  const askAi = (node: LearningPathNode, mode: 'explain' | 'quiz' | 'materials' | 'review' | 'guided' | 'wrongquiz') => {
     // 学习上下文单独传（不进消息正文）：气泡里只显示问题本身，上下文由服务端拼进系统提示词
     const context = buildLearningContext(node);
     let question: string;
@@ -170,6 +171,9 @@ export default function LearningPathDetailPage() {
       question = `请结合我的实际情况给我讲讲「${node.knowledgePointName}」，告诉我这个节点该重点掌握什么、有没有需要先补的地方。`;
     } else if (mode === 'quiz') {
       question = `针对《${node.knowledgePointName}》出 3 道题考考我，请按我的掌握度调整难度。`;
+    } else if (mode === 'wrongquiz') {
+      question = `请帮我把《${node.knowledgePointName}》这个节点最近的**错题**讲一遍：先用工具查我的逐题作答记录，挑出答错的题，`
+        + `逐题说明我错在哪、正确答案为什么对、下次遇到同类题该怎么想；没有做题记录就如实告诉我，不要编题。`;
     } else if (mode === 'materials') {
       question = `我想把「${node.knowledgePointName}」学扎实，帮我找几份合适的学习材料，优先推荐平台上已有的资源，并说明每份适合先看还是后看。`;
     } else if (mode === 'review') {
@@ -731,6 +735,9 @@ export default function LearningPathDetailPage() {
                 </Button>
                 <Button block icon={<History size={14} />} onClick={() => askAi(activeNode, 'review')}>
                   复盘我最近的练习
+                </Button>
+                <Button block icon={<CircleHelp size={14} />} onClick={() => askAi(activeNode, 'wrongquiz')}>
+                  让 AI 讲讲错题
                 </Button>
               </Space>
             </div>
