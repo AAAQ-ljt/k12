@@ -280,7 +280,8 @@ export default function AiTutor() {
   // 学习路径节点「问 AI 助教」跳转过来时预填问题（用完即清，避免刷新重复填充）
   useEffect(() => {
     const state = location.state as { presetQuestion?: string; presetContext?: string; autoSend?: boolean } | null;
-    if (state?.presetQuestion) {
+    if (state?.presetQuestion && !presetHandledRef.current) {
+      presetHandledRef.current = true;
       setInput(state.presetQuestion);
       navigate(location.pathname, { replace: true, state: null });
       // 一键直达（二期 7.60）：带上下文的问题直接发出，学生不必再点一次发送
@@ -314,6 +315,17 @@ export default function AiTutor() {
    * 这个标记用来让 ① 在自动发送期间不要抢视图。
    */
   const autoSendPendingRef = useRef(false);
+
+  /**
+   * 「一键直达」预设只处理一次（2026-10-07 修复双击/StrictMode 双发送）。
+   *
+   * 开发模式下 React StrictMode 会把 effect 跑两遍，而 handleSend 里的 streaming 守卫是**异步 state**：
+   * 第一遍刚置位、第二遍已经进来，于是一次点击发出两条消息、界面上出现两个「正在思考…」气泡。
+   * 用 ref 做同步判定即可（生产构建不跑两遍，但同步守卫对任何重复触发都成立）。
+   */
+  const presetHandledRef = useRef(false);
+  /** 发送同步去重：同一时刻只允许一个发送在途（关掉 await 之间的窗口） */
+  const sendingRef = useRef(false);
   const streamingMessageIdRef = useRef('');
   /** 与 activeSessionId 同步的即时引用：列表刷新判断「当前会话是否还在新列表中」时用 */
   const activeSessionIdRef = useRef('');
@@ -540,9 +552,14 @@ export default function AiTutor() {
 
   const handleSend = async (content?: string, learningContext?: string) => {
     const text = (content ?? input).trim();
-    if ((!text && attachedImages.length === 0) || streaming) {
+    if ((!text && attachedImages.length === 0) || streaming || sendingRef.current) {
       return;
     }
+    sendingRef.current = true;
+    // 兜底：无论成功失败都要释放，避免一次异常把后续发送全挡掉
+    setTimeout(() => {
+      sendingRef.current = false;
+    }, 0);
     if (!token) {
       openLoginModal();
       return;
