@@ -378,6 +378,18 @@ public class TeachingToolService {
             List<KnowledgeMasteryVO> list = stageCode == null
                     ? learningAnalysisMapper.selectMasteryList(userId.trim())
                     : learningAnalysisMapper.selectMasteryListByStage(userId.trim(), stageCode);
+            String stageFallbackNote = "";
+            if (list.isEmpty() && stageCode != null) {
+                // 登录学段查不到时回落到全部学段（2026-10-07 修复）：
+                // 学生可能正在做**别的学段**的学习路径（例：初一学生做「高中」路线，掌握度记录 stage=SENIOR），
+                // 只按登录学段查会空 → 回一句"暂无掌握度数据"，模型如实转述成"平台没有你的数据"，反而误导学生。
+                List<KnowledgeMasteryVO> allStage = learningAnalysisMapper.selectMasteryList(userId.trim());
+                if (!allStage.isEmpty()) {
+                    list = allStage;
+                    stageFallbackNote = "注意：按登录学段（" + stageCode + "）没有掌握度记录，"
+                            + "以下是你" + "*" + "*全部学段" + "*" + "*的掌握度数据（可能来自其它学段的课程或学习路径）。" + "\n";
+                }
+            }
             if (list.isEmpty()) {
                 return "该学生暂无掌握度数据";
             }
@@ -404,8 +416,8 @@ public class TeachingToolService {
                             .append("次 正确率:").append(item.getAccuracy() == null ? 0 : item.getAccuracy()).append("%）\n");
                 }
             }
-            return "知识点共 " + list.size() + " 个：已掌握 " + mastered + "、进行中 " + inProgress
-                    + "、未解锁 " + locked + "，平均分 " + totalScore / list.size() + "。\n" + sb;
+            return stageFallbackNote + "知识点共 " + list.size() + " 个：已掌握 " + mastered + "、进行中 " + inProgress
+                    + "、未解锁 " + locked + "，平均分 " + totalScore / list.size() + "。" + "\n" + sb;
         } catch (Exception e) {
             log.warn("queryMastery 失败", e);
             return "查询掌握度失败：" + e.getMessage();
