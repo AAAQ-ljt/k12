@@ -442,8 +442,9 @@ export default function LearningUserDetailDrawer({
             margin: '12px 0',
             padding: '12px 14px',
             borderRadius: 10,
-            border: '1px solid var(--warm-bg-dark, #EDE8E1)',
-            background: 'var(--warm-bg-ultimate, #FDFBF7)',
+            // 暗色下不能再用暖色浅底：正文是浅色字，浅底会白字白底看不清（2026-10-07 修复）
+            border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'var(--warm-bg-dark, #EDE8E1)'}`,
+            background: isDark ? 'rgba(255, 255, 255, 0.06)' : 'var(--warm-bg-ultimate, #FDFBF7)',
           }}
         >
           <Space size={10} wrap align="center">
@@ -464,7 +465,7 @@ export default function LearningUserDetailDrawer({
             </Button>
           </Space>
           {point.recentRecords.length > 0 && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: isDark ? '#8c8c8c' : '#999' }}>
               {point.recentRecords.slice(0, 5).map((record) => (
                 <div key={record.recordId} style={{ display: 'flex', gap: 10 }}>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -503,7 +504,7 @@ export default function LearningUserDetailDrawer({
             value={adjustReason}
             onChange={(event) => setAdjustReason(event.target.value)}
           />
-          <span style={{ color: '#999', fontSize: 12 }}>
+          <span style={{ color: isDark ? '#8c8c8c' : '#999', fontSize: 12 }}>
             补发只增加积分（累计与可用同时增加），走服务端唯一发分入口，幂等且受每日上限约束。
           </span>
         </Space>
