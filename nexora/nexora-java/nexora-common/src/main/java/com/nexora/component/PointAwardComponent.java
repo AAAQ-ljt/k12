@@ -51,6 +51,8 @@ public class PointAwardComponent {
     public static final String BIZ_SIGN_IN = "SIGN_IN";
     public static final String BIZ_STREAK = "STREAK";
     public static final String BIZ_LESSON_QUIZ = "LESSON_QUIZ";
+    /** 学完课时（该课时没有配通关测验，见 CourseStudyBiz 的完成链路） */
+    public static final String BIZ_LESSON_DONE = "LESSON_DONE";
     public static final String BIZ_PATH_TEST = "PATH_TEST";
     public static final String BIZ_CODING_PROBLEM = "CODING_PROBLEM";
     public static final String BIZ_PICTURE_BOOK = "PICTURE_BOOK";
@@ -75,7 +77,7 @@ public class PointAwardComponent {
 
     /** 「通过类」来源（徽章 FIRST_PASS 判定） */
     private static final List<String> PASS_BIZ_TYPES =
-            List.of(BIZ_LESSON_QUIZ, BIZ_PATH_TEST, BIZ_CODING_PROBLEM);
+            List.of(BIZ_LESSON_QUIZ, BIZ_LESSON_DONE, BIZ_PATH_TEST, BIZ_CODING_PROBLEM);
 
     /** 「创作类」来源（徽章 CREATION 判定） */
     private static final List<String> CREATION_BIZ_TYPES =
@@ -97,6 +99,7 @@ public class PointAwardComponent {
     private static final int DEFAULT_SIGN_IN_POINTS = 5;
     private static final int DEFAULT_MASTERY_POINTS = 50;
     private static final int DEFAULT_LESSON_QUIZ_POINTS = 20;
+    private static final int DEFAULT_LESSON_DONE_POINTS = 10;
     private static final int DEFAULT_PATH_TEST_POINTS = 30;
     private static final int DEFAULT_PICTURE_BOOK_POINTS = 15;
     private static final int DEFAULT_WIKI_CONFIRM_POINTS = 10;
@@ -299,6 +302,16 @@ public class PointAwardComponent {
         int base = intConfig("POINT_LESSON_QUIZ", DEFAULT_LESSON_QUIZ_POINTS);
         int bonus = Math.max(0, Math.min(100, scorePercent)) / 10;
         return award(userId, stage, BIZ_LESSON_QUIZ, lessonId, base + bonus, "通过课时通关测验");
+    }
+
+    /**
+     * 学完课时（该课时**没有**配置通关测验时）：打开课时资源即算学完，同样给激励分。
+     * bizId = 课时 ID，每课时只发一次；受每日上限约束（不能靠反复点资源刷分）。
+     * 配了测验的课时不走这里——它的分由「通过通关测验」发放（见 awardLessonQuiz）。
+     */
+    public int awardLessonDone(String userId, String stage, String lessonId) {
+        return award(userId, stage, BIZ_LESSON_DONE, lessonId,
+                intConfig("POINT_LESSON_DONE", DEFAULT_LESSON_DONE_POINTS), "学完课时（该课时无通关测验）");
     }
 
     /** 学习路径节点快测通过（bizId = 路径节点 ID，每节点只奖一次） */

@@ -164,7 +164,7 @@ public class CourseStudyBiz {
         // 完成口径：配置了启用测验的课时仅通过测验才算完成（走 CourseQuizBiz 既有链路），
         // 打开资源只记 VIEW 行为流水；无测验课时打开资源即记完成
         if (!lessonHasActiveQuiz(lesson.getLessonId())) {
-            markLessonCompleted(userId, lesson, now);
+            markLessonCompleted(userId, stage, lesson, now);
         }
         saveViewRecord(userId, lesson, resourceId, now);
         // 每日签到（同一学生每天只发一次；连续学习阶梯由组件结算）—— 见二期规划 A-2 第 1/2 条。
@@ -192,9 +192,10 @@ public class CourseStudyBiz {
     }
 
     /** 课时完成标记（幂等）：无测验课时打开资源即完成；测验完成链路已写过的直接跳过 */
-    private void markLessonCompleted(String userId, CourseChapterLesson lesson, Date now) {
+    private void markLessonCompleted(String userId, String stage, CourseChapterLesson lesson, Date now) {
         CourseStudyLessonProgress progress = courseStudyLessonProgressService
                 .getCourseStudyLessonProgressByUserIdAndLessonId(userId, lesson.getLessonId());
+        boolean justFinished = false;
         if (progress == null) {
             CourseStudyLessonProgress insertBean = new CourseStudyLessonProgress();
             insertBean.setUserId(userId);
@@ -205,12 +206,30 @@ public class CourseStudyBiz {
             insertBean.setCreateTime(now);
             insertBean.setUpdateTime(now);
             courseStudyLessonProgressService.add(insertBean);
+            justFinished = true;
         } else if (progress.getFinished() == null || progress.getFinished() != 1) {
             CourseStudyLessonProgress updateBean = new CourseStudyLessonProgress();
             updateBean.setFinished(1);
             updateBean.setFinishTime(now);
             updateBean.setUpdateTime(now);
             courseStudyLessonProgressService.updateCourseStudyLessonProgressById(updateBean, progress.getId());
+            justFinished = true;
+        }
+        // 学完课时给激励分（2026-10-08 补）：**没有配通关测验**的课时此前"学完不给分"，
+        // 学生完成小节后积分明细里没有任何记录（线上实证）。配了测验的课时不在这里发，
+        // 仍由「通过通关测验」发放（见 awardLessonQuiz），避免同一课时重复拿分。
+        if (justFinished && !lessonHasActiveQuiz(lesson.getLessonId())) {
+            try {
+                int gained = pointAwardComponent.awardLessonDone(userId, stage, lesson.getLessonId());
+                if (gained > 0) {
+                    log.info("学完无测验课时并发分 userId={} lessonId={} points={}",
+                            userId, lesson.getLessonId(), gained);
+                }
+            } catch (Exception e) {
+                // 积分属于激励层：任何异常只记日志，绝不能因为积分问题让学生学不了课
+                log.warn("学完课时积分发放失败（不影响学习链路）userId={} lessonId={}",
+                        userId, lesson.getLessonId(), e);
+            }
         }
     }
 

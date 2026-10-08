@@ -32,6 +32,7 @@ const BIZ_ICONS: Record<string, string> = {
   SIGN_IN: '📅',
   STREAK: '🔥',
   LESSON_QUIZ: '📝',
+  LESSON_DONE: '📘',
   PATH_TEST: '🧭',
   CODING_PROBLEM: '💻',
   PICTURE_BOOK: '📖',

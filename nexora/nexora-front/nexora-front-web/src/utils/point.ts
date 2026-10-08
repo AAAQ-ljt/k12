@@ -45,6 +45,7 @@ const BIZ_TYPE_LABELS: Record<string, string> = {
   SIGN_IN: '每日签到',
   STREAK: '连续学习奖励',
   LESSON_QUIZ: '课时测验',
+  LESSON_DONE: '学完课时',
   PATH_TEST: '学习路径小测',
   CODING_PROBLEM: '趣味编程通关',
   PICTURE_BOOK: '绘本创作',
