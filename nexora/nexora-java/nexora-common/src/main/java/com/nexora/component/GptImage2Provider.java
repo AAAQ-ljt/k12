@@ -64,7 +64,8 @@ public class GptImage2Provider implements ImageProvider {
         body.put("prompt", prompt);
         body.put("size", gptSize);
         body.put("n", 1);
-        body.put("response_format", "url");
+        // 优先要 base64（2026-10-08）：网关返回的 url 指向第三方图床，实测连不上 → 直接拿字节
+        body.put("response_format", "b64_json");
         String url = gptBaseUrl + gptPath;
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -113,8 +114,15 @@ public class GptImage2Provider implements ImageProvider {
         }
         JSONArray data = result.getJSONArray("data");
         if (data != null && !data.isEmpty()) {
-            String image = data.getJSONObject(0) == null ? null : data.getJSONObject(0).getString("url");
+            JSONObject first = data.getJSONObject(0);
+            String b64 = first == null ? null : first.getString("b64_json");
+            if (b64 != null && !b64.isBlank()) {
+                return ImageGenerateResult.successBase64(b64);
+            }
+            // 兜底：网关不支持 b64 时仍走原来的 url（下载可能受图床可达性影响）
+            String image = first == null ? null : first.getString("url");
             if (image != null && !image.isBlank()) {
+                log.warn("gpt-image-2 未返回 b64_json，回落到图床 URL（下载可能失败）: {}", image);
                 return ImageGenerateResult.success(image);
             }
         }

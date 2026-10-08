@@ -183,7 +183,12 @@ public class PictureBookGenerateComponent {
                 lastFailure.set(result.errorMessage() == null ? "图片生成失败" : result.errorMessage());
                 return null;
             }
-            String saved = downloadImage(email, result.imageUrl());
+            // 优先用网关直接返回的字节（2026-10-08）：网关给的 url 指向第三方图床
+            // （实测 ccimgapi.rootnode.shop 连本机与服务器都不可达），下载必然失败；
+            // 拿 base64 就完全绕开外部图床，绘本出图不再受它影响
+            String saved = result.hasBase64()
+                    ? saveBase64Image(email, result.base64())
+                    : downloadImage(email, result.imageUrl());
             if (saved == null) {
                 // 下载失败也要记录原因：全数失败时才能把 imageError 带给前端
                 lastFailure.set("插图下载失败：图片地址下载超时或不可访问，请稍后重试或更换生图供应商");
@@ -243,6 +248,25 @@ public class PictureBookGenerateComponent {
         String stageDesc = stageDesc(stage);
         return styleHint + "。绘本《" + bookTitle + "》第 " + (pageIndex + 1)
                 + " 页画面（面向" + stageDesc + "儿童）：" + pageText;
+    }
+
+    /**
+     * 直接落盘网关返回的 base64 图片（2026-10-08）：目录规则与 downloadImage 完全一致，
+     * 产物路径不变，前端与阅读器无需感知差异。
+     */
+    private String saveBase64Image(String email, String base64) {
+        String monthDir = java.time.LocalDate.now().toString().replace("-", "");
+        Path targetDir = Paths.get(projectFolder, resourceFileDir, "student", emailDir(email), "picture-book", monthDir);
+        String fileName = UUID.randomUUID().toString().replace("-", "") + ".png";
+        try {
+            Files.createDirectories(targetDir);
+            byte[] bytes = java.util.Base64.getDecoder().decode(base64);
+            Files.write(targetDir.resolve(fileName), bytes);
+            return resourceFileDir + "/student/" + emailDir(email) + "/picture-book/" + monthDir + "/" + fileName;
+        } catch (Exception e) {
+            log.warn("绘本插图 base64 落盘失败 email={}", email, e);
+            return null;
+        }
     }
 
     private String downloadImage(String email, String imageUrl) {
