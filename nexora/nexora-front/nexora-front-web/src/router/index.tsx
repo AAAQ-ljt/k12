@@ -3,7 +3,7 @@ import AutoLogin from '@/components/layout/AutoLogin';
 import AppErrorPage from '@/components/layout/AppErrorPage';
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
-import StageGuard, { ANIMATION_STAGES, CODING_STAGES, PATH_STAGES } from '@/components/layout/StageGuard';
+import StageGuard, { ANIMATION_STAGES, CODING_STAGES, PATH_STAGES, PICTURE_BOOK_STAGES } from '@/components/layout/StageGuard';
 import AiTutor from '@/views/ai-tutor';
 import LearningPath from '@/views/learning-path';
 import LearningPathDetailPage from '@/views/learning-path/detail';
@@ -96,7 +96,14 @@ const routes: RouteObject[] = [
           </ProtectedRoute>
         ),
       },
-      { path: 'picture-book', element: <PictureBook /> },
+      {
+        path: 'picture-book',
+        element: (
+          <StageGuard allowStages={PICTURE_BOOK_STAGES} description="绘本生成面向小学，初中及以上建议用动画讲解或知识页">
+            <PictureBook />
+          </StageGuard>
+        ),
+      },
       {
         path: 'animation',
         element: (

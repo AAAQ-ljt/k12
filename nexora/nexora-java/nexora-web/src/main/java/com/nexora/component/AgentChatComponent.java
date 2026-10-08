@@ -282,9 +282,9 @@ public class AgentChatComponent {
         if (!StringTools.isEmpty(preferIntent)) {
             String preferred = preferIntent.trim().toUpperCase();
             boolean allowed = PREFER_INTENT_WHITELIST.contains(preferred);
-            boolean stageBlocked = "ANIMATION".equals(preferred)
-                    && (STAGE_PRIMARY_LOW.equalsIgnoreCase(user.getStage())
-                        || STAGE_PRIMARY_HIGH.equalsIgnoreCase(user.getStage()));
+            // 学段匹配才采纳：动画讲解仅初高中、绘本仅小学（2026-10-08）
+            boolean stageBlocked = ("ANIMATION".equals(preferred) && isPrimaryStage(user.getStage()))
+                    || ("PICTURE_BOOK".equals(preferred) && !isPrimaryStage(user.getStage()));
             if (allowed && !stageBlocked) {
                 try {
                     redisComponent.setString(Constants.REDIS_KEY_AGENT_PREFER_INTENT + message.getMessageId(),
@@ -511,12 +511,19 @@ public class AgentChatComponent {
                 intent = "CHAT";
             }
 
-            // 对话内绘本：提交异步生成任务并推送进度卡片（与「绘本生成」页共用状态机，前端按 taskId 轮询）；提交失败降级为文字讲解
+            // 对话内绘本：**仅小学（小低/小高）可用**（2026-10-08 补学段拦截，与动画侧对称）。
+            // 非小学学段即使被分类成 PICTURE_BOOK（或前端误传 preferIntent）也不提交任务，
+            // 降级为 CHAT 由模型如实说明适用范围；小学段提交失败同样降级为文字讲解
             if ("PICTURE_BOOK".equals(intent)) {
-                if (handlePictureBookAnswer(user, session, message, intentResult, push)) {
+                if (isPrimaryStage(user.getStage())
+                        && handlePictureBookAnswer(user, session, message, intentResult, push)) {
                     return;
                 }
-                log.warn("绘本任务提交失败，降级为文字讲解");
+                if (!isPrimaryStage(user.getStage())) {
+                    log.warn("非小学学段要求绘本，按不支持处理（学段={}）", user.getStage());
+                } else {
+                    log.warn("绘本任务提交失败，降级为文字讲解");
+                }
                 degradeToChat(message);
                 intent = "CHAT";
             }
@@ -1275,6 +1282,8 @@ public class AgentChatComponent {
                     + "你就在这个对话里直接生成，不要说「我没有这个功能」，也不要只让他自己去页面找**（对话里输「生成X的动画讲解」即可，"
                     + "「动画讲解」页是另一个入口）；\n")
                     .append("- 学习路径：按你的学习档案生成个性化学习路线，掌握度驱动解锁；\n")
+                    .append("- 绘本生成：**面向小学（小低/小高），本学段不可用**；学生要求绘本时如实说明适用范围，"
+                            + "并建议用动画讲解或知识页代替，不要假装能生成、也不要说成系统坏了；\n")
                     .append("- 趣味编程：在「趣味编程」页写 Python 并直接运行，有分学段的题库与编程比赛；\n");
         }
         block.append("介绍要求：\n")
@@ -1285,8 +1294,13 @@ public class AgentChatComponent {
         return prompt + block;
     }
 
-    /** 学段编码 → 中文描述（产品功能块用） */
-    private String stageDescOf(String stage) {
+    /** 是否小学段（小低/小高）：绘本生成仅小学可用，动画讲解仅初高中可用 */
+    private boolean isPrimaryStage(String stage) {
+        return STAGE_PRIMARY_LOW.equalsIgnoreCase(stage == null ? "" : stage.trim())
+                || STAGE_PRIMARY_HIGH.equalsIgnoreCase(stage == null ? "" : stage.trim());
+    }
+
+    /** 学段编码 → 中文描述（产品功能块用） */    private String stageDescOf(String stage) {
         if (stage == null) {
             return "未知学段";
         }

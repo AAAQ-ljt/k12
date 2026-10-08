@@ -116,6 +116,12 @@ public class IntentAnalyzerComponent {
                 log.info("小学阶段动画意图降级为 CHAT: {}", userMessage);
                 intent = "CHAT";
             }
+            // 硬拦截（2026-10-08 补）：绘本生成面向小学（小低/小高），初高中学生要求绘本时不给生成任务，
+            // 降级为 CHAT 由模型如实说明适用范围（此前只有动画侧有学段拦截，绘本侧漏了）
+            if (!primaryStage && "PICTURE_BOOK".equals(intent)) {
+                log.info("非小学阶段绘本意图降级为 CHAT: {}", userMessage);
+                intent = "CHAT";
+            }
             return new IntentResult(intent, dto == null ? null : dto.getData(), promptTokens, completionTokens);
         } catch (Exception e) {
             log.warn("意图分析失败，兜底 CHAT", e);

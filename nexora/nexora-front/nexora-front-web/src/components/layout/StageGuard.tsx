@@ -15,6 +15,9 @@ import styles from './StageGuard.module.scss';
 /** 趣味编程开放学段（小学高年级及以上） */
 export const CODING_STAGES: string[] = ['PRIMARY_HIGH', 'JUNIOR', 'SENIOR'];
 
+/** 绘本生成开放学段（小学低/高）——2026-10-08 补：此前该页无学段守卫，初高中也能生成 */
+export const PICTURE_BOOK_STAGES: string[] = ['PRIMARY_LOW', 'PRIMARY_HIGH'];
+
 /** 动画讲解开放学段（初中 / 高中） */
 export const ANIMATION_STAGES: string[] = ['JUNIOR', 'SENIOR'];
 
