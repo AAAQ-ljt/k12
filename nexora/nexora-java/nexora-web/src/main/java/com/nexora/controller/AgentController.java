@@ -44,7 +44,7 @@ public class AgentController extends ABaseController {
         }
         AgentMessage message = agentChatComponent.sendMessage(current, request.getSessionId(),
                 request.getMessage(), request.getImageResourceIds(), request.getScene(),
-                request.getSessionTitle(), request.getLearningContext());
+                request.getSessionTitle(), request.getLearningContext(), request.getPreferIntent());
         return getSuccessResponseVO(message);
     }
 

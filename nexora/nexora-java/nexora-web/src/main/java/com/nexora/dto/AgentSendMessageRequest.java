@@ -40,6 +40,13 @@ public class AgentSendMessageRequest {
      */
     private String learningContext;
 
+    /**
+     * 学生显式选择的意图（可空）：ANIMATION 动画讲解 / QUIZ 出题练习。
+     * 由前端「动画讲解」模式与动作卡片带入；服务端命中白名单且学段允许时直接采用，
+     * 不再交给意图分类去猜——猜错会退化成文字讲解（2026-10-08 学生反馈）。
+     */
+    private String preferIntent;
+
     public String getSessionId() {
         return sessionId;
     }
@@ -102,5 +109,13 @@ public class AgentSendMessageRequest {
 
     public void setLearningContext(String learningContext) {
         this.learningContext = learningContext;
+    }
+
+    public String getPreferIntent() {
+        return preferIntent;
+    }
+
+    public void setPreferIntent(String preferIntent) {
+        this.preferIntent = preferIntent;
     }
 }

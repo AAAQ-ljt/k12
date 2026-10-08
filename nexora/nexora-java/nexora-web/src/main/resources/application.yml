@@ -39,6 +39,15 @@ spring:
           starttls:
             enable: true
   ai:
+    # 模型调用重试封顶（2026-10-08）：Spring AI 默认重试 10 次，网关不回包时会"每次等满超时 × 10"，
+    # 学生看到界面长时间转圈；这里最多 2 次尝试、4xx 不重试（配合 provider 的 150s 读超时形成明确终点）。
+    retry:
+      max-attempts: 2
+      on-client-errors: false
+      backoff:
+        initial-interval: 1000
+        multiplier: 2
+        max-interval: 5000
     model:
       chat: openai
       embedding: openai

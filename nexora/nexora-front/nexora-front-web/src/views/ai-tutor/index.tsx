@@ -550,7 +550,7 @@ export default function AiTutor() {
     streamingMessageIdRef.current = streamingMessageId;
   }, [streaming, streamingMessageId]);
 
-  const handleSend = async (content?: string, learningContext?: string) => {
+  const handleSend = async (content?: string, learningContext?: string, preferIntent?: 'ANIMATION' | 'QUIZ') => {
     const text = (content ?? input).trim();
     if ((!text && attachedImages.length === 0) || streaming || sendingRef.current) {
       return;
@@ -596,6 +596,9 @@ export default function AiTutor() {
         imageResourceIds: imageIds.length > 0 ? imageIds : undefined,
         // 学习上下文只进提示词、不进气泡（服务端按消息 ID 暂存后注入）
         learningContext,
+        // 学生显式选择「动画讲解」模式（或动作卡片）时把意图一并带上：
+        // 服务端命中白名单且学段允许（初高中）就直接按动画生成，不再让意图分类去猜
+        preferIntent: preferIntent ?? (mode === 'animation' ? 'ANIMATION' : undefined),
       });
       selectSession(result.sessionId);
       setStreamingMessageId(result.messageId);
@@ -862,7 +865,8 @@ export default function AiTutor() {
     const text = action === 'quiz'
       ? '针对刚才讲解的内容出几道练习题考考我'
       : '把刚才讲解的内容生成一个动画讲解';
-    void handleSend(text);
+    // 动作卡片是显式动作：把意图带上，避免被意图分类猜成普通对话（动画仅初高中可用）
+    void handleSend(text, undefined, action === 'quiz' ? 'QUIZ' : 'ANIMATION');
   };
 
   const renderRecommendIcon = (type?: string) => {
@@ -1030,7 +1034,7 @@ export default function AiTutor() {
                     className={styles.suggestionChip}
                     onClick={() => {
                       setMode(item.mode);
-                      void handleSend(item.label);
+                      void handleSend(item.label, undefined, item.mode === 'animation' ? 'ANIMATION' : undefined);
                     }}
                   >
                     {item.mode === 'animation' ? <BookOpen size={15} /> : <Sparkles size={15} />}

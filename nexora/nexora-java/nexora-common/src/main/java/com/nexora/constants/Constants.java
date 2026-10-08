@@ -46,6 +46,13 @@ public class Constants {
     public static final String REDIS_KEY_AGENT_LEARNING_CONTEXT = "agent:learning-context:";
 
     /**
+     * 学生显式选择的意图暂存（key = 前缀 + 消息ID）。
+     * 前端「动画讲解」模式/快捷按钮属于**学生的显式选择**，不能靠意图分类去猜——
+     * 猜错就会退化成文字讲解（2026-10-08 学生反馈：选动画讲解却回答"我没有这个功能"）。
+     */
+    public static final String REDIS_KEY_AGENT_PREFER_INTENT = "agent:prefer-intent:";
+
+    /**
      * Redis key 前缀：提示词模板覆盖
      */
     public static final String REDIS_KEY_PROMPT_TEMPLATE = "prompt_template:";

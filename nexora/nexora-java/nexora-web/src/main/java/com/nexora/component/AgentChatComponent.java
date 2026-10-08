@@ -229,6 +229,19 @@ public class AgentChatComponent {
     public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage,
                                     List<String> imageResourceIds, Integer scene, String sessionTitle,
                                     String learningContext) {
+        return sendMessage(user, sessionId, userMessage, imageResourceIds, scene, sessionTitle, learningContext, null);
+    }
+
+    /**
+     * 发送消息（带学生显式选择的意图，2026-10-08）。
+     *
+     * preferIntent 由前端「动画讲解」模式 / 动作卡片带入：学生的显式选择必须是权威的，
+     * 服务端只做白名单与学段校验后直接采用，不再交给意图分类去猜——
+     * 猜错会退化成文字讲解，学生看到的是「我没有生成动画的功能」。
+     */
+    public AgentMessage sendMessage(TokenUserInfoDTO user, String sessionId, String userMessage,
+                                    List<String> imageResourceIds, Integer scene, String sessionTitle,
+                                    String learningContext, String preferIntent) {
         AgentSession session = resolveSession(user, sessionId, scene, sessionTitle);
 
         // 校验并解析随消息图片（个人库 IMAGE 资源），带图时走视觉模型
@@ -258,6 +271,25 @@ public class AgentChatComponent {
                         learningContext.trim(), 30, TimeUnit.MINUTES);
             } catch (Exception e) {
                 log.warn("暂存学习上下文失败（本轮不注入上下文）messageId={}", message.getMessageId(), e);
+            }
+        }
+        // 学生显式选择的意图暂存（按消息 ID）：只接受白名单，且小学段不允许动画
+        if (!StringTools.isEmpty(preferIntent)) {
+            String preferred = preferIntent.trim().toUpperCase();
+            boolean allowed = PREFER_INTENT_WHITELIST.contains(preferred);
+            boolean stageBlocked = "ANIMATION".equals(preferred)
+                    && (STAGE_PRIMARY_LOW.equalsIgnoreCase(user.getStage())
+                        || STAGE_PRIMARY_HIGH.equalsIgnoreCase(user.getStage()));
+            if (allowed && !stageBlocked) {
+                try {
+                    redisComponent.setString(Constants.REDIS_KEY_AGENT_PREFER_INTENT + message.getMessageId(),
+                            preferred, 30, TimeUnit.MINUTES);
+                } catch (Exception e) {
+                    log.warn("暂存显式意图失败（本轮回落到意图分类）messageId={}", message.getMessageId(), e);
+                }
+            } else {
+                log.info("显式意图被忽略 intent={} allowed={} stageBlocked={} stage={}",
+                        preferred, allowed, stageBlocked, user.getStage());
             }
         }
         message.setUserId(user.getUserId());
@@ -410,9 +442,16 @@ public class AgentChatComponent {
                 return;
             }
 
-            IntentAnalyzerComponent.IntentResult intentResult = intentAnalyzerComponent.analyze(
-                    message.getUserMessage(), user.getStage());
+            // 学生在界面上显式选过意图（「动画讲解」模式/动作卡片）时以它为准：显式选择不该被分类器猜错，
+            // 猜错会退化成文字讲解，学生看到的是"我没有生成动画的功能"（2026-10-08 修）
+            String preferredIntent = takePreferredIntent(message.getMessageId());
+            IntentAnalyzerComponent.IntentResult intentResult = preferredIntent == null
+                    ? intentAnalyzerComponent.analyze(message.getUserMessage(), user.getStage())
+                    : new IntentAnalyzerComponent.IntentResult(preferredIntent, null, 0, 0);
             String intent = intentResult.intent();
+            if (preferredIntent != null) {
+                log.info("采用学生显式选择的意图 intent={} messageId={}", preferredIntent, message.getMessageId());
+            }
             // 带图消息守卫：意图分类只看文本，"图片里是什么"这类看图提问会被误判成创作型意图，
             // 在到达下方视觉问答链路前就被绘本/动画任务拦截。带图时创作型意图一律降级 CHAT 走视觉回答；
             // 真要创作可去「绘本生成」页，或发不带图的明确指令
@@ -1043,6 +1082,25 @@ public class AgentChatComponent {
     /**
      * 取出并清理暂存的学习上下文（读一次即删，避免长期占用；取不到返回 null）。
      */
+    /** 学生显式选择的意图：取一次即删（同学习上下文口径），没有则返回 null 走意图分类 */
+    private String takePreferredIntent(String messageId) {
+        if (StringTools.isEmpty(messageId)) {
+            return null;
+        }
+        try {
+            String key = Constants.REDIS_KEY_AGENT_PREFER_INTENT + messageId;
+            String intent = redisComponent.getString(key);
+            if (!StringTools.isEmpty(intent)) {
+                redisComponent.removeKey(key);
+                return intent;
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("读取显式意图失败 messageId={}", messageId, e);
+            return null;
+        }
+    }
+
     private String takeLearningContext(String messageId) {
         if (StringTools.isEmpty(messageId)) {
             return null;
@@ -1126,6 +1184,10 @@ public class AgentChatComponent {
     private static final String STAGE_PRIMARY_LOW = "PRIMARY_LOW";
     private static final String STAGE_PRIMARY_HIGH = "PRIMARY_HIGH";
 
+    /** 学生端可显式指定的意图白名单（其余一律走意图分类，防止前端被改造成任意意图注入） */
+    private static final java.util.Set<String> PREFER_INTENT_WHITELIST =
+            java.util.Set.of("ANIMATION", "QUIZ", "PICTURE_BOOK");
+
     /**
      * 产品功能自述块（不依赖 MCP 开关，始终注入）：
      * 按学生学段列出真实可用的产品功能（绘本生成仅小学、动画讲解/学习路径仅初高中），
@@ -1147,14 +1209,17 @@ public class AgentChatComponent {
             block.append("- 绘本生成：在「绘本生成」页输入主题，AI 编故事、配图并朗读（小学专属）；\n")
                     .append("- 趣味编程：在「趣味编程」页写 Python 并直接运行，有分学段的题库与编程比赛；\n");
         } else {
-            block.append("- 动画讲解：把抽象概念做成 SVG 分步动画（初高中专属）；\n")
+            block.append("- 动画讲解：把抽象概念做成 SVG 分步动画（初高中专属）。**学生说「生成/做个X的动画讲解、动画演示」时，"
+                    + "你就在这个对话里直接生成，不要说「我没有这个功能」，也不要只让他自己去页面找**（对话里输「生成X的动画讲解」即可，"
+                    + "「动画讲解」页是另一个入口）；\n")
                     .append("- 学习路径：按你的学习档案生成个性化学习路线，掌握度驱动解锁；\n")
                     .append("- 趣味编程：在「趣味编程」页写 Python 并直接运行，有分学段的题库与编程比赛；\n");
         }
         block.append("介绍要求：\n")
                 .append("1. 用户问「你能做什么/有哪些功能」时，按本节如实介绍，不遗漏、不夸大；\n")
                 .append("2. 本节未列出的能力不要声称具备；涉及页面操作的功能要说明入口页面名称；\n")
-                .append("3. 与当前学段不匹配的能力如实说明适用范围（动画讲解面向初高中、绘本面向小学等）。");
+                .append("3. 与当前学段不匹配的能力如实说明适用范围（动画讲解面向初高中、绘本面向小学等）；\n")
+                .append("4. 本节列出的能力要正面回答「可以」：学生要动画讲解就在对话里直接生成（不要否认、不要只让他去页面找）；\n");
         return prompt + block;
     }
 

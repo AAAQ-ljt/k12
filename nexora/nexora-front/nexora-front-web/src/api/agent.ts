@@ -55,6 +55,12 @@ export interface AgentSendParams {
    * **不写进消息正文**——气泡里只显示提问本身（见二期规划 7.60 收敛项）。
    */
   learningContext?: string;
+  /**
+   * 学生显式选择的意图：ANIMATION 动画讲解 / QUIZ 出题练习 / PICTURE_BOOK 绘本。
+   * 由「动画讲解」模式与动作卡片带入；后端命中白名单且学段允许时直接采用，
+   * 不再交给意图分类去猜（猜错会退化成文字讲解，学生看到的是"我没有这个功能"）。
+   */
+  preferIntent?: 'ANIMATION' | 'QUIZ' | 'PICTURE_BOOK';
 }
 
 /** AI 对话发送结果 */
