@@ -153,7 +153,7 @@ public class OpenCodeGoChatProvider implements ChatProvider {
     /**
      * 连接 10s / 读取 150s：网关不回包时走异常链路而不是无限等待（见 build() 内注释）。
      *
-     * 读取上限取 150s 而不是更短：动画讲解的 SVG 分步脚本属于**重生成**，正常也要几十秒，
+     * 读取上限取 240s：动画讲解的 SVG 分步脚本属于**重生成**，2026-10-08 实测一次正常生成要 ~138s，
      * 之前定 60s 会把正常生成也掐断并触发重试，反而更慢（2026-10-08 实测：3 次 × 60s 全超时）。
      * 重试次数由 spring.ai.retry.max-attempts 封顶为 2，最坏情况也有明确终点。
      */
@@ -162,7 +162,7 @@ public class OpenCodeGoChatProvider implements ChatProvider {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-        factory.setReadTimeout(Duration.ofSeconds(150));
+        factory.setReadTimeout(Duration.ofSeconds(240));
         return factory;
     }
 

@@ -36,6 +36,12 @@ public class AnimationTaskVO {
     /** 完成后的动画资源ID（个人知识库 ANIMATION 资源） */
     private String animationResourceId;
 
+    /**
+     * 任务级自动重试次数（2026-10-08）：生文网关会间歇性整轮超时（实测线上 150s 读超时被掐断），
+     * 超时不该把任务直接判死——重试到上限才失败，期间学生在进度卡上看到的是「自动重试中」。
+     */
+    private Integer retryCount;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTime;
@@ -122,5 +128,13 @@ public class AnimationTaskVO {
 
     public void setUpdateTime(Date updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public Integer getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(Integer retryCount) {
+        this.retryCount = retryCount;
     }
 }
