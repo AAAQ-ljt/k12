@@ -646,6 +646,10 @@ public class AgentChatComponent {
                 trimmed = trimmed.substring(0, 50);
             }
             AnimationTaskVO task = animationTaskService.submit(user.getUserId(), user.getStage(), trimmed);
+            // 记住来源对话消息：任务完成时消费者会把结果回写进这条消息，
+            // 历史对话直接渲染动画，不再依赖 2 小时就回收的 Redis 任务体（2026-10-08）
+            task.setMessageId(message.getMessageId());
+            animationTaskService.update(task);
 
             Map<String, Object> bizData = new HashMap<>();
             bizData.put("taskId", task.getTaskId());

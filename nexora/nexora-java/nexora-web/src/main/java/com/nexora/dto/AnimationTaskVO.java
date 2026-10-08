@@ -40,6 +40,10 @@ public class AnimationTaskVO {
      * 任务级自动重试次数（2026-10-08）：生文网关会间歇性整轮超时（实测线上 150s 读超时被掐断），
      * 超时不该把任务直接判死——重试到上限才失败，期间学生在进度卡上看到的是「自动重试中」。
      */
+    /** 来源对话消息ID（对话内发起时带上；任务完成时把结果回写进这条消息，
+     * 之后历史对话直接渲染动画，不再依赖 2 小时就回收的 Redis 任务体）。动画讲解页发起时为空。 */
+    private String messageId;
+
     private Integer retryCount;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
@@ -136,5 +140,13 @@ public class AnimationTaskVO {
 
     public void setRetryCount(Integer retryCount) {
         this.retryCount = retryCount;
+    }
+
+    public String getMessageId() {
+        return messageId;
+    }
+
+    public void setMessageId(String messageId) {
+        this.messageId = messageId;
     }
 }

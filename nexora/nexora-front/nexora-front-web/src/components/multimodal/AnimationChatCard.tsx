@@ -121,10 +121,12 @@ export default function AnimationChatCard({ taskId, topic }: AnimationChatCardPr
       {status === 'FAILED' || expired ? (
         <div className={styles.failed}>
           <div className={styles.failedText}>
-            {expired ? '生成任务已过期，请重新发起。' : task?.message || '动画生成失败，可稍后重试。'}
+            {expired
+              ? '这条生成任务的状态已回收（任务体只保留 2 小时），但动画成品不受影响——去「动画讲解」页就能看到；新生成的动画则会直接显示在这里。'
+              : task?.message || '动画生成失败，可稍后重试。'}
           </div>
           <Button size="small" icon={<RotateCcw size={13} />} onClick={() => navigate('/animation')}>
-            去动画讲解页重试
+            去动画讲解页查看
           </Button>
         </div>
       ) : null}

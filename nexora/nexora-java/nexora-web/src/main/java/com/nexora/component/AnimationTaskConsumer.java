@@ -3,10 +3,14 @@ package com.nexora.component;
 import com.nexora.constants.Constants;
 import com.nexora.dto.AnimationTaskVO;
 import com.nexora.entity.po.ResourceInfo;
+import com.nexora.entity.po.AgentMessage;
+import com.nexora.service.AgentMessageService;
+import com.nexora.utils.StringTools;
 import com.nexora.service.AnimationTaskService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
+import java.util.Date;
 import org.springframework.stereotype.Component;
 
 /**
@@ -33,6 +37,10 @@ public class AnimationTaskConsumer {
 
     @Resource
     private AnimationSaveComponent animationSaveComponent;
+
+    /** 完成时回写来源对话消息（对话内发起的任务才有 messageId） */
+    @Resource
+    private AgentMessageService agentMessageService;
 
     @Scheduled(fixedDelay = 1000)
     public void consume() {
@@ -93,7 +101,33 @@ public class AnimationTaskConsumer {
         task.setTitle(script.title());
         task.setAnimationResourceId(resource.getResourceId());
         animationTaskService.update(task);
+        // 把成品回写进来源对话消息（2026-10-08）：历史对话直接显示动画播放器，
+        // 不再依赖 2 小时过期就被回收的 Redis 任务体（此前过期后卡片只能显示"已过期"，
+        // 而动画其实好好地在「动画讲解」页里）
+        updateSourceMessage(task, scriptJson);
         log.info("动画异步任务完成 taskId={} userId={} title={} steps={}",
                 task.getTaskId(), task.getUserId(), script.title(), script.steps().size());
+    }
+
+    /**
+     * 任务完成后回写来源对话消息：把消息改成「已完成动画」形态（bizType=ANIMATION + 脚本 JSON），
+     * 前端沿用既有的 ANIMATION 渲染分支即可直接播放，历史对话不依赖任务体是否过期。
+     */
+    private void updateSourceMessage(AnimationTaskVO task, String scriptJson) {
+        if (StringTools.isEmpty(task.getMessageId())) {
+            return;
+        }
+        try {
+            AgentMessage update = new AgentMessage();
+            update.setAssistantMessage("已为你生成动画讲解《" + task.getTitle() + "》，可以直接在下方观看，也可以去「动画讲解」页查看～");
+            update.setBizType("ANIMATION");
+            update.setBizData(scriptJson);
+            update.setUpdateTime(new Date());
+            agentMessageService.updateAgentMessageByMessageId(update, task.getMessageId());
+            log.info("动画任务结果已回写对话消息 taskId={} messageId={}", task.getTaskId(), task.getMessageId());
+        } catch (Exception e) {
+            // 回写失败不影响产物本身（动画已在「动画讲解」页）
+            log.warn("动画结果回写对话消息失败 taskId={} messageId={}", task.getTaskId(), task.getMessageId(), e);
+        }
     }
 }
