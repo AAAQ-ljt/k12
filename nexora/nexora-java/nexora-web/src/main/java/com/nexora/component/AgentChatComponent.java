@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson2.JSON;
 import com.nexora.dto.AgentMessagePushDTO;
+import com.nexora.dto.AnimationTaskVO;
 import com.nexora.dto.PictureBookTaskVO;
 import com.nexora.entity.dto.TokenUserInfoDTO;
 import com.nexora.entity.enums.StageEnum;
@@ -22,6 +23,7 @@ import com.nexora.service.AgentSessionService;
 import com.nexora.service.AiGenerationRecordService;
 import com.nexora.service.ResourceInfoService;
 import com.nexora.service.StudentKnowledgeBaseService;
+import com.nexora.service.AnimationTaskService;
 import com.nexora.service.PictureBookTaskService;
 import com.nexora.utils.StringTools;
 import com.nexora.vo.ResourceRecommendVO;
@@ -185,6 +187,9 @@ public class AgentChatComponent {
 
     @Resource
     private PictureBookTaskService pictureBookTaskService;
+
+    @Resource
+    private AnimationTaskService animationTaskService;
 
     @Resource
     private PictureBookGenerateComponent pictureBookGenerateComponent;
@@ -481,8 +486,13 @@ public class AgentChatComponent {
                 return;
             }
 
-            // 动画讲解：生成分步 SVG 脚本产物并推送卡片；生成失败降级为文字讲解
+            // 动画讲解：**优先提交异步任务**（与「动画讲解」页共用同一套状态机），
+            // 前端按 taskId 轮询进度卡片——学生能立刻看到"收到 + 正在生成"，切页也不中断（2026-10-08 学生要求，对齐绘本体验）；
+            // 任务提交失败再退回本进程内同步生成，最后才降级为文字讲解
             if ("ANIMATION".equals(intent)) {
+                if (handleAnimationTaskAnswer(user, session, message, intentResult, push)) {
+                    return;
+                }
                 if (handleAnimationAnswer(user, session, message, intentResult, push)) {
                     return;
                 }
@@ -608,6 +618,58 @@ public class AgentChatComponent {
             log.error("AI 对话流式调用失败", e);
             KnowledgeAgentToolComponent.clearFallbackContext();
             finishMessage(user, message, answer.toString(), false, e, List.of(), 0, 0, hasImages);
+        }
+    }
+
+    /**
+     * 动画讲解「任务版」链路（2026-10-08）：提交异步任务 + 立刻回"收到 + 进度卡"，
+     * 与绘本同一套体验（对话内可见、切页保持、完成后卡片直接变成播放器）。
+     * 返回 true 表示任务已提交并推送；false 表示提交失败（调用方退回同步生成）。
+     */
+    private boolean handleAnimationTaskAnswer(TokenUserInfoDTO user, AgentSession session, AgentMessage message,
+                                             IntentAnalyzerComponent.IntentResult intent, AgentMessagePushDTO push) {
+        try {
+            String topic = resolveAnimationConcept(user, session, message);
+            if (StringTools.isEmpty(topic)) {
+                return false;
+            }
+            // 主题过长时截断（任务侧与动画页同口径 50 字）
+            String trimmed = topic.trim();
+            if (trimmed.length() > 50) {
+                trimmed = trimmed.substring(0, 50);
+            }
+            AnimationTaskVO task = animationTaskService.submit(user.getUserId(), user.getStage(), trimmed);
+
+            Map<String, Object> bizData = new HashMap<>();
+            bizData.put("taskId", task.getTaskId());
+            bizData.put("topic", trimmed);
+            bizData.put("status", task.getStatus());
+            String bizJson = JSON.toJSONString(bizData);
+
+            String text = "收到！正在为你生成动画讲解《" + trimmed + "》，AI 正在把概念拆成分步 SVG 画面"
+                    + "（通常十几秒到一分钟）。进度就在下方卡片里，切到其他页面也不会中断；"
+                    + "完成后卡片会直接变成动画讲解，也可以去「动画讲解」页查看～";
+
+            Date now = new Date();
+            AgentMessage update = new AgentMessage();
+            update.setAssistantMessage(text);
+            update.setStatus(1);
+            update.setBizType("ANIMATION_TASK");
+            update.setBizData(bizJson);
+            update.setPromptTokens(intent.promptTokens());
+            update.setCompletionTokens(intent.completionTokens());
+            update.setUpdateTime(now);
+            agentMessageService.updateAgentMessageByMessageId(update, message.getMessageId());
+
+            push.setType("done");
+            push.setContent(text);
+            push.setBizType("ANIMATION_TASK");
+            push.setBizData(bizJson);
+            channelContextUtils.sendMessage(user.getUserId(), JSON.toJSONString(push));
+            return true;
+        } catch (Exception e) {
+            log.warn("动画任务提交失败，退回同步生成 messageId={}", message.getMessageId(), e);
+            return false;
         }
     }
 

@@ -162,17 +162,29 @@ export default function PictureBookChatCard({ taskId, topic }: { taskId: string;
       {status === 'COMPLETED' ? (
         <div className={styles.doneRow}>
           {canRead ? (
-            <Button type="primary" size="small" icon={<BookImage size={13} />} onClick={() => setReading(true)}>
-              查看绘本
+            <Button size="small" icon={<BookImage size={13} />} onClick={() => setReading(true)}>
+              全屏阅读
             </Button>
           ) : (
-            <>
-              <span className={styles.doneText}>绘本已生成，可在「绘本生成」页查看</span>
-              <Button size="small" icon={<ExternalLink size={13} />} onClick={() => navigate('/picture-book')}>
-                去查看
-              </Button>
-            </>
+            <span className={styles.doneText}>绘本已生成，可在「绘本生成」页查看</span>
           )}
+          <Button size="small" icon={<ExternalLink size={13} />} onClick={() => navigate('/picture-book')}>
+            去绘本生成页
+          </Button>
+        </div>
+      ) : null}
+
+      {/* 完成后**直接在对话里阅读**（2026-10-08 学生要求：不用点按钮跳转）；弹窗入口保留为「全屏阅读」 */}
+      {status === 'COMPLETED' && canRead && task?.bookResourceId ? (
+        <div className={styles.inlineReader}>
+          <PictureBookReader
+            resourceId={task.bookResourceId}
+            script={script}
+            fixingPage={fixingPage}
+            onFixPage={(page) => void fixPage(page)}
+            audioTask={audioTask}
+            onGenerateAudio={(page, selectedVoice) => void generateAudio(page, selectedVoice || undefined)}
+          />
         </div>
       ) : null}
 

@@ -44,6 +44,7 @@ import MathMarkdown from '@/components/multimodal/MathMarkdown';
 import QuizCard from '@/components/multimodal/QuizCard';
 import SvgStepPlayer from '@/components/multimodal/SvgStepPlayer';
 import PictureBookChatCard from '@/components/multimodal/PictureBookChatCard';
+import AnimationChatCard from '@/components/multimodal/AnimationChatCard';
 import { syncStudentWikiFromMessage } from '@/api/studentWiki';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import KnowledgeDrawer from './components/KnowledgeDrawer';
@@ -79,6 +80,8 @@ interface ChatMessage {
   quiz?: QuizScript | null;
   /** 对话内绘本任务（异步生成，卡片内轮询进度） */
   pictureBook?: { taskId: string; topic?: string } | null;
+  /** 对话内动画讲解任务（异步生成，卡片内轮询进度；完成后直接内嵌播放器） */
+  animationTask?: { taskId: string; topic?: string } | null;
   images?: ChatImage[];
 }
 
@@ -211,6 +214,11 @@ function parsePictureBookCard(bizData?: string): { taskId: string; topic?: strin
   }
 }
 
+/** 对话内动画讲解任务卡（bizType=ANIMATION_TASK，与绘本卡同构：taskId + topic） */
+function parseAnimationTaskCard(bizData?: string): { taskId: string; topic?: string } | null {
+  return parsePictureBookCard(bizData);
+}
+
 function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
   const result: ChatMessage[] = [];
   list.forEach((item) => {
@@ -233,6 +241,7 @@ function mapHistory(list: AgentMessageInfo[]): ChatMessage[] {
         animation: item.bizType === 'ANIMATION' ? parseAnimationScript(item.bizData) : undefined,
         quiz: item.bizType === 'QUIZ' ? parseQuizScript(item.bizData) : undefined,
         pictureBook: item.bizType === 'PICTURE_BOOK' ? parsePictureBookCard(item.bizData) : undefined,
+        animationTask: item.bizType === 'ANIMATION_TASK' ? parseAnimationTaskCard(item.bizData) : undefined,
       });
     }
   });
@@ -403,6 +412,8 @@ export default function AiTutor() {
             animation: data.bizType === 'ANIMATION' ? parseAnimationScript(data.bizData) : item.animation,
             quiz: data.bizType === 'QUIZ' ? parseQuizScript(data.bizData) : item.quiz,
             pictureBook: data.bizType === 'PICTURE_BOOK' ? parsePictureBookCard(data.bizData) : item.pictureBook,
+            animationTask:
+              data.bizType === 'ANIMATION_TASK' ? parseAnimationTaskCard(data.bizData) : item.animationTask,
           };
         }
         if (data.type !== 'error') {
@@ -1117,6 +1128,11 @@ export default function AiTutor() {
                   {item.role === 'assistant' && item.quiz ? (
                     <div className={styles.quizCard}>
                       <QuizCard quiz={item.quiz} />
+                    </div>
+                  ) : null}
+                  {item.role === 'assistant' && item.animationTask ? (
+                    <div className={styles.pictureBookCard}>
+                      <AnimationChatCard taskId={item.animationTask.taskId} topic={item.animationTask.topic} />
                     </div>
                   ) : null}
                   {item.role === 'assistant' && item.pictureBook ? (

@@ -71,3 +71,13 @@
   font-size: 12px;
   color: var(--text-secondary);
 }
+/* 完成后在对话内直接阅读（2026-10-08）：限高 + 内部滚动，避免长绘本把对话撑爆 */
+.inlineReader {
+  margin-top: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  padding: 8px;
+  background: #fff;
+}
